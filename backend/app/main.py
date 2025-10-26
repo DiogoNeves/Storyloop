@@ -8,6 +8,7 @@ from typing import AsyncIterator, Callable
 
 import logfire
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from .config import Settings, settings
 from .db import SqliteConnectionFactory, create_connection_factory
@@ -61,6 +62,13 @@ def create_app(active_settings: Settings | None = None) -> FastAPI:
         title="Storyloop API",
         version="0.1.0",
         lifespan=build_lifespan(resolved_settings, connection_factory),
+    )
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=resolved_settings.cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
     application.include_router(api_router)
     return application

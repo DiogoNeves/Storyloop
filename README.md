@@ -17,6 +17,8 @@ Storyloop is a creator analytics journal that combines FastAPI + SQLite on the b
    cp .env.example .env
    ```
 
+   Update `CORS_ORIGINS` if you host the frontend on a different origin.
+
 3. Install backend dependencies (creates a local virtual environment automatically):
 
    ```bash
