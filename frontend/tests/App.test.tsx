@@ -12,6 +12,7 @@ describe("App", () => {
     render(<App />);
 
     expect(screen.getByText(/Storyloop Score/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Start entry/i })).toBeInTheDocument();
 
     await waitFor(() =>
       expect(screen.getByText(/Storyloop API ready/i)).toBeInTheDocument(),
