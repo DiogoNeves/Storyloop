@@ -3,9 +3,13 @@ import {
   QueryClientProvider,
   useQuery,
 } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
-import { ActivityFeed, type ActivityItem } from "@/components/ActivityFeed";
+import {
+  ActivityFeed,
+  type ActivityDraft,
+  type ActivityItem,
+} from "@/components/ActivityFeed";
 import { NavBar } from "@/components/NavBar";
 import {
   Card,
@@ -48,7 +52,7 @@ function HealthBadge({ className }: { className?: string }) {
       className={cn(
         "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium",
         badgeClassName,
-        className
+        className,
       )}
     >
       <span
@@ -93,7 +97,7 @@ function ScorePlaceholder() {
 }
 
 function DashboardShell() {
-  const activityItems = useMemo<ActivityItem[]>(
+  const seedItems = useMemo<ActivityItem[]>(
     () => [
       {
         id: "1",
@@ -120,8 +124,41 @@ function DashboardShell() {
         category: "journal",
       },
     ],
-    []
+    [],
   );
+
+  const [activityItems, setActivityItems] = useState<ActivityItem[]>(seedItems);
+  const [draft, setDraft] = useState<ActivityDraft | null>(null);
+
+  const formatNowAsDateTimeLocal = useCallback(() => {
+    const now = new Date();
+    now.setSeconds(0);
+    now.setMilliseconds(0);
+    const offset = now.getTimezoneOffset();
+    const adjusted = new Date(now.getTime() - offset * 60_000);
+    return adjusted.toISOString().slice(0, 16);
+  }, []);
+
+  const handleSubmitDraft = useCallback(() => {
+    if (!draft) {
+      return;
+    }
+
+    const newItem: ActivityItem = {
+      id: crypto.randomUUID(),
+      title: draft.title.trim(),
+      summary: draft.summary.trim(),
+      date: new Date(draft.date).toISOString(),
+      category: "journal",
+    };
+
+    setActivityItems((prev) => {
+      return [newItem, ...prev].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+      );
+    });
+    setDraft(null);
+  }, [draft]);
 
   return (
     <div className="min-h-screen bg-muted/20 text-foreground">
@@ -129,7 +166,23 @@ function DashboardShell() {
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-10">
         <ScorePlaceholder />
 
-        <ActivityFeed items={activityItems} />
+        <ActivityFeed
+          items={activityItems}
+          draft={draft}
+          onStartDraft={() => {
+            if (draft) {
+              return;
+            }
+            setDraft({
+              title: "",
+              summary: "",
+              date: formatNowAsDateTimeLocal(),
+            });
+          }}
+          onDraftChange={setDraft}
+          onCancelDraft={() => setDraft(null)}
+          onSubmitDraft={handleSubmitDraft}
+        />
       </main>
     </div>
   );
