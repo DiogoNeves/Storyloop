@@ -120,11 +120,11 @@ Storyloop/
 - Build dashboard widgets (charts, tables) and diary editor UI.
 
 ### Checklist Summary
-- [ ] Initialize backend environment and FastAPI skeleton.
-- [ ] Configure SQLite, scheduler stubs, and logging.
-- [ ] Scaffold frontend with Vite, Shadcn UI, and journaling activity feed.
-- [ ] Establish testing frameworks (pytest, Vitest).
-- [ ] Provide single-command dev script and updated README instructions.
+- [x] Initialize backend environment and FastAPI skeleton.
+- [x] Configure SQLite, scheduler stubs, and logging.
+- [x] Scaffold frontend with Vite, Shadcn UI, and journaling activity feed.
+- [x] Establish testing frameworks (pytest, Vitest).
+- [x] Provide single-command dev script and updated README instructions.
 
 ### Future Features
 - ChatKit-powered assistant panel to query Storyloop analytics and diary entries.
