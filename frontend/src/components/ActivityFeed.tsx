@@ -46,21 +46,23 @@ function ActivityFeedItem({ item }: { item: ActivityItem }) {
   });
 
   return (
-    <article className="grid gap-2 rounded-lg border border-border/60 bg-card/60 p-4 transition hover:border-border">
-      <div className="flex items-center justify-between gap-2">
-        <Badge
-          variant="secondary"
-          className={categoryBadgeClass[item.category]}
-        >
-          {item.category}
-        </Badge>
-        <time className="text-xs text-muted-foreground" dateTime={item.date}>
-          {formattedDate}
-        </time>
-      </div>
-      <h3 className="text-sm font-semibold text-foreground">{item.title}</h3>
-      <p className="text-sm text-muted-foreground">{item.summary}</p>
-    </article>
+    <Card>
+      <CardContent className="space-y-2 p-4">
+        <div className="flex items-center justify-between gap-2">
+          <Badge
+            variant="secondary"
+            className={categoryBadgeClass[item.category]}
+          >
+            {item.category}
+          </Badge>
+          <time className="text-xs text-muted-foreground" dateTime={item.date}>
+            {formattedDate}
+          </time>
+        </div>
+        <h3 className="text-sm font-semibold text-foreground">{item.title}</h3>
+        <p className="text-sm text-muted-foreground">{item.summary}</p>
+      </CardContent>
+    </Card>
   );
 }
 
