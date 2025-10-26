@@ -37,7 +37,7 @@ def build_lifespan(
 ) -> Callable[[FastAPI], AsyncIterator[None]]:
     """Create the FastAPI lifespan handler for scheduler management."""
 
-    youtube_service = YoutubeService()
+    youtube_service = YoutubeService(api_key=active_settings.youtube_api_key)
     growth_score_service = GrowthScoreService()
     scheduler: AsyncIOScheduler | None = None
 
