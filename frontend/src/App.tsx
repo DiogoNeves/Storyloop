@@ -3,7 +3,7 @@ import { useMemo } from "react";
 
 import { ActivityFeed, type ActivityItem } from "@/components/ActivityFeed";
 import { NavBar } from "@/components/NavBar";
-import { fetchHealth } from "@/lib/api";
+import { healthQueries } from "@/api/health";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -15,10 +15,7 @@ const queryClient = new QueryClient({
 });
 
 function HealthBadge() {
-  const { data, status, error } = useQuery({
-    queryKey: ["health"],
-    queryFn: fetchHealth,
-  });
+  const { data, status, error } = useQuery(healthQueries.status());
 
   const label =
     status === "pending"
