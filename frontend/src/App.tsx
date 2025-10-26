@@ -71,24 +71,6 @@ function ScorePlaceholder() {
   );
 }
 
-function WeeklyPrompt() {
-  return (
-    <section className="rounded-xl border bg-card p-6 shadow-sm">
-      <h2 className="text-lg font-semibold">Weekly reflection prompt</h2>
-      <p className="mt-2 text-sm text-muted-foreground">
-        What resonated with your audience this week? Capture one storytelling win and one improvement
-        opportunity while it&apos;s fresh.
-      </p>
-      <button
-        type="button"
-        className="mt-4 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition hover:bg-primary/90"
-      >
-        Start entry
-      </button>
-    </section>
-  );
-}
-
 function DashboardShell() {
   const activityItems = useMemo<ActivityItem[]>(
     () => [
@@ -121,23 +103,9 @@ function DashboardShell() {
     <div className="min-h-screen bg-muted/20 text-foreground">
       <NavBar />
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-10">
-        <section className="rounded-xl border bg-card p-8 shadow-sm">
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Storyloop | Content journal
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Track your Growth Score, review publishing milestones, and capture actionable insights
-            every week. This placeholder experience validates the full-stack wiring before shipping
-            production dashboards.
-          </p>
-        </section>
-
         <ScorePlaceholder />
 
-        <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
-          <ActivityFeed items={activityItems} />
-          <WeeklyPrompt />
-        </div>
+        <ActivityFeed items={activityItems} />
       </main>
     </div>
   );

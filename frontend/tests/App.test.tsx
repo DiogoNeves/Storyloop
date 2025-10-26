@@ -8,12 +8,10 @@ vi.mock("@/lib/api", () => ({
 }));
 
 describe("App", () => {
-  it("renders the dashboard hero and health status", async () => {
+  it("renders the dashboard and health status", async () => {
     render(<App />);
 
-    expect(
-      screen.getByText(/Storyloop \| Content journal/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Storyloop Score/i)).toBeInTheDocument();
 
     await waitFor(() =>
       expect(screen.getByText(/Storyloop API ready/i)).toBeInTheDocument(),
