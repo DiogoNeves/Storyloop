@@ -64,6 +64,12 @@ Storyloop/
 - `make lint-frontend` – lint the React project with ESLint flat config.
 - `make seed` – populate the local SQLite database with demo YouTube metrics.
 
+## Theme customization
+
+- The frontend uses shadcn UI tokens defined in `frontend/src/index.css` inside an `@layer base` block.
+- To change the palette, pick new HSL values from the shadcn Colors catalog and replace the `--primary`, `--accent`, `--secondary`, and related variables. See [shadcn Colors](https://ui.shadcn.com/colors) for ready-to-use values.
+- After editing, run `npm run lint` and reload the Vite dev server to confirm the updated theme renders as expected.
+
 ## Testing & quality gates
 
 - Backend tests live under `backend/tests/` and rely on `uv run pytest` for isolation.
