@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 ROOT_DIR = BASE_DIR.parent
@@ -32,6 +32,17 @@ class Settings(BaseModel):
     logfire_api_key: str | None = Field(default=None, alias="LOGFIRE_API_KEY")
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     youtube_api_key: str | None = Field(default=None, alias="YOUTUBE_API_KEY")
+    cors_origins: list[str] = Field(
+        default_factory=lambda: ["http://127.0.0.1:5173", "http://localhost:5173"],
+        alias="CORS_ORIGINS",
+    )
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def _split_origins(cls, value: str | list[str]) -> list[str]:
+        if isinstance(value, str):
+            return [origin.strip() for origin in value.split(",") if origin.strip()]
+        return value
 
     @classmethod
     def load(cls) -> "Settings":
