@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { healthQueries } from "@/api/health";
+import { cn } from "@/lib/utils";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -25,7 +26,7 @@ const queryClient = new QueryClient({
   },
 });
 
-function HealthBadge() {
+function HealthBadge({ className }: { className?: string }) {
   const { data, status, error } = useQuery(healthQueries.status());
 
   const label =
@@ -44,7 +45,11 @@ function HealthBadge() {
 
   return (
     <span
-      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${badgeClassName}`}
+      className={cn(
+        "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium",
+        badgeClassName,
+        className
+      )}
     >
       <span
         className="mr-1.5 inline-flex h-2 w-2 rounded-full bg-current"
@@ -63,7 +68,7 @@ function HealthBadge() {
 function ScorePlaceholder() {
   return (
     <Card>
-      <CardHeader className="flex flex-wrap items-center justify-between gap-3">
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
         <div>
           <CardTitle className="text-lg">Storyloop Score</CardTitle>
           <CardDescription>
@@ -71,7 +76,7 @@ function ScorePlaceholder() {
             Length).
           </CardDescription>
         </div>
-        <HealthBadge />
+        <HealthBadge className="self-end" />
       </CardHeader>
       <CardContent>
         <div className="relative h-60 overflow-hidden rounded-lg border border-dashed border-primary/40 bg-gradient-to-br from-primary/10 via-transparent to-primary/5">
