@@ -1,4 +1,5 @@
-import { Button } from "@/components/ui/button";
+import type { ReactNode } from "react";
+
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -16,18 +17,24 @@ export interface ActivityItem {
   category: "video" | "insight" | "journal";
 }
 
-export function ActivityFeed({ items }: { items: ActivityItem[] }) {
+interface ActivityFeedProps {
+  items: ActivityItem[];
+  action?: ReactNode;
+}
+export function ActivityFeed({ items, action }: ActivityFeedProps) {
   return (
     <Card>
-      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+      <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
           <CardTitle className="text-lg">Recent activity</CardTitle>
           <CardDescription>
             A combined stream of publishing milestones, insights, and journal
             reflections.
           </CardDescription>
         </div>
-        <Button type="button">Start entry</Button>
+        {action ? (
+          <div className="self-start sm:ml-auto sm:self-end">{action}</div>
+        ) : null}
       </CardHeader>
       <CardContent className="space-y-4">
         {items.map((item) => (
