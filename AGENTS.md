@@ -20,6 +20,7 @@ Storyloop combines a FastAPI backend with a Vite/React frontend. Follow the guid
 - Python: target Python 3.11, use 4-space indentation, keep modules typed, and group business logic in `services/`. Run `uv run ruff check backend` and `uv run mypy backend` before review when you touch backend code.
 - TypeScript/React: follow the ESLint + Prettier defaults; name components with `PascalCase`, hooks/utilities with `camelCase`, and prefer function components.
 - Keep environment variables in `.env`; reference them via `backend/config.py` instead of hard-coding.
+- Order exported components/functions before private helpers in each file. Place private helpers after the public code that uses them, keeping helpers close to their last usage.
 
 ## Testing Guidelines
 - Backend tests should be `test_*.py` files that assert against the public API surface; rely on `asyncio_mode=auto` for async endpoints.
