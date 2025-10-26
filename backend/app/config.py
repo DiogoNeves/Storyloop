@@ -36,6 +36,14 @@ class Settings(BaseModel):
         default_factory=lambda: ["http://127.0.0.1:5173", "http://localhost:5173"],
         alias="CORS_ORIGINS",
     )
+    enable_scheduler: bool | None = Field(
+        default=None,
+        alias="ENABLE_SCHEDULER",
+        description=(
+            "Override automatic scheduler activation. Defaults to on in production"
+            " and off otherwise."
+        ),
+    )
 
     @field_validator("cors_origins", mode="before")
     @classmethod
@@ -43,6 +51,13 @@ class Settings(BaseModel):
         if isinstance(value, str):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
+
+    @property
+    def scheduler_enabled(self) -> bool:
+        """Return whether recurring jobs should run for the current environment."""
+        if self.enable_scheduler is not None:
+            return self.enable_scheduler
+        return self.environment.lower() == "production"
 
     @classmethod
     def load(cls) -> "Settings":
