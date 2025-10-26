@@ -1,0 +1,20 @@
+# Storyloop Frontend
+
+Vite + React + TypeScript scaffold styled with Tailwind CSS and Shadcn UI tokens. React Query manages API calls to the backend `health` endpoint during the boilerplate phase.
+
+## Scripts
+
+```bash
+npm run dev        # start the Vite dev server
+npm run build      # type-check and build for production
+npm run test -- --run  # execute Vitest in run-once mode
+npm run lint       # ESLint flat config with type-aware rules
+```
+
+## Key directories
+
+- `src/components/` – shared UI components (`NavBar`, `ActivityFeed`).
+- `src/lib/api.ts` – Axios instance configured against the FastAPI backend.
+- `tests/` – Vitest setup and smoke tests.
+
+Tailwind tokens are defined in `tailwind.config.js`; global theme variables live in `src/index.css`.
