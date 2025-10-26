@@ -1,0 +1,25 @@
+[project]
+name = "storyloop-backend"
+version = "0.1.0"
+description = "Storyloop FastAPI backend boilerplate"
+readme = "README.md"
+requires-python = ">=3.11.8"
+dependencies = [
+    "apscheduler>=3.11.0",
+    "fastapi>=0.120.0",
+    "httpx>=0.28.1",
+    "logfire>=4.14.2",
+    "pydantic>=2.12.3",
+    "python-dotenv>=1.1.1",
+    "sqlite-utils>=3.38",
+    "uvicorn[standard]>=0.38.0",
+]
+
+[dependency-groups]
+dev = [
+    "coverage>=7.11.0",
+    "mypy>=1.18.2",
+    "pytest>=8.4.2",
+    "pytest-asyncio>=1.2.0",
+    "ruff>=0.14.2",
+]

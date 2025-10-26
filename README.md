@@ -1,15 +1,73 @@
 # Storyloop
-A local-first creative analytics app that helps content creators turn their videos into insight. Track your channel’s growth through CTR, retention, and your own “Growth Score.” Write weekly notes, see how your ideas evolve, and close the loop between storytelling and progress.
 
-## Getting Started (Boilerplate Prep)
+Storyloop is a creator analytics journal that combines FastAPI + SQLite on the backend with a React (Vite) frontend. This boilerplate validates the toolchain end-to-end before layering in domain features such as the Storyloop Growth Score and AI-powered insights.
 
-While the application scaffolding has not been generated yet, the high-level setup is defined in `PLAN.md`. Follow these initial steps to get your environment ready:
+## Prerequisites
 
-1. Ensure you have Python 3.11+, Node.js 18+, and npm installed.
-2. Read through `PLAN.md` for the detailed backend/frontend scaffolding commands.
-3. After the plan is executed you will be able to run:
-   - `uv run uvicorn app.main:app --reload` from `backend/` to start the FastAPI server.
-   - `npm run dev` from `frontend/` to launch the React dev server.
-4. Copy `.env.example` to `.env` (once created) and fill in the required API keys (YouTube, OpenAI, Logfire).
+- Python 3.11 (managed via [`uv`](https://docs.astral.sh/uv/))
+- Node.js 18+
+- npm 9+
 
-Next up: execute the plan to generate the boilerplate so the project can run locally with a single command.
+## Quick start
+
+1. Clone the repository and install the language runtimes listed above.
+2. Copy the environment template and adjust values as needed:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+3. Install backend dependencies (creates a local virtual environment automatically):
+
+   ```bash
+   cd backend
+   uv sync
+   ```
+
+4. Install frontend dependencies:
+
+   ```bash
+   cd ../frontend
+   npm install
+   ```
+
+5. Launch both servers from the repository root:
+
+   ```bash
+   python scripts/dev.py
+   ```
+
+   The script runs the FastAPI app on `http://127.0.0.1:8000` and the Vite dev server on `http://127.0.0.1:5173`.
+
+6. Visit `http://127.0.0.1:5173` to confirm the UI renders and reports backend health status.
+
+## Project layout
+
+```
+Storyloop/
+├── backend/          # FastAPI application, APScheduler, pytest config
+├── frontend/         # Vite + React + Tailwind/Shadcn UI scaffold with Vitest
+├── scripts/          # Helper utilities (dev runner, seed data)
+├── design/           # Product sketches and references
+├── Makefile          # Convenience tasks (dev, lint, tests)
+├── .env.example      # Environment variable template
+└── PLAN.md           # Implementation blueprint
+```
+
+## Useful commands
+
+- `python scripts/dev.py` – start backend (uvicorn) and frontend (Vite) together.
+- `make test-backend` – run the FastAPI pytest suite.
+- `make test-frontend` – execute Vitest in run-once mode.
+- `make lint-frontend` – lint the React project with ESLint flat config.
+- `make seed` – populate the local SQLite database with demo YouTube metrics.
+
+## Testing & quality gates
+
+- Backend tests live under `backend/tests/` and rely on `uv run pytest` for isolation.
+- Frontend tests use Vitest + Testing Library; see `frontend/tests/` for examples.
+- Ruff, mypy, and additional tooling can be enabled later via `uv add --dev` as the surface area grows.
+
+## Next steps
+
+The PLAN outlines the roadmap toward ingesting YouTube data, calculating the Storyloop Growth Score, and integrating a journaling workflow. With this boilerplate in place you can begin implementing those features immediately.
