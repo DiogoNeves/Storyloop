@@ -5,12 +5,13 @@ Update the `thinking/` folder with a comprehensive explanation of how the Storyl
 ## Process
 
 1. **Check existing thinking documentation** - Read any existing files in `thinking/` to understand what's already documented
-2. **Analyze codebase structure** - Examine key files to understand the project architecture:
+2. **Analyze codebase structure** - Examine key files to understand the project architecture. Start with these important files, but explore any other files necessary to gain a complete understanding:
    - Backend: `backend/app/main.py`, `backend/app/config.py`, `backend/app/db.py`, `backend/app/scheduler.py`
    - Services: `backend/app/services/growth.py`, `backend/app/services/youtube.py`
    - Frontend: `frontend/src/App.tsx`, `frontend/src/components/ActivityFeed.tsx`
    - Router: `backend/app/routers/health.py`
    - Config: `.env.example`, `Makefile`, `backend/pyproject.toml`, `frontend/package.json`
+   - Don't limit yourself to these files—inspect additional files as needed to understand dependencies, imports, utilities, and related components
 3. **Document architecture** - Create or update markdown files in `thinking/`:
    - `architecture.md` - Overall system architecture, tech stack, and component relationships
    - `backend-structure.md` - Backend organization, services, database, and scheduler
