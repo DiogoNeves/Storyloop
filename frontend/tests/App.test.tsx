@@ -13,13 +13,29 @@ vi.mock("@/api/health", () => ({
   },
 }));
 
+vi.mock("@/api/entries", () => ({
+  entriesQueries: {
+    all: () => ({
+      queryKey: ["entries"],
+      queryFn: vi.fn().mockResolvedValue([]),
+    }),
+  },
+  createEntry: vi.fn().mockResolvedValue({
+    id: "test-id",
+    title: "Test Entry",
+    summary: "Test summary",
+    date: new Date().toISOString(),
+    category: "journal",
+  }),
+}));
+
 describe("App", () => {
   it("renders the dashboard and health status", async () => {
     render(<App />);
 
     expect(screen.getByText(/Storyloop Score/i)).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /\+ entry/i }),
+      screen.getByRole("button", { name: /Create entry/i }),
     ).toBeInTheDocument();
 
     await waitFor(() =>

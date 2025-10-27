@@ -1,7 +1,9 @@
 import {
   QueryClient,
   QueryClientProvider,
+  useMutation,
   useQuery,
+  useQueryClient,
 } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 
@@ -18,6 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { createEntry, entriesQueries } from "@/api/entries";
 import { healthQueries } from "@/api/health";
 import { cn } from "@/lib/utils";
 
@@ -97,6 +100,12 @@ function ScorePlaceholder() {
 }
 
 function DashboardShell() {
+  const queryClient = useQueryClient();
+
+  // Fetch entries from backend
+  const { data: fetchedEntries, status } = useQuery(entriesQueries.all());
+
+  // Fallback seed items for when backend is unavailable
   const seedItems = useMemo<ActivityItem[]>(
     () => [
       {
@@ -127,8 +136,25 @@ function DashboardShell() {
     [],
   );
 
-  const [activityItems, setActivityItems] = useState<ActivityItem[]>(seedItems);
+  // Use fetched data if available, otherwise use seed items
+  const activityItems = fetchedEntries ?? seedItems;
+
   const [draft, setDraft] = useState<ActivityDraft | null>(null);
+
+  // Create mutation for saving entries
+  const createMutation = useMutation({
+    mutationFn: (input: { title: string; summary: string; date: string }) =>
+      createEntry({ ...input, category: "journal" }),
+    onSuccess: () => {
+      // Refetch entries after successful creation
+      queryClient.invalidateQueries({ queryKey: ["entries"] });
+      setDraft(null);
+    },
+    onError: (error) => {
+      console.error("Failed to create entry:", error);
+      // Could show toast notification here
+    },
+  });
 
   const formatNowAsDateTimeLocal = useCallback(() => {
     const now = new Date();
@@ -144,21 +170,12 @@ function DashboardShell() {
       return;
     }
 
-    const newItem: ActivityItem = {
-      id: crypto.randomUUID(),
+    createMutation.mutate({
       title: draft.title.trim(),
       summary: draft.summary.trim(),
       date: new Date(draft.date).toISOString(),
-      category: "journal",
-    };
-
-    setActivityItems((prev) => {
-      return [newItem, ...prev].sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-      );
     });
-    setDraft(null);
-  }, [draft]);
+  }, [draft, createMutation]);
 
   return (
     <div className="min-h-screen bg-muted/20 text-foreground">

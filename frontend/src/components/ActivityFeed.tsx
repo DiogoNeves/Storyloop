@@ -52,14 +52,15 @@ export function ActivityFeed({
             reflections.
           </CardDescription>
         </div>
-        <Button
-          type="button"
-          onClick={onStartDraft}
-          disabled={Boolean(draft)}
-          className="self-start sm:ml-auto sm:self-end"
-        >
-          + entry
-        </Button>
+        {!draft && (
+          <Button
+            type="button"
+            onClick={onStartDraft}
+            className="self-start sm:ml-auto sm:self-end"
+          >
+            Create entry
+          </Button>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         {draft && onDraftChange ? (
@@ -128,9 +129,17 @@ function ActivityDraftCard({
   const isSubmitDisabled =
     draft.title.trim().length === 0 || draft.summary.trim().length === 0;
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isSubmitDisabled && onSubmit) {
+      onSubmit();
+    }
+  };
+
   return (
     <Card className="border-dashed border-primary/40 bg-primary/5">
       <CardContent className="space-y-4 p-4">
+        <form onSubmit={handleSubmit}>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <Badge variant="secondary" className={categoryBadgeClass.journal}>
             journal
@@ -178,14 +187,15 @@ function ActivityDraftCard({
           />
         </div>
 
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button type="button" variant="ghost" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button type="button" onClick={onSubmit} disabled={isSubmitDisabled}>
-            Create entry
-          </Button>
-        </div>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button type="button" variant="ghost" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitDisabled}>
+              Create entry
+            </Button>
+          </div>
+        </form>
       </CardContent>
     </Card>
   );

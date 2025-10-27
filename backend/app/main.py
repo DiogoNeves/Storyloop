@@ -16,6 +16,7 @@ from .config import Settings, settings
 from .db import SqliteConnectionFactory, create_connection_factory
 from .routers import api_router
 from .scheduler import create_scheduler
+from .schema import ensure_schema
 from .services import GrowthScoreService, YoutubeService
 
 logger = logging.getLogger(__name__)
@@ -53,6 +54,15 @@ def build_lifespan(
         app.state.get_db = connection_factory
         app.state.youtube_service = youtube_service
         app.state.growth_score_service = growth_score_service
+
+        # Initialize database schema for non-test databases
+        if not active_settings.database_url.endswith(":memory:"):
+            conn = connection_factory()
+            try:
+                ensure_schema(conn)
+                logger.info("Database schema initialized")
+            finally:
+                conn.close()
 
         if scheduler is not None:
             app.state.scheduler = scheduler
