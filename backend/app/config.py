@@ -17,7 +17,7 @@ def _load_dotenv() -> None:
     """Load environment variables from the project's .env file if present."""
     env_path = ROOT_DIR / ".env"
     if env_path.exists():
-        load_dotenv(env_path)
+        load_dotenv(env_path, override=True)
 
 
 class Settings(BaseModel):

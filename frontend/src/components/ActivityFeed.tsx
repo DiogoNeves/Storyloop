@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -10,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { youtubeQueries } from "@/api/youtube";
 
 export interface ActivityItem {
   id: string;
@@ -42,6 +45,29 @@ export function ActivityFeed({
   onCancelDraft,
   onSubmitDraft,
 }: ActivityFeedProps) {
+  const [channelId, setChannelId] = useState("");
+  const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
+
+  const { data: youtubeVideos = [], isLoading: isLoadingVideos, error: youtubeError } = useQuery({
+    ...youtubeQueries.videos({ channelId: activeChannelId || "" }),
+    enabled: Boolean(activeChannelId),
+  });
+
+  const handleFetchVideos = () => {
+    if (channelId.trim()) {
+      setActiveChannelId(channelId.trim());
+    }
+  };
+
+  const handleClearVideos = () => {
+    setActiveChannelId(null);
+    setChannelId("");
+  };
+
+  const allItems = activeChannelId
+    ? [...youtubeVideos, ...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    : items;
+
   return (
     <Card>
       <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -62,6 +88,52 @@ export function ActivityFeed({
         </Button>
       </CardHeader>
       <CardContent className="space-y-4">
+        <Card className="border-dashed bg-muted/20">
+          <CardContent className="space-y-3 p-4">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="youtube-channel-id" className="text-sm font-semibold">
+                Load YouTube Videos
+              </Label>
+              {activeChannelId && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearVideos}
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                id="youtube-channel-id"
+                placeholder="Enter YouTube channel ID"
+                value={channelId}
+                onChange={(e) => setChannelId(e.target.value)}
+                disabled={isLoadingVideos}
+              />
+              <Button
+                type="button"
+                onClick={handleFetchVideos}
+                disabled={!channelId.trim() || isLoadingVideos}
+              >
+                {isLoadingVideos ? "Loading..." : "Fetch"}
+              </Button>
+            </div>
+            {youtubeError && (
+              <p className="text-sm text-destructive">
+                Error loading videos. Please check the channel ID and try again.
+              </p>
+            )}
+            {activeChannelId && !isLoadingVideos && (
+              <p className="text-xs text-muted-foreground">
+                Loaded {youtubeVideos.length} video{youtubeVideos.length !== 1 ? "s" : ""} from channel
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
         {draft && onDraftChange ? (
           <ActivityDraftCard
             draft={draft}
@@ -70,7 +142,7 @@ export function ActivityFeed({
             onSubmit={onSubmitDraft}
           />
         ) : null}
-        {items.map((item) => (
+        {allItems.map((item) => (
           <ActivityFeedItem key={item.id} item={item} />
         ))}
       </CardContent>
