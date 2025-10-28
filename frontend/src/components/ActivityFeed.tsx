@@ -233,41 +233,64 @@ function ActivityFeedItem({ item }: { item: ActivityItem }) {
             {formattedDate}
           </time>
         </div>
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-foreground">
-            {item.linkUrl ? (
+        <div className="flex gap-4">
+          <div className="flex flex-1 flex-col gap-2">
+            <h3 className="text-sm font-semibold text-foreground">
+              {item.linkUrl ? (
+                <a
+                  href={item.linkUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary underline-offset-2 hover:underline"
+                >
+                  {item.title}
+                </a>
+              ) : (
+                item.title
+              )}
+            </h3>
+            {summary.length > 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {truncatedSummary}
+              </p>
+            ) : null}
+            {item.category === "video" && item.linkUrl ? (
               <a
                 href={item.linkUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-primary underline-offset-2 hover:underline"
+                className="mt-auto inline-flex pt-2 text-xs font-medium text-primary underline-offset-2 hover:underline"
               >
-                {item.title}
+                Watch on YouTube
+              </a>
+            ) : null}
+          </div>
+          {showThumbnail && item.thumbnailUrl ? (
+            item.linkUrl ? (
+              <a
+                href={item.linkUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="relative h-24 w-24 shrink-0 overflow-hidden rounded-md border border-border sm:h-28 sm:w-28"
+                aria-label={`Watch ${item.title} on YouTube`}
+              >
+                <img
+                  src={item.thumbnailUrl}
+                  alt={`Thumbnail for ${item.title}`}
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
               </a>
             ) : (
-              item.title
-            )}
-          </h3>
-          {showThumbnail && item.thumbnailUrl ? (
-            <img
-              src={item.thumbnailUrl}
-              alt={`Thumbnail for ${item.title}`}
-              className="h-40 w-full rounded-md object-cover"
-              loading="lazy"
-            />
-          ) : null}
-          {summary.length > 0 ? (
-            <p className="text-sm text-muted-foreground">{truncatedSummary}</p>
-          ) : null}
-          {item.category === "video" && item.linkUrl ? (
-            <a
-              href={item.linkUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex text-xs font-medium text-primary underline-offset-2 hover:underline"
-            >
-              Watch on YouTube
-            </a>
+              <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-md border border-border sm:h-28 sm:w-28">
+                <img
+                  src={item.thumbnailUrl}
+                  alt={`Thumbnail for ${item.title}`}
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+            )
           ) : null}
         </div>
       </CardContent>
