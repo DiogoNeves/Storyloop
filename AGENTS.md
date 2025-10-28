@@ -39,3 +39,4 @@ Storyloop combines a FastAPI backend with a Vite/React frontend. Follow the guid
 - Reference related issues in the body and summarize any new environment or schema changes.
 - Pull requests should outline the problem, solution approach, screenshots for UI changes, and the local commands you ran (`make test-backend`, `make test-frontend`, etc.).
 - Request review once checks pass; leave TODOs or follow-up tickets instead of merging partial work unflagged.
+- Use `gh` command when needed.
