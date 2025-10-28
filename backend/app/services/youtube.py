@@ -160,7 +160,7 @@ class YoutubeService:
         )
 
     async def fetch_channel_videos(
-        self, identifier: str, *, max_results: int = 12
+        self, identifier: str, *, max_results: int = 50
     ) -> YoutubeFeed:
         """Return recent uploads for the provided channel identifier."""
         if not self.api_key:
