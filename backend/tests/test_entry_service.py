@@ -43,3 +43,31 @@ def test_save_new_entries_inserts_only_fresh_records(
     with memory_connection_factory() as connection:
         rows = connection.execute("SELECT id FROM entries ORDER BY occurred_at").fetchall()
         assert [row["id"] for row in rows] == ["entry-a", "entry-b"]
+
+
+def test_list_entries_returns_records_in_reverse_chronological_order(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    service = EntryService(memory_connection_factory)
+    service.ensure_schema()
+
+    now = datetime.now(tz=UTC)
+    entry_earlier = EntryRecord(
+        id="entry-early",
+        title="Earlier entry",
+        summary="Initial narrative beats.",
+        occurred_at=now - timedelta(hours=1),
+        category="journal",
+    )
+    entry_latest = EntryRecord(
+        id="entry-late",
+        title="Latest entry",
+        summary="Final retention insights.",
+        occurred_at=now,
+        category="journal",
+    )
+
+    service.save_new_entries([entry_earlier, entry_latest])
+
+    entries = service.list_entries()
+    assert [entry.id for entry in entries] == ["entry-late", "entry-early"]

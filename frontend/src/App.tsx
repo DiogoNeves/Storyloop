@@ -1,7 +1,9 @@
 import {
   QueryClient,
   QueryClientProvider,
+  useMutation,
   useQuery,
+  useQueryClient,
 } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 
@@ -18,6 +20,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  createEntry,
+  entriesQueries,
+  type CreateEntryInput,
+  type Entry,
+} from "@/api/entries";
 import { healthQueries } from "@/api/health";
 import { cn } from "@/lib/utils";
 
@@ -97,6 +105,8 @@ function ScorePlaceholder() {
 }
 
 function DashboardShell() {
+  const queryClient = useQueryClient();
+
   const seedItems = useMemo<ActivityItem[]>(
     () => [
       {
@@ -127,8 +137,50 @@ function DashboardShell() {
     [],
   );
 
-  const [activityItems, setActivityItems] = useState<ActivityItem[]>(seedItems);
+  const entriesListQuery = useMemo(() => entriesQueries.all(), []);
+  const {
+    data: storedEntries,
+    status: entriesStatus,
+    error: entriesError,
+  } = useQuery(entriesListQuery);
+
+  const storedActivityItems = useMemo<ActivityItem[]>(() => {
+    if (!storedEntries) {
+      return [];
+    }
+    return storedEntries.map((entry) => ({
+      id: entry.id,
+      title: entry.title,
+      summary: entry.summary,
+      date: entry.date,
+      category: entry.category,
+      linkUrl: entry.linkUrl ?? undefined,
+      thumbnailUrl: entry.thumbnailUrl ?? undefined,
+    }));
+  }, [storedEntries]);
+
+  const activityItems =
+    storedActivityItems.length > 0 ? storedActivityItems : seedItems;
+
   const [draft, setDraft] = useState<ActivityDraft | null>(null);
+  const [draftError, setDraftError] = useState<string | null>(null);
+
+  const { mutateAsync: saveEntry, isPending: isSavingEntry } = useMutation({
+    mutationFn: createEntry,
+    onSuccess: (savedEntry) => {
+      if (!savedEntry) {
+        return;
+      }
+      queryClient.setQueryData<Entry[]>(entriesListQuery.queryKey, (current) => {
+        const next = (current ?? []).filter((entry) => entry.id !== savedEntry.id);
+        next.push(savedEntry);
+        next.sort(
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+        );
+        return next;
+      });
+    },
+  });
 
   const formatNowAsDateTimeLocal = useCallback(() => {
     const now = new Date();
@@ -139,26 +191,78 @@ function DashboardShell() {
     return adjusted.toISOString().slice(0, 16);
   }, []);
 
-  const handleSubmitDraft = useCallback(() => {
+  const handleStartDraft = useCallback(() => {
+    if (draft) {
+      return;
+    }
+    setDraft({
+      title: "",
+      summary: "",
+      date: formatNowAsDateTimeLocal(),
+    });
+    setDraftError(null);
+  }, [draft, formatNowAsDateTimeLocal]);
+
+  const handleDraftChange = useCallback((nextDraft: ActivityDraft) => {
+    setDraft(nextDraft);
+    setDraftError(null);
+  }, []);
+
+  const handleCancelDraft = useCallback(() => {
+    setDraft(null);
+    setDraftError(null);
+  }, []);
+
+  const handleSubmitDraft = useCallback(async () => {
     if (!draft) {
       return;
     }
 
-    const newItem: ActivityItem = {
+    const trimmedTitle = draft.title.trim();
+    const trimmedSummary = draft.summary.trim();
+    if (trimmedTitle.length === 0 || trimmedSummary.length === 0) {
+      setDraftError("Add a title and entry before saving.");
+      return;
+    }
+
+    const entryInput: CreateEntryInput = {
       id: crypto.randomUUID(),
-      title: draft.title.trim(),
-      summary: draft.summary.trim(),
+      title: trimmedTitle,
+      summary: trimmedSummary,
       date: new Date(draft.date).toISOString(),
       category: "journal",
     };
 
-    setActivityItems((prev) => {
-      return [newItem, ...prev].sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-      );
-    });
-    setDraft(null);
-  }, [draft]);
+    try {
+      setDraftError(null);
+      const savedEntry = await saveEntry(entryInput);
+      if (savedEntry) {
+        setDraft(null);
+      } else {
+        setDraftError("This entry was already saved.");
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "We couldn't save your entry. Please try again.";
+      setDraftError(message);
+    }
+  }, [draft, saveEntry]);
+
+  const handleDraftSubmit = useCallback(() => {
+    void handleSubmitDraft();
+  }, [handleSubmitDraft]);
+
+  const entriesErrorMessage = useMemo(() => {
+    if (entriesStatus !== "error") {
+      return null;
+    }
+    if (entriesError instanceof Error) {
+      return `We couldn't load saved entries: ${entriesError.message}`;
+    }
+    return "We couldn't load saved entries.";
+  }, [entriesError, entriesStatus]);
 
   return (
     <div className="min-h-screen bg-muted/20 text-foreground">
@@ -169,19 +273,13 @@ function DashboardShell() {
         <ActivityFeed
           items={activityItems}
           draft={draft}
-          onStartDraft={() => {
-            if (draft) {
-              return;
-            }
-            setDraft({
-              title: "",
-              summary: "",
-              date: formatNowAsDateTimeLocal(),
-            });
-          }}
-          onDraftChange={setDraft}
-          onCancelDraft={() => setDraft(null)}
-          onSubmitDraft={handleSubmitDraft}
+          onStartDraft={handleStartDraft}
+          onDraftChange={handleDraftChange}
+          onCancelDraft={handleCancelDraft}
+          onSubmitDraft={handleDraftSubmit}
+          isSubmittingDraft={isSavingEntry}
+          draftError={draftError}
+          errorMessage={entriesErrorMessage}
         />
       </main>
     </div>
