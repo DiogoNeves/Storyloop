@@ -1,3 +1,7 @@
+import { useCallback, useMemo, useState, type KeyboardEvent } from "react";
+import { isAxiosError } from "axios";
+
+import { youtubeApi, type YoutubeFeedResponse } from "@/api/youtube";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -17,6 +21,8 @@ export interface ActivityItem {
   summary: string;
   date: string;
   category: "video" | "insight" | "journal";
+  linkUrl?: string;
+  thumbnailUrl?: string | null;
 }
 
 export interface ActivityDraft {
@@ -42,6 +48,81 @@ export function ActivityFeed({
   onCancelDraft,
   onSubmitDraft,
 }: ActivityFeedProps) {
+  const [channelInput, setChannelInput] = useState("");
+  const [isLoadingVideos, setIsLoadingVideos] = useState(false);
+  const [youtubeError, setYoutubeError] = useState<string | null>(null);
+  const [youtubeFeed, setYoutubeFeed] = useState<YoutubeFeedResponse | null>(null);
+
+  const combinedItems = useMemo(() => {
+    const baseItems = [...items];
+    if (!youtubeFeed) {
+      return baseItems.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+      );
+    }
+
+    const videoItems: ActivityItem[] = youtubeFeed.videos.map((video) => ({
+      id: `youtube:${video.id}`,
+      title: video.title,
+      summary: video.description,
+      date: video.publishedAt,
+      category: "video",
+      linkUrl: video.url,
+      thumbnailUrl: video.thumbnailUrl,
+    }));
+
+    return [...baseItems, ...videoItems].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    );
+  }, [items, youtubeFeed]);
+
+  const handleFetchVideos = useCallback(async () => {
+    const trimmed = channelInput.trim();
+    if (!trimmed) {
+      setYoutubeError("Enter a YouTube channel handle, link, or ID.");
+      return;
+    }
+
+    setIsLoadingVideos(true);
+    setYoutubeError(null);
+
+    try {
+      const feed = await youtubeApi.fetchChannelVideos(trimmed);
+      setYoutubeFeed(feed);
+    } catch (error) {
+      if (isAxiosError(error)) {
+        const status = error.response?.status;
+        const detail =
+          typeof error.response?.data?.detail === "string"
+            ? error.response?.data?.detail
+            : null;
+        if (status === 404) {
+          setYoutubeError(detail ?? "We couldn’t find that channel on YouTube.");
+        } else if (status === 503) {
+          setYoutubeError(
+            detail ?? "The server hasn’t been configured for YouTube yet.",
+          );
+        } else {
+          setYoutubeError(detail ?? "We couldn’t load videos from YouTube.");
+        }
+      } else {
+        setYoutubeError("We couldn’t load videos from YouTube.");
+      }
+    } finally {
+      setIsLoadingVideos(false);
+    }
+  }, [channelInput]);
+
+  const handleChannelKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        handleFetchVideos();
+      }
+    },
+    [handleFetchVideos],
+  );
+
   return (
     <Card>
       <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -62,6 +143,55 @@ export function ActivityFeed({
         </Button>
       </CardHeader>
       <CardContent className="space-y-4">
+        <Card className="border-dashed border-primary/40 bg-primary/5">
+          <CardContent className="space-y-3 p-4">
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold text-foreground">
+                Connect your YouTube channel
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Paste a handle, channel URL, or ID to preview recent uploads.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                value={channelInput}
+                onChange={(event) => setChannelInput(event.target.value)}
+                onKeyDown={handleChannelKeyDown}
+                placeholder="e.g. @Storyloop or youtube.com/@Storyloop"
+                aria-label="YouTube channel"
+              />
+              <Button
+                type="button"
+                onClick={handleFetchVideos}
+                disabled={isLoadingVideos}
+                className="shrink-0"
+              >
+                {isLoadingVideos ? "Loading…" : "Load videos"}
+              </Button>
+            </div>
+            {youtubeFeed ? (
+              <p className="text-xs text-muted-foreground">
+                Showing {youtubeFeed.videos.length} recent video
+                {youtubeFeed.videos.length === 1 ? "" : "s"} from
+                <a
+                  href={youtubeFeed.channelUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-1 font-medium text-primary underline-offset-2 hover:underline"
+                >
+                  {youtubeFeed.channelTitle}
+                </a>
+                .
+              </p>
+            ) : null}
+            {youtubeError ? (
+              <p className="text-sm text-destructive" role="status">
+                {youtubeError}
+              </p>
+            ) : null}
+          </CardContent>
+        </Card>
         {draft && onDraftChange ? (
           <ActivityDraftCard
             draft={draft}
@@ -70,7 +200,7 @@ export function ActivityFeed({
             onSubmit={onSubmitDraft}
           />
         ) : null}
-        {items.map((item) => (
+        {combinedItems.map((item) => (
           <ActivityFeedItem key={item.id} item={item} />
         ))}
       </CardContent>
@@ -84,10 +214,14 @@ function ActivityFeedItem({ item }: { item: ActivityItem }) {
     day: "numeric",
     year: "numeric",
   });
+  const summary = item.summary.trim();
+  const truncatedSummary =
+    summary.length > 280 ? `${summary.slice(0, 277).trimEnd()}…` : summary;
+  const showThumbnail = item.category === "video" && Boolean(item.thumbnailUrl);
 
   return (
     <Card>
-      <CardContent className="space-y-2 p-4">
+      <CardContent className="space-y-3 p-4">
         <div className="flex items-center justify-between gap-2">
           <Badge
             variant="secondary"
@@ -99,8 +233,66 @@ function ActivityFeedItem({ item }: { item: ActivityItem }) {
             {formattedDate}
           </time>
         </div>
-        <h3 className="text-sm font-semibold text-foreground">{item.title}</h3>
-        <p className="text-sm text-muted-foreground">{item.summary}</p>
+        <div className="flex gap-4">
+          <div className="flex flex-1 flex-col gap-2">
+            <h3 className="text-sm font-semibold text-foreground">
+              {item.linkUrl ? (
+                <a
+                  href={item.linkUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary underline-offset-2 hover:underline"
+                >
+                  {item.title}
+                </a>
+              ) : (
+                item.title
+              )}
+            </h3>
+            {summary.length > 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {truncatedSummary}
+              </p>
+            ) : null}
+            {item.category === "video" && item.linkUrl ? (
+              <a
+                href={item.linkUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-auto inline-flex pt-2 text-xs font-medium text-primary underline-offset-2 hover:underline"
+              >
+                Watch on YouTube
+              </a>
+            ) : null}
+          </div>
+          {showThumbnail && item.thumbnailUrl ? (
+            item.linkUrl ? (
+              <a
+                href={item.linkUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="relative h-24 w-24 shrink-0 overflow-hidden rounded-md border border-border sm:h-28 sm:w-28"
+                aria-label={`Watch ${item.title} on YouTube`}
+              >
+                <img
+                  src={item.thumbnailUrl}
+                  alt={`Thumbnail for ${item.title}`}
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
+              </a>
+            ) : (
+              <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-md border border-border sm:h-28 sm:w-28">
+                <img
+                  src={item.thumbnailUrl}
+                  alt={`Thumbnail for ${item.title}`}
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+            )
+          ) : null}
+        </div>
       </CardContent>
     </Card>
   );
