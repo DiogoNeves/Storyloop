@@ -32,6 +32,19 @@ class Settings(BaseModel):
     logfire_api_key: str | None = Field(default=None, alias="LOGFIRE_API_KEY")
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     youtube_api_key: str | None = Field(default=None, alias="YOUTUBE_API_KEY")
+    youtube_client_id: str | None = Field(
+        default=None, alias="YOUTUBE_CLIENT_ID", description="OAuth client id for YouTube"
+    )
+    youtube_client_secret: str | None = Field(
+        default=None,
+        alias="YOUTUBE_CLIENT_SECRET",
+        description="OAuth client secret for YouTube",
+    )
+    youtube_redirect_uri: str | None = Field(
+        default=None,
+        alias="YOUTUBE_REDIRECT_URI",
+        description="OAuth redirect URI for YouTube integrations",
+    )
     cors_origins: list[str] = Field(
         default_factory=lambda: ["http://127.0.0.1:5173", "http://localhost:5173"],
         alias="CORS_ORIGINS",
