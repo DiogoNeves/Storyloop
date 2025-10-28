@@ -64,3 +64,36 @@ def test_save_entries_returns_only_new_records(
     assert response.status_code == 200
     body = response.json()
     assert [item["id"] for item in body] == ["entry-b"]
+
+
+def test_list_entries_returns_persisted_records(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    app = _create_test_app(memory_connection_factory)
+    client = TestClient(app)
+
+    now = datetime.now(tz=UTC)
+    payload = [
+        {
+            "id": "entry-1",
+            "title": "Earlier entry",
+            "summary": "Analyzed thumbnail variations.",
+            "date": (now - timedelta(hours=1)).isoformat(),
+            "category": "journal",
+        },
+        {
+            "id": "entry-2",
+            "title": "Latest entry",
+            "summary": "Captured retention improvements.",
+            "date": now.isoformat(),
+            "category": "journal",
+        },
+    ]
+
+    response = client.post("/entries/", json=payload)
+    assert response.status_code == 200
+
+    response = client.get("/entries/")
+    assert response.status_code == 200
+    body = response.json()
+    assert [item["id"] for item in body] == ["entry-2", "entry-1"]

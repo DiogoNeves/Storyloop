@@ -5,7 +5,8 @@ from __future__ import annotations
 from contextlib import closing
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Iterable
+from sqlite3 import Row
+from typing import Iterable, Sequence
 
 from ..db import SqliteConnectionFactory
 
@@ -82,6 +83,30 @@ class EntryService:
                     inserted.append(record)
             connection.commit()
         return inserted
+
+    def list_entries(self) -> list[EntryRecord]:
+        """Return all stored entries ordered by recency."""
+        with closing(self._connection_factory()) as connection:
+            rows: Sequence[Row] = connection.execute(
+                """
+                SELECT id, title, summary, occurred_at, category, link_url, thumbnail_url
+                FROM entries
+                ORDER BY datetime(occurred_at) DESC
+                """
+            ).fetchall()
+
+        return [
+            EntryRecord(
+                id=row["id"],
+                title=row["title"],
+                summary=row["summary"],
+                occurred_at=datetime.fromisoformat(row["occurred_at"]),
+                category=row["category"],
+                link_url=row["link_url"],
+                thumbnail_url=row["thumbnail_url"],
+            )
+            for row in rows
+        ]
 
 
 __all__ = ["EntryRecord", "EntryService"]

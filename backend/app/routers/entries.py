@@ -63,6 +63,14 @@ class EntryResponse(BaseModel):
         )
 
 
+@router.get("/", response_model=list[EntryResponse])
+def list_entries(request: Request) -> list[EntryResponse]:
+    """Return all persisted activity entries ordered by recency."""
+    entry_service: EntryService = request.app.state.entry_service
+    records = entry_service.list_entries()
+    return [EntryResponse.from_record(record) for record in records]
+
+
 @router.post("/", response_model=list[EntryResponse])
 def save_entries(request: Request, entries: list[EntryCreate]) -> list[EntryResponse]:
     """Persist provided entries, returning only the newly stored items."""
