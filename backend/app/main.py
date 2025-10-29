@@ -16,7 +16,7 @@ from .config import Settings, settings
 from .db import SqliteConnectionFactory, create_connection_factory
 from .routers import api_router
 from .scheduler import create_scheduler
-from .services import GrowthScoreService, YoutubeService
+from .services import EntryService, GrowthScoreService, YoutubeService
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +37,8 @@ def build_lifespan(
 ) -> Callable[[FastAPI], AsyncIterator[None]]:
     """Create the FastAPI lifespan handler for scheduler management."""
 
+    entry_service = EntryService(connection_factory)
+    entry_service.ensure_schema()
     youtube_service = YoutubeService(api_key=active_settings.youtube_api_key)
     growth_score_service = GrowthScoreService()
     scheduler: AsyncIOScheduler | None = None
@@ -51,6 +53,7 @@ def build_lifespan(
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.settings = active_settings
         app.state.get_db = connection_factory
+        app.state.entry_service = entry_service
         app.state.youtube_service = youtube_service
         app.state.growth_score_service = growth_score_service
 

@@ -108,7 +108,9 @@ def _candidate_channel_params(identifier: str) -> Iterable[dict[str, str]]:
     # URLs may encode handles or channel IDs in their path segments.
     if "//" in cleaned:
         parsed = urlparse(cleaned)
-        path_segments = [segment for segment in parsed.path.split("/") if segment]
+        path_segments = [
+            segment for segment in parsed.path.split("/") if segment
+        ]
         if path_segments:
             first = path_segments[0]
             if first.startswith("@"):
@@ -168,7 +170,9 @@ class YoutubeService:
 
         trimmed_identifier = identifier.strip()
         if not trimmed_identifier:
-            raise YoutubeChannelNotFound("Provide a channel handle, link, or ID")
+            raise YoutubeChannelNotFound(
+                "Provide a channel handle, link, or ID"
+            )
 
         async with self._create_client() as client:
             channel = await self._resolve_channel(client, trimmed_identifier)
@@ -207,7 +211,9 @@ class YoutubeService:
         if items:
             channel_id = items[0].get("id", {}).get("channelId")
             if channel_id:
-                channel = await self._try_resolve_channel(client, {"id": channel_id})
+                channel = await self._try_resolve_channel(
+                    client, {"id": channel_id}
+                )
                 if channel is not None:
                     return channel
 
@@ -237,7 +243,8 @@ class YoutubeService:
         )
         if not uploads_playlist_id:
             logger.warning(
-                "Channel %s is missing uploads playlist information", item.get("id")
+                "Channel %s is missing uploads playlist information",
+                item.get("id"),
             )
             return None
 
@@ -320,11 +327,19 @@ class YoutubeService:
         try:
             response = await client.get(endpoint, params=params)
             response.raise_for_status()
-        except httpx.HTTPStatusError as exc:  # pragma: no cover - network errors
-            detail = exc.response.json().get("error", {}).get("message") if exc.response.headers.get("content-type", "").startswith("application/json") else exc.response.text
-            message = (
-                "YouTube API request failed with status %s: %s"
-                % (exc.response.status_code, detail)
+        except (
+            httpx.HTTPStatusError
+        ) as exc:  # pragma: no cover - network errors
+            detail = (
+                exc.response.json().get("error", {}).get("message")
+                if exc.response.headers.get("content-type", "").startswith(
+                    "application/json"
+                )
+                else exc.response.text
+            )
+            message = "YouTube API request failed with status %s: %s" % (
+                exc.response.status_code,
+                detail,
             )
             raise YoutubeAPIRequestError(message) from exc
         except httpx.RequestError as exc:  # pragma: no cover - network errors

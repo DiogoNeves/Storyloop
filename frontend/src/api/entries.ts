@@ -8,13 +8,18 @@ export interface Entry {
   summary: string;
   date: string;
   category: "video" | "insight" | "journal";
+  linkUrl?: string | null;
+  thumbnailUrl?: string | null;
 }
 
 export interface CreateEntryInput {
+  id: string;
   title: string;
   summary: string;
   date: string;
   category: Entry["category"];
+  linkUrl?: string | null;
+  thumbnailUrl?: string | null;
 }
 
 export interface UpdateEntryInput extends Partial<CreateEntryInput> {
@@ -38,9 +43,9 @@ export const entriesQueries = createQueryKeys("entries", {
   }),
 });
 
-export async function createEntry(input: CreateEntryInput): Promise<Entry> {
-  const { data } = await apiClient.post<Entry>("/entries", input);
-  return data;
+export async function createEntry(input: CreateEntryInput): Promise<Entry | null> {
+  const { data } = await apiClient.post<Entry[]>("/entries", [input]);
+  return data.length > 0 ? data[0] : null;
 }
 
 export async function updateEntry({ id, ...input }: UpdateEntryInput): Promise<Entry> {

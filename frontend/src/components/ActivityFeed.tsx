@@ -38,6 +38,9 @@ interface ActivityFeedProps {
   onDraftChange?: (draft: ActivityDraft) => void;
   onCancelDraft?: () => void;
   onSubmitDraft?: () => void;
+  isSubmittingDraft?: boolean;
+  draftError?: string | null;
+  errorMessage?: string | null;
 }
 
 export function ActivityFeed({
@@ -47,6 +50,9 @@ export function ActivityFeed({
   onDraftChange,
   onCancelDraft,
   onSubmitDraft,
+  isSubmittingDraft,
+  draftError,
+  errorMessage,
 }: ActivityFeedProps) {
   const [channelInput, setChannelInput] = useState("");
   const [isLoadingVideos, setIsLoadingVideos] = useState(false);
@@ -89,12 +95,16 @@ export function ActivityFeed({
     try {
       const feed = await youtubeApi.fetchChannelVideos(trimmed);
       setYoutubeFeed(feed);
-    } catch (error) {
+    } catch (error: unknown) {
       if (isAxiosError(error)) {
         const status = error.response?.status;
+        const data = error.response?.data as unknown;
         const detail =
-          typeof error.response?.data?.detail === "string"
-            ? error.response?.data?.detail
+          typeof data === "object" &&
+          data !== null &&
+          "detail" in data &&
+          typeof (data as { detail: unknown }).detail === "string"
+            ? (data as { detail: string }).detail
             : null;
         if (status === 404) {
           setYoutubeError(detail ?? "We couldn’t find that channel on YouTube.");
@@ -117,7 +127,7 @@ export function ActivityFeed({
     (event: KeyboardEvent<HTMLInputElement>) => {
       if (event.key === "Enter") {
         event.preventDefault();
-        handleFetchVideos();
+        void handleFetchVideos();
       }
     },
     [handleFetchVideos],
@@ -143,6 +153,11 @@ export function ActivityFeed({
         </Button>
       </CardHeader>
       <CardContent className="space-y-4">
+        {errorMessage ? (
+          <p className="text-sm text-destructive" role="status">
+            {errorMessage}
+          </p>
+        ) : null}
         <Card className="border-dashed border-primary/40 bg-primary/5">
           <CardContent className="space-y-3 p-4">
             <div className="space-y-1">
@@ -163,7 +178,9 @@ export function ActivityFeed({
               />
               <Button
                 type="button"
-                onClick={handleFetchVideos}
+                onClick={() => {
+                  void handleFetchVideos();
+                }}
                 disabled={isLoadingVideos}
                 className="shrink-0"
               >
@@ -198,6 +215,8 @@ export function ActivityFeed({
             onChange={onDraftChange}
             onCancel={onCancelDraft}
             onSubmit={onSubmitDraft}
+            isSubmitting={isSubmittingDraft}
+            errorMessage={draftError}
           />
         ) : null}
         {combinedItems.map((item) => (
@@ -309,6 +328,8 @@ interface ActivityDraftCardProps {
   onChange: (draft: ActivityDraft) => void;
   onCancel?: () => void;
   onSubmit?: () => void;
+  isSubmitting?: boolean;
+  errorMessage?: string | null;
 }
 
 function ActivityDraftCard({
@@ -316,6 +337,8 @@ function ActivityDraftCard({
   onChange,
   onCancel,
   onSubmit,
+  isSubmitting,
+  errorMessage,
 }: ActivityDraftCardProps) {
   const isSubmitDisabled =
     draft.title.trim().length === 0 || draft.summary.trim().length === 0;
@@ -374,10 +397,21 @@ function ActivityDraftCard({
           <Button type="button" variant="ghost" onClick={onCancel}>
             Cancel
           </Button>
-          <Button type="button" onClick={onSubmit} disabled={isSubmitDisabled}>
-            Create entry
+          <Button
+            type="button"
+            onClick={() => {
+              void onSubmit?.();
+            }}
+            disabled={isSubmitDisabled || isSubmitting}
+          >
+            {isSubmitting ? "Saving…" : "Create entry"}
           </Button>
         </div>
+        {errorMessage ? (
+          <p className="text-sm text-destructive" role="alert">
+            {errorMessage}
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );
