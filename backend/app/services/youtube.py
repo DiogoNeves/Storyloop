@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import logging
 import re
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Iterable
-from urllib.parse import urlparse
+from typing import Any, Iterable, Literal
+from urllib.parse import parse_qs, urlparse
+
+from collections.abc import AsyncIterator
 
 import httpx
 
@@ -57,6 +60,48 @@ class YoutubeVideo:
             "thumbnailUrl": self.thumbnail_url,
         }
 
+    @classmethod
+    def from_playlist_item(cls, item: dict[str, Any]) -> YoutubeVideo | None:
+        """Construct a video instance from a playlistItems entry.
+
+        Docs: https://developers.google.com/youtube/v3/docs/playlistItems/list
+        """
+        snippet = item.get("snippet")
+        if not isinstance(snippet, dict):
+            logger.warning("Skipping playlist item without snippet data: %s", item)
+            return None
+        resource = snippet.get("resourceId")
+        if not isinstance(resource, dict):
+            logger.warning(
+                "Skipping playlist item without resourceId: %s", resource
+            )
+            return None
+        video_id = resource.get("videoId")
+        if not video_id:
+            return None
+        published_at_raw = snippet.get("publishedAt")
+        try:
+            published_at = _parse_datetime(published_at_raw)
+        except ValueError:
+            logger.warning(
+                "Skipping video %s due to unparseable timestamp: %s",
+                video_id,
+                published_at_raw,
+            )
+            return None
+        thumbnail_url = _select_thumbnail_url(
+            snippet.get("thumbnails"),
+            ("high", "medium", "standard", "default"),
+        )
+        return cls(
+            id=video_id,
+            title=snippet.get("title", "Untitled video"),
+            description=snippet.get("description", ""),
+            published_at=published_at,
+            url=f"https://www.youtube.com/watch?v={video_id}",
+            thumbnail_url=thumbnail_url,
+        )
+
 
 @dataclass(slots=True)
 class YoutubeChannel:
@@ -68,6 +113,42 @@ class YoutubeChannel:
     url: str
     uploads_playlist_id: str
     thumbnail_url: str | None
+
+    @classmethod
+    def from_api_item(cls, item: dict[str, Any]) -> YoutubeChannel | None:
+        """Construct channel data from a channels API response.
+
+        Docs: https://developers.google.com/youtube/v3/docs/channels/list
+        """
+        channel_id = item.get("id")
+        if not isinstance(channel_id, str) or not channel_id:
+            logger.warning("Encountered channel payload without id: %s", item)
+            return None
+        content_details = item.get("contentDetails")
+        uploads_playlist_id = (
+            content_details.get("relatedPlaylists", {}).get("uploads")
+            if isinstance(content_details, dict)
+            else None
+        )
+        if not uploads_playlist_id:
+            logger.warning(
+                "Channel %s is missing uploads playlist information", channel_id
+            )
+            return None
+        snippet = item.get("snippet")
+        snippet_dict: dict[str, Any] = snippet if isinstance(snippet, dict) else {}
+        thumbnail_url = _select_thumbnail_url(
+            snippet_dict.get("thumbnails"),
+            ("high", "medium", "default"),
+        )
+        return cls(
+            id=channel_id,
+            title=snippet_dict.get("title", "Unnamed channel"),
+            description=snippet_dict.get("description"),
+            url=f"https://www.youtube.com/channel/{channel_id}",
+            uploads_playlist_id=uploads_playlist_id,
+            thumbnail_url=thumbnail_url,
+        )
 
 
 @dataclass(slots=True)
@@ -93,52 +174,175 @@ class YoutubeFeed:
         }
 
 
+@dataclass(slots=True)
+class LookupCandidate:
+    """Represents a single lookup attempt against the YouTube API."""
+
+    endpoint: Literal["channels", "video"]
+    params: dict[str, str]
+
+
+@dataclass(slots=True)
+class UrlIdentifierHints:
+    """Structured hints extracted from a potential YouTube URL."""
+
+    channel_ids: list[str]
+    handles: list[str]
+    usernames: list[str]
+    video_ids: list[str]
+
+
 def _clean_handle(value: str) -> str:
     """Strip the leading @ from handle-like identifiers."""
     return value[1:] if value.startswith("@") else value
 
 
-def _candidate_channel_params(identifier: str) -> Iterable[dict[str, str]]:
-    """Yield parameter combinations for resolving a channel identifier."""
+def _collect_url_hints(identifier: str) -> UrlIdentifierHints | None:
+    """Extract structured lookup hints from a potential YouTube URL."""
+    try:
+        parsed = urlparse(identifier)
+    except ValueError:
+        return None
 
+    if not parsed.scheme or not parsed.netloc:
+        return None
+
+    netloc = parsed.netloc.lower()
+    if netloc.startswith("www."):
+        netloc = netloc[4:]
+    path_segments = [segment for segment in parsed.path.split("/") if segment]
+    query = parse_qs(parsed.query)
+
+    hints = UrlIdentifierHints(
+        channel_ids=[],
+        handles=[],
+        usernames=[],
+        video_ids=[],
+    )
+
+    def add_channel_id(value: str) -> None:
+        trimmed = value.strip()
+        if trimmed:
+            hints.channel_ids.append(trimmed)
+
+    def add_username(value: str) -> None:
+        trimmed = value.strip()
+        if trimmed:
+            hints.usernames.append(trimmed)
+
+    def add_handle(value: str) -> None:
+        trimmed = value.strip()
+        if trimmed:
+            hints.handles.append(_clean_handle(trimmed))
+
+    def add_video_id(value: str) -> None:
+        trimmed = value.strip()
+        if trimmed:
+            hints.video_ids.append(trimmed)
+
+    for value in query.get("channel_id", []):
+        add_channel_id(value)
+    for key in ("user", "c"):
+        for value in query.get(key, []):
+            add_username(value)
+    for value in query.get("handle", []):
+        add_handle(value)
+    for value in query.get("v", []):
+        add_video_id(value)
+    for value in query.get("video_id", []):
+        add_video_id(value)
+
+    if netloc.endswith("youtu.be") and path_segments:
+        add_video_id(path_segments[0])
+        return hints
+
+    if path_segments:
+        first = path_segments[0]
+        if first.startswith("@"):
+            add_handle(first)
+        elif first == "channel" and len(path_segments) > 1:
+            add_channel_id(path_segments[1])
+        elif first in {"user", "c"} and len(path_segments) > 1:
+            username = path_segments[1]
+            add_username(username)
+            add_handle(username)
+        elif first == "shorts" and len(path_segments) > 1:
+            add_video_id(path_segments[1])
+        else:
+            last_segment = path_segments[-1]
+            if last_segment.startswith("@"):
+                add_handle(last_segment)
+            elif last_segment not in {"watch", "shorts", "videos", "live"}:
+                add_username(last_segment)
+                add_handle(last_segment)
+
+    return hints
+
+
+def _unique_strings(values: Iterable[str]) -> list[str]:
+    """Deduplicate strings while preserving order."""
+    seen: set[str] = set()
+    unique: list[str] = []
+    for value in values:
+        if not value or value in seen:
+            continue
+        seen.add(value)
+        unique.append(value)
+    return unique
+
+
+def _build_lookup_candidates(identifier: str) -> list[LookupCandidate]:
+    """Construct ordered lookup attempts for a channel identifier."""
     cleaned = identifier.strip()
     if not cleaned:
         return []
 
-    # URLs may encode handles or channel IDs in their path segments.
-    if "//" in cleaned:
-        parsed = urlparse(cleaned)
-        path_segments = [
-            segment for segment in parsed.path.split("/") if segment
-        ]
-        if path_segments:
-            first = path_segments[0]
-            if first.startswith("@"):
-                yield {"forHandle": _clean_handle(first)}
-            elif first == "channel" and len(path_segments) > 1:
-                yield {"id": path_segments[1]}
-            elif first in {"user", "c"} and len(path_segments) > 1:
-                username = path_segments[1]
-                yield {"forUsername": username}
-                yield {"forHandle": _clean_handle(username)}
-            else:
-                last_segment = path_segments[-1]
-                if last_segment.startswith("@"):
-                    yield {"forHandle": _clean_handle(last_segment)}
-                else:
-                    yield {"forUsername": last_segment}
-                    yield {"forHandle": _clean_handle(last_segment)}
-        cleaned = path_segments[-1] if path_segments else cleaned
+    url_hints = _collect_url_hints(cleaned) if "://" in cleaned else None
+
+    channel_ids: list[str] = []
+    handles: list[str] = []
+    usernames: list[str] = []
+    video_ids: list[str] = []
+
+    if url_hints:
+        channel_ids.extend(url_hints.channel_ids)
+        handles.extend(url_hints.handles)
+        usernames.extend(url_hints.usernames)
+        video_ids.extend(url_hints.video_ids)
 
     if CHANNEL_ID_PATTERN.fullmatch(cleaned):
-        yield {"id": cleaned}
-        return
+        channel_ids.insert(0, cleaned)
+    elif not url_hints:
+        if cleaned.startswith("@"):
+            handles.append(_clean_handle(cleaned))
+        else:
+            handles.append(_clean_handle(cleaned))
+            usernames.append(cleaned)
 
-    if cleaned.startswith("@"):
-        yield {"forHandle": _clean_handle(cleaned)}
-    else:
-        yield {"forHandle": _clean_handle(cleaned)}
-        yield {"forUsername": cleaned}
+    channel_candidates: list[dict[str, str]] = []
+    for channel_id in _unique_strings(channel_ids):
+        channel_candidates.append({"id": channel_id})
+    for handle in _unique_strings(handles):
+        channel_candidates.append({"forHandle": handle})
+    for username in _unique_strings(usernames):
+        channel_candidates.append({"forUsername": username})
+
+    candidates: list[LookupCandidate] = [
+        LookupCandidate(endpoint="channels", params=params)
+        for params in _unique_dicts(channel_candidates)
+    ]
+
+    seen_video_ids: set[str] = set()
+    for video_id in video_ids:
+        video_id = video_id.strip()
+        if not video_id or video_id in seen_video_ids:
+            continue
+        seen_video_ids.add(video_id)
+        candidates.append(
+            LookupCandidate(endpoint="video", params={"id": video_id})
+        )
+
+    return candidates
 
 
 class YoutubeService:
@@ -149,9 +353,16 @@ class YoutubeService:
         *,
         api_key: str | None,
         transport: httpx.AsyncBaseTransport | None = None,
+        client: httpx.AsyncClient | None = None,
     ) -> None:
         self.api_key = api_key
         self._transport = transport
+        self._client = client
+        if self._client is not None and transport is not None:
+            logger.debug(
+                "YoutubeService initialised with both custom client and transport; "
+                "custom client will take precedence."
+            )
 
     def _create_client(self) -> httpx.AsyncClient:
         """Instantiate an HTTP client for YouTube API calls."""
@@ -160,6 +371,15 @@ class YoutubeService:
             timeout=DEFAULT_TIMEOUT,
             transport=self._transport,
         )
+
+    @asynccontextmanager
+    async def client_session(self) -> AsyncIterator[httpx.AsyncClient]:
+        """Yield a reusable HTTP client, creating one when needed."""
+        if self._client is not None:
+            yield self._client
+            return
+        async with self._create_client() as client:
+            yield client
 
     async def fetch_channel_videos(
         self, identifier: str, *, max_results: int = 50
@@ -174,7 +394,7 @@ class YoutubeService:
                 "Provide a channel handle, link, or ID"
             )
 
-        async with self._create_client() as client:
+        async with self.client_session() as client:
             channel = await self._resolve_channel(client, trimmed_identifier)
             videos = await self._fetch_videos(
                 client, channel.uploads_playlist_id, max_results=max_results
@@ -193,12 +413,61 @@ class YoutubeService:
         self, client: httpx.AsyncClient, identifier: str
     ) -> YoutubeChannel:
         """Identify the channel metadata for the provided identifier."""
-        for params in _unique_dicts(_candidate_channel_params(identifier)):
-            channel = await self._try_resolve_channel(client, params)
+        for candidate in _build_lookup_candidates(identifier):
+            if candidate.endpoint == "channels":
+                channel = await self._try_resolve_channel(
+                    client, candidate.params
+                )
+            elif candidate.endpoint == "video":
+                channel = await self._resolve_channel_from_video(
+                    client, candidate.params["id"]
+                )
+            else:  # pragma: no cover - defensive
+                continue
             if channel is not None:
                 return channel
 
-        # Final fallback: search by free-form query and resolve the first result.
+        channel = await self._resolve_channel_via_search(client, identifier)
+        if channel is not None:
+            return channel
+
+        raise YoutubeChannelNotFound(
+            "Unable to locate a channel for the supplied identifier"
+        )
+
+    async def _resolve_channel_from_video(
+        self, client: httpx.AsyncClient, video_id: str
+    ) -> YoutubeChannel | None:
+        """Resolve a channel by first looking up a video ID.
+
+        Docs: https://developers.google.com/youtube/v3/docs/videos/list
+        """
+        if not video_id:
+            return None
+        params = {
+            "part": "snippet",
+            "id": video_id,
+            "maxResults": 1,
+            "key": self.api_key,
+        }
+        payload = await self._request_json(client, "videos", params)
+        items = payload.get("items", [])
+        if not isinstance(items, list) or not items:
+            return None
+        snippet = items[0].get("snippet", {})
+        channel_id = snippet.get("channelId") if isinstance(snippet, dict) else None
+        if not channel_id:
+            logger.debug("Video %s did not include a channelId", video_id)
+            return None
+        return await self._try_resolve_channel(client, {"id": channel_id})
+
+    async def _resolve_channel_via_search(
+        self, client: httpx.AsyncClient, identifier: str
+    ) -> YoutubeChannel | None:
+        """Fallback: search for a channel using the free-form identifier.
+
+        Docs: https://developers.google.com/youtube/v3/docs/search/list
+        """
         search_params = {
             "part": "snippet",
             "type": "channel",
@@ -208,23 +477,24 @@ class YoutubeService:
         }
         payload = await self._request_json(client, "search", search_params)
         items = payload.get("items", [])
-        if items:
-            channel_id = items[0].get("id", {}).get("channelId")
-            if channel_id:
-                channel = await self._try_resolve_channel(
-                    client, {"id": channel_id}
-                )
-                if channel is not None:
-                    return channel
-
-        raise YoutubeChannelNotFound(
-            "Unable to locate a channel for the supplied identifier"
+        if not isinstance(items, list) or not items:
+            return None
+        channel_id = (
+            items[0].get("id", {}).get("channelId")
+            if isinstance(items[0], dict)
+            else None
         )
+        if not channel_id:
+            return None
+        return await self._try_resolve_channel(client, {"id": channel_id})
 
     async def _try_resolve_channel(
         self, client: httpx.AsyncClient, params: dict[str, str]
     ) -> YoutubeChannel | None:
-        """Attempt to resolve a channel with the provided parameter set."""
+        """Attempt to resolve a channel with the provided parameter set.
+
+        Docs: https://developers.google.com/youtube/v3/docs/channels/list
+        """
         channel_params = {
             "part": "snippet,contentDetails",
             "maxResults": 1,
@@ -233,38 +503,15 @@ class YoutubeService:
         }
         payload = await self._request_json(client, "channels", channel_params)
         items = payload.get("items", [])
-        if not items:
+        if not isinstance(items, list):
             return None
-        item = items[0]
-        uploads_playlist_id = (
-            item.get("contentDetails", {})
-            .get("relatedPlaylists", {})
-            .get("uploads")
-        )
-        if not uploads_playlist_id:
-            logger.warning(
-                "Channel %s is missing uploads playlist information",
-                item.get("id"),
-            )
-            return None
-
-        snippet = item.get("snippet", {})
-        thumbnails = snippet.get("thumbnails", {})
-        thumbnail = (
-            thumbnails.get("high")
-            or thumbnails.get("medium")
-            or thumbnails.get("default")
-            or {}
-        )
-
-        return YoutubeChannel(
-            id=item.get("id", ""),
-            title=snippet.get("title", "Unnamed channel"),
-            description=snippet.get("description"),
-            url=f"https://www.youtube.com/channel/{item.get('id', '')}",
-            uploads_playlist_id=uploads_playlist_id,
-            thumbnail_url=thumbnail.get("url"),
-        )
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            channel = YoutubeChannel.from_api_item(item)
+            if channel is not None:
+                return channel
+        return None
 
     async def _fetch_videos(
         self,
@@ -273,51 +520,47 @@ class YoutubeService:
         *,
         max_results: int,
     ) -> list[YoutubeVideo]:
-        """Fetch uploads from the channel's uploads playlist."""
-        limited = min(max(1, max_results), MAX_RESULTS_CAP)
-        params = {
+        """Fetch uploads from the channel's uploads playlist.
+
+        Docs: https://developers.google.com/youtube/v3/docs/playlistItems/list
+        """
+        if max_results <= 0:
+            return []
+
+        videos: list[YoutubeVideo] = []
+        remaining = max_results
+        base_params = {
             "part": "snippet,contentDetails",
             "playlistId": playlist_id,
-            "maxResults": limited,
             "key": self.api_key,
         }
-        payload = await self._request_json(client, "playlistItems", params)
-        videos: list[YoutubeVideo] = []
-        for item in payload.get("items", []):
-            snippet = item.get("snippet", {})
-            resource = snippet.get("resourceId", {})
-            video_id = resource.get("videoId")
-            if not video_id:
-                continue
-            published_at_raw = snippet.get("publishedAt")
-            try:
-                published_at = _parse_datetime(published_at_raw)
-            except ValueError:
-                logger.warning(
-                    "Skipping video %s due to unparseable timestamp: %s",
-                    video_id,
-                    published_at_raw,
-                )
-                continue
+        page_token: str | None = None
 
-            thumbnails = snippet.get("thumbnails", {})
-            thumbnail = (
-                thumbnails.get("high")
-                or thumbnails.get("medium")
-                or thumbnails.get("standard")
-                or thumbnails.get("default")
-                or {}
-            )
-            videos.append(
-                YoutubeVideo(
-                    id=video_id,
-                    title=snippet.get("title", "Untitled video"),
-                    description=snippet.get("description", ""),
-                    published_at=published_at,
-                    url=f"https://www.youtube.com/watch?v={video_id}",
-                    thumbnail_url=thumbnail.get("url"),
-                )
-            )
+        while remaining > 0:
+            params = dict(base_params)
+            params["maxResults"] = min(MAX_RESULTS_CAP, remaining)
+            if page_token:
+                params["pageToken"] = page_token
+            payload = await self._request_json(client, "playlistItems", params)
+            items = payload.get("items", [])
+            if not isinstance(items, list) or not items:
+                break
+
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                video = YoutubeVideo.from_playlist_item(item)
+                if video is None:
+                    continue
+                videos.append(video)
+                remaining -= 1
+                if remaining == 0:
+                    break
+
+            page_token = payload.get("nextPageToken")
+            if not page_token:
+                break
+
         return videos
 
     async def _request_json(
@@ -345,8 +588,30 @@ class YoutubeService:
         except httpx.RequestError as exc:  # pragma: no cover - network errors
             message = f"Error communicating with YouTube API: {exc}"
             raise YoutubeAPIRequestError(message) from exc
-        data = response.json()
+        try:
+            data = response.json()
+        except ValueError as exc:
+            message = f"YouTube API returned invalid JSON for {endpoint}"
+            raise YoutubeAPIRequestError(message) from exc
+        if not isinstance(data, dict):
+            message = f"YouTube API returned unexpected payload for {endpoint}"
+            raise YoutubeAPIRequestError(message)
         return data
+
+
+def _select_thumbnail_url(
+    thumbnails: Any, preferred_order: tuple[str, ...]
+) -> str | None:
+    """Return the best available thumbnail URL from a thumbnails payload."""
+    if not isinstance(thumbnails, dict):
+        return None
+    for key in preferred_order:
+        candidate = thumbnails.get(key)
+        if isinstance(candidate, dict):
+            url = candidate.get("url")
+            if isinstance(url, str) and url:
+                return url
+    return None
 
 
 def _unique_dicts(candidates: Iterable[dict[str, str]]) -> list[dict[str, str]]:
