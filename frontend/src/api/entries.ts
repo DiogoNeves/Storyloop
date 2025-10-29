@@ -2,6 +2,17 @@ import { createQueryKeys } from "@lukemorales/query-key-factory";
 
 import { apiClient } from "@/api/client";
 
+/**
+ * Entry API helpers aligned with the currently implemented backend routes.
+ *
+ * Supported operations:
+ * - `GET /entries` — fetches all stored entries, returning an array of {@link Entry}.
+ * - `POST /entries` — accepts an array of entries to persist and returns the subset
+ *   that were newly stored.
+ *
+ * Update, delete, and lookup-by-id endpoints are not yet available; avoid exposing
+ * helpers for them until the backend supports those routes.
+ */
 export interface Entry {
   id: string;
   title: string;
@@ -22,11 +33,8 @@ export interface CreateEntryInput {
   thumbnailUrl?: string | null;
 }
 
-export interface UpdateEntryInput extends Partial<CreateEntryInput> {
-  id: string;
-}
-
 export const entriesQueries = createQueryKeys("entries", {
+  /** Fetch all entries ordered by recency, mirroring `GET /entries`. */
   all: () => ({
     queryKey: ["entries"],
     queryFn: async (): Promise<Entry[]> => {
@@ -34,26 +42,11 @@ export const entriesQueries = createQueryKeys("entries", {
       return data;
     },
   }),
-  byId: (id: string) => ({
-    queryKey: ["entries", id],
-    queryFn: async (): Promise<Entry> => {
-      const { data } = await apiClient.get<Entry>(`/entries/${id}`);
-      return data;
-    },
-  }),
 });
 
+/** Persist a single entry using the backend's bulk `POST /entries` endpoint. */
 export async function createEntry(input: CreateEntryInput): Promise<Entry | null> {
   const { data } = await apiClient.post<Entry[]>("/entries", [input]);
   return data.length > 0 ? data[0] : null;
-}
-
-export async function updateEntry({ id, ...input }: UpdateEntryInput): Promise<Entry> {
-  const { data } = await apiClient.put<Entry>(`/entries/${id}`, input);
-  return data;
-}
-
-export async function deleteEntry(id: string): Promise<void> {
-  await apiClient.delete(`/entries/${id}`);
 }
 
