@@ -21,6 +21,8 @@ Storyloop combines a FastAPI backend with a Vite/React frontend. Follow the guid
 
 ## Coding Style & Naming Conventions
 
+Maintainable code is obvious and less error prone. Someone with little understanding of the codebase should be able to re-use code without mistakes. The interface (e.g. functions) is obvious and allows only for correct values. Tests cover any instance when the code can be ambiguous.
+
 - Python: target Python 3.11, use 4-space indentation, keep modules typed, and group business logic in `services/`. Run `uv run ruff check backend` and `uv run mypy backend` before review when you touch backend code.
 - TypeScript/React: follow the ESLint + Prettier defaults; name components with `PascalCase`, hooks/utilities with `camelCase`, and prefer function components.
 - Keep environment variables in `.env`; reference them via `backend/config.py` instead of hard-coding.
