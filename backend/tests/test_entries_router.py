@@ -97,3 +97,14 @@ def test_list_entries_returns_persisted_records(
     assert response.status_code == 200
     body = response.json()
     assert [item["id"] for item in body] == ["entry-2", "entry-1"]
+
+
+def test_list_entries_returns_empty_when_no_records(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    app = _create_test_app(memory_connection_factory)
+    client = TestClient(app)
+
+    response = client.get("/entries/")
+    assert response.status_code == 200
+    assert response.json() == []

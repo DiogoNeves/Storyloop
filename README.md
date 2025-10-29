@@ -49,7 +49,7 @@ Storyloop is a creator analytics journal that combines FastAPI + SQLite on the b
 Storyloop/
 ├── backend/          # FastAPI application, APScheduler, pytest config
 ├── frontend/         # Vite + React + Tailwind/Shadcn UI scaffold with Vitest
-├── scripts/          # Helper utilities (dev runner, seed data)
+├── scripts/          # Helper utilities (e.g., dev runner)
 ├── design/           # Product sketches and references
 ├── Makefile          # Convenience tasks (dev, lint, tests)
 ├── .env.example      # Environment variable template
@@ -62,7 +62,6 @@ Storyloop/
 - `make test-backend` – run the FastAPI pytest suite.
 - `make test-frontend` – execute Vitest in run-once mode.
 - `make lint-frontend` – lint the React project with ESLint flat config.
-- `make seed` – populate the local SQLite database with demo YouTube metrics.
 
 ## Theme customization
 

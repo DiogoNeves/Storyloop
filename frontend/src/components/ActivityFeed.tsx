@@ -1,7 +1,17 @@
-import { useCallback, useMemo, useState, type KeyboardEvent } from "react";
-import { isAxiosError } from "axios";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type JSX,
+  type KeyboardEvent,
+} from "react";
 
-import { youtubeApi, type YoutubeFeedResponse } from "@/api/youtube";
+import {
+  YoutubeApiError,
+  youtubeApi,
+  type YoutubeFeedResponse,
+} from "@/api/youtube";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -14,6 +24,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+
+export const LAST_CHANNEL_STORAGE_KEY = "storyloop:last-channel";
 
 export interface ActivityItem {
   id: string;
@@ -33,6 +45,7 @@ export interface ActivityDraft {
 
 interface ActivityFeedProps {
   items: ActivityItem[];
+  isLoadingEntries?: boolean;
   draft?: ActivityDraft | null;
   onStartDraft?: () => void;
   onDraftChange?: (draft: ActivityDraft) => void;
@@ -45,6 +58,7 @@ interface ActivityFeedProps {
 
 export function ActivityFeed({
   items,
+  isLoadingEntries,
   draft,
   onStartDraft,
   onDraftChange,
@@ -59,15 +73,11 @@ export function ActivityFeed({
   const [youtubeError, setYoutubeError] = useState<string | null>(null);
   const [youtubeFeed, setYoutubeFeed] = useState<YoutubeFeedResponse | null>(null);
 
-  const combinedItems = useMemo(() => {
-    const baseItems = [...items];
+  const videoItems = useMemo<ActivityItem[]>(() => {
     if (!youtubeFeed) {
-      return baseItems.sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-      );
+      return [];
     }
-
-    const videoItems: ActivityItem[] = youtubeFeed.videos.map((video) => ({
+    return youtubeFeed.videos.map((video) => ({
       id: `youtube:${video.id}`,
       title: video.title,
       summary: video.description,
@@ -76,62 +86,114 @@ export function ActivityFeed({
       linkUrl: video.url,
       thumbnailUrl: video.thumbnailUrl,
     }));
+  }, [youtubeFeed]);
 
-    return [...baseItems, ...videoItems].sort(
+  const combinedItems = useMemo(() => {
+    return [...items, ...videoItems].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
-  }, [items, youtubeFeed]);
+  }, [items, videoItems]);
 
-  const handleFetchVideos = useCallback(async () => {
-    const trimmed = channelInput.trim();
-    if (!trimmed) {
-      setYoutubeError("Enter a YouTube channel handle, link, or ID.");
+  const timelineItems = useMemo(() => {
+    const nodes: JSX.Element[] = [];
+    let hasJournalSection = false;
+    let hasVideoSection = false;
+
+    for (const item of combinedItems) {
+      const isVideo = item.category === "video";
+      if (isVideo) {
+        if (!hasVideoSection) {
+          nodes.push(
+            <SectionDivider
+              key="section-divider-video"
+              label="Synced YouTube videos"
+              withTopSpacing={hasJournalSection}
+              testId="section-divider-video"
+            />,
+          );
+          hasVideoSection = true;
+        }
+      } else if (!hasJournalSection) {
+        nodes.push(
+          <SectionDivider
+            key="section-divider-journal"
+            label="Journal & insights"
+            testId="section-divider-journal"
+          />,
+        );
+        hasJournalSection = true;
+      }
+
+      nodes.push(<ActivityFeedItem key={item.id} item={item} />);
+    }
+
+    return nodes;
+  }, [combinedItems]);
+
+  const fetchChannelVideos = useCallback(
+    async (
+      rawInput: string,
+      { skipValidationError = false }: { skipValidationError?: boolean } = {},
+    ) => {
+      const trimmed = rawInput.trim();
+      if (!trimmed) {
+        if (!skipValidationError) {
+          setYoutubeError("Enter a YouTube channel handle, link, or ID.");
+        }
+        return;
+      }
+
+      setIsLoadingVideos(true);
+      setYoutubeError(null);
+
+      try {
+        const feed = await youtubeApi.fetchChannelVideos(trimmed);
+        setYoutubeFeed(feed);
+        setChannelInput(trimmed);
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(LAST_CHANNEL_STORAGE_KEY, trimmed);
+        }
+      } catch (error: unknown) {
+        if (error instanceof YoutubeApiError) {
+          setYoutubeError(error.message);
+        } else {
+          setYoutubeError("We couldn’t load videos from YouTube.");
+        }
+      } finally {
+        setIsLoadingVideos(false);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
       return;
     }
-
-    setIsLoadingVideos(true);
-    setYoutubeError(null);
-
-    try {
-      const feed = await youtubeApi.fetchChannelVideos(trimmed);
-      setYoutubeFeed(feed);
-    } catch (error: unknown) {
-      if (isAxiosError(error)) {
-        const status = error.response?.status;
-        const data = error.response?.data as unknown;
-        const detail =
-          typeof data === "object" &&
-          data !== null &&
-          "detail" in data &&
-          typeof (data as { detail: unknown }).detail === "string"
-            ? (data as { detail: string }).detail
-            : null;
-        if (status === 404) {
-          setYoutubeError(detail ?? "We couldn’t find that channel on YouTube.");
-        } else if (status === 503) {
-          setYoutubeError(
-            detail ?? "The server hasn’t been configured for YouTube yet.",
-          );
-        } else {
-          setYoutubeError(detail ?? "We couldn’t load videos from YouTube.");
-        }
-      } else {
-        setYoutubeError("We couldn’t load videos from YouTube.");
-      }
-    } finally {
-      setIsLoadingVideos(false);
+    const storedChannel = window.localStorage.getItem(LAST_CHANNEL_STORAGE_KEY);
+    if (!storedChannel) {
+      return;
     }
-  }, [channelInput]);
+    setChannelInput(storedChannel);
+    void fetchChannelVideos(storedChannel, { skipValidationError: true });
+  }, [fetchChannelVideos]);
+
+  const handleFetchVideos = useCallback(() => {
+    void fetchChannelVideos(channelInput);
+  }, [channelInput, fetchChannelVideos]);
 
   const handleChannelKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
       if (event.key === "Enter") {
         event.preventDefault();
-        void handleFetchVideos();
+        void fetchChannelVideos(channelInput);
       }
     },
-    [handleFetchVideos],
+    [channelInput, fetchChannelVideos],
   );
+
+  const shouldShowLoadingState = Boolean(isLoadingEntries) && combinedItems.length === 0;
+  const shouldShowEmptyState = !shouldShowLoadingState && combinedItems.length === 0;
 
   return (
     <Card>
@@ -178,9 +240,7 @@ export function ActivityFeed({
               />
               <Button
                 type="button"
-                onClick={() => {
-                  void handleFetchVideos();
-                }}
+                onClick={handleFetchVideos}
                 disabled={isLoadingVideos}
                 className="shrink-0"
               >
@@ -219,11 +279,71 @@ export function ActivityFeed({
             errorMessage={draftError}
           />
         ) : null}
-        {combinedItems.map((item) => (
-          <ActivityFeedItem key={item.id} item={item} />
-        ))}
+        {shouldShowLoadingState ? (
+          <ActivityLoadingState />
+        ) : null}
+        {shouldShowEmptyState ? (
+          <ActivityEmptyState hasYoutubeFeed={Boolean(youtubeFeed)} />
+        ) : null}
+        {combinedItems.length > 0 ? (
+          <div className="space-y-4" data-testid="activity-timeline">
+            {timelineItems}
+          </div>
+        ) : null}
       </CardContent>
     </Card>
+  );
+}
+
+function ActivityLoadingState() {
+  return (
+    <div
+      className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-6 text-sm text-muted-foreground"
+      data-testid="activity-loading"
+    >
+      Loading your journal and insights…
+    </div>
+  );
+}
+
+function ActivityEmptyState({
+  hasYoutubeFeed,
+}: {
+  hasYoutubeFeed: boolean;
+}) {
+  return (
+    <div
+      className="rounded-md border border-dashed border-primary/40 bg-muted/20 p-6"
+      data-testid="activity-empty"
+    >
+      <p className="text-sm font-semibold text-foreground">No activity yet</p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        {hasYoutubeFeed
+          ? "Add your first journal entry to see it alongside synced uploads."
+          : "Create a journal entry or connect your channel to see updates here."}
+      </p>
+    </div>
+  );
+}
+
+function SectionDivider({
+  label,
+  withTopSpacing = false,
+  testId,
+}: {
+  label: string;
+  withTopSpacing?: boolean;
+  testId?: string;
+}) {
+  return (
+    <div
+      className={`flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground ${withTopSpacing ? "pt-2" : ""}`}
+      data-testid={testId}
+    >
+      <div className="h-px flex-1 bg-border" />
+      <span>{label}</span>
+      <div className="h-px flex-1 bg-border" />
+    </div>
   );
 }
 
