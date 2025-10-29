@@ -148,7 +148,7 @@ class YoutubeService:
         self,
         *,
         api_key: str | None,
-        transport: httpx.BaseTransport | None = None,
+        transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
         self.api_key = api_key
         self._transport = transport
