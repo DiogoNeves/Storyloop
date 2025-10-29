@@ -66,7 +66,9 @@ export function ActivityFeed({
   const [channelInput, setChannelInput] = useState("");
   const [isLoadingVideos, setIsLoadingVideos] = useState(false);
   const [youtubeError, setYoutubeError] = useState<string | null>(null);
-  const [youtubeFeed, setYoutubeFeed] = useState<YoutubeFeedResponse | null>(null);
+  const [youtubeFeed, setYoutubeFeed] = useState<YoutubeFeedResponse | null>(
+    null,
+  );
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [editingDraft, setEditingDraft] = useState<ActivityDraft | null>(null);
   const [editingError, setEditingError] = useState<string | null>(null);
@@ -235,7 +237,9 @@ export function ActivityFeed({
             ? (data as { detail: string }).detail
             : null;
         if (status === 404) {
-          setYoutubeError(detail ?? "We couldn’t find that channel on YouTube.");
+          setYoutubeError(
+            detail ?? "We couldn’t find that channel on YouTube.",
+          );
         } else if (status === 503) {
           setYoutubeError(
             detail ?? "The server hasn’t been configured for YouTube yet.",
@@ -367,8 +371,12 @@ export function ActivityFeed({
                 submitLabel="Save changes"
                 category={item.category}
                 idPrefix={`edit-entry-${item.id}`}
-                onDelete={isEditable ? () => handleDeleteEntry(item.id) : undefined}
-                isDeleting={deletingEntryId === item.id && deleteEntryMutation.isPending}
+                onDelete={
+                  isEditable ? () => handleDeleteEntry(item.id) : undefined
+                }
+                isDeleting={
+                  deletingEntryId === item.id && deleteEntryMutation.isPending
+                }
               />
             );
           }
@@ -434,7 +442,10 @@ function ActivityFeedItem({
             {item.category}
           </Badge>
           <div className="flex items-center gap-2">
-            <time className="text-xs text-muted-foreground" dateTime={item.date}>
+            <time
+              className="text-xs text-muted-foreground"
+              dateTime={item.date}
+            >
               {formattedDate}
             </time>
             {onEdit || onDelete ? (
@@ -456,7 +467,7 @@ function ActivityFeedItem({
                     type="button"
                     size="sm"
                     variant="ghost"
-                    className="text-destructive hover:text-destructive"
+                    className="text-destructive hover:text-white"
                     onClick={() => {
                       onDelete();
                     }}
