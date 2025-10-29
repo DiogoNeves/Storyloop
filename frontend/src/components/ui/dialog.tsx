@@ -3,11 +3,15 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 
 import { cn } from "@/lib/utils";
 
+type DialogPortalProps = DialogPrimitive.DialogPortalProps & {
+  className?: string;
+};
+
 const Dialog = DialogPrimitive.Root;
 
 const DialogTrigger = DialogPrimitive.Trigger;
 
-const DialogPortal = ({ className, ...props }: DialogPrimitive.DialogPortalProps) => (
+const DialogPortal = ({ className, ...props }: DialogPortalProps) => (
   <DialogPrimitive.Portal className={cn(className)} {...props} />
 );
 DialogPortal.displayName = DialogPrimitive.Portal.displayName;
@@ -44,7 +48,6 @@ const DialogContent = React.forwardRef<
       {children}
       <DialogPrimitive.Close className="absolute right-3 top-3 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
         <span className="sr-only">Close</span>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 24 24"
