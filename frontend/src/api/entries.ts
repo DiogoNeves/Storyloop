@@ -6,6 +6,17 @@ import {
 
 import { apiClient } from "@/api/client";
 
+/**
+ * Entry API helpers aligned with the currently implemented backend routes.
+ *
+ * Supported operations:
+ * - `GET /entries` — fetches all stored entries, returning an array of {@link Entry}.
+ * - `GET /entries/{id}` — fetches a single entry by ID.
+ * - `POST /entries` — accepts an array of entries to persist and returns the subset
+ *   that were newly stored.
+ * - `PUT /entries/{id}` — updates an existing entry.
+ * - `DELETE /entries/{id}` — deletes an entry.
+ */
 export interface Entry {
   id: string;
   title: string;
@@ -58,6 +69,7 @@ type MutationCallbacks<TData, TVariables> = {
 };
 
 export const entriesQueries = createQueryKeys("entries", {
+  /** Fetch all entries ordered by recency, mirroring `GET /entries`. */
   all: () => ({
     queryKey: ["entries"],
     queryFn: async (): Promise<Entry[]> => {
@@ -65,6 +77,7 @@ export const entriesQueries = createQueryKeys("entries", {
       return data;
     },
   }),
+  /** Fetch a single entry by ID, mirroring `GET /entries/{id}`. */
   byId: (id: string) => ({
     queryKey: ["entries", id],
     queryFn: async (): Promise<Entry> => {
@@ -74,14 +87,24 @@ export const entriesQueries = createQueryKeys("entries", {
   }),
 });
 
-export async function createEntry(input: CreateEntryInput): Promise<Entry | null> {
+/** Persist a single entry using the backend's bulk `POST /entries` endpoint. */
+export async function createEntry(
+  input: CreateEntryInput,
+): Promise<Entry | null> {
   const { data } = await apiClient.post<Entry[]>("/entries", [input]);
   return data.length > 0 ? data[0] : null;
 }
 
-export async function updateEntry({ id, ...input }: UpdateEntryInput): Promise<Entry> {
+export async function updateEntry({
+  id,
+  ...input
+}: UpdateEntryInput): Promise<Entry> {
   const { data } = await apiClient.put<Entry>(`/entries/${id}`, input);
   return data;
+}
+
+export async function deleteEntry(id: string): Promise<void> {
+  await apiClient.delete(`/entries/${id}`);
 }
 
 export const entriesMutations = {
@@ -91,7 +114,12 @@ export const entriesMutations = {
   update: (
     queryClient: QueryClient,
     callbacks?: MutationCallbacks<Entry, UpdateEntryInput>,
-  ): UseMutationOptions<Entry, unknown, UpdateEntryInput, EntriesMutationContext> => ({
+  ): UseMutationOptions<
+    Entry,
+    unknown,
+    UpdateEntryInput,
+    EntriesMutationContext
+  > => ({
     mutationFn: updateEntry,
     async onMutate(input) {
       const listQuery = entriesQueries.all();
@@ -188,7 +216,11 @@ export const entriesMutations = {
       const previousById = queryClient.getQueryData<Entry>(byIdQuery.queryKey);
       queryClient.removeQueries({ queryKey: byIdQuery.queryKey, exact: true });
 
-      return { previousEntries, previousById, id } satisfies EntriesMutationContext;
+      return {
+        previousEntries,
+        previousById,
+        id,
+      } satisfies EntriesMutationContext;
     },
     onError(error, id, context) {
       const listQuery = entriesQueries.all();
@@ -225,8 +257,3 @@ export const entriesMutations = {
     },
   }),
 };
-
-export async function deleteEntry(id: string): Promise<void> {
-  await apiClient.delete(`/entries/${id}`);
-}
-
