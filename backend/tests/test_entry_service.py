@@ -21,6 +21,7 @@ def test_save_new_entries_inserts_only_fresh_records(
         summary="Reflections on editing workflow.",
         occurred_at=now,
         category="journal",
+        video_id="video-123",
     )
     entry_b = EntryRecord(
         id="entry-b",
@@ -28,6 +29,8 @@ def test_save_new_entries_inserts_only_fresh_records(
         summary="Analyzed thumbnails and hooks.",
         occurred_at=now + timedelta(hours=1),
         category="journal",
+        link_url="https://example.com",
+        thumbnail_url="https://example.com/thumb.jpg",
     )
 
     inserted = service.save_new_entries([entry_a])
@@ -71,3 +74,76 @@ def test_list_entries_returns_records_in_reverse_chronological_order(
 
     entries = service.list_entries()
     assert [entry.id for entry in entries] == ["entry-late", "entry-early"]
+    assert entries[0].video_id is None
+
+
+def test_get_entry_returns_record(memory_connection_factory: SqliteConnectionFactory) -> None:
+    service = EntryService(memory_connection_factory)
+    service.ensure_schema()
+
+    now = datetime.now(tz=UTC)
+    record = EntryRecord(
+        id="entry-get",
+        title="Entry to fetch",
+        summary="Context for lookup.",
+        occurred_at=now,
+        category="journal",
+        video_id="linked-video",
+    )
+    service.save_new_entries([record])
+
+    fetched = service.get_entry("entry-get")
+    assert fetched is not None
+    assert fetched.video_id == "linked-video"
+
+
+def test_update_entry_persists_changes(memory_connection_factory: SqliteConnectionFactory) -> None:
+    service = EntryService(memory_connection_factory)
+    service.ensure_schema()
+
+    now = datetime.now(tz=UTC)
+    original = EntryRecord(
+        id="entry-update",
+        title="Original",
+        summary="Original summary.",
+        occurred_at=now,
+        category="journal",
+    )
+    service.save_new_entries([original])
+
+    updated = EntryRecord(
+        id="entry-update",
+        title="Updated title",
+        summary="Updated summary.",
+        occurred_at=now + timedelta(days=1),
+        category="insight",
+        link_url="https://example.com/insight",
+        video_id="vid-99",
+    )
+
+    assert service.update_entry(updated) is True
+
+    reloaded = service.get_entry("entry-update")
+    assert reloaded is not None
+    assert reloaded.title == "Updated title"
+    assert reloaded.category == "insight"
+    assert reloaded.link_url == "https://example.com/insight"
+    assert reloaded.video_id == "vid-99"
+
+
+def test_delete_entry_removes_record(memory_connection_factory: SqliteConnectionFactory) -> None:
+    service = EntryService(memory_connection_factory)
+    service.ensure_schema()
+
+    now = datetime.now(tz=UTC)
+    record = EntryRecord(
+        id="entry-delete",
+        title="Delete me",
+        summary="To be deleted.",
+        occurred_at=now,
+        category="journal",
+    )
+    service.save_new_entries([record])
+
+    assert service.delete_entry("entry-delete") is True
+    assert service.get_entry("entry-delete") is None

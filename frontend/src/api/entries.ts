@@ -10,6 +10,7 @@ export interface Entry {
   category: "video" | "insight" | "journal";
   linkUrl?: string | null;
   thumbnailUrl?: string | null;
+  videoId?: string | null;
 }
 
 export interface CreateEntryInput {
@@ -20,6 +21,7 @@ export interface CreateEntryInput {
   category: Entry["category"];
   linkUrl?: string | null;
   thumbnailUrl?: string | null;
+  videoId?: string | null;
 }
 
 export interface UpdateEntryInput extends Partial<CreateEntryInput> {
@@ -56,4 +58,16 @@ export async function updateEntry({ id, ...input }: UpdateEntryInput): Promise<E
 export async function deleteEntry(id: string): Promise<void> {
   await apiClient.delete(`/entries/${id}`);
 }
+
+export const entriesMutations = {
+  create: () => ({
+    mutationFn: createEntry,
+  }),
+  update: () => ({
+    mutationFn: updateEntry,
+  }),
+  delete: () => ({
+    mutationFn: deleteEntry,
+  }),
+};
 
