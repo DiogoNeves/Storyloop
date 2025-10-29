@@ -3,6 +3,29 @@ import { vi } from "vitest";
 
 import { App } from "@/App";
 
+const mockEntries = [
+  {
+    id: "entry-1",
+    title: "Latest entry",
+    summary: "Captured retention improvements.",
+    date: new Date().toISOString(),
+    category: "journal" as const,
+    linkUrl: null,
+    thumbnailUrl: null,
+  },
+];
+
+vi.mock("@/api/entries", () => ({
+  entriesQueries: {
+    all: () => ({
+      queryKey: ["entries"],
+      queryFn: vi.fn().mockResolvedValue(mockEntries),
+    }),
+    byId: vi.fn(),
+  },
+  createEntry: vi.fn().mockResolvedValue(null),
+}));
+
 vi.mock("@/api/health", () => ({
   healthQueries: {
     status: () => ({
@@ -23,6 +46,10 @@ describe("App", () => {
 
     await waitFor(() =>
       expect(screen.getByText(/Storyloop API ready/i)).toBeInTheDocument(),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText(/Captured retention improvements\./i)).toBeInTheDocument(),
     );
   });
 });

@@ -107,36 +107,6 @@ function ScorePlaceholder() {
 function DashboardShell() {
   const queryClient = useQueryClient();
 
-  const seedItems = useMemo<ActivityItem[]>(
-    () => [
-      {
-        id: "1",
-        title: "Uploaded 'Behind the Scenes at Edit Bay'",
-        summary:
-          "View duration lifted to 64%. Keep leaning into granular storytelling beats.",
-        date: new Date().toISOString(),
-        category: "video",
-      },
-      {
-        id: "2",
-        title: "Growth insight: Hook iteration working",
-        summary:
-          "CTR climbed 14% week over week after testing the narrative teaser hook.",
-        date: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
-        category: "insight",
-      },
-      {
-        id: "3",
-        title: "Weekly journal draft",
-        summary:
-          "Reflect on the edit pace experimentation and the impact on watch curve retention.",
-        date: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-        category: "journal",
-      },
-    ],
-    [],
-  );
-
   const entriesListQuery = useMemo(() => entriesQueries.all(), []);
   const {
     data: storedEntries,
@@ -159,8 +129,9 @@ function DashboardShell() {
     }));
   }, [storedEntries]);
 
-  const activityItems =
-    storedActivityItems.length > 0 ? storedActivityItems : seedItems;
+  const activityItems = storedActivityItems;
+
+  const isLoadingActivityItems = entriesStatus === "pending";
 
   const [draft, setDraft] = useState<ActivityDraft | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
@@ -272,6 +243,7 @@ function DashboardShell() {
 
         <ActivityFeed
           items={activityItems}
+          isLoadingEntries={isLoadingActivityItems}
           draft={draft}
           onStartDraft={handleStartDraft}
           onDraftChange={handleDraftChange}
