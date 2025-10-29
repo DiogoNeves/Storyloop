@@ -53,7 +53,7 @@ async def test_youtube_videos_endpoint_returns_payload():
 
     test_transport = httpx.MockTransport(handler)
 
-    settings = Settings(youtube_api_key="test-key")
+    settings = Settings(youtube_api_key="test-key", database_url="sqlite:///:memory:")
     app = create_app(settings)
 
     async with AsyncClient(
