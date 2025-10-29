@@ -73,115 +73,43 @@ export function ActivityFeed({
   const [deletingEntryId, setDeletingEntryId] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
-  const entriesListQuery = useMemo(() => entriesQueries.all(), []);
+  const updateEntryMutation = useMutation(
+    entriesMutations.update(queryClient, {
+      onError: (error) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "We couldn't update this entry. Please try again.";
+        setEditingError(message);
+      },
+      onSuccess: () => {
+        setEditingEntryId(null);
+        setEditingDraft(null);
+        setEditingError(null);
+      },
+    }),
+  );
 
-  const updateEntryMutation = useMutation({
-    ...entriesMutations.update(),
-    onMutate: async (input: UpdateEntryInput) => {
-      setEditingError(null);
-      await queryClient.cancelQueries({ queryKey: entriesListQuery.queryKey });
-      const listKey = entriesListQuery.queryKey;
-      const previousEntries = queryClient.getQueryData<Entry[]>(listKey);
-      const byIdQuery = entriesQueries.byId(input.id);
-      await queryClient.cancelQueries({ queryKey: byIdQuery.queryKey });
-      const previousById = queryClient.getQueryData<Entry>(byIdQuery.queryKey);
-
-      const nextEntries = (previousEntries ?? []).map((entry) =>
-        entry.id === input.id
-          ? {
-              ...entry,
-              ...("title" in input ? { title: input.title! } : {}),
-              ...("summary" in input ? { summary: input.summary! } : {}),
-              ...("date" in input ? { date: input.date! } : {}),
-              ...("videoId" in input ? { videoId: input.videoId ?? null } : {}),
-            }
-          : entry,
-      );
-      if (previousEntries) {
-        queryClient.setQueryData<Entry[]>(listKey, nextEntries);
-      }
-      if (previousById) {
-        queryClient.setQueryData<Entry>(byIdQuery.queryKey, {
-          ...previousById,
-          ...("title" in input ? { title: input.title! } : {}),
-          ...("summary" in input ? { summary: input.summary! } : {}),
-          ...("date" in input ? { date: input.date! } : {}),
-          ...("videoId" in input ? { videoId: input.videoId ?? null } : {}),
-        });
-      }
-
-      return { previousEntries, previousById } satisfies EntriesMutationContext;
-    },
-    onError: (error, input, context) => {
-      if (context?.previousEntries) {
-        queryClient.setQueryData(entriesListQuery.queryKey, context.previousEntries);
-      }
-      if (context?.previousById) {
-        const byIdQuery = entriesQueries.byId(input.id);
-        queryClient.setQueryData(byIdQuery.queryKey, context.previousById);
-      }
-      const message =
-        error instanceof Error
-          ? error.message
-          : "We couldn't update this entry. Please try again.";
-      setEditingError(message);
-    },
-    onSuccess: () => {
-      setEditingEntryId(null);
-      setEditingDraft(null);
-      setEditingError(null);
-    },
-    onSettled: (_result, _error, input) => {
-      if (!input) {
-        return;
-      }
-      void queryClient.invalidateQueries({ queryKey: entriesListQuery.queryKey });
-      const byIdQuery = entriesQueries.byId(input.id);
-      void queryClient.invalidateQueries({ queryKey: byIdQuery.queryKey });
-    },
-  });
-
-  const deleteEntryMutation = useMutation({
-    ...entriesMutations.delete(),
-    onMutate: async (id: string) => {
-      await queryClient.cancelQueries({ queryKey: entriesListQuery.queryKey });
-      const listKey = entriesListQuery.queryKey;
-      const previousEntries = queryClient.getQueryData<Entry[]>(listKey);
-      if (previousEntries) {
-        queryClient.setQueryData<Entry[]>(
-          listKey,
-          previousEntries.filter((entry) => entry.id !== id),
-        );
-      }
-      const byIdQuery = entriesQueries.byId(id);
-      await queryClient.cancelQueries({ queryKey: byIdQuery.queryKey });
-      const previousById = queryClient.getQueryData<Entry>(byIdQuery.queryKey);
-      queryClient.removeQueries({ queryKey: byIdQuery.queryKey, exact: true });
-      return { previousEntries, previousById, id } satisfies EntriesMutationContext;
-    },
-    onError: (error, id, context) => {
-      if (context?.previousEntries) {
-        queryClient.setQueryData(entriesListQuery.queryKey, context.previousEntries);
-      }
-      if (context?.previousById) {
-        const byIdQuery = entriesQueries.byId(id);
-        queryClient.setQueryData(byIdQuery.queryKey, context.previousById);
-      }
-      const message =
-        error instanceof Error
-          ? error.message
-          : "We couldn't delete this entry. Please try again.";
-      setEditingError(message);
-    },
-    onSettled: (_result, _error, id) => {
-      if (!id) {
-        return;
-      }
-      void queryClient.invalidateQueries({ queryKey: entriesListQuery.queryKey });
-      const byIdQuery = entriesQueries.byId(id);
-      void queryClient.invalidateQueries({ queryKey: byIdQuery.queryKey });
-    },
-  });
+  const deleteEntryMutation = useMutation(
+    entriesMutations.delete(queryClient, {
+      onError: (error) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "We couldn't delete this entry. Please try again.";
+        setEditingError(message);
+      },
+      onSuccess: (_data, id) => {
+        if (editingEntryId === id) {
+          setEditingEntryId(null);
+          setEditingDraft(null);
+        }
+      },
+      onSettled: () => {
+        setDeletingEntryId(null);
+      },
+    }),
+  );
 
   const combinedItems = useMemo(() => {
     const baseItems = [...items];
@@ -256,11 +184,7 @@ export function ActivityFeed({
       setEditingError(null);
       await updateEntryMutation.mutateAsync(payload);
     } catch (error: unknown) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "We couldn't update this entry. Please try again.";
-      setEditingError(message);
+      // handled in the mutation onError callback
     }
   }, [editingDraft, editingEntryId, updateEntryMutation]);
 
@@ -279,24 +203,9 @@ export function ActivityFeed({
       }
       setDeletingEntryId(id);
       setEditingError(null);
-      void deleteEntryMutation
-        .mutateAsync(id)
-        .then(() => {
-          if (editingEntryId === id) {
-            setEditingEntryId(null);
-            setEditingDraft(null);
-          }
-        })
-        .catch((error: unknown) => {
-          const message =
-            error instanceof Error
-              ? error.message
-              : "We couldn't delete this entry. Please try again.";
-          setEditingError(message);
-        })
-        .finally(() => {
-          setDeletingEntryId(null);
-        });
+      void deleteEntryMutation.mutateAsync(id).catch(() => {
+        // handled in the mutation onError callback
+      });
     },
     [deleteEntryMutation, deletingEntryId, editingEntryId],
   );
