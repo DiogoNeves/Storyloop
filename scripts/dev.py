@@ -27,8 +27,27 @@ async def run_process(command: Sequence[str], cwd: Path) -> int:
 
 
 async def main() -> int:
-    backend_cmd = ["uv", "run", "uvicorn", "app.main:app", "--reload", "--host", "127.0.0.1", "--port", "8000"]
-    frontend_cmd = ["npm", "run", "dev", "--", "--host", "127.0.0.1", "--port", "5173"]
+    backend_cmd = [
+        "uv",
+        "run",
+        "uvicorn",
+        "app.main:app",
+        "--reload",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8000",
+    ]
+    frontend_cmd = [
+        "npm",
+        "run",
+        "dev",
+        "--",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "5173",
+    ]
 
     stop_event = asyncio.Event()
 
@@ -45,7 +64,9 @@ async def main() -> int:
     backend_task.cancel()
     frontend_task.cancel()
 
-    results = await asyncio.gather(backend_task, frontend_task, return_exceptions=True)
+    results = await asyncio.gather(
+        backend_task, frontend_task, return_exceptions=True
+    )
 
     exit_codes = [0]
     for result in results:
@@ -53,8 +74,15 @@ async def main() -> int:
             if not isinstance(result, asyncio.CancelledError):
                 print(f"Process exited with error: {result}", file=sys.stderr)
                 exit_codes.append(1)
+        elif isinstance(result, int):
+            exit_codes.append(result)
         else:
-            exit_codes.append(int(result))
+            # Handle other BaseException types (shouldn't happen, but type checker needs this)
+            print(
+                f"Process exited with unexpected error: {result}",
+                file=sys.stderr,
+            )
+            exit_codes.append(1)
 
     return max(exit_codes)
 
