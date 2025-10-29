@@ -2,12 +2,7 @@ import { useCallback, useMemo, useState, type KeyboardEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
 
-import {
-  entriesMutations,
-  entriesQueries,
-  type Entry,
-  type UpdateEntryInput,
-} from "@/api/entries";
+import { entriesMutations, type UpdateEntryInput } from "@/api/entries";
 import { youtubeApi, type YoutubeFeedResponse } from "@/api/youtube";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -686,12 +681,6 @@ function ActivityDraftCard({
       </CardContent>
     </Card>
   );
-}
-
-interface EntriesMutationContext {
-  previousEntries: Entry[] | undefined;
-  previousById?: Entry;
-  id?: string;
 }
 
 function toDateTimeLocalInput(date: string) {
