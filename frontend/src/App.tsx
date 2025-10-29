@@ -21,7 +21,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  createEntry,
+  entriesMutations,
   entriesQueries,
   type CreateEntryInput,
   type Entry,
@@ -156,6 +156,7 @@ function DashboardShell() {
       category: entry.category,
       linkUrl: entry.linkUrl ?? undefined,
       thumbnailUrl: entry.thumbnailUrl ?? undefined,
+      videoId: entry.videoId ?? undefined,
     }));
   }, [storedEntries]);
 
@@ -166,7 +167,7 @@ function DashboardShell() {
   const [draftError, setDraftError] = useState<string | null>(null);
 
   const { mutateAsync: saveEntry, isPending: isSavingEntry } = useMutation({
-    mutationFn: createEntry,
+    ...entriesMutations.create(),
     onSuccess: (savedEntry) => {
       if (!savedEntry) {
         return;
@@ -199,6 +200,7 @@ function DashboardShell() {
       title: "",
       summary: "",
       date: formatNowAsDateTimeLocal(),
+      videoId: "",
     });
     setDraftError(null);
   }, [draft, formatNowAsDateTimeLocal]);
@@ -225,12 +227,15 @@ function DashboardShell() {
       return;
     }
 
+    const trimmedVideoId = draft.videoId.trim();
+
     const entryInput: CreateEntryInput = {
       id: crypto.randomUUID(),
       title: trimmedTitle,
       summary: trimmedSummary,
       date: new Date(draft.date).toISOString(),
       category: "journal",
+      videoId: trimmedVideoId.length > 0 ? trimmedVideoId : null,
     };
 
     try {

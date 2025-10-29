@@ -36,6 +36,7 @@ def test_save_entries_returns_only_new_records(
             "summary": "Explored retention curve drop-offs.",
             "date": now.isoformat(),
             "category": "journal",
+            "videoId": "abc123",
         }
     ]
 
@@ -57,6 +58,7 @@ def test_save_entries_returns_only_new_records(
             "summary": "Compared hook experiments.",
             "date": (now + timedelta(hours=2)).isoformat(),
             "category": "journal",
+            "videoId": None,
         }
     )
 
@@ -87,6 +89,7 @@ def test_list_entries_returns_persisted_records(
             "summary": "Captured retention improvements.",
             "date": now.isoformat(),
             "category": "journal",
+            "videoId": "linked-video",
         },
     ]
 
@@ -97,3 +100,93 @@ def test_list_entries_returns_persisted_records(
     assert response.status_code == 200
     body = response.json()
     assert [item["id"] for item in body] == ["entry-2", "entry-1"]
+    assert body[0]["videoId"] == "linked-video"
+
+
+def test_get_entry_returns_single_record(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    app = _create_test_app(memory_connection_factory)
+    client = TestClient(app)
+
+    now = datetime.now(tz=UTC)
+    payload = [
+        {
+            "id": "entry-1",
+            "title": "Persisted entry",
+            "summary": "Stored for retrieval.",
+            "date": now.isoformat(),
+            "category": "journal",
+            "videoId": "linked-video",
+        }
+    ]
+
+    response = client.post("/entries/", json=payload)
+    assert response.status_code == 200
+
+    response = client.get("/entries/entry-1")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == "entry-1"
+    assert body["videoId"] == "linked-video"
+
+
+def test_update_entry_modifies_record(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    app = _create_test_app(memory_connection_factory)
+    client = TestClient(app)
+
+    now = datetime.now(tz=UTC)
+    payload = [
+        {
+            "id": "entry-1",
+            "title": "Persisted entry",
+            "summary": "Stored for update.",
+            "date": now.isoformat(),
+            "category": "journal",
+        }
+    ]
+
+    response = client.post("/entries/", json=payload)
+    assert response.status_code == 200
+
+    update_payload = {
+        "title": "Updated title",
+        "summary": "Updated summary.",
+        "videoId": "video-123",
+    }
+
+    response = client.put("/entries/entry-1", json=update_payload)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["title"] == "Updated title"
+    assert body["summary"] == "Updated summary."
+    assert body["videoId"] == "video-123"
+
+
+def test_delete_entry_removes_record(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    app = _create_test_app(memory_connection_factory)
+    client = TestClient(app)
+
+    now = datetime.now(tz=UTC)
+    payload = [
+        {
+            "id": "entry-1",
+            "title": "Persisted entry",
+            "summary": "Stored for deletion.",
+            "date": now.isoformat(),
+            "category": "journal",
+        }
+    ]
+
+    response = client.post("/entries/", json=payload)
+    assert response.status_code == 200
+
+    response = client.delete("/entries/entry-1")
+    assert response.status_code == 204
+
+    response = client.get("/entries/entry-1")
+    assert response.status_code == 404

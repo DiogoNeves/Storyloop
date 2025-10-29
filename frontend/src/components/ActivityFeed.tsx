@@ -1,6 +1,13 @@
 import { useCallback, useMemo, useState, type KeyboardEvent } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
 
+import {
+  entriesMutations,
+  entriesQueries,
+  type Entry,
+  type UpdateEntryInput,
+} from "@/api/entries";
 import { youtubeApi, type YoutubeFeedResponse } from "@/api/youtube";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -23,12 +30,14 @@ export interface ActivityItem {
   category: "video" | "insight" | "journal";
   linkUrl?: string;
   thumbnailUrl?: string | null;
+  videoId?: string | null;
 }
 
 export interface ActivityDraft {
   title: string;
   summary: string;
   date: string; // datetime-local string
+  videoId: string;
 }
 
 interface ActivityFeedProps {
@@ -57,7 +66,52 @@ export function ActivityFeed({
   const [channelInput, setChannelInput] = useState("");
   const [isLoadingVideos, setIsLoadingVideos] = useState(false);
   const [youtubeError, setYoutubeError] = useState<string | null>(null);
-  const [youtubeFeed, setYoutubeFeed] = useState<YoutubeFeedResponse | null>(null);
+  const [youtubeFeed, setYoutubeFeed] = useState<YoutubeFeedResponse | null>(
+    null,
+  );
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [editingDraft, setEditingDraft] = useState<ActivityDraft | null>(null);
+  const [editingError, setEditingError] = useState<string | null>(null);
+  const [deletingEntryId, setDeletingEntryId] = useState<string | null>(null);
+
+  const queryClient = useQueryClient();
+  const updateEntryMutation = useMutation(
+    entriesMutations.update(queryClient, {
+      onError: (error) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "We couldn't update this entry. Please try again.";
+        setEditingError(message);
+      },
+      onSuccess: () => {
+        setEditingEntryId(null);
+        setEditingDraft(null);
+        setEditingError(null);
+      },
+    }),
+  );
+
+  const deleteEntryMutation = useMutation(
+    entriesMutations.delete(queryClient, {
+      onError: (error) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "We couldn't delete this entry. Please try again.";
+        setEditingError(message);
+      },
+      onSuccess: (_data, id) => {
+        if (editingEntryId === id) {
+          setEditingEntryId(null);
+          setEditingDraft(null);
+        }
+      },
+      onSettled: () => {
+        setDeletingEntryId(null);
+      },
+    }),
+  );
 
   const combinedItems = useMemo(() => {
     const baseItems = [...items];
@@ -75,12 +129,88 @@ export function ActivityFeed({
       category: "video",
       linkUrl: video.url,
       thumbnailUrl: video.thumbnailUrl,
+      videoId: video.id,
     }));
 
     return [...baseItems, ...videoItems].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
   }, [items, youtubeFeed]);
+
+  const handleStartEdit = useCallback((item: ActivityItem) => {
+    if (item.category === "video" || item.id.startsWith("youtube:")) {
+      return;
+    }
+    setEditingEntryId(item.id);
+    setEditingDraft({
+      title: item.title,
+      summary: item.summary,
+      date: toDateTimeLocalInput(item.date),
+      videoId: item.videoId ?? "",
+    });
+    setEditingError(null);
+  }, []);
+
+  const handleEditDraftChange = useCallback((draft: ActivityDraft) => {
+    setEditingDraft(draft);
+    setEditingError(null);
+  }, []);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingEntryId(null);
+    setEditingDraft(null);
+    setEditingError(null);
+  }, []);
+
+  const handleSubmitEdit = useCallback(async () => {
+    if (!editingEntryId || !editingDraft) {
+      return;
+    }
+    const trimmedTitle = editingDraft.title.trim();
+    const trimmedSummary = editingDraft.summary.trim();
+    if (trimmedTitle.length === 0 || trimmedSummary.length === 0) {
+      setEditingError("Add a title and entry before saving.");
+      return;
+    }
+
+    const trimmedVideoId = editingDraft.videoId.trim();
+    const payload: UpdateEntryInput = {
+      id: editingEntryId,
+      title: trimmedTitle,
+      summary: trimmedSummary,
+      date: new Date(editingDraft.date).toISOString(),
+      videoId: trimmedVideoId.length > 0 ? trimmedVideoId : null,
+    };
+
+    try {
+      setEditingError(null);
+      await updateEntryMutation.mutateAsync(payload);
+    } catch (error: unknown) {
+      // handled in the mutation onError callback
+    }
+  }, [editingDraft, editingEntryId, updateEntryMutation]);
+
+  const handleDeleteEntry = useCallback(
+    (id: string) => {
+      if (deletingEntryId) {
+        return;
+      }
+      if (typeof window !== "undefined") {
+        const confirmed = window.confirm(
+          "Are you sure you want to delete this entry?",
+        );
+        if (!confirmed) {
+          return;
+        }
+      }
+      setDeletingEntryId(id);
+      setEditingError(null);
+      void deleteEntryMutation.mutateAsync(id).catch(() => {
+        // handled in the mutation onError callback
+      });
+    },
+    [deleteEntryMutation, deletingEntryId, editingEntryId],
+  );
 
   const handleFetchVideos = useCallback(async () => {
     const trimmed = channelInput.trim();
@@ -107,7 +237,9 @@ export function ActivityFeed({
             ? (data as { detail: string }).detail
             : null;
         if (status === 404) {
-          setYoutubeError(detail ?? "We couldn’t find that channel on YouTube.");
+          setYoutubeError(
+            detail ?? "We couldn’t find that channel on YouTube.",
+          );
         } else if (status === 503) {
           setYoutubeError(
             detail ?? "The server hasn’t been configured for YouTube yet.",
@@ -217,17 +349,78 @@ export function ActivityFeed({
             onSubmit={onSubmitDraft}
             isSubmitting={isSubmittingDraft}
             errorMessage={draftError}
+            submitLabel="Create entry"
+            category="journal"
+            idPrefix="new-entry"
           />
         ) : null}
-        {combinedItems.map((item) => (
-          <ActivityFeedItem key={item.id} item={item} />
-        ))}
+        {combinedItems.map((item) => {
+          const isEditing = editingEntryId === item.id && editingDraft;
+          const isEditable =
+            item.category !== "video" && !item.id.startsWith("youtube:");
+          if (isEditing && editingDraft) {
+            return (
+              <ActivityDraftCard
+                key={item.id}
+                draft={editingDraft}
+                onChange={handleEditDraftChange}
+                onCancel={handleCancelEdit}
+                onSubmit={handleSubmitEdit}
+                isSubmitting={updateEntryMutation.isPending}
+                errorMessage={editingError}
+                submitLabel="Save changes"
+                category={item.category}
+                idPrefix={`edit-entry-${item.id}`}
+                onDelete={
+                  isEditable ? () => handleDeleteEntry(item.id) : undefined
+                }
+                isDeleting={
+                  deletingEntryId === item.id && deleteEntryMutation.isPending
+                }
+              />
+            );
+          }
+
+          return (
+            <ActivityFeedItem
+              key={item.id}
+              item={item}
+              onEdit={
+                isEditable
+                  ? () => {
+                      handleStartEdit(item);
+                    }
+                  : undefined
+              }
+              onDelete={
+                isEditable
+                  ? () => {
+                      handleDeleteEntry(item.id);
+                    }
+                  : undefined
+              }
+              isDeleting={
+                deletingEntryId === item.id && deleteEntryMutation.isPending
+              }
+            />
+          );
+        })}
       </CardContent>
     </Card>
   );
 }
 
-function ActivityFeedItem({ item }: { item: ActivityItem }) {
+function ActivityFeedItem({
+  item,
+  onEdit,
+  onDelete,
+  isDeleting,
+}: {
+  item: ActivityItem;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  isDeleting?: boolean;
+}) {
   const formattedDate = new Date(item.date).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
@@ -248,9 +441,44 @@ function ActivityFeedItem({ item }: { item: ActivityItem }) {
           >
             {item.category}
           </Badge>
-          <time className="text-xs text-muted-foreground" dateTime={item.date}>
-            {formattedDate}
-          </time>
+          <div className="flex items-center gap-2">
+            <time
+              className="text-xs text-muted-foreground"
+              dateTime={item.date}
+            >
+              {formattedDate}
+            </time>
+            {onEdit || onDelete ? (
+              <div className="flex items-center gap-1">
+                {onEdit ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      onEdit();
+                    }}
+                  >
+                    Edit
+                  </Button>
+                ) : null}
+                {onDelete ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="text-destructive hover:text-white"
+                    onClick={() => {
+                      onDelete();
+                    }}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? "Deleting…" : "Delete"}
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         </div>
         <div className="flex gap-4">
           <div className="flex flex-1 flex-col gap-2">
@@ -330,6 +558,11 @@ interface ActivityDraftCardProps {
   onSubmit?: () => void;
   isSubmitting?: boolean;
   errorMessage?: string | null;
+  submitLabel?: string;
+  category?: ActivityItem["category"];
+  idPrefix?: string;
+  onDelete?: () => void;
+  isDeleting?: boolean;
 }
 
 function ActivityDraftCard({
@@ -339,26 +572,35 @@ function ActivityDraftCard({
   onSubmit,
   isSubmitting,
   errorMessage,
+  submitLabel = "Create entry",
+  category = "journal",
+  idPrefix = "entry",
+  onDelete,
+  isDeleting,
 }: ActivityDraftCardProps) {
   const isSubmitDisabled =
     draft.title.trim().length === 0 || draft.summary.trim().length === 0;
+  const dateInputId = `${idPrefix}-date`;
+  const titleInputId = `${idPrefix}-title`;
+  const summaryInputId = `${idPrefix}-summary`;
+  const videoInputId = `${idPrefix}-video`;
 
   return (
     <Card className="border-dashed border-primary/40 bg-primary/5">
       <CardContent className="space-y-4 p-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <Badge variant="secondary" className={categoryBadgeClass.journal}>
-            journal
+          <Badge variant="secondary" className={categoryBadgeClass[category]}>
+            {category}
           </Badge>
           <div className="w-full max-w-[220px] space-y-2 text-left text-xs sm:w-auto">
             <Label
-              htmlFor="new-entry-date"
+              htmlFor={dateInputId}
               className="text-xs uppercase tracking-wide text-muted-foreground"
             >
               Date & time
             </Label>
             <Input
-              id="new-entry-date"
+              id={dateInputId}
               type="datetime-local"
               value={draft.date}
               onChange={(event) =>
@@ -369,9 +611,9 @@ function ActivityDraftCard({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="new-entry-title">Title</Label>
+          <Label htmlFor={titleInputId}>Title</Label>
           <Input
-            id="new-entry-title"
+            id={titleInputId}
             placeholder="What happened?"
             value={draft.title}
             onChange={(event) =>
@@ -381,9 +623,9 @@ function ActivityDraftCard({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="new-entry-summary">Entry</Label>
+          <Label htmlFor={summaryInputId}>Entry</Label>
           <Textarea
-            id="new-entry-summary"
+            id={summaryInputId}
             placeholder="Capture the beats, insights, or takeaways…"
             value={draft.summary}
             onChange={(event) =>
@@ -393,19 +635,48 @@ function ActivityDraftCard({
           />
         </div>
 
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button type="button" variant="ghost" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            onClick={() => {
-              void onSubmit?.();
-            }}
-            disabled={isSubmitDisabled || isSubmitting}
-          >
-            {isSubmitting ? "Saving…" : "Create entry"}
-          </Button>
+        <div className="space-y-2">
+          <Label htmlFor={videoInputId}>Linked video ID (optional)</Label>
+          <Input
+            id={videoInputId}
+            placeholder="e.g. abcd1234"
+            value={draft.videoId}
+            onChange={(event) =>
+              onChange({ ...draft, videoId: event.target.value })
+            }
+          />
+          <p className="text-xs text-muted-foreground">
+            Paste a YouTube video ID to reference a synced upload.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button type="button" variant="ghost" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                void onSubmit?.();
+              }}
+              disabled={isSubmitDisabled || isSubmitting}
+            >
+              {isSubmitting ? "Saving…" : submitLabel}
+            </Button>
+          </div>
+          {onDelete ? (
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                void onDelete();
+              }}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting…" : "Delete entry"}
+            </Button>
+          ) : null}
         </div>
         {errorMessage ? (
           <p className="text-sm text-destructive" role="alert">
@@ -415,4 +686,19 @@ function ActivityDraftCard({
       </CardContent>
     </Card>
   );
+}
+
+interface EntriesMutationContext {
+  previousEntries: Entry[] | undefined;
+  previousById?: Entry;
+  id?: string;
+}
+
+function toDateTimeLocalInput(date: string) {
+  const original = new Date(date);
+  original.setSeconds(0);
+  original.setMilliseconds(0);
+  const offset = original.getTimezoneOffset();
+  const adjusted = new Date(original.getTime() - offset * 60_000);
+  return adjusted.toISOString().slice(0, 16);
 }

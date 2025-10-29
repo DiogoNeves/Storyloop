@@ -42,12 +42,39 @@ vi.mock("@/api/entries", () => {
         queryKey: ["entries"],
         queryFn: listEntries,
       }),
+      byId: (id: string) => ({
+        queryKey: ["entries", id],
+        queryFn: vi.fn(async () => mockEntries.find((e) => e.id === id)),
+      }),
     },
     createEntry: vi.fn(async (input) => ({
       ...input,
       linkUrl: input.linkUrl ?? null,
       thumbnailUrl: input.thumbnailUrl ?? null,
     })),
+    updateEntry: vi.fn(async (input) => ({
+      ...mockEntries.find((e) => e.id === input.id),
+      ...input,
+    })),
+    deleteEntry: vi.fn(async () => undefined),
+    entriesMutations: {
+      create: () => ({
+        mutationFn: vi.fn(async (input) => ({
+          ...input,
+          linkUrl: input.linkUrl ?? null,
+          thumbnailUrl: input.thumbnailUrl ?? null,
+        })),
+      }),
+      update: () => ({
+        mutationFn: vi.fn(async (input) => ({
+          ...mockEntries.find((e) => e.id === input.id),
+          ...input,
+        })),
+      }),
+      delete: () => ({
+        mutationFn: vi.fn(async () => undefined),
+      }),
+    },
   };
 });
 
