@@ -2,10 +2,7 @@ import { type ActivityDraft } from "./ActivityFeed";
 import { type ActivityItem } from "@/lib/types/entries";
 import { categoryBadgeClass } from "./ActivityFeedItem";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -128,7 +125,8 @@ export function ActivityDraftCard({
           {onDelete ? (
             <Button
               type="button"
-              variant="destructive"
+              variant="ghost"
+              className="text-muted-foreground opacity-60 hover:text-white hover:opacity-100"
               onClick={() => {
                 void onDelete();
               }}
@@ -147,4 +145,3 @@ export function ActivityDraftCard({
     </Card>
   );
 }
-
