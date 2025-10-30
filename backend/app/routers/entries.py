@@ -5,9 +5,10 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.dependencies import get_entry_service
 from app.services import EntryRecord, EntryService
 
 router = APIRouter(prefix="/entries", tags=["entries"])
@@ -91,17 +92,20 @@ class EntryUpdate(BaseModel):
 
 
 @router.get("/", response_model=list[EntryResponse])
-def list_entries(request: Request) -> list[EntryResponse]:
+def list_entries(
+    entry_service: EntryService = Depends(get_entry_service),
+) -> list[EntryResponse]:
     """Return all persisted activity entries ordered by recency."""
-    entry_service: EntryService = request.app.state.entry_service
     records = entry_service.list_entries()
     return [EntryResponse.from_record(record) for record in records]
 
 
 @router.post("/", response_model=list[EntryResponse])
-def save_entries(request: Request, entries: list[EntryCreate]) -> list[EntryResponse]:
+def save_entries(
+    entries: list[EntryCreate],
+    entry_service: EntryService = Depends(get_entry_service),
+) -> list[EntryResponse]:
     """Persist provided entries, returning only the newly stored items."""
-    entry_service: EntryService = request.app.state.entry_service
     records = [
         EntryRecord(
             id=entry.id,
@@ -120,10 +124,10 @@ def save_entries(request: Request, entries: list[EntryCreate]) -> list[EntryResp
 
 
 @router.get("/{entry_id}", response_model=EntryResponse)
-def get_entry(entry_id: str, request: Request) -> EntryResponse:
+def get_entry(
+    entry_id: str, entry_service: EntryService = Depends(get_entry_service)
+) -> EntryResponse:
     """Return a single entry by identifier."""
-
-    entry_service: EntryService = request.app.state.entry_service
     record = entry_service.get_entry(entry_id)
     if record is None:
         raise HTTPException(status_code=404, detail="Entry not found")
@@ -131,10 +135,12 @@ def get_entry(entry_id: str, request: Request) -> EntryResponse:
 
 
 @router.put("/{entry_id}", response_model=EntryResponse)
-def update_entry(entry_id: str, request: Request, payload: EntryUpdate) -> EntryResponse:
+def update_entry(
+    entry_id: str,
+    payload: EntryUpdate,
+    entry_service: EntryService = Depends(get_entry_service),
+) -> EntryResponse:
     """Persist updates for an existing entry."""
-
-    entry_service: EntryService = request.app.state.entry_service
     current = entry_service.get_entry(entry_id)
     if current is None:
         raise HTTPException(status_code=404, detail="Entry not found")
@@ -160,10 +166,10 @@ def update_entry(entry_id: str, request: Request, payload: EntryUpdate) -> Entry
 
 
 @router.delete("/{entry_id}", status_code=204)
-def delete_entry(entry_id: str, request: Request) -> Response:
+def delete_entry(
+    entry_id: str, entry_service: EntryService = Depends(get_entry_service)
+) -> Response:
     """Delete an existing entry."""
-
-    entry_service: EntryService = request.app.state.entry_service
     deleted = entry_service.delete_entry(entry_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Entry not found")
