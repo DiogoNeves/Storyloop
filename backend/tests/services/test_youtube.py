@@ -55,6 +55,9 @@ async def test_fetch_channel_videos_returns_feed():
             return httpx.Response(200, json={"items": []})
         if request.url.path.endswith("/playlistItems"):
             return httpx.Response(200, json=playlist_payload)
+        if request.url.path.endswith("/videos"):
+            # Video duration lookup
+            return httpx.Response(200, json={"items": []})
         if request.url.path.endswith("/search"):
             return httpx.Response(200, json={"items": []})
         raise AssertionError(f"Unhandled URL {request.url}")
@@ -266,6 +269,9 @@ async def test_fetch_channel_videos_paginates_playlist_items():
         if request.url.path.endswith("/playlistItems"):
             token = request.url.params.get("pageToken")
             return httpx.Response(200, json=playlist_pages[token])
+        if request.url.path.endswith("/videos"):
+            # Video duration lookup
+            return httpx.Response(200, json={"items": []})
         if request.url.path.endswith("/search"):
             return httpx.Response(200, json={"items": []})
         raise AssertionError(f"Unhandled URL {request.url}")
