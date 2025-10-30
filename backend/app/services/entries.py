@@ -25,6 +25,54 @@ class EntryRecord:
     video_id: str | None = None
 
 
+# Column definitions - single source of truth
+ENTRY_COLUMNS = (
+    "id",
+    "title",
+    "summary",
+    "occurred_at",
+    "category",
+    "link_url",
+    "thumbnail_url",
+    "video_id",
+)
+
+
+def _row_to_record(row: Row) -> EntryRecord:
+    """Convert a SQLite Row to an EntryRecord.
+
+    This is a pure function with no side effects. It handles the common
+    pattern of converting database rows to domain objects.
+    """
+    return EntryRecord(
+        id=row["id"],
+        title=row["title"],
+        summary=row["summary"],
+        occurred_at=datetime.fromisoformat(row["occurred_at"]),
+        category=row["category"],
+        link_url=row["link_url"],
+        thumbnail_url=row["thumbnail_url"],
+        video_id=row["video_id"],
+    )
+
+
+def _record_to_values(record: EntryRecord) -> tuple:
+    """Convert an EntryRecord to a tuple of values for SQL parameters.
+
+    Returns values in the same order as ENTRY_COLUMNS.
+    """
+    return (
+        record.id,
+        record.title,
+        record.summary,
+        record.occurred_at.isoformat(),
+        record.category,
+        record.link_url,
+        record.thumbnail_url,
+        record.video_id,
+    )
+
+
 class EntryService:
     """High-level operations for persisting Storyloop entries."""
 
@@ -69,31 +117,16 @@ class EntryService:
             return []
 
         inserted: list[EntryRecord] = []
+        columns_str = ", ".join(ENTRY_COLUMNS)
+        placeholders = ", ".join("?" * len(ENTRY_COLUMNS))
         with closing(self._connection_factory()) as connection:
             for record in records:
                 cursor = connection.execute(
-                    """
-                    INSERT OR IGNORE INTO entries (
-                        id,
-                        title,
-                        summary,
-                        occurred_at,
-                        category,
-                        link_url,
-                        thumbnail_url,
-                        video_id
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    f"""
+                    INSERT OR IGNORE INTO entries ({columns_str})
+                    VALUES ({placeholders})
                     """,
-                    (
-                        record.id,
-                        record.title,
-                        record.summary,
-                        record.occurred_at.isoformat(),
-                        record.category,
-                        record.link_url,
-                        record.thumbnail_url,
-                        record.video_id,
-                    ),
+                    _record_to_values(record),
                 )
                 if cursor.rowcount == 1:
                     inserted.append(record)
@@ -103,34 +136,24 @@ class EntryService:
     def list_entries(self) -> list[EntryRecord]:
         """Return all stored entries ordered by recency."""
         with closing(self._connection_factory()) as connection:
+            columns_str = ", ".join(ENTRY_COLUMNS)
             rows: Sequence[Row] = connection.execute(
-                """
-                SELECT id, title, summary, occurred_at, category, link_url, thumbnail_url, video_id
+                f"""
+                SELECT {columns_str}
                 FROM entries
                 ORDER BY datetime(occurred_at) DESC
                 """
             ).fetchall()
 
-        return [
-            EntryRecord(
-                id=row["id"],
-                title=row["title"],
-                summary=row["summary"],
-                occurred_at=datetime.fromisoformat(row["occurred_at"]),
-                category=row["category"],
-                link_url=row["link_url"],
-                thumbnail_url=row["thumbnail_url"],
-                video_id=row["video_id"],
-            )
-            for row in rows
-        ]
+        return [_row_to_record(row) for row in rows]
 
     def get_entry(self, entry_id: str) -> EntryRecord | None:
         """Return the entry that matches the provided identifier."""
         with closing(self._connection_factory()) as connection:
+            columns_str = ", ".join(ENTRY_COLUMNS)
             row = connection.execute(
-                """
-                SELECT id, title, summary, occurred_at, category, link_url, thumbnail_url, video_id
+                f"""
+                SELECT {columns_str}
                 FROM entries
                 WHERE id = ?
                 """,
@@ -140,16 +163,7 @@ class EntryService:
         if row is None:
             return None
 
-        return EntryRecord(
-            id=row["id"],
-            title=row["title"],
-            summary=row["summary"],
-            occurred_at=datetime.fromisoformat(row["occurred_at"]),
-            category=row["category"],
-            link_url=row["link_url"],
-            thumbnail_url=row["thumbnail_url"],
-            video_id=row["video_id"],
-        )
+        return _row_to_record(row)
 
     def update_entry(self, entry: EntryRecord) -> bool:
         """Persist updates for an existing entry.
@@ -159,29 +173,19 @@ class EntryService:
         """
 
         with closing(self._connection_factory()) as connection:
+            set_clauses = ", ".join(
+                f"{col} = ?" for col in ENTRY_COLUMNS[1:]
+            )  # Skip id
             cursor = connection.execute(
-                """
+                f"""
                 UPDATE entries
-                SET
-                    title = ?,
-                    summary = ?,
-                    occurred_at = ?,
-                    category = ?,
-                    link_url = ?,
-                    thumbnail_url = ?,
-                    video_id = ?
+                SET {set_clauses}
                 WHERE id = ?
                 """,
                 (
-                    entry.title,
-                    entry.summary,
-                    entry.occurred_at.isoformat(),
-                    entry.category,
-                    entry.link_url,
-                    entry.thumbnail_url,
-                    entry.video_id,
+                    *_record_to_values(entry)[1:],
                     entry.id,
-                ),
+                ),  # Skip id from values, append at end
             )
             connection.commit()
 
