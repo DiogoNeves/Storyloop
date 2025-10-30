@@ -7,11 +7,7 @@ import {
 } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 
-import {
-  ActivityFeed,
-  type ActivityDraft,
-  type ActivityItem,
-} from "@/components/ActivityFeed";
+import { ActivityFeed, type ActivityDraft } from "@/components/ActivityFeed";
 import { NavBar } from "@/components/NavBar";
 import {
   Card,
@@ -28,6 +24,7 @@ import {
 } from "@/api/entries";
 import { healthQueries } from "@/api/health";
 import { cn } from "@/lib/utils";
+import { type ActivityItem, entryToActivityItem } from "@/lib/types/entries";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -148,16 +145,7 @@ function DashboardShell() {
     if (!storedEntries) {
       return [];
     }
-    return storedEntries.map((entry) => ({
-      id: entry.id,
-      title: entry.title,
-      summary: entry.summary,
-      date: entry.date,
-      category: entry.category,
-      linkUrl: entry.linkUrl ?? undefined,
-      thumbnailUrl: entry.thumbnailUrl ?? undefined,
-      videoId: entry.videoId ?? undefined,
-    }));
+    return storedEntries.map(entryToActivityItem);
   }, [storedEntries]);
 
   const activityItems =
@@ -172,14 +160,19 @@ function DashboardShell() {
       if (!savedEntry) {
         return;
       }
-      queryClient.setQueryData<Entry[]>(entriesListQuery.queryKey, (current) => {
-        const next = (current ?? []).filter((entry) => entry.id !== savedEntry.id);
-        next.push(savedEntry);
-        next.sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-        );
-        return next;
-      });
+      queryClient.setQueryData<Entry[]>(
+        entriesListQuery.queryKey,
+        (current) => {
+          const next = (current ?? []).filter(
+            (entry) => entry.id !== savedEntry.id,
+          );
+          next.push(savedEntry);
+          next.sort(
+            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+          );
+          return next;
+        },
+      );
     },
   });
 
