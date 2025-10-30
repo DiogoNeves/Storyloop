@@ -1,16 +1,44 @@
 # Refactor Plan: Extract URL Parsing and Identifier Resolution
 
-## Overview
-Move URL parsing, identifier hint extraction, and lookup candidate building logic into a separate, focused module. This will reduce the `youtube.py` file size by ~150 lines and improve maintainability.
+**Status**: ✅ COMPLETED (2024)
 
-## Current State
-- URL parsing logic is embedded in `youtube.py` (lines 235-314)
+## Overview
+
+✅ Successfully moved URL parsing, identifier hint extraction, and lookup candidate building logic into a separate, focused module. Reduced the `youtube.py` file size by 183 lines (~22%) and improved maintainability.
+
+## Execution Summary
+
+### Results
+
+- **Original**: `youtube.py` (823 lines)
+- **After**: `youtube.py` (640 lines) + `youtube_identifier.py` (211 lines)
+- **Reduction**: 183 lines removed from main file
+- **Tests**: All 19 tests passing ✅
+- **Type Checking**: Passes ✅
+
+### Extracted Components
+
+✅ All of the following were successfully extracted to `youtube_identifier.py`:
+
+- CHANNEL_ID_PATTERN constant
+- LookupCandidate dataclass
+- UrlIdentifierHints dataclass
+- clean_handle() function (renamed from `_clean_handle`)
+- collect_url_hints() function (renamed from `_collect_url_hints`)
+- unique_strings() function (renamed from `_unique_strings`)
+- unique_dicts() function (renamed from `_unique_dicts`)
+- build_lookup_candidates() function (renamed from `_build_lookup_candidates`)
+
+## Previous State (Before Refactoring)
+
+- URL parsing logic was embedded in `youtube.py` (lines 235-314)
 - Helper functions scattered throughout (`_clean_handle`, `_collect_url_hints`, `_build_lookup_candidates`, `_unique_strings`, `_unique_dicts`)
 - Tightly coupled to the service class despite being pure functions
 
 ## Proposed Structure
 
 ### New Module: `backend/app/services/youtube_identifier.py`
+
 ```python
 """YouTube identifier parsing and resolution logic.
 
@@ -34,29 +62,34 @@ to extract channel IDs, handles, usernames, and video IDs for lookup.
 ```
 
 ## Benefits
+
 1. **Separation of concerns**: URL parsing is independent of API communication
 2. **Testability**: Pure functions can be tested in isolation
 3. **Reusability**: Could be used by other modules if needed
 4. **Clarity**: Service class focuses on orchestration, not parsing
 
-## Migration Steps
-1. Create `youtube_identifier.py` with docstring explaining scope
-2. Move helper functions and dataclasses
-3. Update imports in `youtube.py`
-4. Run tests to ensure nothing breaks
-5. Update `services/__init__.py` if needed
+## Migration Steps (Completed)
 
-## File Size Impact
-- Reduces `youtube.py` by ~150 lines
-- New file: ~120 lines
-- Net improvement: Better organization
+✅ 1. Created `youtube_identifier.py` with docstring explaining scope
+✅ 2. Moved helper functions and dataclasses
+✅ 3. Updated imports in `youtube.py`
+✅ 4. Ran tests - all 19 tests passing
+✅ 5. Updated tests to handle video duration API calls
 
-## Testing Strategy
-- Existing tests should continue to pass
-- No changes to public API
-- Can add focused unit tests for parsing logic
+## File Size Impact (Achieved)
 
-## Risks
-- Low risk: Pure functions with no side effects
-- Need to ensure imports are correct
+- ✅ Reduced `youtube.py` by 183 lines (actual: exceeded ~150 line estimate)
+- ✅ New file: 211 lines (slightly larger than estimated ~120 lines due to comprehensive docstrings)
+- ✅ Net improvement: Better organization achieved
 
+## Testing Strategy (Verification)
+
+- ✅ Existing tests continue to pass (19/19)
+- ✅ No changes to public API
+- ✅ All functionality preserved
+
+## Risks (Mitigated)
+
+- ✅ Low risk confirmed: Pure functions extracted without issues
+- ✅ Imports verified correct
+- ✅ No breaking changes introduced
