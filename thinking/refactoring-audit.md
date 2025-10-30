@@ -8,7 +8,7 @@ After reviewing the entire codebase, I've identified several areas where code qu
 
 ### Backend Patterns
 
-- **Router error handling** has repetitive exception-to-HTTP mapping patterns 🔍 **Planned**
+- **Router error handling** has repetitive exception-to-HTTP mapping patterns ✅ **Completed**
 - **Entry router** has manual EntryRecord construction duplicated across endpoints 🔍 **Planned**
 
 ### Frontend Patterns
@@ -25,12 +25,12 @@ After reviewing the entire codebase, I've identified several areas where code qu
 
 Based on the "low-hanging fruit or high-value first" principle, I've selected three areas:
 
-1. **Router Error Handling Pattern** (Backend) 🔍 **PLANNED**
+1. **Router Error Handling Pattern** (Backend) ✅ **COMPLETED**
 
    - Medium-value: Reduces duplication, improves consistency
    - Low-hanging: Clear patterns to extract
    - Impact: Cleaner error handling across routers
-   - Status: Plan created in `refactor-plan/router-error-handling.md`
+   - Status: Completed - Error handling utilities created and refactored in `backend/app/routers/errors.py`
 
 2. **Entry Router Model Conversion** (Backend) 🔍 **PLANNED**
 
