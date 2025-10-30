@@ -10,14 +10,15 @@ After reviewing the entire codebase, I've identified several areas where code qu
 
 - ~~**EntryService** has repeated SQL column lists and row-to-record conversion logic~~ ✅ **Resolved**
 - ~~**Routers** use verbose `request.app.state.*` access pattern without type safety~~ ✅ **Resolved**
-- **Database operations** follow consistent patterns but lack abstraction
+- **Router error handling** has repetitive exception-to-HTTP mapping patterns 🔍 **Planned**
+- **Entry router** has manual EntryRecord construction duplicated across endpoints 🔍 **Planned**
 
 ### Frontend Patterns
 
 - ~~**Entry types** are duplicated between API layer and components~~ ✅ **Resolved**
 - ~~**Entry transformation** logic (Entry ↔ ActivityItem) is scattered~~ ✅ **Resolved**
-- **ActivityFeed component** handles too many responsibilities (display, editing, YouTube fetching)
-- **State management** uses multiple useState calls that could be consolidated
+- **ActivityFeed component** handles too many responsibilities (display, editing, YouTube fetching) 🔍 **Planned**
+- **State management** uses multiple useState calls that could be consolidated 🔍 **Planned**
 
 ### Existing Refactoring Work
 
@@ -28,22 +29,22 @@ After reviewing the entire codebase, I've identified several areas where code qu
 
 Based on the "low-hanging fruit or high-value first" principle, I've selected three areas:
 
-1. **EntryService: Extract Database Operation Patterns** (Backend) ✅ **COMPLETED**
+1. **Router Error Handling Pattern** (Backend) 🔍 **PLANNED**
 
-   - High-value: Reduces duplication, improves maintainability
+   - Medium-value: Reduces duplication, improves consistency
    - Low-hanging: Clear patterns to extract
-   - Impact: Every database operation benefits
-   - Status: Successfully completed - all tests passing
+   - Impact: Cleaner error handling across routers
+   - Status: Plan created in `refactor-plan/router-error-handling.md`
 
-2. **Frontend: Extract Entry Transformation and Mapping** (Frontend) ✅ **COMPLETED**
+2. **Entry Router Model Conversion** (Backend) 🔍 **PLANNED**
 
-   - High-value: Reduces type duplication, centralizes mapping logic
-   - Low-hanging: Clear abstraction boundaries
-   - Impact: Simplifies API layer and components
-   - Status: Successfully completed - all changes implemented, no linting errors
+   - Low-value: Minor improvement, reduces some duplication
+   - Low-hanging: Simple helper functions to extract
+   - Impact: Cleaner conversion logic
+   - Status: Plan created in `refactor-plan/entry-router-conversion.md`
 
-3. **Router Dependency Injection** (Backend) ✅ **COMPLETED**
-   - High-value: Improves type safety, reduces boilerplate
-   - Low-hanging: FastAPI has built-in patterns for this
-   - Impact: Cleaner router code, better testability
-   - Status: Successfully completed - all tests passing
+3. **ActivityFeed State Consolidation** (Frontend) 🔍 **PLANNED**
+   - Medium-value: Reduces component complexity, improves maintainability
+   - Medium-hanging: Requires extracting custom hooks
+   - Impact: Easier to understand and maintain, better separation of concerns
+   - Status: Plan created in `refactor-plan/activityfeed-state-consolidation.md`
