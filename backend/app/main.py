@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
-from typing import AsyncIterator, Callable
+from typing import AsyncIterator, Callable, Literal
 
 import logfire
 from fastapi import FastAPI
@@ -23,13 +23,18 @@ logger = logging.getLogger(__name__)
 
 def configure_logfire(active_settings: Settings) -> None:
     """Initialize Logfire observability."""
-    kwargs = {
-        "service_name": "storyloop-backend",
-        "send_to_logfire": "if-token-present",
-    }
+    send_to_logfire_value: Literal["if-token-present"] = "if-token-present"
     if active_settings.logfire_api_key:
-        kwargs["token"] = active_settings.logfire_api_key
-    logfire.configure(**kwargs)
+        logfire.configure(
+            service_name="storyloop-backend",
+            send_to_logfire=send_to_logfire_value,
+            token=active_settings.logfire_api_key,
+        )
+    else:
+        logfire.configure(
+            service_name="storyloop-backend",
+            send_to_logfire=send_to_logfire_value,
+        )
 
 
 def build_lifespan(
@@ -60,10 +65,13 @@ def build_lifespan(
         if scheduler is not None:
             app.state.scheduler = scheduler
             scheduler.start()
-            logger.info("Scheduler started with %d jobs", len(scheduler.get_jobs()))
+            logger.info(
+                "Scheduler started with %d jobs", len(scheduler.get_jobs())
+            )
         else:
             logger.info(
-                "Scheduler disabled for %s environment", active_settings.environment
+                "Scheduler disabled for %s environment",
+                active_settings.environment,
             )
         try:
             yield
@@ -80,7 +88,9 @@ def create_app(active_settings: Settings | None = None) -> FastAPI:
     logging.basicConfig(level=logging.INFO)
     resolved_settings = active_settings or settings
     configure_logfire(resolved_settings)
-    connection_factory = create_connection_factory(resolved_settings.database_url)
+    connection_factory = create_connection_factory(
+        resolved_settings.database_url
+    )
 
     application = FastAPI(
         title="Storyloop API",
