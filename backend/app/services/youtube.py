@@ -543,9 +543,11 @@ class YoutubeService:
         page_token: str | None = None
 
         while remaining > 0:
-            params = dict(base_params)
-            params["maxResults"] = min(MAX_RESULTS_CAP, remaining)
-            if page_token:
+            params: dict[str, Any] = {
+                **base_params,
+                "maxResults": min(MAX_RESULTS_CAP, remaining),
+            }
+            if page_token is not None:
                 params["pageToken"] = page_token
             payload = await self._request_json(client, "playlistItems", params)
             items = payload.get("items", [])
