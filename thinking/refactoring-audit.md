@@ -8,15 +8,11 @@ After reviewing the entire codebase, I've identified several areas where code qu
 
 ### Backend Patterns
 
-- ~~**EntryService** has repeated SQL column lists and row-to-record conversion logic~~ ✅ **Resolved**
-- ~~**Routers** use verbose `request.app.state.*` access pattern without type safety~~ ✅ **Resolved**
 - **Router error handling** has repetitive exception-to-HTTP mapping patterns 🔍 **Planned**
 - **Entry router** has manual EntryRecord construction duplicated across endpoints 🔍 **Planned**
 
 ### Frontend Patterns
 
-- ~~**Entry types** are duplicated between API layer and components~~ ✅ **Resolved**
-- ~~**Entry transformation** logic (Entry ↔ ActivityItem) is scattered~~ ✅ **Resolved**
 - **ActivityFeed component** handles too many responsibilities (display, editing, YouTube fetching) 🔍 **Planned**
 - **State management** uses multiple useState calls that could be consolidated 🔍 **Planned**
 
