@@ -1,12 +1,13 @@
 # Refactor Plan: Router Error Handling Pattern
 
-**Status**: 🔍 **PLANNED** - Ready for implementation
+**Status**: ✅ **COMPLETED** - Implementation finished and tests passing
 
 ## Problem Statement
 
 Router endpoints have repetitive error handling patterns:
 
 1. **Repetitive exception-to-HTTP mapping**: The YouTube router (`routers/youtube.py`) has a try/except block that maps service exceptions to HTTPException with specific status codes:
+
    ```python
    try:
        feed = await youtube_service.fetch_channel_videos(channel)
@@ -19,11 +20,13 @@ Router endpoints have repetitive error handling patterns:
    ```
 
 2. **Repetitive "not found" checks**: The entries router (`routers/entries.py`) has repeated patterns:
+
    ```python
    record = entry_service.get_entry(entry_id)
    if record is None:
        raise HTTPException(status_code=404, detail="Entry not found")
    ```
+
    This pattern appears in `get_entry`, `update_entry`, and `delete_entry`.
 
 3. **Inconsistent error handling**: Different routers handle errors differently, making it hard to maintain consistent API error responses.
@@ -59,7 +62,7 @@ from app.services.youtube import (
 
 def handle_youtube_error(exc: YoutubeError) -> HTTPException:
     """Map YouTube service exceptions to HTTPException.
-    
+
     This is a pure function that converts domain exceptions to HTTP responses.
     """
     if isinstance(exc, YoutubeConfigurationError):
@@ -86,16 +89,16 @@ def handle_youtube_error(exc: YoutubeError) -> HTTPException:
 
 def ensure_exists[T](value: T | None, entity_name: str = "Resource") -> T:
     """Return the value if not None, otherwise raise 404 HTTPException.
-    
+
     This is a pure function for the common "not found" pattern.
-    
+
     Args:
         value: The value to check
         entity_name: Name of the entity for error messages
-        
+
     Returns:
         The value if not None
-        
+
     Raises:
         HTTPException: 404 if value is None
     """
@@ -107,7 +110,8 @@ def ensure_exists[T](value: T | None, entity_name: str = "Resource") -> T:
     return value
 ```
 
-**Rationale**: 
+**Rationale**:
+
 - Pure functions with no side effects
 - Single source of truth for error mapping
 - Type-safe with generics
@@ -116,6 +120,7 @@ def ensure_exists[T](value: T | None, entity_name: str = "Resource") -> T:
 ### Step 2: Refactor YouTube Router
 
 **Before (`routers/youtube.py`):**
+
 ```python
 @router.get("/videos")
 async def list_channel_videos(
@@ -142,6 +147,7 @@ async def list_channel_videos(
 ```
 
 **After (`routers/youtube.py`):**
+
 ```python
 from app.routers.errors import handle_youtube_error
 
@@ -158,7 +164,8 @@ async def list_channel_videos(
     return feed.to_dict()
 ```
 
-**Rationale**: 
+**Rationale**:
+
 - Single exception handler catches all YoutubeError subclasses
 - Error mapping logic centralized
 - Cleaner, more maintainable code
@@ -166,6 +173,7 @@ async def list_channel_videos(
 ### Step 3: Refactor Entries Router
 
 **Before (`routers/entries.py`):**
+
 ```python
 @router.get("/{entry_id}", response_model=EntryResponse)
 def get_entry(
@@ -179,6 +187,7 @@ def get_entry(
 ```
 
 **After (`routers/entries.py`):**
+
 ```python
 from app.routers.errors import ensure_exists
 
@@ -194,7 +203,8 @@ def get_entry(
     return EntryResponse.from_record(record)
 ```
 
-**Rationale**: 
+**Rationale**:
+
 - Eliminates repetitive None checks
 - Consistent error messages
 - Type-safe with generics
@@ -226,7 +236,7 @@ from app.services.youtube import (
 
 def handle_youtube_error(exc: YoutubeError) -> HTTPException:
     """Map YouTube service exceptions to HTTPException.
-    
+
     Pure function that converts domain exceptions to HTTP responses.
     """
     if isinstance(exc, YoutubeConfigurationError):
@@ -252,7 +262,7 @@ def handle_youtube_error(exc: YoutubeError) -> HTTPException:
 
 def ensure_exists[T](value: T | None, entity_name: str = "Resource") -> T:
     """Return the value if not None, otherwise raise 404 HTTPException.
-    
+
     Pure function for the common "not found" pattern.
     """
     if value is None:
@@ -265,12 +275,12 @@ def ensure_exists[T](value: T | None, entity_name: str = "Resource") -> T:
 
 ## Verification Checklist
 
-- [ ] Error handling utilities created
-- [ ] YouTube router refactored to use `handle_youtube_error`
-- [ ] Entries router refactored to use `ensure_exists` for all endpoints
-- [ ] Tests pass: `make test-backend`
-- [ ] No behavior changes (same HTTP status codes and messages)
-- [ ] Code is more readable and maintainable
+- [x] Error handling utilities created
+- [x] YouTube router refactored to use `handle_youtube_error`
+- [x] Entries router refactored to use `ensure_exists` for all endpoints
+- [x] Tests pass: `make test-backend` (19 tests passing)
+- [x] No behavior changes (same HTTP status codes and messages)
+- [x] Code is more readable and maintainable
 
 ## Benefits
 
@@ -289,6 +299,7 @@ def ensure_exists[T](value: T | None, entity_name: str = "Resource") -> T:
 ## Functional Programming Preference
 
 The solution uses:
+
 - Pure functions for error mapping (no side effects)
 - Type-safe generics for ensure_exists
 - Explicit transformations
@@ -302,12 +313,13 @@ The solution uses:
 ## File Scope
 
 **In-scope:**
+
 - `backend/app/routers/errors.py` - New file with error handling utilities
 - `backend/app/routers/youtube.py` - Refactor to use error handler
 - `backend/app/routers/entries.py` - Refactor to use ensure_exists
 
 **Out-of-scope:**
+
 - Service layer exceptions - Already well-structured
 - Frontend error handling - Different concern
 - Custom exception classes - Already exist
-
