@@ -9,7 +9,7 @@ After reviewing the entire codebase, I've identified several areas where code qu
 ### Backend Patterns
 
 - ~~**EntryService** has repeated SQL column lists and row-to-record conversion logic~~ ✅ **Resolved**
-- **Routers** use verbose `request.app.state.*` access pattern without type safety
+- ~~**Routers** use verbose `request.app.state.*` access pattern without type safety~~ ✅ **Resolved**
 - **Database operations** follow consistent patterns but lack abstraction
 
 ### Frontend Patterns
@@ -41,7 +41,8 @@ Based on the "low-hanging fruit or high-value first" principle, I've selected th
    - Low-hanging: Clear abstraction boundaries
    - Impact: Simplifies API layer and components
 
-3. **Router Dependency Injection** (Backend)
+3. **Router Dependency Injection** (Backend) ✅ **COMPLETED**
    - High-value: Improves type safety, reduces boilerplate
    - Low-hanging: FastAPI has built-in patterns for this
    - Impact: Cleaner router code, better testability
+   - Status: Successfully completed - all tests passing

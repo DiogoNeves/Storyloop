@@ -35,11 +35,12 @@ This document summarizes the refactoring opportunities identified in the Storylo
 
 ---
 
-### 3. Router Dependency Injection Pattern
+### 3. Router Dependency Injection Pattern ✅ **COMPLETED**
 **Location**: `backend/app/routers/`  
 **Priority**: Medium  
 **Effort**: Low  
 **Impact**: Medium  
+**Status**: ✅ Completed - All tests passing
 
 **Problem**: Verbose `request.app.state.*` access pattern with no type safety.
 
@@ -67,7 +68,8 @@ These areas were chosen based on:
 
 ## Completed Refactorings
 
-✅ **EntryService Database Operation Patterns** - Completed successfully with all tests passing
+✅ **EntryService Database Operation Patterns** - Completed successfully with all tests passing  
+✅ **Router Dependency Injection Pattern** - Completed successfully with all tests passing
 
 ## Next Steps
 
