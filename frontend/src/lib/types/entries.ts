@@ -19,6 +19,7 @@ export interface Entry {
   linkUrl?: string | null;
   thumbnailUrl?: string | null;
   videoId?: string | null;
+  videoType?: "short" | "live" | "video" | null;
 }
 
 /**
@@ -34,6 +35,7 @@ export interface ActivityItem {
   linkUrl?: string;
   thumbnailUrl?: string;
   videoId?: string;
+  videoType?: "short" | "live" | "video";
 }
 
 /**
@@ -52,6 +54,7 @@ export function entryToActivityItem(entry: Entry): ActivityItem {
     linkUrl: entry.linkUrl ?? undefined,
     thumbnailUrl: entry.thumbnailUrl ?? undefined,
     videoId: entry.videoId ?? undefined,
+    videoType: entry.videoType ?? undefined,
   };
 }
 
@@ -73,6 +76,7 @@ export function youtubeVideoToActivityItem(
     linkUrl: video.url,
     thumbnailUrl: video.thumbnailUrl ?? undefined,
     videoId: video.id,
+    videoType: video.videoType,
   };
 }
 
