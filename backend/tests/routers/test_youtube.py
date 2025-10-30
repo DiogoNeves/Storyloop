@@ -17,12 +17,12 @@ async def test_youtube_videos_endpoint_returns_payload():
                     "title": "Example Channel",
                     "description": "Sample description",
                     "thumbnails": {
-                        "default": {"url": "https://img.youtube.com/default.jpg"}
+                        "default": {
+                            "url": "https://img.youtube.com/default.jpg"
+                        }
                     },
                 },
-                "contentDetails": {
-                    "relatedPlaylists": {"uploads": "UU555"}
-                },
+                "contentDetails": {"relatedPlaylists": {"uploads": "UU555"}},
             }
         ]
     }
@@ -47,13 +47,18 @@ async def test_youtube_videos_endpoint_returns_payload():
             return httpx.Response(200, json={"items": []})
         if request.url.path.endswith("/playlistItems"):
             return httpx.Response(200, json=playlist_payload)
+        if request.url.path.endswith("/videos"):
+            # Video duration lookup
+            return httpx.Response(200, json={"items": []})
         if request.url.path.endswith("/search"):
             return httpx.Response(200, json={"items": []})
         raise AssertionError(f"Unhandled URL {request.url}")
 
     test_transport = httpx.MockTransport(handler)
 
-    settings = Settings(youtube_api_key="test-key", database_url="sqlite:///:memory:")
+    settings = Settings(
+        YOUTUBE_API_KEY="test-key", DATABASE_URL="sqlite:///:memory:"
+    )
     app = create_app(settings)
 
     async with AsyncClient(
@@ -62,7 +67,9 @@ async def test_youtube_videos_endpoint_returns_payload():
         app.state.youtube_service = YoutubeService(
             api_key="test-key", transport=test_transport
         )
-        response = await client.get("/youtube/videos", params={"channel": "@storyloop"})
+        response = await client.get(
+            "/youtube/videos", params={"channel": "@storyloop"}
+        )
 
     assert response.status_code == 200
     payload = response.json()
