@@ -50,19 +50,35 @@ async def main() -> int:
     ]
 
     stop_event = asyncio.Event()
-
     loop = asyncio.get_running_loop()
+    signals = (signal.SIGINT, signal.SIGTERM)
 
-    for sig in (signal.SIGINT, signal.SIGTERM):
-        loop.add_signal_handler(sig, stop_event.set)
+    def signal_handler() -> None:
+        stop_event.set()
+
+    # Register signal handlers
+    for sig in signals:
+        try:
+            loop.add_signal_handler(sig, signal_handler)
+        except (NotImplementedError, RuntimeError):
+            # Fallback for systems without async signal support
+            signal.signal(sig, lambda s, f: stop_event.set())
 
     backend_task = asyncio.create_task(run_process(backend_cmd, BACKEND_DIR))
     frontend_task = asyncio.create_task(run_process(frontend_cmd, FRONTEND_DIR))
 
-    await stop_event.wait()
+    try:
+        await stop_event.wait()
+    finally:
+        # Clean up signal handlers before cancelling tasks
+        for sig in signals:
+            try:
+                loop.remove_signal_handler(sig)
+            except (ValueError, RuntimeError):
+                pass
 
-    backend_task.cancel()
-    frontend_task.cancel()
+        backend_task.cancel()
+        frontend_task.cancel()
 
     results = await asyncio.gather(
         backend_task, frontend_task, return_exceptions=True
