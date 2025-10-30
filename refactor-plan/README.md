@@ -4,53 +4,6 @@
 
 This document summarizes the refactoring opportunities identified in the Storyloop codebase. After reviewing the entire codebase and understanding its structure, three areas have been selected for refactoring improvements.
 
-## Selected Refactoring Areas
-
-### 1. EntryService Database Operation Patterns ✅ **COMPLETED**
-**Location**: `backend/app/services/entries.py`  
-**Priority**: High  
-**Effort**: Low  
-**Impact**: High  
-**Status**: ✅ Completed - All tests passing
-
-**Problem**: Repeated SQL column lists and row-to-record conversion logic across multiple methods.
-
-**Solution**: Extract column definitions and conversion logic into reusable helpers.
-
-**Plan**: See `entry-service-db-patterns.md`
-
----
-
-### 2. Frontend Entry Transformation and Mapping ✅ **COMPLETED**
-**Location**: `frontend/src/` (multiple files)  
-**Priority**: High  
-**Effort**: Medium  
-**Impact**: Medium  
-**Status**: ✅ Completed - All changes implemented, no linting errors
-
-**Problem**: Type duplication between API layer and components, scattered transformation logic.
-
-**Solution**: Create centralized mapping layer with shared types and transformation utilities.
-
-**Plan**: See `frontend-entry-mapping.md`
-
----
-
-### 3. Router Dependency Injection Pattern ✅ **COMPLETED**
-**Location**: `backend/app/routers/`  
-**Priority**: Medium  
-**Effort**: Low  
-**Impact**: Medium  
-**Status**: ✅ Completed - All tests passing
-
-**Problem**: Verbose `request.app.state.*` access pattern with no type safety.
-
-**Solution**: Use FastAPI's dependency injection system for cleaner, type-safe service access.
-
-**Plan**: See `router-dependency-injection.md`
-
----
-
 ## Selection Criteria
 
 These areas were chosen based on:
@@ -60,32 +13,64 @@ These areas were chosen based on:
 3. **Functional preference**: All solutions use pure functions and immutable transformations
 4. **Simple and brief**: No over-engineering, just clean abstractions
 
+## Selected Refactoring Areas
+
+### 1. Router Error Handling Pattern 🔍 **PLANNED**
+**Location**: `backend/app/routers/`  
+**Priority**: Medium  
+**Effort**: Low  
+**Impact**: Medium  
+**Status**: 🔍 Planned - Ready for implementation
+
+**Problem**: Repetitive exception-to-HTTP mapping and "not found" checks across routers.
+
+**Solution**: Extract error handling into reusable utilities with pure functions.
+
+**Plan**: See `router-error-handling.md`
+
+---
+
+### 2. Entry Router Model Conversion 🔍 **PLANNED**
+**Location**: `backend/app/routers/entries.py`  
+**Priority**: Low  
+**Effort**: Low  
+**Impact**: Low  
+**Status**: 🔍 Planned - Ready for implementation
+
+**Problem**: Manual EntryRecord construction and field mapping duplicated across endpoints.
+
+**Solution**: Extract conversion logic into pure helper functions.
+
+**Plan**: See `entry-router-conversion.md`
+
+---
+
+### 3. ActivityFeed State Consolidation 🔍 **PLANNED**
+**Location**: `frontend/src/components/ActivityFeed.tsx`  
+**Priority**: Medium  
+**Effort**: Medium  
+**Impact**: Medium  
+**Status**: 🔍 Planned - Ready for implementation
+
+**Problem**: Component has 8 useState hooks and handles multiple responsibilities.
+
+**Solution**: Extract state management into custom hooks (`useYouTubeFeed`, `useEntryEditing`).
+
+**Plan**: See `activityfeed-state-consolidation.md`
+
+---
+
 ## Excluded Areas
 
 - **YouTube Service**: Already has comprehensive refactoring reports in `refactoring-report/`
 - **Growth Score Service**: Placeholder implementation, not yet mature enough
 - **Database Layer**: Already well-structured with connection factory pattern
-- **Frontend State Management**: Could be improved but requires more design decisions
-
-## Completed Refactorings
-
-✅ **EntryService Database Operation Patterns** - Completed successfully with all tests passing  
-✅ **Frontend Entry Transformation and Mapping** - Completed successfully with all changes implemented, no linting errors  
-✅ **Router Dependency Injection Pattern** - Completed successfully with all tests passing
 
 ## Next Steps
 
-1. Review remaining plan documents
+1. Review refactoring plan documents
 2. Prioritize based on current development needs
 3. Implement one refactoring at a time
 4. Run tests after each change
 5. Document any deviations from the plan
-
-## Notes
-
-- All refactorings are **pure refactorings** with no behavior changes
-- Existing tests should continue to pass
-- Follow functional programming principles (pure functions, immutability)
-- Keep solutions simple and avoid over-engineering
-- Each file should have a clear docstring explaining its scope
 
