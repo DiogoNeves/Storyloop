@@ -93,6 +93,41 @@ class EntryUpdate(BaseModel):
         return stripped
 
 
+def _create_to_record(entry: EntryCreate) -> EntryRecord:
+    """Convert EntryCreate Pydantic model to EntryRecord.
+
+    Pure function that transforms API models to domain models.
+    """
+    return EntryRecord(
+        id=entry.id,
+        title=entry.title,
+        summary=entry.summary,
+        occurred_at=entry.occurred_at,
+        category=entry.category,
+        link_url=entry.link_url,
+        thumbnail_url=entry.thumbnail_url,
+        video_id=entry.video_id,
+    )
+
+
+def _update_record(current: EntryRecord, updates: EntryUpdate) -> EntryRecord:
+    """Merge EntryUpdate into EntryRecord, returning a new EntryRecord.
+
+    Pure function that combines current record with partial updates.
+    """
+    update_dict = updates.model_dump(exclude_unset=True)
+    return EntryRecord(
+        id=current.id,
+        title=update_dict.get("title", current.title),
+        summary=update_dict.get("summary", current.summary),
+        occurred_at=update_dict.get("occurred_at", current.occurred_at),
+        category=update_dict.get("category", current.category),
+        link_url=update_dict.get("link_url", current.link_url),
+        thumbnail_url=update_dict.get("thumbnail_url", current.thumbnail_url),
+        video_id=update_dict.get("video_id", current.video_id),
+    )
+
+
 @router.get("/", response_model=list[EntryResponse])
 def list_entries(
     entry_service: EntryService = Depends(get_entry_service),
@@ -108,19 +143,7 @@ def save_entries(
     entry_service: EntryService = Depends(get_entry_service),
 ) -> list[EntryResponse]:
     """Persist provided entries, returning only the newly stored items."""
-    records = [
-        EntryRecord(
-            id=entry.id,
-            title=entry.title,
-            summary=entry.summary,
-            occurred_at=entry.occurred_at,
-            category=entry.category,
-            link_url=entry.link_url,
-            thumbnail_url=entry.thumbnail_url,
-            video_id=entry.video_id,
-        )
-        for entry in entries
-    ]
+    records = [_create_to_record(entry) for entry in entries]
     saved = entry_service.save_new_entries(records)
     return [EntryResponse.from_record(record) for record in saved]
 
@@ -148,18 +171,7 @@ def update_entry(
         entry_service.get_entry(entry_id),
         entity_name="Entry",
     )
-
-    updates = payload.model_dump(exclude_unset=True)
-    updated_record = EntryRecord(
-        id=current.id,
-        title=updates.get("title", current.title),
-        summary=updates.get("summary", current.summary),
-        occurred_at=updates.get("occurred_at", current.occurred_at),
-        category=updates.get("category", current.category),
-        link_url=updates.get("link_url", current.link_url),
-        thumbnail_url=updates.get("thumbnail_url", current.thumbnail_url),
-        video_id=updates.get("video_id", current.video_id),
-    )
+    updated_record = _update_record(current, payload)
 
     updated = entry_service.update_entry(updated_record)
     if not updated:
