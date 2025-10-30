@@ -1,9 +1,6 @@
 import { type ActivityItem } from "@/lib/types/entries";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 export const categoryBadgeClass: Record<ActivityItem["category"], string> = {
@@ -36,8 +33,8 @@ export function ActivityFeedItem({
   const showThumbnail = item.category === "video" && Boolean(item.thumbnailUrl);
 
   return (
-    <Card>
-      <CardContent className="space-y-3 p-4">
+    <Card className="group">
+      <CardContent className="relative space-y-3 p-4">
         <div className="flex items-center justify-between gap-2">
           <Badge
             variant="secondary"
@@ -52,36 +49,6 @@ export function ActivityFeedItem({
             >
               {formattedDate}
             </time>
-            {onEdit || onDelete ? (
-              <div className="flex items-center gap-1">
-                {onEdit ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      onEdit();
-                    }}
-                  >
-                    Edit
-                  </Button>
-                ) : null}
-                {onDelete ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className="text-destructive hover:text-white"
-                    onClick={() => {
-                      onDelete();
-                    }}
-                    disabled={isDeleting}
-                  >
-                    {isDeleting ? "Deleting…" : "Delete"}
-                  </Button>
-                ) : null}
-              </div>
-            ) : null}
           </div>
         </div>
         <div className="flex gap-4">
@@ -144,8 +111,37 @@ export function ActivityFeedItem({
             )
           ) : null}
         </div>
+        {onEdit || onDelete ? (
+          <div className="absolute bottom-4 right-4 hidden items-center gap-1 group-hover:flex">
+            {onEdit ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  onEdit();
+                }}
+              >
+                Edit
+              </Button>
+            ) : null}
+            {onDelete ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="text-destructive hover:text-white"
+                onClick={() => {
+                  onDelete();
+                }}
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Deleting…" : "Delete"}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );
 }
-
