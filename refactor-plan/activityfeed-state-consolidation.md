@@ -1,12 +1,13 @@
 # Refactor Plan: ActivityFeed State Consolidation
 
-**Status**: 🔍 **PLANNED** - Ready for implementation
+**Status**: ✅ **COMPLETED** - All refactoring implemented and tested
 
 ## Problem Statement
 
 The `ActivityFeed` component handles too many responsibilities and uses multiple `useState` hooks:
 
 1. **Multiple useState hooks**: The component manages 8 separate state variables:
+
    - `channelInput` - YouTube channel input
    - `isLoadingVideos` - Loading state for YouTube fetch
    - `youtubeError` - Error state for YouTube operations
@@ -17,6 +18,7 @@ The `ActivityFeed` component handles too many responsibilities and uses multiple
    - `deletingEntryId` - Entry being deleted
 
 2. **Mixed responsibilities**: The component handles:
+
    - Displaying activity items
    - Editing entries
    - Deleting entries
@@ -49,7 +51,7 @@ import { youtubeApi, type YoutubeFeedResponse } from "@/api/youtube";
 
 /**
  * Hook for managing YouTube channel feed state and operations.
- * 
+ *
  * Encapsulates the state and logic for fetching and displaying YouTube videos.
  */
 export function useYouTubeFeed() {
@@ -57,7 +59,7 @@ export function useYouTubeFeed() {
   const [isLoadingVideos, setIsLoadingVideos] = useState(false);
   const [youtubeError, setYoutubeError] = useState<string | null>(null);
   const [youtubeFeed, setYoutubeFeed] = useState<YoutubeFeedResponse | null>(
-    null,
+    null
   );
 
   const handleFetchVideos = useCallback(async () => {
@@ -86,11 +88,11 @@ export function useYouTubeFeed() {
             : null;
         if (status === 404) {
           setYoutubeError(
-            detail ?? "We couldn't find that channel on YouTube.",
+            detail ?? "We couldn't find that channel on YouTube."
           );
         } else if (status === 503) {
           setYoutubeError(
-            detail ?? "The server hasn't been configured for YouTube yet.",
+            detail ?? "The server hasn't been configured for YouTube yet."
           );
         } else {
           setYoutubeError(detail ?? "We couldn't load videos from YouTube.");
@@ -110,7 +112,7 @@ export function useYouTubeFeed() {
         void handleFetchVideos();
       }
     },
-    [handleFetchVideos],
+    [handleFetchVideos]
   );
 
   return {
@@ -126,6 +128,7 @@ export function useYouTubeFeed() {
 ```
 
 **Rationale**:
+
 - Encapsulates related state and logic
 - Pure function (no side effects beyond state updates)
 - Reusable if needed elsewhere
@@ -145,7 +148,7 @@ import { type ActivityItem } from "@/lib/types/entries";
 
 /**
  * Hook for managing entry editing state and operations.
- * 
+ *
  * Encapsulates the state and logic for editing and deleting entries.
  */
 export function useEntryEditing() {
@@ -155,7 +158,7 @@ export function useEntryEditing() {
   const [deletingEntryId, setDeletingEntryId] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
-  
+
   const updateEntryMutation = useMutation(
     entriesMutations.update(queryClient, {
       onError: (error) => {
@@ -170,7 +173,7 @@ export function useEntryEditing() {
         setEditingDraft(null);
         setEditingError(null);
       },
-    }),
+    })
   );
 
   const deleteEntryMutation = useMutation(
@@ -191,7 +194,7 @@ export function useEntryEditing() {
       onSettled: () => {
         setDeletingEntryId(null);
       },
-    }),
+    })
   );
 
   const startEdit = useCallback((item: ActivityItem) => {
@@ -254,7 +257,7 @@ export function useEntryEditing() {
       }
       if (typeof window !== "undefined") {
         const confirmed = window.confirm(
-          "Are you sure you want to delete this entry?",
+          "Are you sure you want to delete this entry?"
         );
         if (!confirmed) {
           return;
@@ -266,7 +269,7 @@ export function useEntryEditing() {
         // handled in the mutation onError callback
       });
     },
-    [deleteEntryMutation, deletingEntryId],
+    [deleteEntryMutation, deletingEntryId]
   );
 
   return {
@@ -275,7 +278,8 @@ export function useEntryEditing() {
     editingError,
     deletingEntryId,
     isUpdating: updateEntryMutation.isPending,
-    isDeleting: (id: string) => deletingEntryId === id && deleteEntryMutation.isPending,
+    isDeleting: (id: string) =>
+      deletingEntryId === id && deleteEntryMutation.isPending,
     startEdit,
     handleEditDraftChange,
     cancelEdit,
@@ -295,6 +299,7 @@ function toDateTimeLocalInput(date: string) {
 ```
 
 **Rationale**:
+
 - Encapsulates editing state and operations
 - Keeps related state together
 - Easier to test in isolation
@@ -303,6 +308,7 @@ function toDateTimeLocalInput(date: string) {
 ### Step 3: Refactor ActivityFeed Component
 
 **Before:**
+
 ```typescript
 export function ActivityFeed({ ... }: ActivityFeedProps) {
   const [channelInput, setChannelInput] = useState("");
@@ -313,12 +319,13 @@ export function ActivityFeed({ ... }: ActivityFeedProps) {
   const [editingDraft, setEditingDraft] = useState<ActivityDraft | null>(null);
   const [editingError, setEditingError] = useState<string | null>(null);
   const [deletingEntryId, setDeletingEntryId] = useState<string | null>(null);
-  
+
   // ... 200+ lines of handler functions ...
 }
 ```
 
 **After:**
+
 ```typescript
 import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
 import { useEntryEditing } from "@/hooks/useEntryEditing";
@@ -326,13 +333,14 @@ import { useEntryEditing } from "@/hooks/useEntryEditing";
 export function ActivityFeed({ ... }: ActivityFeedProps) {
   const youtubeState = useYouTubeFeed();
   const editingState = useEntryEditing();
-  
+
   // Component focuses on rendering and composition
   // State management delegated to hooks
 }
 ```
 
 **Rationale**:
+
 - Significant reduction in component complexity
 - Clear separation of concerns
 - Easier to understand and maintain
@@ -375,20 +383,20 @@ import { useEntryEditing } from "@/hooks/useEntryEditing";
 export function ActivityFeed({ ... }: ActivityFeedProps) {
   const youtubeState = useYouTubeFeed();
   const editingState = useEntryEditing();
-  
+
   // ... component logic ...
 }
 ```
 
 ## Verification Checklist
 
-- [ ] `useYouTubeFeed` hook created and tested
-- [ ] `useEntryEditing` hook created and tested
-- [ ] `ActivityFeed` refactored to use hooks
-- [ ] All state management logic extracted
-- [ ] Tests pass: `make test-frontend`
-- [ ] No behavior changes
-- [ ] Component is more readable and maintainable
+- [x] `useYouTubeFeed` hook created and tested
+- [x] `useEntryEditing` hook created and tested
+- [x] `ActivityFeed` refactored to use hooks
+- [x] All state management logic extracted
+- [x] Tests pass: `make test-frontend`
+- [x] No behavior changes
+- [x] Component is more readable and maintainable
 
 ## Benefits
 
@@ -407,6 +415,7 @@ export function ActivityFeed({ ... }: ActivityFeedProps) {
 ## Functional Programming Preference
 
 The solution uses:
+
 - Pure functions (hooks return consistent values)
 - Immutable state updates (React's useState)
 - Function composition (hooks compose together)
@@ -420,12 +429,14 @@ The solution uses:
 ## File Scope
 
 **In-scope:**
+
 - `frontend/src/hooks/useYouTubeFeed.ts` - New hook for YouTube state
 - `frontend/src/hooks/useEntryEditing.ts` - New hook for editing state
 - `frontend/src/hooks/index.ts` - Barrel export
 - `frontend/src/components/ActivityFeed.tsx` - Refactor to use hooks
 
 **Out-of-scope:**
+
 - Draft creation state (handled by parent component)
 - Entry display logic (stays in component)
 - Other component refactoring (focus on state only)
@@ -442,17 +453,19 @@ type EditingState = {
   deletingEntryId: string | null;
 };
 
-type EditingAction = 
+type EditingAction =
   | { type: "start_edit"; item: ActivityItem }
   | { type: "update_draft"; draft: ActivityDraft }
   | { type: "cancel_edit" }
   | { type: "set_error"; error: string | null }
   | { type: "set_deleting"; id: string | null };
 
-function editingReducer(state: EditingState, action: EditingAction): EditingState {
+function editingReducer(
+  state: EditingState,
+  action: EditingAction
+): EditingState {
   // ... reducer logic ...
 }
 ```
 
 However, for this use case, `useState` with custom hooks is simpler and sufficient.
-
