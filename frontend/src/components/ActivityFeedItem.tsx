@@ -36,12 +36,19 @@ export function ActivityFeedItem({
     <Card className="group">
       <CardContent className="relative space-y-3 p-4">
         <div className="flex items-center justify-between gap-2">
-          <Badge
-            variant="secondary"
-            className={categoryBadgeClass[item.category]}
-          >
-            {item.category}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge
+              variant="secondary"
+              className={categoryBadgeClass[item.category]}
+            >
+              {item.category}
+            </Badge>
+            {item.videoType ? (
+              <span className="text-xs text-muted-foreground">
+                ({item.videoType})
+              </span>
+            ) : null}
+          </div>
           <div className="flex items-center gap-2">
             <time
               className="text-xs text-muted-foreground"

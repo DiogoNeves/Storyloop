@@ -7,6 +7,7 @@ export interface YoutubeVideoResponse {
   publishedAt: string;
   url: string;
   thumbnailUrl: string | null;
+  videoType: "short" | "live" | "video";
 }
 
 export interface YoutubeFeedResponse {
