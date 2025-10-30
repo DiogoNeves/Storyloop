@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import Any
 
 from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -33,7 +34,9 @@ class Settings(BaseModel):
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     youtube_api_key: str | None = Field(default=None, alias="YOUTUBE_API_KEY")
     youtube_client_id: str | None = Field(
-        default=None, alias="YOUTUBE_CLIENT_ID", description="OAuth client id for YouTube"
+        default=None,
+        alias="YOUTUBE_CLIENT_ID",
+        description="OAuth client id for YouTube",
     )
     youtube_client_secret: str | None = Field(
         default=None,
@@ -46,7 +49,10 @@ class Settings(BaseModel):
         description="OAuth redirect URI for YouTube integrations",
     )
     cors_origins: list[str] = Field(
-        default_factory=lambda: ["http://127.0.0.1:5173", "http://localhost:5173"],
+        default_factory=lambda: [
+            "http://127.0.0.1:5173",
+            "http://localhost:5173",
+        ],
         alias="CORS_ORIGINS",
     )
     enable_scheduler: bool | None = Field(
@@ -62,7 +68,9 @@ class Settings(BaseModel):
     @classmethod
     def _split_origins(cls, value: str | list[str]) -> list[str]:
         if isinstance(value, str):
-            return [origin.strip() for origin in value.split(",") if origin.strip()]
+            return [
+                origin.strip() for origin in value.split(",") if origin.strip()
+            ]
         return value
 
     @property
@@ -76,7 +84,7 @@ class Settings(BaseModel):
     def load(cls) -> "Settings":
         """Create a Settings instance populated from the environment."""
         _load_dotenv()
-        values: dict[str, str | None] = {}
+        values: dict[str, Any] = {}
         for field in cls.model_fields.values():
             if field.alias is None:
                 continue
