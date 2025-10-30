@@ -3,17 +3,11 @@
 from __future__ import annotations
 
 import sqlite3
-import sys
 import uuid
-from collections.abc import Callable
-from pathlib import Path
+from collections.abc import Callable, Generator
 from typing import TYPE_CHECKING
 
 import pytest
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
 
 if TYPE_CHECKING:
     from app.db import SqliteConnectionFactory
@@ -22,7 +16,9 @@ else:
 
 
 @pytest.fixture()
-def memory_connection_factory() -> SqliteConnectionFactory:
+def memory_connection_factory() -> Generator[
+    SqliteConnectionFactory, None, None
+]:
     """Provide a connection factory backed by an isolated in-memory database."""
 
     db_identifier = uuid.uuid4().hex

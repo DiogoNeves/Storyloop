@@ -2,9 +2,9 @@
 
 from fastapi import APIRouter
 
-from .entries import router as entries_router
-from .health import router as health_router
-from .youtube import router as youtube_router
+from app.routers.entries import router as entries_router
+from app.routers.health import router as health_router
+from app.routers.youtube import router as youtube_router
 
 api_router = APIRouter()
 api_router.include_router(health_router, prefix="/health", tags=["health"])

@@ -1,8 +1,8 @@
 """Service layer modules."""
 
-from .entries import EntryRecord, EntryService
-from .growth import GrowthScoreService
-from .youtube import YoutubeService
+from app.services.entries import EntryRecord, EntryService
+from app.services.growth import GrowthScoreService
+from app.services.youtube import YoutubeService
 
 __all__ = [
     "EntryRecord",
