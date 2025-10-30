@@ -1,10 +1,13 @@
 # Refactor Plan: Router Dependency Injection Pattern
 
+**Status**: ✅ **COMPLETED** - All tests passing
+
 ## Problem Statement
 
 Routers currently access services via verbose `request.app.state.*` pattern:
 
 1. **Verbose access**: Every router handler repeats:
+
    ```python
    entry_service: EntryService = request.app.state.entry_service
    ```
@@ -24,6 +27,7 @@ Use FastAPI's dependency injection system:
 ## Implementation Plan
 
 ### Step 1: Create Dependency Module
+
 - Create `backend/app/dependencies.py`
 - Define dependency functions for each service:
   ```python
@@ -32,15 +36,18 @@ Use FastAPI's dependency injection system:
   ```
 
 ### Step 2: Update Routers
+
 - Update `routers/entries.py` to use `Depends(get_entry_service)`
 - Update `routers/youtube.py` to use `Depends(get_youtube_service)`
 - Remove `request.app.state.*` access from handlers
 
 ### Step 3: Update Type Hints
+
 - Ensure dependency functions have proper return type hints
 - FastAPI will automatically provide type hints to handlers
 
 ### Step 4: Update Tests
+
 - Tests can now override dependencies via FastAPI's test client
 - Simpler mocking: just override the dependency function
 
@@ -61,6 +68,7 @@ Use FastAPI's dependency injection system:
 ## Functional Programming Preference
 
 The solution uses:
+
 - Pure dependency functions (no side effects, just extraction)
 - Function composition via FastAPI's dependency system
 - Explicit dependencies (declarative)
@@ -74,12 +82,14 @@ The solution uses:
 ## File Scope
 
 **In-scope:**
+
 - `backend/app/routers/entries.py` - Use dependency injection
 - `backend/app/routers/youtube.py` - Use dependency injection
 - `backend/app/routers/health.py` - Use dependency injection (if needed)
 - `backend/app/dependencies.py` - New file with dependency functions
 
 **Out-of-scope:**
+
 - Service implementations - No changes needed
 - App state setup - No changes needed
 - Background jobs - Different pattern (scheduler injection)
@@ -87,6 +97,7 @@ The solution uses:
 ## Example Transformation
 
 **Before:**
+
 ```python
 @router.get("/")
 def list_entries(request: Request) -> list[EntryResponse]:
@@ -96,6 +107,7 @@ def list_entries(request: Request) -> list[EntryResponse]:
 ```
 
 **After:**
+
 ```python
 @router.get("/")
 def list_entries(
@@ -104,4 +116,3 @@ def list_entries(
     records = entry_service.list_entries()
     return [EntryResponse.from_record(record) for record in records]
 ```
-
