@@ -1,10 +1,11 @@
 """Persistence helpers for activity entries."""
+
 from __future__ import annotations
 
 from contextlib import closing
 from dataclasses import dataclass
 from datetime import datetime
-from sqlite3 import Row
+from sqlite3 import Connection, Row
 from typing import Iterable, Sequence
 
 from ..db import SqliteConnectionFactory
@@ -32,7 +33,7 @@ class EntryService:
 
     def ensure_schema(self) -> None:
         """Create the entries table if it does not already exist."""
-        with closing(self._connection_factory()) as connection:
+        with closing[Connection](self._connection_factory()) as connection:
             connection.execute(
                 """
                 CREATE TABLE IF NOT EXISTS entries (
@@ -49,20 +50,26 @@ class EntryService:
             )
             columns = {
                 row["name"]
-                for row in connection.execute("PRAGMA table_info(entries)").fetchall()
+                for row in connection.execute(
+                    "PRAGMA table_info(entries)"
+                ).fetchall()
             }
             if "video_id" not in columns:
-                connection.execute("ALTER TABLE entries ADD COLUMN video_id TEXT")
+                connection.execute(
+                    "ALTER TABLE entries ADD COLUMN video_id TEXT"
+                )
             connection.commit()
 
-    def save_new_entries(self, entries: Iterable[EntryRecord]) -> list[EntryRecord]:
+    def save_new_entries(
+        self, entries: Iterable[EntryRecord]
+    ) -> list[EntryRecord]:
         """Persist entries that have not been stored previously."""
-        records = list(entries)
+        records = list[EntryRecord](entries)
         if not records:
             return []
 
         inserted: list[EntryRecord] = []
-        with closing(self._connection_factory()) as connection:
+        with closing[Connection](self._connection_factory()) as connection:
             for record in records:
                 cursor = connection.execute(
                     """
@@ -95,7 +102,7 @@ class EntryService:
 
     def list_entries(self) -> list[EntryRecord]:
         """Return all stored entries ordered by recency."""
-        with closing(self._connection_factory()) as connection:
+        with closing[Connection](self._connection_factory()) as connection:
             rows: Sequence[Row] = connection.execute(
                 """
                 SELECT id, title, summary, occurred_at, category, link_url, thumbnail_url, video_id
@@ -120,7 +127,7 @@ class EntryService:
 
     def get_entry(self, entry_id: str) -> EntryRecord | None:
         """Return the entry that matches the provided identifier."""
-        with closing(self._connection_factory()) as connection:
+        with closing[Connection](self._connection_factory()) as connection:
             row = connection.execute(
                 """
                 SELECT id, title, summary, occurred_at, category, link_url, thumbnail_url, video_id
@@ -151,7 +158,7 @@ class EntryService:
         not found.
         """
 
-        with closing(self._connection_factory()) as connection:
+        with closing[Connection](self._connection_factory()) as connection:
             cursor = connection.execute(
                 """
                 UPDATE entries
@@ -183,7 +190,7 @@ class EntryService:
     def delete_entry(self, entry_id: str) -> bool:
         """Remove an entry if it exists."""
 
-        with closing(self._connection_factory()) as connection:
+        with closing[Connection](self._connection_factory()) as connection:
             cursor = connection.execute(
                 "DELETE FROM entries WHERE id = ?",
                 (entry_id,),
