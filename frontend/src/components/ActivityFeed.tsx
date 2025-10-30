@@ -1,13 +1,11 @@
-import { useCallback, useMemo, useState, type KeyboardEvent } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { isAxiosError } from "axios";
+import { useMemo } from "react";
 
-import { entriesMutations, type UpdateEntryInput } from "@/api/entries";
-import { youtubeApi, type YoutubeFeedResponse } from "@/api/youtube";
 import {
   type ActivityItem,
   youtubeVideoToActivityItem,
 } from "@/lib/types/entries";
+import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
+import { useEntryEditing } from "@/hooks/useEntryEditing";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -53,198 +51,25 @@ export function ActivityFeed({
   draftError,
   errorMessage,
 }: ActivityFeedProps) {
-  const [channelInput, setChannelInput] = useState("");
-  const [isLoadingVideos, setIsLoadingVideos] = useState(false);
-  const [youtubeError, setYoutubeError] = useState<string | null>(null);
-  const [youtubeFeed, setYoutubeFeed] = useState<YoutubeFeedResponse | null>(
-    null,
-  );
-  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
-  const [editingDraft, setEditingDraft] = useState<ActivityDraft | null>(null);
-  const [editingError, setEditingError] = useState<string | null>(null);
-  const [deletingEntryId, setDeletingEntryId] = useState<string | null>(null);
-
-  const queryClient = useQueryClient();
-  const updateEntryMutation = useMutation(
-    entriesMutations.update(queryClient, {
-      onError: (error) => {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "We couldn't update this entry. Please try again.";
-        setEditingError(message);
-      },
-      onSuccess: () => {
-        setEditingEntryId(null);
-        setEditingDraft(null);
-        setEditingError(null);
-      },
-    }),
-  );
-
-  const deleteEntryMutation = useMutation(
-    entriesMutations.delete(queryClient, {
-      onError: (error) => {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "We couldn't delete this entry. Please try again.";
-        setEditingError(message);
-      },
-      onSuccess: (_data, id) => {
-        if (editingEntryId === id) {
-          setEditingEntryId(null);
-          setEditingDraft(null);
-        }
-      },
-      onSettled: () => {
-        setDeletingEntryId(null);
-      },
-    }),
-  );
+  const youtubeState = useYouTubeFeed();
+  const editingState = useEntryEditing();
 
   const combinedItems = useMemo(() => {
     const baseItems = [...items];
-    if (!youtubeFeed) {
+    if (!youtubeState.youtubeFeed) {
       return baseItems.sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
       );
     }
 
-    const videoItems = youtubeFeed.videos.map(youtubeVideoToActivityItem);
+    const videoItems = youtubeState.youtubeFeed.videos.map(
+      youtubeVideoToActivityItem,
+    );
 
     return [...baseItems, ...videoItems].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
-  }, [items, youtubeFeed]);
-
-  const handleStartEdit = useCallback((item: ActivityItem) => {
-    if (item.category === "video" || item.id.startsWith("youtube:")) {
-      return;
-    }
-    setEditingEntryId(item.id);
-    setEditingDraft({
-      title: item.title,
-      summary: item.summary,
-      date: toDateTimeLocalInput(item.date),
-      videoId: item.videoId ?? "",
-    });
-    setEditingError(null);
-  }, []);
-
-  const handleEditDraftChange = useCallback((draft: ActivityDraft) => {
-    setEditingDraft(draft);
-    setEditingError(null);
-  }, []);
-
-  const handleCancelEdit = useCallback(() => {
-    setEditingEntryId(null);
-    setEditingDraft(null);
-    setEditingError(null);
-  }, []);
-
-  const handleSubmitEdit = useCallback(async () => {
-    if (!editingEntryId || !editingDraft) {
-      return;
-    }
-    const trimmedTitle = editingDraft.title.trim();
-    const trimmedSummary = editingDraft.summary.trim();
-    if (trimmedTitle.length === 0 || trimmedSummary.length === 0) {
-      setEditingError("Add a title and entry before saving.");
-      return;
-    }
-
-    const trimmedVideoId = editingDraft.videoId.trim();
-    const payload: UpdateEntryInput = {
-      id: editingEntryId,
-      title: trimmedTitle,
-      summary: trimmedSummary,
-      date: new Date(editingDraft.date).toISOString(),
-      videoId: trimmedVideoId.length > 0 ? trimmedVideoId : null,
-    };
-
-    try {
-      setEditingError(null);
-      await updateEntryMutation.mutateAsync(payload);
-    } catch (error: unknown) {
-      // handled in the mutation onError callback
-    }
-  }, [editingDraft, editingEntryId, updateEntryMutation]);
-
-  const handleDeleteEntry = useCallback(
-    (id: string) => {
-      if (deletingEntryId) {
-        return;
-      }
-      if (typeof window !== "undefined") {
-        const confirmed = window.confirm(
-          "Are you sure you want to delete this entry?",
-        );
-        if (!confirmed) {
-          return;
-        }
-      }
-      setDeletingEntryId(id);
-      setEditingError(null);
-      void deleteEntryMutation.mutateAsync(id).catch(() => {
-        // handled in the mutation onError callback
-      });
-    },
-    [deleteEntryMutation, deletingEntryId, editingEntryId],
-  );
-
-  const handleFetchVideos = useCallback(async () => {
-    const trimmed = channelInput.trim();
-    if (!trimmed) {
-      setYoutubeError("Enter a YouTube channel handle, link, or ID.");
-      return;
-    }
-
-    setIsLoadingVideos(true);
-    setYoutubeError(null);
-
-    try {
-      const feed = await youtubeApi.fetchChannelVideos(trimmed);
-      setYoutubeFeed(feed);
-    } catch (error: unknown) {
-      if (isAxiosError(error)) {
-        const status = error.response?.status;
-        const data = error.response?.data as unknown;
-        const detail =
-          typeof data === "object" &&
-          data !== null &&
-          "detail" in data &&
-          typeof (data as { detail: unknown }).detail === "string"
-            ? (data as { detail: string }).detail
-            : null;
-        if (status === 404) {
-          setYoutubeError(
-            detail ?? "We couldn’t find that channel on YouTube.",
-          );
-        } else if (status === 503) {
-          setYoutubeError(
-            detail ?? "The server hasn’t been configured for YouTube yet.",
-          );
-        } else {
-          setYoutubeError(detail ?? "We couldn’t load videos from YouTube.");
-        }
-      } else {
-        setYoutubeError("We couldn’t load videos from YouTube.");
-      }
-    } finally {
-      setIsLoadingVideos(false);
-    }
-  }, [channelInput]);
-
-  const handleChannelKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLInputElement>) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        void handleFetchVideos();
-      }
-    },
-    [handleFetchVideos],
-  );
+  }, [items, youtubeState.youtubeFeed]);
 
   return (
     <Card>
@@ -283,41 +108,43 @@ export function ActivityFeed({
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Input
-                value={channelInput}
-                onChange={(event) => setChannelInput(event.target.value)}
-                onKeyDown={handleChannelKeyDown}
+                value={youtubeState.channelInput}
+                onChange={(event) =>
+                  youtubeState.setChannelInput(event.target.value)
+                }
+                onKeyDown={youtubeState.handleChannelKeyDown}
                 placeholder="e.g. @Storyloop or youtube.com/@Storyloop"
                 aria-label="YouTube channel"
               />
               <Button
                 type="button"
                 onClick={() => {
-                  void handleFetchVideos();
+                  void youtubeState.handleFetchVideos();
                 }}
-                disabled={isLoadingVideos}
+                disabled={youtubeState.isLoadingVideos}
                 className="shrink-0"
               >
-                {isLoadingVideos ? "Loading…" : "Load videos"}
+                {youtubeState.isLoadingVideos ? "Loading…" : "Load videos"}
               </Button>
             </div>
-            {youtubeFeed ? (
+            {youtubeState.youtubeFeed ? (
               <p className="text-xs text-muted-foreground">
-                Showing {youtubeFeed.videos.length} recent video
-                {youtubeFeed.videos.length === 1 ? "" : "s"} from
+                Showing {youtubeState.youtubeFeed.videos.length} recent video
+                {youtubeState.youtubeFeed.videos.length === 1 ? "" : "s"} from
                 <a
-                  href={youtubeFeed.channelUrl}
+                  href={youtubeState.youtubeFeed.channelUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="ml-1 font-medium text-primary underline-offset-2 hover:underline"
                 >
-                  {youtubeFeed.channelTitle}
+                  {youtubeState.youtubeFeed.channelTitle}
                 </a>
                 .
               </p>
             ) : null}
-            {youtubeError ? (
+            {youtubeState.youtubeError ? (
               <p className="text-sm text-destructive" role="status">
-                {youtubeError}
+                {youtubeState.youtubeError}
               </p>
             ) : null}
           </CardContent>
@@ -336,28 +163,30 @@ export function ActivityFeed({
           />
         ) : null}
         {combinedItems.map((item) => {
-          const isEditing = editingEntryId === item.id && editingDraft;
+          const isEditing =
+            editingState.editingEntryId === item.id &&
+            editingState.editingDraft;
           const isEditable =
             item.category !== "video" && !item.id.startsWith("youtube:");
-          if (isEditing && editingDraft) {
+          if (isEditing && editingState.editingDraft) {
             return (
               <ActivityDraftCard
                 key={item.id}
-                draft={editingDraft}
-                onChange={handleEditDraftChange}
-                onCancel={handleCancelEdit}
-                onSubmit={handleSubmitEdit}
-                isSubmitting={updateEntryMutation.isPending}
-                errorMessage={editingError}
+                draft={editingState.editingDraft}
+                onChange={editingState.handleEditDraftChange}
+                onCancel={editingState.cancelEdit}
+                onSubmit={editingState.submitEdit}
+                isSubmitting={editingState.isUpdating}
+                errorMessage={editingState.editingError}
                 submitLabel="Save changes"
                 category={item.category}
                 idPrefix={`edit-entry-${item.id}`}
                 onDelete={
-                  isEditable ? () => handleDeleteEntry(item.id) : undefined
+                  isEditable
+                    ? () => editingState.deleteEntry(item.id)
+                    : undefined
                 }
-                isDeleting={
-                  deletingEntryId === item.id && deleteEntryMutation.isPending
-                }
+                isDeleting={editingState.isDeleting(item.id)}
               />
             );
           }
@@ -369,20 +198,18 @@ export function ActivityFeed({
               onEdit={
                 isEditable
                   ? () => {
-                      handleStartEdit(item);
+                      editingState.startEdit(item);
                     }
                   : undefined
               }
               onDelete={
                 isEditable
                   ? () => {
-                      handleDeleteEntry(item.id);
+                      editingState.deleteEntry(item.id);
                     }
                   : undefined
               }
-              isDeleting={
-                deletingEntryId === item.id && deleteEntryMutation.isPending
-              }
+              isDeleting={editingState.isDeleting(item.id)}
             />
           );
         })}
@@ -667,13 +494,4 @@ function ActivityDraftCard({
       </CardContent>
     </Card>
   );
-}
-
-function toDateTimeLocalInput(date: string) {
-  const original = new Date(date);
-  original.setSeconds(0);
-  original.setMilliseconds(0);
-  const offset = original.getTimezoneOffset();
-  const adjusted = new Date(original.getTime() - offset * 60_000);
-  return adjusted.toISOString().slice(0, 16);
 }
