@@ -6,6 +6,8 @@ from datetime import datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Response
+
+from app.routers.errors import ensure_exists
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.dependencies import get_entry_service
@@ -128,9 +130,10 @@ def get_entry(
     entry_id: str, entry_service: EntryService = Depends(get_entry_service)
 ) -> EntryResponse:
     """Return a single entry by identifier."""
-    record = entry_service.get_entry(entry_id)
-    if record is None:
-        raise HTTPException(status_code=404, detail="Entry not found")
+    record = ensure_exists(
+        entry_service.get_entry(entry_id),
+        entity_name="Entry",
+    )
     return EntryResponse.from_record(record)
 
 
@@ -141,9 +144,10 @@ def update_entry(
     entry_service: EntryService = Depends(get_entry_service),
 ) -> EntryResponse:
     """Persist updates for an existing entry."""
-    current = entry_service.get_entry(entry_id)
-    if current is None:
-        raise HTTPException(status_code=404, detail="Entry not found")
+    current = ensure_exists(
+        entry_service.get_entry(entry_id),
+        entity_name="Entry",
+    )
 
     updates = payload.model_dump(exclude_unset=True)
     updated_record = EntryRecord(
@@ -172,5 +176,5 @@ def delete_entry(
     """Delete an existing entry."""
     deleted = entry_service.delete_entry(entry_id)
     if not deleted:
-        raise HTTPException(status_code=404, detail="Entry not found")
+        ensure_exists(None, entity_name="Entry")
     return Response(status_code=204)
