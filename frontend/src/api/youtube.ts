@@ -19,6 +19,22 @@ export interface YoutubeFeedResponse {
   videos: YoutubeVideoResponse[];
 }
 
+export interface YoutubeVideoMetricsResponse {
+  videoId: string;
+  views: number;
+  impressions: number;
+  ctr: number;
+  averageViewDurationSeconds: number;
+  videoLengthSeconds: number;
+  score: number;
+  publishedAt: string;
+}
+
+export interface YoutubeMetricsResponse {
+  channelId: string;
+  metrics: YoutubeVideoMetricsResponse[];
+}
+
 export async function fetchChannelVideos(channel: string) {
   const response = await apiClient.get<YoutubeFeedResponse>("/youtube/videos", {
     params: { channel },
@@ -26,6 +42,23 @@ export async function fetchChannelVideos(channel: string) {
   return response.data;
 }
 
+export async function fetchChannelMetrics(
+  channel: string,
+  oauthToken?: string,
+) {
+  const response = await apiClient.get<YoutubeMetricsResponse>(
+    "/youtube/metrics",
+    {
+      params: {
+        channel,
+        ...(oauthToken && { oauthToken }),
+      },
+    },
+  );
+  return response.data;
+}
+
 export const youtubeApi = {
   fetchChannelVideos,
+  fetchChannelMetrics,
 };

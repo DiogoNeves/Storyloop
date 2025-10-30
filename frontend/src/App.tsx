@@ -17,6 +17,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+import {
   entriesMutations,
   entriesQueries,
   type CreateEntryInput,
@@ -25,6 +30,9 @@ import {
 import { healthQueries } from "@/api/health";
 import { cn } from "@/lib/utils";
 import { type ActivityItem, entryToActivityItem } from "@/lib/types/entries";
+import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
+import { type YoutubeVideoMetricsResponse } from "@/api/youtube";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -74,28 +82,132 @@ function HealthBadge({ className }: { className?: string }) {
   );
 }
 
-function ScorePlaceholder() {
+function ScoreChart({
+  metrics,
+  isLoading,
+}: {
+  metrics: YoutubeVideoMetricsResponse[] | null;
+  isLoading: boolean;
+}) {
+  const chartData = useMemo(() => {
+    if (!metrics || metrics.length === 0) {
+      return [];
+    }
+
+    return metrics
+      .map((metric) => ({
+        date: new Date(metric.publishedAt).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        }),
+        score: metric.score,
+        fullDate: metric.publishedAt,
+      }))
+      .sort((a, b) => new Date(a.fullDate).getTime() - new Date(b.fullDate).getTime());
+  }, [metrics]);
+
+  const chartConfig = {
+    score: {
+      label: "Storyloop Score",
+      color: "hsl(var(--chart-1))",
+    },
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
+          <div>
+            <CardTitle className="text-lg">Storyloop Score</CardTitle>
+            <CardDescription>
+              Line chart representing CTR × (Avg View Duration ÷ Video Length).
+            </CardDescription>
+          </div>
+          <HealthBadge className="self-end" />
+        </CardHeader>
+        <CardContent>
+          <div className="relative h-60 overflow-hidden rounded-lg border border-dashed border-primary/40 bg-gradient-to-br from-primary/10 via-transparent to-primary/5">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,_rgba(255,_255,_255,_0.1)_1px,_transparent_0)] [background-size:16px_16px]" />
+            <div className="absolute inset-x-0 bottom-0 flex h-full items-center justify-center px-6 text-center text-sm text-primary">
+              <span className="rounded-full border border-primary/40 bg-background/70 px-3 py-1 shadow-sm">
+                Loading metrics...
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!metrics || metrics.length === 0) {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
+          <div>
+            <CardTitle className="text-lg">Storyloop Score</CardTitle>
+            <CardDescription>
+              Line chart representing CTR × (Avg View Duration ÷ Video Length).
+            </CardDescription>
+          </div>
+          <HealthBadge className="self-end" />
+        </CardHeader>
+        <CardContent>
+          <div className="relative h-60 overflow-hidden rounded-lg border border-dashed border-primary/40 bg-gradient-to-br from-primary/10 via-transparent to-primary/5">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,_rgba(255,_255,_255,_0.1)_1px,_transparent_0)] [background-size:16px_16px]" />
+            <div className="absolute inset-x-0 bottom-0 flex h-full items-center justify-center px-6 text-center text-sm text-primary">
+              <span className="rounded-full border border-primary/40 bg-background/70 px-3 py-1 shadow-sm">
+                No metrics available. Load a channel to see analytics.
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
         <div>
           <CardTitle className="text-lg">Storyloop Score</CardTitle>
           <CardDescription>
-            Line chart placeholder representing CTR × (Avg View Duration ÷ Video
-            Length).
+            Line chart representing CTR × (Avg View Duration ÷ Video Length).
           </CardDescription>
         </div>
         <HealthBadge className="self-end" />
       </CardHeader>
       <CardContent>
-        <div className="relative h-60 overflow-hidden rounded-lg border border-dashed border-primary/40 bg-gradient-to-br from-primary/10 via-transparent to-primary/5">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,_rgba(255,_255,_255,_0.1)_1px,_transparent_0)] [background-size:16px_16px]" />
-          <div className="absolute inset-x-0 bottom-0 flex h-full items-center justify-center px-6 text-center text-sm text-primary">
-            <span className="rounded-full border border-primary/40 bg-background/70 px-3 py-1 shadow-sm">
-              Analytics visualization coming soon
-            </span>
-          </div>
-        </div>
+        <ChartContainer config={chartConfig} className="h-60">
+          <LineChart
+            data={chartData}
+            margin={{
+              top: 5,
+              right: 10,
+              left: 10,
+              bottom: 5,
+            }}
+          >
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 12 }}
+              tickLine={{ stroke: "hsl(var(--muted-foreground))" }}
+            />
+            <YAxis
+              tick={{ fontSize: 12 }}
+              tickLine={{ stroke: "hsl(var(--muted-foreground))" }}
+            />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            <Line
+              type="monotone"
+              dataKey="score"
+              stroke="hsl(var(--chart-1))"
+              strokeWidth={2}
+              dot={{ r: 4 }}
+              activeDot={{ r: 6 }}
+            />
+          </LineChart>
+        </ChartContainer>
       </CardContent>
     </Card>
   );
@@ -103,6 +215,7 @@ function ScorePlaceholder() {
 
 function DashboardShell() {
   const queryClient = useQueryClient();
+  const youtubeState = useYouTubeFeed();
 
   const seedItems = useMemo<ActivityItem[]>(
     () => [
@@ -266,7 +379,10 @@ function DashboardShell() {
     <div className="min-h-screen bg-muted/20 text-foreground">
       <NavBar />
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-10">
-        <ScorePlaceholder />
+        <ScoreChart
+          metrics={youtubeState.youtubeMetrics?.metrics ?? null}
+          isLoading={youtubeState.isLoadingMetrics}
+        />
 
         <ActivityFeed
           items={activityItems}

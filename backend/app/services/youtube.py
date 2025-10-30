@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Iterable, Literal
 
 from collections.abc import AsyncIterator
@@ -22,6 +22,7 @@ from app.utils.datetime import parse_datetime, parse_duration_seconds
 logger = logging.getLogger(__name__)
 
 YOUTUBE_API_BASE_URL = "https://www.googleapis.com/youtube/v3"
+YOUTUBE_ANALYTICS_API_BASE_URL = "https://youtubeanalytics.googleapis.com/v2"
 DEFAULT_TIMEOUT = 10.0
 MAX_RESULTS_CAP = 50
 
@@ -208,6 +209,33 @@ class YoutubeFeed:
             "channelUrl": self.channel_url,
             "channelThumbnailUrl": self.channel_thumbnail_url,
             "videos": [video.to_dict() for video in self.videos],
+        }
+
+
+@dataclass(slots=True)
+class YoutubeVideoMetrics:
+    """Metrics for a YouTube video."""
+
+    video_id: str
+    views: int
+    impressions: int
+    ctr: float  # Calculated: views/impressions * 100
+    average_view_duration_seconds: float
+    video_length_seconds: int  # From video contentDetails
+    score: float  # Calculated: ctr * (avg_view_duration / video_length)
+    published_at: datetime
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize metrics for API responses."""
+        return {
+            "videoId": self.video_id,
+            "views": self.views,
+            "impressions": self.impressions,
+            "ctr": self.ctr,
+            "averageViewDurationSeconds": self.average_view_duration_seconds,
+            "videoLengthSeconds": self.video_length_seconds,
+            "score": self.score,
+            "publishedAt": self.published_at.isoformat(),
         }
 
 
@@ -622,6 +650,258 @@ class YoutubeService:
             message = f"YouTube API returned unexpected payload for {endpoint}"
             raise YoutubeAPIRequestError(message)
         return data
+
+    async def get_video_length_seconds(
+        self, client: httpx.AsyncClient, video_id: str
+    ) -> int | None:
+        """Get video length in seconds from video contentDetails.
+
+        Args:
+            client: HTTP client for API requests
+            video_id: YouTube video ID
+
+        Returns:
+            Video length in seconds, or None if not available
+        """
+        params = {
+            "part": "contentDetails",
+            "id": video_id,
+            "key": self.api_key,
+        }
+        try:
+            payload = await self._request_json(client, "videos", params)
+            items = payload.get("items", [])
+            if not isinstance(items, list) or not items:
+                return None
+            content_details = items[0].get("contentDetails", {})
+            if not isinstance(content_details, dict):
+                return None
+            duration_str = content_details.get("duration")
+            return parse_duration_seconds(duration_str)
+        except YoutubeAPIRequestError:
+            logger.warning("Failed to fetch video length for %s", video_id)
+            return None
+
+    async def fetch_video_metrics(
+        self,
+        channel_id: str,
+        video_ids: list[str],
+        *,
+        oauth_token: str | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
+    ) -> list[YoutubeVideoMetrics]:
+        """Fetch YouTube Analytics metrics for the specified videos.
+
+        Args:
+            channel_id: YouTube channel ID
+            video_ids: List of video IDs to fetch metrics for
+            oauth_token: OAuth2 access token for YouTube Analytics API
+            start_date: Start date in YYYY-MM-DD format (defaults to 30 days ago)
+            end_date: End date in YYYY-MM-DD format (defaults to today)
+
+        Returns:
+            List of video metrics
+
+        Raises:
+            YoutubeConfigurationError: If OAuth token is missing
+            YoutubeAPIRequestError: If API request fails
+        """
+        if not oauth_token:
+            raise YoutubeConfigurationError(
+                "OAuth2 token required for YouTube Analytics API"
+            )
+
+        if not video_ids:
+            return []
+
+        # Set default date range if not provided
+        if not end_date:
+            end_date = datetime.now().date().isoformat()
+        if not start_date:
+            start_date = (datetime.now().date() - timedelta(days=30)).isoformat()
+
+        # Fetch video lengths and published dates
+        video_lengths: dict[str, int] = {}
+        video_published_dates: dict[str, datetime] = {}
+
+        async with self.client_session() as client:
+            # Fetch video details in batches
+            batch_size = 50
+            for i in range(0, len(video_ids), batch_size):
+                batch = video_ids[i : i + batch_size]
+                params = {
+                    "part": "contentDetails,snippet",
+                    "id": ",".join(batch),
+                    "key": self.api_key,
+                }
+                try:
+                    payload = await self._request_json(client, "videos", params)
+                    items = payload.get("items", [])
+                    if not isinstance(items, list):
+                        continue
+                    for item in items:
+                        if not isinstance(item, dict):
+                            continue
+                        video_id = item.get("id")
+                        if not video_id:
+                            continue
+
+                        # Extract duration
+                        content_details = item.get("contentDetails", {})
+                        duration_str = (
+                            content_details.get("duration")
+                            if isinstance(content_details, dict)
+                            else None
+                        )
+                        duration_seconds = parse_duration_seconds(duration_str)
+                        if duration_seconds is not None:
+                            video_lengths[video_id] = duration_seconds
+
+                        # Extract published date
+                        snippet = item.get("snippet", {})
+                        published_at_raw = (
+                            snippet.get("publishedAt")
+                            if isinstance(snippet, dict)
+                            else None
+                        )
+                        if published_at_raw:
+                            try:
+                                published_at = parse_datetime(published_at_raw)
+                                video_published_dates[video_id] = published_at
+                            except ValueError:
+                                logger.warning(
+                                    "Failed to parse published date for video %s",
+                                    video_id,
+                                )
+                except YoutubeAPIRequestError:
+                    logger.warning(
+                        "Failed to fetch video details for batch starting at index %s",
+                        i,
+                    )
+
+        # Fetch analytics metrics
+        metrics: list[YoutubeVideoMetrics] = []
+
+        # YouTube Analytics API requires video IDs as dimension filters
+        # We'll query for all videos and filter client-side
+        analytics_client = httpx.AsyncClient(
+            base_url=YOUTUBE_ANALYTICS_API_BASE_URL,
+            timeout=DEFAULT_TIMEOUT,
+            transport=self._transport,
+        )
+
+        try:
+            params = {
+                "ids": f"channel=={channel_id}",
+                "metrics": "views,impressions,averageViewDuration",
+                "dimensions": "video",
+                "startDate": start_date,
+                "endDate": end_date,
+                "maxResults": 200,  # Maximum allowed
+            }
+
+            headers = {"Authorization": f"Bearer {oauth_token}"}
+
+            try:
+                response = await analytics_client.get(
+                    "reports", params=params, headers=headers
+                )
+                response.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                detail = (
+                    exc.response.json().get("error", {}).get("message")
+                    if exc.response.headers.get("content-type", "").startswith(
+                        "application/json"
+                    )
+                    else exc.response.text
+                )
+                message = "YouTube Analytics API request failed with status %s: %s" % (
+                    exc.response.status_code,
+                    detail,
+                )
+                raise YoutubeAPIRequestError(message) from exc
+            except httpx.RequestError as exc:
+                message = f"Error communicating with YouTube Analytics API: {exc}"
+                raise YoutubeAPIRequestError(message) from exc
+
+            try:
+                data = response.json()
+            except ValueError as exc:
+                message = "YouTube Analytics API returned invalid JSON"
+                raise YoutubeAPIRequestError(message) from exc
+
+            if not isinstance(data, dict):
+                message = "YouTube Analytics API returned unexpected payload"
+                raise YoutubeAPIRequestError(message)
+
+            # Parse analytics response
+            rows = data.get("rows", [])
+            if not isinstance(rows, list):
+                return []
+
+            # Create a set of requested video IDs for filtering
+            requested_video_ids = set(video_ids)
+
+            # Create a map of video_id -> metrics
+            for row in rows:
+                if not isinstance(row, list) or len(row) < 4:
+                    continue
+                video_id = str(row[0])
+
+                # Filter to only requested videos
+                if video_id not in requested_video_ids:
+                    continue
+
+                views = int(row[1]) if isinstance(row[1], (int, float)) else 0
+                impressions = int(row[2]) if isinstance(row[2], (int, float)) else 0
+                avg_view_duration_str = str(row[3])
+
+                # Parse averageViewDuration (ISO 8601 duration format)
+                avg_view_duration_seconds = parse_duration_seconds(
+                    avg_view_duration_str
+                )
+                if avg_view_duration_seconds is None:
+                    avg_view_duration_seconds = 0.0
+
+                # Get video length
+                video_length = video_lengths.get(video_id)
+                if video_length is None or video_length == 0:
+                    # Skip videos without length data
+                    logger.debug(
+                        "Skipping video %s: missing or zero length", video_id
+                    )
+                    continue
+
+                # Calculate CTR
+                ctr = (views / impressions * 100) if impressions > 0 else 0.0
+
+                # Calculate score: CTR * (avg_view_duration / video_length)
+                score = ctr * (avg_view_duration_seconds / video_length)
+
+                # Get published date
+                published_at = video_published_dates.get(
+                    video_id, datetime.now()
+                )
+
+                metrics.append(
+                    YoutubeVideoMetrics(
+                        video_id=video_id,
+                        views=views,
+                        impressions=impressions,
+                        ctr=ctr,
+                        average_view_duration_seconds=float(
+                            avg_view_duration_seconds
+                        ),
+                        video_length_seconds=video_length,
+                        score=score,
+                        published_at=published_at,
+                    )
+                )
+        finally:
+            await analytics_client.aclose()
+
+        return metrics
 
     def sync_latest_metrics(self) -> None:
         """Log a placeholder sync until real metrics synchronization is wired in."""

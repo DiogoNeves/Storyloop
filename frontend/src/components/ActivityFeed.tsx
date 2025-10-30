@@ -123,7 +123,7 @@ export function ActivityFeed({
                 disabled={youtubeState.isLoadingVideos}
                 className="shrink-0"
               >
-                {youtubeState.isLoadingVideos ? "Loading…" : "Load videos"}
+                {youtubeState.isLoadingVideos ? "Loading…" : "Load channel"}
               </Button>
             </div>
             {youtubeState.youtubeFeed ? (
