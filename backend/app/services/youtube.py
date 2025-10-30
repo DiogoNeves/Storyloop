@@ -550,49 +550,37 @@ class YoutubeService:
                 return channel
         return None
 
-    async def _fetch_playlist_items(
+    async def _fetch_playlist_items_page(
         self,
         client: httpx.AsyncClient,
         playlist_id: str,
         *,
         max_results: int,
-    ) -> list[dict[str, Any]]:
-        """Fetch all playlist items with pagination.
+        page_token: str | None = None,
+    ) -> tuple[list[dict[str, Any]], str | None]:
+        """Fetch a single page of playlist items.
+
+        Returns:
+            Tuple of (items, next_page_token)
 
         Docs: https://developers.google.com/youtube/v3/docs/playlistItems/list
         """
-        if max_results <= 0:
-            return []
-
-        playlist_items: list[dict[str, Any]] = []
-        remaining = max_results
-        base_params = {
+        params: dict[str, Any] = {
             "part": "snippet,contentDetails",
             "playlistId": playlist_id,
             "key": self.api_key,
+            "maxResults": min(MAX_RESULTS_CAP, max_results),
         }
-        page_token: str | None = None
+        if page_token is not None:
+            params["pageToken"] = page_token
 
-        while remaining > 0:
-            params: dict[str, Any] = {
-                **base_params,
-                "maxResults": min(MAX_RESULTS_CAP, remaining),
-            }
-            if page_token is not None:
-                params["pageToken"] = page_token
-            payload = await self._request_json(client, "playlistItems", params)
-            items = payload.get("items", [])
-            if not isinstance(items, list) or not items:
-                break
+        payload = await self._request_json(client, "playlistItems", params)
+        items = payload.get("items", [])
+        if not isinstance(items, list):
+            items = []
+        next_page_token = payload.get("nextPageToken")
 
-            playlist_items.extend(items)
-            remaining -= len(items)
-
-            page_token = payload.get("nextPageToken")
-            if not page_token:
-                break
-
-        return playlist_items
+        return items, next_page_token
 
     def _extract_video_ids(
         self, playlist_items: list[dict[str, Any]]
@@ -721,14 +709,50 @@ class YoutubeService:
     ) -> list[YoutubeVideo]:
         """Fetch uploads from the channel's uploads playlist.
 
+        Ensures that up to max_results successfully converted videos are returned,
+        fetching additional pages if some playlist items fail to convert.
+
         Docs: https://developers.google.com/youtube/v3/docs/playlistItems/list
         """
-        playlist_items = await self._fetch_playlist_items(
-            client, playlist_id, max_results=max_results
-        )
-        video_ids = self._extract_video_ids(playlist_items)
-        durations = await self._fetch_video_durations(client, video_ids)
-        return self._build_videos_with_durations(playlist_items, durations)
+        if max_results <= 0:
+            return []
+
+        videos: list[YoutubeVideo] = []
+        playlist_items: list[dict[str, Any]] = []
+        durations: dict[str, str | None] = {}
+        page_token: str | None = None
+
+        while len(videos) < max_results:
+            # Fetch a page of playlist items
+            items, page_token = await self._fetch_playlist_items_page(
+                client, playlist_id, max_results=max_results, page_token=page_token
+            )
+
+            if not items:
+                break
+
+            playlist_items.extend(items)
+
+            # Extract video IDs for new items and fetch their durations
+            new_video_ids = self._extract_video_ids(items)
+            if new_video_ids:
+                new_durations = await self._fetch_video_durations(
+                    client, new_video_ids
+                )
+                durations.update(new_durations)
+
+            # Build videos from all accumulated playlist items
+            built_videos = self._build_videos_with_durations(
+                playlist_items, durations
+            )
+            # Only take up to max_results videos
+            videos = built_videos[:max_results]
+
+            # If we've built enough videos or there's no next page, we're done
+            if len(videos) >= max_results or not page_token:
+                break
+
+        return videos
 
     async def _request_json(
         self, client: httpx.AsyncClient, endpoint: str, params: dict[str, Any]
