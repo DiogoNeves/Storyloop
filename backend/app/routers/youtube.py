@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 
-from ..services.youtube import (
+from app.services.youtube import (
     YoutubeAPIRequestError,
     YoutubeChannelNotFound,
     YoutubeConfigurationError,

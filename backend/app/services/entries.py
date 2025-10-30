@@ -8,7 +8,7 @@ from datetime import datetime
 from sqlite3 import Row
 from typing import Iterable, Sequence
 
-from ..db import SqliteConnectionFactory
+from app.db import SqliteConnectionFactory
 
 
 @dataclass(slots=True)

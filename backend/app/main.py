@@ -12,11 +12,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from .config import Settings, settings
-from .db import SqliteConnectionFactory, create_connection_factory
-from .routers import api_router
-from .scheduler import create_scheduler
-from .services import EntryService, GrowthScoreService, YoutubeService
+from app.config import Settings, settings
+from app.db import SqliteConnectionFactory, create_connection_factory
+from app.routers import api_router
+from app.scheduler import create_scheduler
+from app.services import EntryService, GrowthScoreService, YoutubeService
 
 logger = logging.getLogger(__name__)
 

@@ -9,7 +9,7 @@ from typing import Callable
 from urllib.parse import urlparse
 from uuid import uuid4
 
-from .config import settings
+from app.config import settings
 
 SqliteConnectionFactory = Callable[[], sqlite3.Connection]
 

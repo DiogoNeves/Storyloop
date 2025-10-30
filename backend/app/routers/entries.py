@@ -8,7 +8,7 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from ..services import EntryRecord, EntryService
+from app.services import EntryRecord, EntryService
 
 router = APIRouter(prefix="/entries", tags=["entries"])
 
