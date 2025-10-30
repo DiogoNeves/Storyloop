@@ -68,7 +68,9 @@ class YoutubeVideo:
         """
         snippet = item.get("snippet")
         if not isinstance(snippet, dict):
-            logger.warning("Skipping playlist item without snippet data: %s", item)
+            logger.warning(
+                "Skipping playlist item without snippet data: %s", item
+            )
             return None
         resource = snippet.get("resourceId")
         if not isinstance(resource, dict):
@@ -136,7 +138,9 @@ class YoutubeChannel:
             )
             return None
         snippet = item.get("snippet")
-        snippet_dict: dict[str, Any] = snippet if isinstance(snippet, dict) else {}
+        snippet_dict: dict[str, Any] = (
+            snippet if isinstance(snippet, dict) else {}
+        )
         thumbnail_url = _select_thumbnail_url(
             snippet_dict.get("thumbnails"),
             ("high", "medium", "default"),
@@ -455,7 +459,9 @@ class YoutubeService:
         if not isinstance(items, list) or not items:
             return None
         snippet = items[0].get("snippet", {})
-        channel_id = snippet.get("channelId") if isinstance(snippet, dict) else None
+        channel_id = (
+            snippet.get("channelId") if isinstance(snippet, dict) else None
+        )
         if not channel_id:
             logger.debug("Video %s did not include a channelId", video_id)
             return None
@@ -597,6 +603,10 @@ class YoutubeService:
             message = f"YouTube API returned unexpected payload for {endpoint}"
             raise YoutubeAPIRequestError(message)
         return data
+
+    def sync_latest_metrics(self) -> None:
+        """Log a placeholder sync until real metrics synchronization is wired in."""
+        logger.info("Pretending to sync latest YouTube metrics.")
 
 
 def _select_thumbnail_url(

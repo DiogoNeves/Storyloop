@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
-from typing import AsyncIterator, Callable, Literal
+from typing import AsyncContextManager, AsyncIterator, Callable, Literal
 
 import logfire
 from fastapi import FastAPI
@@ -39,7 +39,7 @@ def configure_logfire(active_settings: Settings) -> None:
 
 def build_lifespan(
     active_settings: Settings, connection_factory: SqliteConnectionFactory
-) -> Callable[[FastAPI], AsyncIterator[None]]:
+) -> Callable[[FastAPI], AsyncContextManager[None]]:
     """Create the FastAPI lifespan handler for scheduler management."""
 
     entry_service = EntryService(connection_factory)
