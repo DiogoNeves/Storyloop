@@ -4,6 +4,10 @@ import { isAxiosError } from "axios";
 
 import { entriesMutations, type UpdateEntryInput } from "@/api/entries";
 import { youtubeApi, type YoutubeFeedResponse } from "@/api/youtube";
+import {
+  type ActivityItem,
+  youtubeVideoToActivityItem,
+} from "@/lib/types/entries";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -17,16 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-export interface ActivityItem {
-  id: string;
-  title: string;
-  summary: string;
-  date: string;
-  category: "video" | "insight" | "journal";
-  linkUrl?: string;
-  thumbnailUrl?: string | null;
-  videoId?: string | null;
-}
+export type { ActivityItem };
 
 export interface ActivityDraft {
   title: string;
@@ -116,16 +111,7 @@ export function ActivityFeed({
       );
     }
 
-    const videoItems: ActivityItem[] = youtubeFeed.videos.map((video) => ({
-      id: `youtube:${video.id}`,
-      title: video.title,
-      summary: video.description,
-      date: video.publishedAt,
-      category: "video",
-      linkUrl: video.url,
-      thumbnailUrl: video.thumbnailUrl,
-      videoId: video.id,
-    }));
+    const videoItems = youtubeFeed.videos.map(youtubeVideoToActivityItem);
 
     return [...baseItems, ...videoItems].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),

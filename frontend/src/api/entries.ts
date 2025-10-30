@@ -5,6 +5,7 @@ import {
 } from "@tanstack/react-query";
 
 import { apiClient } from "@/api/client";
+import { type Entry } from "@/lib/types/entries";
 
 /**
  * Entry API helpers aligned with the currently implemented backend routes.
@@ -17,16 +18,7 @@ import { apiClient } from "@/api/client";
  * - `PUT /entries/{id}` — updates an existing entry.
  * - `DELETE /entries/{id}` — deletes an entry.
  */
-export interface Entry {
-  id: string;
-  title: string;
-  summary: string;
-  date: string;
-  category: "video" | "insight" | "journal";
-  linkUrl?: string | null;
-  thumbnailUrl?: string | null;
-  videoId?: string | null;
-}
+export type { Entry };
 
 export interface CreateEntryInput {
   id: string;
