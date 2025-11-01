@@ -1,6 +1,12 @@
 # Storyloop
 
-Storyloop is a creator analytics journal that combines FastAPI + SQLite on the backend with a React (Vite) frontend. This boilerplate validates the toolchain end-to-end before layering in domain features such as the Storyloop Growth Score and AI-powered insights.
+Storyloop is a creator analytics journal — a tool that helps you understand your own creative process instead of chasing someone else’s algorithm.
+
+Most analytics platforms flood you with charts and numbers, or push you toward generic “best practices.” Storyloop flips that around. It starts with your goals, written in natural language — “I want to improve audience retention by making intros shorter” — and quietly tracks how your creative experiments perform.
+
+Over time, it connects your notes and hypotheses to real outcomes, revealing what genuinely works for you.
+
+Built for creators who want control without complexity, Storyloop turns your channel’s data into a personal growth story. It’s not just analytics — it’s your creative journal, feedback loop, and growth companion.
 
 ## Prerequisites
 
