@@ -37,6 +37,8 @@ frontend/
 
 ### App.tsx - Main Dashboard
 
+**Design:** [Main Screen Design](../design/main-screen.png)
+
 **Structure:**
 
 - `App()` - Root component wrapping with QueryClientProvider
@@ -373,6 +375,8 @@ import.meta.env.VITE_API_BASE_URL;
   - Users can interact with agent to request insight tracking
   - Agent can save background actions
   - Insights generated through agent interactions
+  - **Design:** [Agent/Chatbot Design](../design/with-chatbot.png) (Future)
 - Video detail pages (per-video view with deeper insights and related notes)
   - Most insights will be AI-inferred through agent interactions
   - Users can add notes, but insights are primarily agent-generated
+  - **Design:** [Video Detail Design](../design/video-detail.png) (Future)

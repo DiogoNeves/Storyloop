@@ -22,6 +22,8 @@ When the new numbers land, Storyloop links them to the journal entries that insp
 
 ## Living With Storyloop
 
+**Design:** [Main Screen Design](../design/main-screen.png)
+
 - **First-time setup:** Select which channel to track, and Storyloop remembers your choice for all future sessions.
 - **Morning check-in:** Review your Growth Score and simple score chart at the top of the dashboard, then scroll through the timeline to see the story behind the trend before you dive into editing or scripting.
 - **Post-upload reflection:** Capture the creative choices you made in your own words—simple journal entries that document what you did and why.
@@ -42,7 +44,7 @@ Storyloop stays intentionally simple so it never gets in your way:
 
 ## Looking Forward
 
-Storyloop will keep evolving—more platforms, smarter insights, deeper creative prompts—but its promise stays the same: give creators control, clarity, and purpose. In the future, each video will have its own detail page where you can dive deeper into performance metrics, related insights, and notes. Most insights will be AI-inferred through agent interactions, with the agent analyzing your journal entries and performance data to connect your creative experiments to measurable outcomes.
+Storyloop will keep evolving—more platforms, smarter insights, deeper creative prompts—but its promise stays the same: give creators control, clarity, and purpose. In the future, each video will have its own detail page ([Video Detail Design](../design/video-detail.png)) where you can dive deeper into performance metrics, related insights, and notes. Most insights will be AI-inferred through agent interactions ([Agent/Chatbot Design](../design/with-chatbot.png)), with the agent analyzing your journal entries and performance data to connect your creative experiments to measurable outcomes.
 
 I built Storyloop because I was tired of chasing opaque metrics. I wanted a tool that helps me ask my own questions, see my own progress, and turn my creative journey into a story worth following.
 
