@@ -140,6 +140,8 @@ Settings are managed through `backend/app/config.py` using Pydantic:
 
 **Dashboard Layout:**
 
+**Design:** [Main Screen Design](../design/main-screen.png)
+
 - **Top Section:** Growth Score and simple score chart visualization
 - **Timeline Section:** Unified chronological feed showing:
   - Content items (videos, lives, shorts, posts, etc.)
@@ -157,9 +159,11 @@ Settings are managed through `backend/app/config.py` using Pydantic:
 ### Future Extensions
 
 - Agent integration for user interactions and insight tracking
+  - **Design:** [Agent/Chatbot Design](../design/with-chatbot.png) (Future)
 - Agent can save background actions to monitor patterns over time
 - OpenAI integration for AI-powered agent interactions
 - Video detail pages (per-video view with deeper insights and related notes)
+  - **Design:** [Video Detail Design](../design/video-detail.png) (Future)
 - Additional content platform integrations
 - User authentication and multi-tenancy
 - Real-time updates via WebSockets
