@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { isAxiosError } from "axios";
 
 import {
@@ -6,6 +6,8 @@ import {
   type YoutubeFeedResponse,
   type YoutubeMetricsResponse,
 } from "@/api/youtube";
+
+const YOUTUBE_OAUTH_TOKEN_KEY = "youtube_oauth_token";
 
 /**
  * Hook for managing YouTube channel feed state and operations.
@@ -24,33 +26,58 @@ export function useYouTubeFeed() {
   const [youtubeMetrics, setYoutubeMetrics] =
     useState<YoutubeMetricsResponse | null>(null);
 
-  const handleFetchVideos = useCallback(async () => {
-    const trimmed = channelInput.trim();
-    if (!trimmed) {
-      setYoutubeError("Enter a YouTube channel handle, link, or ID.");
-      return;
+  // Load OAuth token from localStorage on mount
+  useEffect(() => {
+    const storedToken = localStorage.getItem(YOUTUBE_OAUTH_TOKEN_KEY);
+    if (storedToken) {
+      // Token is available, but we don't set it in state - just use it when fetching
     }
+  }, []);
 
-    setIsLoadingVideos(true);
-    setIsLoadingMetrics(true);
-    setYoutubeError(null);
+  const handleFetchVideos = useCallback(
+    async (oauthToken?: string) => {
+      const trimmed = channelInput.trim();
+      if (!trimmed) {
+        setYoutubeError("Enter a YouTube channel handle, link, or ID.");
+        return;
+      }
 
-    try {
-      // Fetch videos and metrics in parallel
-      const [feed, metrics] = await Promise.allSettled([
-        youtubeApi.fetchChannelVideos(trimmed),
-        youtubeApi.fetchChannelMetrics(trimmed).catch(() => {
-          // Metrics fetch failure is non-blocking
-          // Return null to indicate no metrics available
-          return null;
-        }),
-      ]);
+      setIsLoadingVideos(true);
+      setIsLoadingMetrics(true);
+      setYoutubeError(null);
 
-      // Handle videos result
-      if (feed.status === "fulfilled") {
-        setYoutubeFeed(feed.value);
-      } else {
-        const error = feed.reason;
+      // Try to get OAuth token from parameter, localStorage, or environment
+      const token =
+        oauthToken ||
+        localStorage.getItem(YOUTUBE_OAUTH_TOKEN_KEY) ||
+        undefined;
+
+      try {
+        // Fetch videos (metrics included if OAuth token provided)
+        const feed = await youtubeApi.fetchChannelVideos(trimmed, token || undefined);
+
+        console.log("[useYouTubeFeed] Feed received:", {
+          hasMetrics: !!feed.metrics,
+          metricsLength: feed.metrics?.length ?? 0,
+          oauthTokenProvided: !!token,
+        });
+
+        setYoutubeFeed(feed);
+
+        // Extract metrics from feed if present
+        // Note: metrics array is always present in response (even if empty)
+        if (feed.metrics && Array.isArray(feed.metrics) && feed.metrics.length > 0) {
+          console.log("[useYouTubeFeed] Setting metrics:", feed.metrics.length, "items");
+          setYoutubeMetrics({
+            channelId: feed.channelId,
+            metrics: feed.metrics,
+          });
+        } else {
+          // No metrics available (empty array or missing)
+          console.log("[useYouTubeFeed] No metrics available");
+          setYoutubeMetrics(null);
+        }
+      } catch (error) {
         if (isAxiosError(error)) {
           const status = error.response?.status;
           const data = error.response?.data as unknown;
@@ -76,25 +103,14 @@ export function useYouTubeFeed() {
           setYoutubeError("We couldn't load videos from YouTube.");
         }
         setYoutubeFeed(null);
-      }
-
-      // Handle metrics result (non-blocking)
-      if (metrics.status === "fulfilled" && metrics.value) {
-        setYoutubeMetrics(metrics.value);
-      } else {
-        // Metrics fetch failed or not available - silently continue
         setYoutubeMetrics(null);
+      } finally {
+        setIsLoadingVideos(false);
+        setIsLoadingMetrics(false);
       }
-    } catch (error) {
-      // This should not happen with Promise.allSettled, but handle just in case
-      setYoutubeError("We couldn't load videos from YouTube.");
-      setYoutubeFeed(null);
-      setYoutubeMetrics(null);
-    } finally {
-      setIsLoadingVideos(false);
-      setIsLoadingMetrics(false);
-    }
-  }, [channelInput]);
+    },
+    [channelInput],
+  );
 
   const handleChannelKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -118,4 +134,3 @@ export function useYouTubeFeed() {
     handleChannelKeyDown,
   };
 }
-

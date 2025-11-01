@@ -17,14 +17,23 @@ router = APIRouter(prefix="/youtube", tags=["youtube"])
 @router.get("/videos")
 async def list_channel_videos(
     channel: str = Query(..., min_length=1),
+    oauth_token: str | None = Query(None, alias="oauthToken"),
     youtube_service: YoutubeService = Depends(get_youtube_service),
 ):
-    """Return the latest published videos for the requested channel."""
+    """Return the latest published videos for the requested channel.
+    
+    Optionally includes metrics if OAuth token is provided.
+    """
     try:
-        feed = await youtube_service.fetch_channel_videos(channel)
+        feed, metrics = await youtube_service.fetch_channel_videos_with_metrics(
+            channel, oauth_token=oauth_token
+        )
+        response = feed.to_dict()
+        # Always include metrics array, even if empty
+        response["metrics"] = [metric.to_dict() for metric in metrics]
+        return response
     except YoutubeError as exc:
         raise handle_youtube_error(exc) from exc
-    return feed.to_dict()
 
 
 @router.get("/metrics")

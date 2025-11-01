@@ -6,17 +6,13 @@ import logging
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Iterable, Literal
+from typing import Any, Literal
 
 from collections.abc import AsyncIterator
 
 import httpx
 
-from app.services.youtube_identifier import (
-    CHANNEL_ID_PATTERN,
-    LookupCandidate,
-    build_lookup_candidates,
-)
+from app.services.youtube_identifier import build_lookup_candidates
 from app.utils.datetime import parse_datetime, parse_duration_seconds
 
 logger = logging.getLogger(__name__)
@@ -719,7 +715,9 @@ class YoutubeService:
         if not end_date:
             end_date = datetime.now().date().isoformat()
         if not start_date:
-            start_date = (datetime.now().date() - timedelta(days=30)).isoformat()
+            start_date = (
+                datetime.now().date() - timedelta(days=30)
+            ).isoformat()
 
         # Fetch video lengths and published dates
         video_lengths: dict[str, int] = {}
@@ -816,13 +814,18 @@ class YoutubeService:
                     )
                     else exc.response.text
                 )
-                message = "YouTube Analytics API request failed with status %s: %s" % (
-                    exc.response.status_code,
-                    detail,
+                message = (
+                    "YouTube Analytics API request failed with status %s: %s"
+                    % (
+                        exc.response.status_code,
+                        detail,
+                    )
                 )
                 raise YoutubeAPIRequestError(message) from exc
             except httpx.RequestError as exc:
-                message = f"Error communicating with YouTube Analytics API: {exc}"
+                message = (
+                    f"Error communicating with YouTube Analytics API: {exc}"
+                )
                 raise YoutubeAPIRequestError(message) from exc
 
             try:
@@ -854,7 +857,9 @@ class YoutubeService:
                     continue
 
                 views = int(row[1]) if isinstance(row[1], (int, float)) else 0
-                impressions = int(row[2]) if isinstance(row[2], (int, float)) else 0
+                impressions = (
+                    int(row[2]) if isinstance(row[2], (int, float)) else 0
+                )
                 avg_view_duration_str = str(row[3])
 
                 # Parse averageViewDuration (ISO 8601 duration format)
@@ -902,6 +907,56 @@ class YoutubeService:
             await analytics_client.aclose()
 
         return metrics
+
+    async def fetch_channel_videos_with_metrics(
+        self,
+        identifier: str,
+        *,
+        max_results: int = 50,
+        oauth_token: str | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
+    ) -> tuple[YoutubeFeed, list[YoutubeVideoMetrics]]:
+        """Fetch channel videos and metrics in parallel.
+
+        Args:
+            identifier: Channel identifier (handle, link, or ID)
+            max_results: Maximum number of videos to return
+            oauth_token: OAuth2 access token for YouTube Analytics API (optional)
+            start_date: Start date in YYYY-MM-DD format (defaults to 30 days ago)
+            end_date: End date in YYYY-MM-DD format (defaults to today)
+
+        Returns:
+            Tuple of (feed, metrics). Metrics will be empty list if OAuth token
+            is not provided or if metrics fetch fails.
+        """
+        # Fetch videos first (required)
+        feed = await self.fetch_channel_videos(
+            identifier, max_results=max_results
+        )
+
+        # Fetch metrics in parallel if OAuth token is provided
+        metrics: list[YoutubeVideoMetrics] = []
+        if oauth_token and feed.videos:
+            video_ids = [video.id for video in feed.videos]
+            try:
+                metrics = await self.fetch_video_metrics(
+                    channel_id=feed.channel_id,
+                    video_ids=video_ids,
+                    oauth_token=oauth_token,
+                    start_date=start_date,
+                    end_date=end_date,
+                )
+            except YoutubeError as exc:
+                # Log but don't fail - metrics are optional
+                logger.warning(
+                    "Failed to fetch metrics for channel %s: %s",
+                    feed.channel_id,
+                    exc,
+                )
+                metrics = []
+
+        return feed, metrics
 
     def sync_latest_metrics(self) -> None:
         """Log a placeholder sync until real metrics synchronization is wired in."""
