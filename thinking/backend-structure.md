@@ -94,6 +94,11 @@ APScheduler configuration for recurring jobs:
    - Calls `growth_score_service.recalculate_growth_score()`
    - Recalculates aggregate growth metrics
 
+3. **Agent Background Actions** (Future) - Periodic (triggered by agent-saved actions)
+   - Executes actions saved by agent interactions
+   - Analyzes patterns based on agent-configured tracking
+   - Generates and inserts insights into timeline
+
 **Activation:**
 - Enabled by default in production environment
 - Disabled in development (can be overridden via `ENABLE_SCHEDULER`)
@@ -112,7 +117,8 @@ APScheduler configuration for recurring jobs:
 
 **Future Implementation:**
 - Authenticate with YouTube Data API v3
-- Fetch video performance metrics
+- Use saved channel preference to fetch channel-specific data
+- Fetch video performance metrics for tracked channel
 - Store CTR, view duration, retention curves
 - Handle rate limiting and pagination
 
@@ -131,6 +137,25 @@ APScheduler configuration for recurring jobs:
 - Generate insights and recommendations
 - Store calculated metrics in database
 
+#### AgentService (Future: `services/agent.py`)
+
+**Purpose:** Handle agent interactions and manage background actions for insight tracking
+
+**Methods:**
+- `process_user_query()` - Handle user interactions with agent
+- `save_background_action()` - Store actions requested by agent to run in background
+- `execute_background_action()` - Run saved actions (called by scheduler)
+- `generate_insight_entry()` - Create insight entries for timeline based on tracking results
+
+**Future Implementation:**
+- Agent integration for user interactions
+- Users can ask agent to track specific insights
+- Agent can save actions to background job queue
+- Background jobs execute tracking actions periodically
+- Pattern detection based on agent-configured tracking
+- Insights generated through agent interactions, not automatic parsing of journal entries
+- Journal entries remain simple and user-focused
+
 ### 6. Routers
 
 #### Health Router (`routers/health.py`)
@@ -147,6 +172,17 @@ APScheduler configuration for recurring jobs:
 **Purpose:** Monitor backend availability
 
 **Integration:** Frontend uses this to show connection status badge
+
+#### Channel Settings Router (Future: `routers/settings.py`)
+
+**Endpoints:**
+- `GET /settings/channel` - Retrieve saved channel preference
+- `POST /settings/channel` - Save channel preference (first-time setup)
+- `PUT /settings/channel` - Update channel preference
+
+**Purpose:** Manage user's channel selection for YouTube tracking
+
+**Integration:** Frontend uses this to check for saved channel on app load and prompt for selection if none exists
 
 ## Request Flow
 

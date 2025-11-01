@@ -7,6 +7,7 @@ Storyloop is a creator analytics journal that combines a FastAPI backend with a 
 ### Tech Stack
 
 **Backend:**
+
 - **FastAPI** - Modern async Python web framework
 - **SQLite** - Local database for persistence
 - **APScheduler** - Background job scheduling for recurring tasks
@@ -15,6 +16,7 @@ Storyloop is a creator analytics journal that combines a FastAPI backend with a 
 - **Uvicorn** - ASGI server
 
 **Frontend:**
+
 - **React 18** - UI framework
 - **Vite** - Build tool and dev server
 - **TypeScript** - Type safety
@@ -32,7 +34,9 @@ Storyloop is a creator analytics journal that combines a FastAPI backend with a 
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │              React Frontend (Vite)                    │   │
 │  │  - App.tsx (Main dashboard)                           │   │
-│  │  - ActivityFeed (Journal entries)                     │   │
+│  │  - ScorePlaceholder (Growth score & chart at top)     │   │
+│  │  - ActivityFeed (Timeline: content, journal, insights)│   │
+│  │  - Channel Selection (First-time login)               │   │
 │  │  - API Client (Axios)                                 │   │
 │  │  - TanStack Query (Data fetching)                     │   │
 │  └──────────────────┬───────────────────────────────────┘   │
@@ -64,16 +68,19 @@ Storyloop is a creator analytics journal that combines a FastAPI backend with a 
 ### Key Design Principles
 
 1. **Separation of Concerns**
+
    - Backend handles business logic, data persistence, and external API integration
    - Frontend focuses on UI rendering and user interaction
    - Services encapsulate domain logic (YouTube metrics, growth scoring)
 
 2. **Observability**
+
    - Logfire integration for production monitoring
    - Environment-based configuration
    - Health check endpoints for system status
 
 3. **Developer Experience**
+
    - Single command to start both services (`python scripts/dev.py`)
    - Hot reload on both frontend and backend
    - Shared TypeScript types between layers (to be implemented)
@@ -86,11 +93,14 @@ Storyloop is a creator analytics journal that combines a FastAPI backend with a 
 ### Component Boundaries
 
 **Backend Services:**
+
 - `YoutubeService` - Handles YouTube API integration and metric syncing
 - `GrowthScoreService` - Calculates and maintains growth score metrics
+- `AgentService` (Future) - Handles agent interactions and manages background actions for insight tracking
 - Database abstraction through `SqliteConnectionFactory`
 
 **Frontend Modules:**
+
 - API layer (`src/api/`) - Centralized HTTP client and query definitions
 - Components (`src/components/`) - Reusable UI components
 - Pages (`src/App.tsx`) - Main application view
@@ -98,6 +108,7 @@ Storyloop is a creator analytics journal that combines a FastAPI backend with a 
 ### Environment Configuration
 
 Settings are managed through `backend/app/config.py` using Pydantic:
+
 - Environment variables loaded from `.env` file
 - Type-safe settings with validation
 - Sensible defaults for development
@@ -111,11 +122,45 @@ Settings are managed through `backend/app/config.py` using Pydantic:
 4. Frontend proxies API calls to backend
 5. CORS middleware handles cross-origin requests
 
+### User Experience Flow
+
+**First-Time Login:**
+
+1. User opens application
+2. System checks for saved channel preference
+3. If no channel found, prompt user to select YouTube channel to track
+4. Save channel selection to backend
+5. Load dashboard with score chart and timeline
+
+**Subsequent Logins:**
+
+1. User opens application
+2. System loads saved channel preference automatically
+3. Display dashboard with score chart and timeline for that channel
+
+**Dashboard Layout:**
+
+- **Top Section:** Growth Score and simple score chart visualization
+- **Timeline Section:** Unified chronological feed showing:
+  - Content items (videos, lives, shorts, posts, etc.)
+  - Journal entries (simple user-created entries, no automatic parsing)
+  - Insights (AI-generated from agent interactions)
+
+**Agent Integration:**
+
+- Users interact with an AI agent to ask questions and request insight tracking
+- Agent can save actions to run in the background
+- Background jobs execute tracking actions periodically
+- Insights are generated through agent interactions, not automatic parsing of journal entries
+- Journal entries remain simple and user-focused
+
 ### Future Extensions
 
-- OpenAI integration for AI-powered insights
+- Agent integration for user interactions and insight tracking
+- Agent can save background actions to monitor patterns over time
+- OpenAI integration for AI-powered agent interactions
+- Video detail pages (per-video view with deeper insights and related notes)
 - Additional content platform integrations
 - User authentication and multi-tenancy
 - Real-time updates via WebSockets
 - More sophisticated growth score algorithms
-

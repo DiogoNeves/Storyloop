@@ -206,11 +206,58 @@ FastAPI Application
 ├── Services
 │   ├── YoutubeService
 │   │   └── YouTube API integration
-│   └── GrowthScoreService
-│       └── Score calculations
+│   ├── GrowthScoreService
+│   │   └── Score calculations
+│   └── AgentService (Future)
+│       └── Agent interactions and background action management
 │
 └── Routers
     └── Health endpoint
+```
+
+## User Experience Flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    FIRST-TIME LOGIN                         │
+├─────────────────────────────────────────────────────────────┤
+│ 1. User opens application                                   │
+│ 2. System checks for saved channel preference               │
+│ 3. No channel found → Show channel selection dialog         │
+│ 4. User selects YouTube channel                             │
+│ 5. Save channel preference to backend                       │
+│ 6. Load dashboard                                           │
+└─────────────────────────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    DASHBOARD LAYOUT                         │
+├─────────────────────────────────────────────────────────────┤
+│ ┌───────────────────────────────────────────────────────┐  │
+│ │         TOP SECTION: Score & Chart                   │  │
+│ │  - Growth Score display                               │  │
+│ │  - Simple score chart visualization                   │  │
+│ └───────────────────────────────────────────────────────┘  │
+│                           │                                  │
+│                           ▼                                  │
+│ ┌───────────────────────────────────────────────────────┐  │
+│ │         TIMELINE SECTION                              │  │
+│ │  - Content (videos, lives, shorts, posts, etc.)       │  │
+│ │  - Journal entries (simple user-created entries)     │  │
+│ │  - Insights (AI-generated from agent interactions)    │  │
+│ │  All displayed chronologically                         │  │
+│ └───────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  SUBSEQUENT LOGINS                         │
+├─────────────────────────────────────────────────────────────┤
+│ 1. User opens application                                   │
+│ 2. System automatically loads saved channel preference     │
+│ 3. Display dashboard with score chart and timeline         │
+│ 4. No prompt needed unless user changes settings            │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ## Technology Stack

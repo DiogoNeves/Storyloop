@@ -293,6 +293,61 @@ Cleanup Complete
     │ Server exits
 ```
 
+## Channel Selection Flow
+
+### First-Time Login
+
+```
+User opens app
+    │
+    ▼
+Check for saved channel
+    │
+    │ No channel found
+    │
+    ▼
+Show channel selection dialog
+    │
+    │ User selects channel
+    │
+    ▼
+POST /settings/channel
+    │
+    │ { channel_id: "..." }
+    │
+    ▼
+Backend saves channel preference
+    │
+    │ Store in settings table
+    │
+    ▼
+Load dashboard with channel context
+    │
+    │ Score chart + Timeline
+```
+
+### Subsequent Logins
+
+```
+User opens app
+    │
+    ▼
+Check for saved channel
+    │
+    │ Channel found
+    │
+    ▼
+GET /settings/channel
+    │
+    │ Return saved channel_id
+    │
+    ▼
+Load dashboard with channel context
+    │
+    │ Score chart + Timeline
+    │ (No prompt needed)
+```
+
 ## State Synchronization
 
 ### Frontend State Hierarchy
@@ -300,9 +355,10 @@ Cleanup Complete
 ```
 App State
 ├── Server State (TanStack Query)
-│   └── Health status (cached, 60s stale)
+│   ├── Health status (cached, 60s stale)
+│   └── Channel preference (cached, persistent)
 └── Local State (useState)
-    ├── activityItems[] (journal entries)
+    ├── activityItems[] (content, journal entries, insights)
     └── draft (current entry being edited)
 ```
 
@@ -328,9 +384,14 @@ FastAPI App State
   title: string
   summary: string
   date: string (ISO timestamp)
-  category: "video" | "insight" | "journal"
+  category: "video" | "insight" | "journal" | "live" | "short" | "post"
 }
 ```
+
+**Timeline Content Types:**
+- **Content** (`video`, `live`, `short`, `post`): Synced from YouTube/other platforms
+- **Journal Entries** (`journal`): User-created entries
+- **Insights** (`insight`): AI-generated insights (not yet available)
 
 **HealthResponse (Backend):**
 ```python
@@ -348,7 +409,18 @@ class Entry:
     title: str
     summary: str
     date: datetime
-    category: str
+    category: str  # "video", "live", "short", "post", "journal", "insight"
+    created_at: datetime
+    updated_at: datetime
+    video_id: Optional[str]  # For linking journal entries to content
+```
+
+**Channel Preference (Backend):**
+```python
+class ChannelPreference:
+    id: UUID
+    channel_id: str  # YouTube channel ID
+    channel_name: str
     created_at: datetime
     updated_at: datetime
 ```
@@ -427,6 +499,61 @@ Return Error Response
     ▼
 Frontend handles error
 ```
+
+### Agent-Based Insight Tracking Flow
+
+```
+User interacts with Agent
+    │
+    │ User asks: "Track if shorter intros improve retention"
+    │
+    ▼
+Agent processes request
+    │
+    │ 1. Understand user intent
+    │ 2. Create tracking action
+    │ 3. Save action to background job queue
+    │
+    ▼
+Agent saves background action
+    │
+    │ Store tracking configuration:
+    │ - What to track (retention)
+    │ - Condition (shorter intros)
+    │ - Frequency (periodic check)
+    │
+    ▼
+Background job runs (periodic)
+    │
+    │ 1. Fetch journal entries and performance data
+    │ 2. Analyze patterns based on tracking config
+    │ 3. Detect if pattern emerges
+    │
+    ▼
+Pattern detected
+    │
+    │ Generate insight entry:
+    │ "Shorter intros improved retention by 14%"
+    │
+    ▼
+Insert insight into timeline
+    │
+    │ Category: "insight"
+    │ Linked to agent interaction
+    │
+    ▼
+Timeline updated
+    │
+    │ Insight appears automatically
+    │ User sees pattern from agent tracking
+```
+
+**Key Features:**
+- Agent-driven: User explicitly requests tracking through agent interaction
+- Background actions: Agent can save actions to run automatically
+- Pattern detection: Analyzes performance data based on agent-configured tracking
+- Timeline integration: Insights appear alongside content and journal entries
+- Journal stays simple: No automatic parsing of journal entries
 
 ## Future Data Flows
 

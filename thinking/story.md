@@ -10,7 +10,7 @@ Storyloop was born out of that frustration. I wanted a way to stay curious about
 
 ### Start with Intent
 
-Every new experiment starts with a natural-language goal: *"I want to improve retention with stronger openings"* or *"Test tighter pacing on tutorial intros."* Storyloop stores those goals as journal entries and watches how the matching videos perform. Instead of reverse-engineering someone else's trends, you get feedback on the risks you're actually taking.
+Every new experiment starts with a natural-language goal: *"I want to improve retention with stronger openings"* or *"Test tighter pacing on tutorial intros."* Storyloop stores those goals as journal entries—simple notes capturing your creative decisions and reflections. The journal stays focused on what you did and why, without trying to automatically parse your intent. Instead of reverse-engineering someone else's trends, you get feedback on the risks you're actually taking.
 
 ### The Weekly Rhythm
 
@@ -18,12 +18,15 @@ Each week, Storyloop syncs your channel data while you sleep, recalculates your 
 
 ### Connecting Notes to Outcomes
 
-When the new numbers land, Storyloop links them to the journal entries that inspired them. The idea you scribbled down—*"Shorter intros with a direct hook"*—now sits beside the results that prove whether it worked. Wins become repeatable patterns, not lucky guesses, and even the misses teach you what to try next.
+When the new numbers land, Storyloop links them to the journal entries that inspired them. The idea you scribbled down—*"Shorter intros with a direct hook"*—now sits beside the results that prove whether it worked. For deeper insights, you can interact with an AI agent—ask it questions, request it to track specific metrics, or have it analyze patterns across your content. The agent can save actions to run in the background, automatically generating insights and adding them to your timeline as patterns emerge. Wins become repeatable patterns, not lucky guesses, and even the misses teach you what to try next.
 
 ## Living With Storyloop
 
-- **Morning check-in:** Review your Growth Score and the story behind the trend before you dive into editing or scripting.
-- **Post-upload reflection:** Capture the creative choices you made in your own words so Storyloop can trace them to future outcomes.
+- **First-time setup:** Select which channel to track, and Storyloop remembers your choice for all future sessions.
+- **Morning check-in:** Review your Growth Score and simple score chart at the top of the dashboard, then scroll through the timeline to see the story behind the trend before you dive into editing or scripting.
+- **Post-upload reflection:** Capture the creative choices you made in your own words—simple journal entries that document what you did and why.
+- **Agent interaction:** When you want deeper analysis, interact with an AI agent. Ask questions, request it to track specific insights, and the agent can save background actions to monitor patterns over time.
+- **Timeline view:** See everything together—your content (videos, lives, shorts, posts), your journal entries, and AI-generated insights—all in one chronological timeline. Insights come from agent interactions, not automatic parsing of journal entries.
 - **Weekly review:** Let the app highlight emerging patterns, then plan your next experiment with clarity instead of guesswork.
 
 It's still storytelling—only now, the story is about how you grow.
@@ -39,7 +42,7 @@ Storyloop stays intentionally simple so it never gets in your way:
 
 ## Looking Forward
 
-Storyloop will keep evolving—more platforms, smarter insights, deeper creative prompts—but its promise stays the same: give creators control, clarity, and purpose.
+Storyloop will keep evolving—more platforms, smarter insights, deeper creative prompts—but its promise stays the same: give creators control, clarity, and purpose. In the future, each video will have its own detail page where you can dive deeper into performance metrics, related insights, and notes. Most insights will be AI-inferred through agent interactions, with the agent analyzing your journal entries and performance data to connect your creative experiments to measurable outcomes.
 
 I built Storyloop because I was tired of chasing opaque metrics. I wanted a tool that helps me ask my own questions, see my own progress, and turn my creative journey into a story worth following.
 
