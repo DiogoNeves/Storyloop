@@ -174,7 +174,9 @@ export function ActivityFeed({
                 draft={editingState.editingDraft}
                 onChange={editingState.handleEditDraftChange}
                 onCancel={editingState.cancelEdit}
-                onSubmit={editingState.submitEdit}
+                onSubmit={() => {
+                  void editingState.submitEdit();
+                }}
                 isSubmitting={editingState.isUpdating}
                 errorMessage={editingState.editingError}
                 submitLabel="Save changes"
@@ -182,7 +184,9 @@ export function ActivityFeed({
                 idPrefix={`edit-entry-${item.id}`}
                 onDelete={
                   isEditable
-                    ? () => editingState.deleteEntry(item.id)
+                    ? () => {
+                        void editingState.deleteEntry(item.id);
+                      }
                     : undefined
                 }
                 isDeleting={editingState.isDeleting(item.id)}
@@ -204,7 +208,7 @@ export function ActivityFeed({
               onDelete={
                 isEditable
                   ? () => {
-                      editingState.deleteEntry(item.id);
+                      void editingState.deleteEntry(item.id);
                     }
                   : undefined
               }
