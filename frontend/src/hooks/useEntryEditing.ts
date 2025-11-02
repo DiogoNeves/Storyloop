@@ -57,7 +57,7 @@ export function useEntryEditing() {
   );
 
   const startEdit = useCallback((item: ActivityItem) => {
-    if (item.category === "video" || item.id.startsWith("youtube:")) {
+    if (item.category === "content" || item.id.startsWith("youtube:")) {
       return;
     }
     setEditingEntryId(item.id);
