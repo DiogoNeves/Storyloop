@@ -15,7 +15,7 @@ export interface Entry {
   title: string;
   summary: string;
   date: string;
-  category: "video" | "insight" | "journal";
+  category: "content" | "insight" | "journal";
   linkUrl?: string | null;
   thumbnailUrl?: string | null;
   videoId?: string | null;
@@ -31,7 +31,7 @@ export interface ActivityItem {
   title: string;
   summary: string;
   date: string;
-  category: "video" | "insight" | "journal";
+  category: "content" | "insight" | "journal";
   linkUrl?: string;
   thumbnailUrl?: string;
   videoId?: string;
@@ -72,7 +72,7 @@ export function youtubeVideoToActivityItem(
     title: video.title,
     summary: video.description,
     date: video.publishedAt,
-    category: "video",
+    category: "content",
     linkUrl: video.url,
     thumbnailUrl: video.thumbnailUrl ?? undefined,
     videoId: video.id,

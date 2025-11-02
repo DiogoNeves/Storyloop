@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 export const categoryBadgeClass: Record<ActivityItem["category"], string> = {
-  video: "bg-accent text-accent-foreground",
+  content: "bg-accent text-accent-foreground",
   insight: "",
   journal: "bg-primary/10 text-primary",
 };
@@ -30,7 +30,7 @@ export function ActivityFeedItem({
   const summary = item.summary.trim();
   const truncatedSummary =
     summary.length > 280 ? `${summary.slice(0, 277).trimEnd()}…` : summary;
-  const showThumbnail = item.category === "video" && Boolean(item.thumbnailUrl);
+  const showThumbnail = item.category === "content" && Boolean(item.thumbnailUrl);
 
   return (
     <Card className="group">
@@ -79,7 +79,7 @@ export function ActivityFeedItem({
                 {truncatedSummary}
               </p>
             ) : null}
-            {item.category === "video" && item.linkUrl ? (
+            {item.category === "content" && item.linkUrl ? (
               <a
                 href={item.linkUrl}
                 target="_blank"

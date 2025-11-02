@@ -10,7 +10,7 @@ const mockEntries = vi.hoisted<Entry[]>(() => [
     title: "Published the season premiere",
     summary: "Story-focused cold open lifted AVD to 71% in the first 48 hours.",
     date: "2024-05-12T15:30:00.000Z",
-    category: "video",
+    category: "content" as const,
     linkUrl: "https://youtube.com/watch?v=storyloop-premiere",
     thumbnailUrl: "https://img.youtube.com/storyloop-premiere/hqdefault.jpg",
     videoId: "storyloop-premiere",

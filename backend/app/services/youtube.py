@@ -112,7 +112,17 @@ class YoutubeVideo:
             else None
         )
         duration_seconds = parse_duration_seconds(duration_str)
-        is_short = duration_seconds is not None and duration_seconds <= 60
+        # YouTube Shorts are videos up to 3 minutes (180 seconds) with a vertical/square aspect ratio.
+        # Source: https://support.google.com/youtube/answer/15424877
+        # The playlistItems response does not expose aspect ratio, so we approximate using duration.
+        is_short = duration_seconds is not None and duration_seconds <= 180
+        
+        # Log warning if duration is missing (could lead to misclassification)
+        if duration_str is None:
+            logger.debug(
+                "Video %s missing duration; defaulting to 'video' type",
+                video_id,
+            )
 
         # Determine video type
         video_url = f"https://www.youtube.com/watch?v={video_id}"
