@@ -166,7 +166,7 @@ export function ActivityFeed({
             editingState.editingEntryId === item.id &&
             editingState.editingDraft;
           const isEditable =
-            item.category !== "video" && !item.id.startsWith("youtube:");
+            item.category !== "content" && !item.id.startsWith("youtube:");
           if (isEditing && editingState.editingDraft) {
             return (
               <ActivityDraftCard
