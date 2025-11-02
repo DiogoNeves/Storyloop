@@ -83,7 +83,7 @@ function DashboardShell() {
         summary:
           "View duration lifted to 64%. Keep leaning into granular storytelling beats.",
         date: new Date().toISOString(),
-        category: "video",
+        category: "content",
       },
       {
         id: "2",

@@ -384,12 +384,12 @@ FastAPI App State
   title: string
   summary: string
   date: string (ISO timestamp)
-  category: "video" | "insight" | "journal" | "live" | "short" | "post"
+  category: "content" | "insight" | "journal" | "live" | "short" | "post"
 }
 ```
 
 **Timeline Content Types:**
-- **Content** (`video`, `live`, `short`, `post`): Synced from YouTube/other platforms
+- **Content** (`content`, `live`, `short`, `post`): Synced from YouTube/other platforms
 - **Journal Entries** (`journal`): User-created entries
 - **Insights** (`insight`): AI-generated insights (not yet available)
 
@@ -409,7 +409,7 @@ class Entry:
     title: str
     summary: str
     date: datetime
-    category: str  # "video", "live", "short", "post", "journal", "insight"
+    category: str  # "content", "live", "short", "post", "journal", "insight"
     created_at: datetime
     updated_at: datetime
     video_id: Optional[str]  # For linking journal entries to content
