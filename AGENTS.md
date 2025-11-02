@@ -24,6 +24,7 @@ Storyloop combines a FastAPI backend with a Vite/React frontend. Follow the guid
 Maintainable code is obvious and less error prone. Someone with little understanding of the codebase should be able to re-use code without mistakes. The interface (e.g. functions) is obvious and allows only for correct values. Tests cover any instance when the code can be ambiguous.
 
 - Python: target Python 3.11, use 4-space indentation, keep modules typed, and group business logic in `services/`. Run `uv run ruff check backend` and `uv run mypy backend` before review when you touch backend code.
+- Prototype any substantial backend feature or calculation in a standalone script first. Keep the prototype's dependencies minimal, avoid Logfire or similar integrations, and only reach into the main project when absolutely necessary.
 - TypeScript/React: follow the ESLint + Prettier defaults; name components with `PascalCase`, hooks/utilities with `camelCase`, and prefer function components.
 - Keep environment variables in `.env`; reference them via `backend/config.py` instead of hard-coding.
 - Order exported components/functions before private helpers in each file. Place private helpers after the public code that uses them, keeping helpers close to their last usage.
