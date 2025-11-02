@@ -9,13 +9,7 @@ import { useCallback, useMemo, useState } from "react";
 
 import { ActivityFeed, type ActivityDraft } from "@/components/ActivityFeed";
 import { NavBar } from "@/components/NavBar";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { ScoreOverviewCard } from "@/components/ScoreOverviewCard";
 import {
   entriesMutations,
   entriesQueries,
@@ -75,30 +69,7 @@ function HealthBadge({ className }: { className?: string }) {
 }
 
 function ScorePlaceholder() {
-  return (
-    <Card>
-      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
-        <div>
-          <CardTitle className="text-lg">Storyloop Score</CardTitle>
-          <CardDescription>
-            Line chart placeholder representing CTR × (Avg View Duration ÷ Video
-            Length).
-          </CardDescription>
-        </div>
-        <HealthBadge className="self-end" />
-      </CardHeader>
-      <CardContent>
-        <div className="relative h-60 overflow-hidden rounded-lg border border-dashed border-primary/40 bg-gradient-to-br from-primary/10 via-transparent to-primary/5">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,_rgba(255,_255,_255,_0.1)_1px,_transparent_0)] [background-size:16px_16px]" />
-          <div className="absolute inset-x-0 bottom-0 flex h-full items-center justify-center px-6 text-center text-sm text-primary">
-            <span className="rounded-full border border-primary/40 bg-background/70 px-3 py-1 shadow-sm">
-              Analytics visualization coming soon
-            </span>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
+  return <ScoreOverviewCard healthBadge={<HealthBadge className="sm:mt-1" />} />;
 }
 
 function DashboardShell() {
