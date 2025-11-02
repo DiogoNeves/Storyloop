@@ -137,7 +137,9 @@ class YoutubeService:
 
         trimmed_identifier = identifier.strip()
         if not trimmed_identifier:
-            raise YoutubeChannelNotFound("Provide a channel handle, link, or ID")
+            raise YoutubeChannelNotFound(
+                "Provide a channel handle, link, or ID"
+            )
 
         async with self._create_client() as client:
             channel = await self._resolve_channel(client, trimmed_identifier)
@@ -200,7 +202,9 @@ class YoutubeService:
     ) -> YoutubeChannel:
         for candidate in build_lookup_candidates(identifier):
             if candidate.endpoint == "channels":
-                channel = await self._try_resolve_channel(client, candidate.params)
+                channel = await self._try_resolve_channel(
+                    client, candidate.params
+                )
             else:
                 channel = await self._resolve_channel_from_video(
                     client, candidate.params["id"]
@@ -232,7 +236,9 @@ class YoutubeService:
         if not isinstance(items, list) or not items:
             return None
         snippet = items[0].get("snippet", {})
-        channel_id = snippet.get("channelId") if isinstance(snippet, dict) else None
+        channel_id = (
+            snippet.get("channelId") if isinstance(snippet, dict) else None
+        )
         if not channel_id:
             return None
         return await self._try_resolve_channel(client, {"id": channel_id})
@@ -293,6 +299,8 @@ class YoutubeService:
     ) -> list[YoutubeVideo]:
         if max_results <= 0:
             return []
+        if not self.api_key:
+            raise YoutubeConfigurationError("YouTube API key not configured")
 
         videos: list[YoutubeVideo] = []
         page_token: str | None = None
@@ -319,7 +327,10 @@ class YoutubeService:
                 if len(videos) >= max_results:
                     break
 
-            page_token = payload.get("nextPageToken")
+            next_page_token = payload.get("nextPageToken")
+            page_token = (
+                next_page_token if isinstance(next_page_token, str) else None
+            )
             if not page_token:
                 break
 
@@ -360,7 +371,9 @@ class YoutubeService:
             )
         return payload
 
-    def _channel_from_item(self, item: dict[str, object]) -> YoutubeChannel | None:
+    def _channel_from_item(
+        self, item: dict[str, object]
+    ) -> YoutubeChannel | None:
         channel_id = item.get("id")
         if not isinstance(channel_id, str) or not channel_id:
             return None
@@ -373,7 +386,9 @@ class YoutubeService:
         if not isinstance(uploads_playlist_id, str) or not uploads_playlist_id:
             return None
         snippet = item.get("snippet")
-        snippet_dict: dict[str, object] = snippet if isinstance(snippet, dict) else {}
+        snippet_dict: dict[str, object] = (
+            snippet if isinstance(snippet, dict) else {}
+        )
         thumbnail_url = select_thumbnail_url(
             snippet_dict.get("thumbnails"), ("high", "medium", "default")
         )
@@ -381,15 +396,15 @@ class YoutubeService:
         return YoutubeChannel(
             id=channel_id,
             title=str(snippet_dict.get("title", "Unnamed channel")),
-            description=str(description) if isinstance(description, str) else None,
+            description=str(description)
+            if isinstance(description, str)
+            else None,
             url=f"https://www.youtube.com/channel/{channel_id}",
             uploads_playlist_id=uploads_playlist_id,
             thumbnail_url=thumbnail_url,
         )
 
-    def _video_from_playlist_item(
-        self, item: object
-    ) -> YoutubeVideo | None:
+    def _video_from_playlist_item(self, item: object) -> YoutubeVideo | None:
         if not isinstance(item, dict):
             return None
         snippet = item.get("snippet")
@@ -497,7 +512,9 @@ def build_lookup_candidates(identifier: str) -> list[LookupCandidate]:
         )
     for username in unique_strings(usernames):
         candidates.append(
-            LookupCandidate(endpoint="channels", params={"forUsername": username})
+            LookupCandidate(
+                endpoint="channels", params={"forUsername": username}
+            )
         )
 
     for video_id in unique_strings(video_ids):
@@ -648,6 +665,7 @@ def parse_rfc3339_datetime(raw: object) -> datetime:
     normalised = raw.replace("Z", "+00:00")
     return datetime.fromisoformat(normalised)
 
+
 @dataclass(slots=True)
 class VideoBreakdown:
     """Computed metrics for a single upload."""
@@ -784,7 +802,9 @@ def compute_scorecard(
         stats = statistics.get(video.id)
         if stats is None:
             continue
-        view_velocity = compute_view_velocity(stats.view_count, published_at, timestamp)
+        view_velocity = compute_view_velocity(
+            stats.view_count, published_at, timestamp
+        )
         engagement_rate = compute_engagement_rate(
             stats.view_count, stats.like_count, stats.comment_count
         )
@@ -881,7 +901,9 @@ def calculate_totals(
     )
 
 
-def compute_view_velocity(view_count: int, published_at: datetime, now: datetime) -> float:
+def compute_view_velocity(
+    view_count: int, published_at: datetime, now: datetime
+) -> float:
     """Calculate the number of views accrued per day."""
 
     elapsed_days = max((now - published_at).total_seconds() / 86400.0, 0.25)
@@ -945,7 +967,9 @@ def normalise_view_velocity(value: float) -> float:
 def normalise_engagement(value: float) -> float:
     """Map engagement rate (0-1) to a 0-100 score."""
 
-    target = 0.08  # 8% combined like/comment rate is excellent for most channels
+    target = (
+        0.08  # 8% combined like/comment rate is excellent for most channels
+    )
     if value <= 0:
         return 0.0
     score = value / target
