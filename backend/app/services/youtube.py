@@ -139,6 +139,39 @@ class YoutubeVideo:
 
 
 @dataclass(slots=True)
+class YoutubeVideoStatistics:
+    """Subset of video statistics required for scorecard calculations."""
+
+    view_count: int
+    like_count: int | None
+    comment_count: int | None
+
+    @classmethod
+    def from_api_item(
+        cls, item: dict[str, Any]
+    ) -> tuple[str | None, "YoutubeVideoStatistics" | None]:
+        """Create statistics from a videos.list API response item."""
+
+        video_id = item.get("id")
+        statistics = item.get("statistics")
+        if not isinstance(statistics, dict):
+            return video_id, None
+
+        view_count = _coerce_int(statistics.get("viewCount"))
+        if view_count is None:
+            return video_id, None
+
+        like_count = _coerce_int(statistics.get("likeCount"))
+        comment_count = _coerce_int(statistics.get("commentCount"))
+
+        return video_id, cls(
+            view_count=view_count,
+            like_count=like_count,
+            comment_count=comment_count,
+        )
+
+
+@dataclass(slots=True)
 class YoutubeChannel:
     """Channel metadata required to retrieve uploads."""
 
@@ -274,6 +307,46 @@ class YoutubeService:
             channel_thumbnail_url=channel.thumbnail_url,
             videos=videos,
         )
+
+    async def fetch_video_statistics(
+        self, video_ids: Iterable[str]
+    ) -> dict[str, YoutubeVideoStatistics]:
+        """Return basic statistics for the provided video IDs."""
+
+        unique_ids: list[str] = []
+        seen: set[str] = set()
+        for video_id in video_ids:
+            if not video_id or video_id in seen:
+                continue
+            seen.add(video_id)
+            unique_ids.append(video_id)
+
+        if not unique_ids:
+            return {}
+
+        statistics: dict[str, YoutubeVideoStatistics] = {}
+        batch_size = 50
+
+        async with self.client_session() as client:
+            for start in range(0, len(unique_ids), batch_size):
+                batch = unique_ids[start : start + batch_size]
+                params = {
+                    "part": "statistics",
+                    "id": ",".join(batch),
+                    "key": self.api_key,
+                }
+                payload = await self._request_json(client, "videos", params)
+                items = payload.get("items", [])
+                if not isinstance(items, list):
+                    continue
+                for item in items:
+                    if not isinstance(item, dict):
+                        continue
+                    video_id, stats = YoutubeVideoStatistics.from_api_item(item)
+                    if video_id and stats is not None:
+                        statistics[video_id] = stats
+
+        return statistics
 
     async def _resolve_channel(
         self, client: httpx.AsyncClient, identifier: str
@@ -626,6 +699,19 @@ class YoutubeService:
     def sync_latest_metrics(self) -> None:
         """Log a placeholder sync until real metrics synchronization is wired in."""
         logger.info("Pretending to sync latest YouTube metrics.")
+
+
+def _coerce_int(value: Any) -> int | None:
+    """Convert YouTube API numeric fields into integers when possible."""
+
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            return None
+    return None
 
 
 def _select_thumbnail_url(
