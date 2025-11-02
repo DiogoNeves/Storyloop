@@ -41,7 +41,7 @@ export interface EntriesMutationContext {
   id?: string;
 }
 
-type MutationCallbacks<TData, TVariables> = {
+interface MutationCallbacks<TData, TVariables> {
   onError?: (
     error: unknown,
     variables: TVariables,
@@ -54,11 +54,11 @@ type MutationCallbacks<TData, TVariables> = {
   ) => void;
   onSettled?: (
     data: TData | undefined,
-    error: unknown | null,
+    error: unknown,
     variables: TVariables | undefined,
     context: EntriesMutationContext | undefined,
   ) => void;
-};
+}
 
 export const entriesQueries = createQueryKeys("entries", {
   /** Fetch all entries ordered by recency, mirroring `GET /entries`. */

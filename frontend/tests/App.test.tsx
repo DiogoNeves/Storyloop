@@ -2,23 +2,25 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { vi } from "vitest";
 
 import { App } from "@/App";
+import type { CreateEntryInput, Entry, UpdateEntryInput } from "@/api/entries";
 
-const mockEntries = vi.hoisted(() => [
+const mockEntries = vi.hoisted<Entry[]>(() => [
   {
     id: "entry-001",
     title: "Published the season premiere",
     summary: "Story-focused cold open lifted AVD to 71% in the first 48 hours.",
     date: "2024-05-12T15:30:00.000Z",
-    category: "video" as const,
+    category: "video",
     linkUrl: "https://youtube.com/watch?v=storyloop-premiere",
     thumbnailUrl: "https://img.youtube.com/storyloop-premiere/hqdefault.jpg",
+    videoId: "storyloop-premiere",
   },
   {
     id: "entry-002",
     title: "Audience insight: hero alignment",
     summary: "Comments highlight appreciation for behind-the-scenes vulnerability.",
     date: "2024-05-10T18:05:00.000Z",
-    category: "insight" as const,
+    category: "insight",
     linkUrl: null,
     thumbnailUrl: null,
   },
@@ -34,7 +36,46 @@ vi.mock("@/api/health", () => ({
 }));
 
 vi.mock("@/api/entries", () => {
-  const listEntries = vi.fn(async () => mockEntries.map((entry) => ({ ...entry })));
+  const cloneEntries = (entries: Entry[]): Entry[] =>
+    entries.map((entry) => ({ ...entry }));
+
+  function listEntriesImpl(): Promise<Entry[]> {
+    return Promise.resolve(cloneEntries(mockEntries));
+  }
+
+  function findEntryByIdImpl(id: string): Promise<Entry | undefined> {
+    return Promise.resolve(mockEntries.find((entry) => entry.id === id));
+  }
+
+  function createEntryImpl(input: CreateEntryInput): Promise<Entry> {
+    return Promise.resolve({
+      ...input,
+      linkUrl: input.linkUrl ?? null,
+      thumbnailUrl: input.thumbnailUrl ?? null,
+    });
+  }
+
+  function updateEntryImpl(input: UpdateEntryInput): Promise<Entry> {
+    const existing = mockEntries.find((entry) => entry.id === input.id);
+    if (!existing) {
+      throw new Error(`Entry ${input.id} not found`);
+    }
+    return Promise.resolve({
+      ...existing,
+      ...input,
+    });
+  }
+
+  function deleteEntryImpl(id: string): Promise<void> {
+    void id;
+    return Promise.resolve();
+  }
+
+  const listEntries = vi.fn(listEntriesImpl);
+  const findEntryById = vi.fn(findEntryByIdImpl);
+  const createEntry = vi.fn(createEntryImpl);
+  const updateEntry = vi.fn(updateEntryImpl);
+  const deleteEntry = vi.fn(deleteEntryImpl);
 
   return {
     entriesQueries: {
@@ -44,35 +85,21 @@ vi.mock("@/api/entries", () => {
       }),
       byId: (id: string) => ({
         queryKey: ["entries", id],
-        queryFn: vi.fn(async () => mockEntries.find((e) => e.id === id)),
+        queryFn: () => findEntryById(id),
       }),
     },
-    createEntry: vi.fn(async (input) => ({
-      ...input,
-      linkUrl: input.linkUrl ?? null,
-      thumbnailUrl: input.thumbnailUrl ?? null,
-    })),
-    updateEntry: vi.fn(async (input) => ({
-      ...mockEntries.find((e) => e.id === input.id),
-      ...input,
-    })),
-    deleteEntry: vi.fn(async () => undefined),
+    createEntry,
+    updateEntry,
+    deleteEntry,
     entriesMutations: {
       create: () => ({
-        mutationFn: vi.fn(async (input) => ({
-          ...input,
-          linkUrl: input.linkUrl ?? null,
-          thumbnailUrl: input.thumbnailUrl ?? null,
-        })),
+        mutationFn: createEntry,
       }),
       update: () => ({
-        mutationFn: vi.fn(async (input) => ({
-          ...mockEntries.find((e) => e.id === input.id),
-          ...input,
-        })),
+        mutationFn: updateEntry,
       }),
       delete: () => ({
-        mutationFn: vi.fn(async () => undefined),
+        mutationFn: deleteEntry,
       }),
     },
   };
