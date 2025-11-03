@@ -25,6 +25,7 @@ from googleapiclient.discovery import Resource, build
 
 CLIENT_ID_ENV = "YOUTUBE_OAUTH_CLIENT_ID"
 CLIENT_SECRET_ENV = "YOUTUBE_OAUTH_CLIENT_SECRETS"
+PROJECT_ID_ENV = "GOOGLE_PROJECT_ID"
 SCOPES = [
     "https://www.googleapis.com/auth/youtube.readonly",
     "https://www.googleapis.com/auth/yt-analytics.readonly",
@@ -51,6 +52,7 @@ class VideoAnalytics:
 def load_client_config() -> Dict[str, Any]:
     client_id = os.environ.get(CLIENT_ID_ENV)
     client_secret = os.environ.get(CLIENT_SECRET_ENV)
+    project_id = os.environ.get(PROJECT_ID_ENV)
 
     if not client_id or not client_secret:
         raise SystemExit(
@@ -58,18 +60,21 @@ def load_client_config() -> Dict[str, Any]:
             f"{CLIENT_ID_ENV} and {CLIENT_SECRET_ENV} before running this script."
         )
 
-    return {
-        "installed": {
-            "client_id": client_id,
-            "client_secret": client_secret,
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": "https://oauth2.googleapis.com/token",
-            "redirect_uris": [
-                "http://localhost",
-                "urn:ietf:wg:oauth:2.0:oob",
-            ],
-        }
+    installed_config: Dict[str, Any] = {
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "redirect_uris": [
+            "http://localhost",
+            "urn:ietf:wg:oauth:2.0:oob",
+        ],
     }
+
+    if project_id:
+        installed_config["project_id"] = project_id
+
+    return {"installed": installed_config}
 
 
 def run_oauth_flow(client_config: Dict[str, Any]) -> Credentials:
@@ -155,7 +160,8 @@ def main() -> None:
     )
     print("Make sure you have created an OAuth 2.0 Client ID (Desktop type) in Google Cloud")
     print("Set the credentials via environment variables before running this script:")
-    print(f"  {CLIENT_ID_ENV}=... and {CLIENT_SECRET_ENV}=...\n")
+    print(f"  {CLIENT_ID_ENV}=... and {CLIENT_SECRET_ENV}=...")
+    print("  Optionally set GOOGLE_PROJECT_ID if your OAuth client expects it.\n")
     print("Environment variables from a .env file in this directory are loaded automatically.\n")
 
     client_config = load_client_config()
