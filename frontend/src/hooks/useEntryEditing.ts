@@ -104,7 +104,7 @@ export function useEntryEditing() {
     try {
       setEditingError(null);
       await updateEntryMutation.mutateAsync(payload);
-    } catch (error: unknown) {
+    } catch {
       // handled in the mutation onError callback
     }
   }, [editingDraft, editingEntryId, updateEntryMutation]);

@@ -6,17 +6,13 @@ import logging
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Iterable, Literal
+from typing import Any, Literal
 
 from collections.abc import AsyncIterator
 
 import httpx
 
-from app.services.youtube_identifier import (
-    CHANNEL_ID_PATTERN,
-    LookupCandidate,
-    build_lookup_candidates,
-)
+from app.services.youtube_identifier import build_lookup_candidates
 from app.utils.datetime import parse_datetime, parse_duration_seconds
 
 logger = logging.getLogger(__name__)
