@@ -58,6 +58,7 @@ python scripts/youtube_scorecard.py <channel-handle-or-url> --use-analytics
 ```
 
 3. On first run, the script will:
+
    - Display an authorization URL in your terminal
    - Open your browser (or prompt you to visit the URL)
    - Ask you to sign in and grant permissions
@@ -70,28 +71,34 @@ python scripts/youtube_scorecard.py <channel-handle-or-url> --use-analytics
 ## Troubleshooting
 
 ### "OAuth credentials not available"
+
 - Ensure `client_secrets.json` exists in the expected location
 - Check that `GOOGLE_OAUTH_CLIENT_SECRETS` env var points to the correct file if set
 
 ### "Google API libraries not installed"
+
 Install the required packages:
+
 ```bash
 pip install google-auth google-auth-oauthlib google-api-python-client
 ```
 
 Or if using `uv`:
+
 ```bash
 cd backend
 uv add google-auth google-auth-oauthlib google-api-python-client
 ```
 
 ### "OAuth authentication failed"
+
 - Verify your client_secrets.json file is valid JSON
 - Check that you've enabled both YouTube Data API v3 and YouTube Analytics API
 - Ensure your OAuth consent screen is configured correctly
 - Make sure you're using a "Desktop app" OAuth client type
 
 ### "Failed to fetch analytics for video"
+
 - The authenticated account must have access to the channel's analytics
 - Analytics data may not be available for very recent videos (< 24 hours)
 - The channel ID in the request must match the authenticated user's channel
@@ -113,4 +120,3 @@ uv add google-auth google-auth-oauthlib google-api-python-client
 - Never commit `client_secrets.json` or `youtube_token.json` to version control
 - Add these files to `.gitignore`
 - Store `client_secrets.json` securely and limit access
-
