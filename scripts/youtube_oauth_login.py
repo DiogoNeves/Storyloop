@@ -8,7 +8,7 @@ Usage (set either a client secrets path or the raw credentials values):
     uv run python scripts/youtube_oauth_login.py
 
 Install dependencies if needed:
-    uv pip install google-auth google-auth-oauthlib google-api-python-client
+    uv pip install google-auth google-auth-oauthlib google-api-python-client python-dotenv
 
 The script performs an interactive OAuth flow in the terminal, then prints details
 about the most recent uploaded video plus its impressions click-through rate (CTR).
@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Dict, List
 
+from dotenv import load_dotenv
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import Resource, build
@@ -31,6 +32,9 @@ SCOPES = [
     "https://www.googleapis.com/auth/youtube.readonly",
     "https://www.googleapis.com/auth/yt-analytics.readonly",
 ]
+
+
+load_dotenv()
 
 
 @dataclass
@@ -172,6 +176,7 @@ def main() -> None:
         "  or provide the JSON file path via"
         f" {CLIENT_SECRETS_PATH_ENV}=...\n"
     )
+    print("Environment variables from a .env file in this directory are loaded automatically.\n")
 
     client_config = load_client_config()
     credentials = run_oauth_flow(client_config)
