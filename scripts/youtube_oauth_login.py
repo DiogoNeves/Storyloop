@@ -1,10 +1,8 @@
 """CLI helper for authenticating with the YouTube Data API v3 + Analytics API.
 
-Usage (set either a client secrets path or the raw credentials values):
+Usage (set the OAuth client credentials as environment variables):
     export YOUTUBE_OAUTH_CLIENT_ID=...
-    export YOUTUBE_OAUTH_CLIENT_SECRET=...
-    # optional override if not using env vars above
-    export YOUTUBE_OAUTH_CLIENT_SECRETS=/absolute/path/to/client_secret.json
+    export YOUTUBE_OAUTH_CLIENT_SECRETS=...
     uv run python scripts/youtube_oauth_login.py
 
 Install dependencies if needed:
@@ -25,9 +23,8 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import Resource, build
 
-CLIENT_SECRETS_PATH_ENV = "YOUTUBE_OAUTH_CLIENT_SECRETS"
 CLIENT_ID_ENV = "YOUTUBE_OAUTH_CLIENT_ID"
-CLIENT_SECRET_ENV = "YOUTUBE_OAUTH_CLIENT_SECRET"
+CLIENT_SECRET_ENV = "YOUTUBE_OAUTH_CLIENT_SECRETS"
 SCOPES = [
     "https://www.googleapis.com/auth/youtube.readonly",
     "https://www.googleapis.com/auth/yt-analytics.readonly",
@@ -51,43 +48,32 @@ class VideoAnalytics:
     impressions_ctr: float
 
 
-def load_client_config() -> Dict[str, Any] | str:
+def load_client_config() -> Dict[str, Any]:
     client_id = os.environ.get(CLIENT_ID_ENV)
     client_secret = os.environ.get(CLIENT_SECRET_ENV)
 
-    if client_id and client_secret:
-        return {
-            "installed": {
-                "client_id": client_id,
-                "client_secret": client_secret,
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "redirect_uris": [
-                    "http://localhost",
-                    "urn:ietf:wg:oauth:2.0:oob",
-                ],
-            }
-        }
-
-    client_secrets_path = os.environ.get(CLIENT_SECRETS_PATH_ENV)
-    if not client_secrets_path:
+    if not client_id or not client_secret:
         raise SystemExit(
-            "Set either the environment variables "
-            f"{CLIENT_ID_ENV} and {CLIENT_SECRET_ENV} or {CLIENT_SECRETS_PATH_ENV}"
-            " to point to the OAuth client secrets JSON file."
+            "Set the environment variables "
+            f"{CLIENT_ID_ENV} and {CLIENT_SECRET_ENV} before running this script."
         )
 
-    if not os.path.exists(client_secrets_path):
-        raise SystemExit(f"Client secrets file not found: {client_secrets_path}")
+    return {
+        "installed": {
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "redirect_uris": [
+                "http://localhost",
+                "urn:ietf:wg:oauth:2.0:oob",
+            ],
+        }
+    }
 
-    return client_secrets_path
 
-
-def run_oauth_flow(client_config: Dict[str, Any] | str) -> Credentials:
-    if isinstance(client_config, str):
-        flow = InstalledAppFlow.from_client_secrets_file(client_config, scopes=SCOPES)
-    else:
-        flow = InstalledAppFlow.from_client_config(client_config, scopes=SCOPES)
+def run_oauth_flow(client_config: Dict[str, Any]) -> Credentials:
+    flow = InstalledAppFlow.from_client_config(client_config, scopes=SCOPES)
     # run_console prints the authorization URL and prompts for the code within the terminal.
     credentials = flow.run_console(prompt="consent")
     return credentials
@@ -168,14 +154,8 @@ def main() -> None:
         "This script authenticates via OAuth, fetches your latest upload, and prints its CTR."
     )
     print("Make sure you have created an OAuth 2.0 Client ID (Desktop type) in Google Cloud")
-    print(
-        "Set the credentials via environment variables before running this script:"
-    )
-    print(f"  {CLIENT_ID_ENV}=... and {CLIENT_SECRET_ENV}=...")
-    print(
-        "  or provide the JSON file path via"
-        f" {CLIENT_SECRETS_PATH_ENV}=...\n"
-    )
+    print("Set the credentials via environment variables before running this script:")
+    print(f"  {CLIENT_ID_ENV}=... and {CLIENT_SECRET_ENV}=...\n")
     print("Environment variables from a .env file in this directory are loaded automatically.\n")
 
     client_config = load_client_config()
