@@ -10,13 +10,17 @@ Install dependencies if needed:
 The script performs an interactive OAuth flow in the terminal, then prints details
 about the most recent uploaded video plus its impressions click-through rate (CTR).
 """
+
 from __future__ import annotations
 
 import os
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
+from google.auth.external_account_authorized_user import (
+    Credentials as ExternalCredentials,
+)
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import Resource, build
@@ -51,19 +55,26 @@ def load_client_secrets_path() -> str:
         )
 
     if not os.path.exists(client_secrets_path):
-        raise SystemExit(f"Client secrets file not found: {client_secrets_path}")
+        raise SystemExit(
+            f"Client secrets file not found: {client_secrets_path}"
+        )
 
     return client_secrets_path
 
 
-def run_oauth_flow(client_secrets_path: str) -> Credentials:
-    flow = InstalledAppFlow.from_client_secrets_file(client_secrets_path, scopes=SCOPES)
-    # run_console prints the authorization URL and prompts for the code within the terminal.
-    credentials = flow.run_console(prompt="consent")
-    return credentials
+def run_oauth_flow(
+    client_secrets_path: str,
+) -> Union[Credentials, ExternalCredentials]:
+    flow = InstalledAppFlow.from_client_secrets_file(
+        client_secrets_path, scopes=SCOPES
+    )
+    # run_local_server starts a local web server and opens the browser for authorization.
+    return flow.run_local_server(port=0)
 
 
-def build_youtube_clients(credentials: Credentials) -> tuple[Resource, Resource]:
+def build_youtube_clients(
+    credentials: Union[Credentials, ExternalCredentials],
+) -> tuple[Resource, Resource]:
     youtube = build("youtube", "v3", credentials=credentials)
     analytics = build("youtubeAnalytics", "v2", credentials=credentials)
     return youtube, analytics
@@ -71,7 +82,7 @@ def build_youtube_clients(credentials: Credentials) -> tuple[Resource, Resource]
 
 def fetch_latest_uploaded_video(youtube_client: Resource) -> VideoInfo:
     channels_response: Dict[str, Any] = (
-        youtube_client.channels()
+        youtube_client.channels()  # type: ignore[attr-defined]
         .list(part="contentDetails", mine=True)
         .execute()
     )
@@ -80,10 +91,12 @@ def fetch_latest_uploaded_video(youtube_client: Resource) -> VideoInfo:
     if not items:
         raise SystemExit("No channels found for the authenticated account.")
 
-    uploads_playlist_id = items[0]["contentDetails"]["relatedPlaylists"]["uploads"]
+    uploads_playlist_id = items[0]["contentDetails"]["relatedPlaylists"][
+        "uploads"
+    ]
 
     playlist_response: Dict[str, Any] = (
-        youtube_client.playlistItems()
+        youtube_client.playlistItems()  # type: ignore[attr-defined]
         .list(playlistId=uploads_playlist_id, part="snippet", maxResults=1)
         .execute()
     )
@@ -95,17 +108,21 @@ def fetch_latest_uploaded_video(youtube_client: Resource) -> VideoInfo:
     latest = playlist_items[0]["snippet"]
     video_id = latest["resourceId"]["videoId"]
     title = latest["title"]
-    published_at = datetime.fromisoformat(latest["publishedAt"].replace("Z", "+00:00"))
+    published_at = datetime.fromisoformat(
+        latest["publishedAt"].replace("Z", "+00:00")
+    )
 
     return VideoInfo(video_id=video_id, title=title, published_at=published_at)
 
 
-def fetch_video_ctr(analytics_client: Resource, video: VideoInfo) -> VideoAnalytics | None:
+def fetch_video_ctr(
+    analytics_client: Resource, video: VideoInfo
+) -> VideoAnalytics | None:
     start_date = video.published_at.date().isoformat()
     end_date = datetime.now(UTC).date().isoformat()
 
     report: Dict[str, Any] = (
-        analytics_client.reports()
+        analytics_client.reports()  # type: ignore[attr-defined]
         .query(
             ids="channel==MINE",
             filters=f"video=={video.video_id}",
