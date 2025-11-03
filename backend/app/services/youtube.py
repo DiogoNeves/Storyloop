@@ -163,6 +163,8 @@ class YoutubeVideoStatistics:
         """Create statistics from a videos.list API response item."""
 
         video_id = item.get("id")
+        if not isinstance(video_id, str) or not video_id:
+            return None, None
         statistics = item.get("statistics")
         if not isinstance(statistics, dict):
             return video_id, None

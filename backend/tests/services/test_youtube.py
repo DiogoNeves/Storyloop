@@ -6,6 +6,7 @@ from app.services.youtube import (
     YoutubeChannelNotFound,
     YoutubeConfigurationError,
     YoutubeService,
+    YoutubeVideoStatistics,
 )
 
 
@@ -318,3 +319,29 @@ async def test_fetch_channel_videos_raises_for_malformed_json():
 
     with pytest.raises(YoutubeAPIRequestError):
         await service.fetch_channel_videos("@storyloop", max_results=5)
+
+
+def test_video_statistics_requires_string_identifier():
+    """Standalone scorecard script validates ID shape; ensure backend matches."""
+
+    item_without_id = {
+        "statistics": {"viewCount": "10", "likeCount": "1", "commentCount": "0"}
+    }
+    missing_id_result = YoutubeVideoStatistics.from_api_item(item_without_id)
+    assert missing_id_result == (None, None)
+
+    item_with_non_string_id = {
+        "id": 123,
+        "statistics": {"viewCount": "10", "likeCount": "1", "commentCount": "0"},
+    }
+    non_string_result = YoutubeVideoStatistics.from_api_item(item_with_non_string_id)
+    assert non_string_result == (None, None)
+
+
+def test_video_statistics_allows_missing_statistics():
+    item = {"id": "vid-1"}
+
+    video_id, stats = YoutubeVideoStatistics.from_api_item(item)
+
+    assert video_id == "vid-1"
+    assert stats is None
