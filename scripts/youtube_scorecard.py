@@ -10,6 +10,8 @@ pipelines before wiring anything into the API or frontend.
 Usage
 -----
 
+Basic usage (API key only - no analytics metrics):
+
 1. Acquire a YouTube Data API v3 key and export it as ``YOUTUBE_API_KEY``
    (or pass ``--api-key`` when running the script).
 2. From the repository root run::
@@ -23,8 +25,22 @@ Usage
 3. To inspect the raw payload use ``--json`` to emit structured output
    that the frontend can later consume.
 
+Usage with Analytics (OAuth required):
+
+To fetch CTR and average view duration metrics, you need to:
+
+1. Set up Google OAuth credentials (see SETUP_OAUTH.md or run with --help for details)
+2. Place your client_secrets.json file in the script directory (or set GOOGLE_OAUTH_CLIENT_SECRETS env var)
+3. Run with the --use-analytics flag::
+
+       python scripts/youtube_scorecard.py <channel> --use-analytics
+
+   On first run, the script will prompt you to authorize access via your browser.
+   The credentials will be saved to youtube_token.json for subsequent runs.
+
 The script only depends on ``httpx`` (already used in the backend) and
-may be executed independently of the FastAPI app.
+may be executed independently of the FastAPI app. For analytics support,
+install: google-auth google-auth-oauthlib google-api-python-client
 """
 
 from __future__ import annotations
@@ -37,17 +53,43 @@ import math
 import os
 import re
 from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from statistics import fmean
 from typing import Iterable, Literal, Sequence
 from urllib.parse import parse_qs, urlparse
 
 import httpx
+from dotenv import load_dotenv
+
+try:
+    from google.auth.transport.requests import Request
+    from google.oauth2.credentials import Credentials
+    from google_auth_oauthlib.flow import InstalledAppFlow
+    from googleapiclient.discovery import build
+    from googleapiclient.errors import HttpError
+
+    GOOGLE_APIS_AVAILABLE = True
+except ImportError:
+    GOOGLE_APIS_AVAILABLE = False
+    # Type stubs for when libraries aren't installed
+    Credentials = None  # type: ignore[assignment,misc]
+    Request = None  # type: ignore[assignment,misc]
+    InstalledAppFlow = None  # type: ignore[assignment,misc]
+    build = None  # type: ignore[assignment,misc]
+    HttpError = None  # type: ignore[assignment,misc]
 
 
 YOUTUBE_API_BASE_URL = "https://www.googleapis.com/youtube/v3"
+YOUTUBE_ANALYTICS_API_BASE_URL = "https://youtubeanalytics.googleapis.com/v2"
 DEFAULT_TIMEOUT = 10.0
 CHANNEL_ID_PATTERN = re.compile(r"^UC[0-9A-Za-z_-]{22}$")
+
+# OAuth scopes required for YouTube Analytics API
+SCOPES = [
+    "https://www.googleapis.com/auth/youtube.readonly",
+    "https://www.googleapis.com/auth/yt-analytics.readonly",
+]
+TOKEN_FILE = "youtube_token.json"
 
 
 class YoutubeError(RuntimeError):
@@ -56,6 +98,85 @@ class YoutubeError(RuntimeError):
 
 class YoutubeConfigurationError(YoutubeError):
     """Raised when required configuration is missing."""
+
+
+class YoutubeOAuthError(YoutubeError):
+    """Raised when OAuth authentication fails."""
+
+
+def get_oauth_credentials(
+    client_secrets_file: str | None = None,
+    token_file: str = TOKEN_FILE,
+) -> Credentials | None:
+    """Obtain OAuth credentials using terminal-only flow.
+
+    This function handles the entire OAuth flow in the terminal:
+    1. Loads existing credentials from token_file if available
+    2. If expired, refreshes them automatically
+    3. If missing, runs the authorization flow via terminal
+
+    Args:
+        client_secrets_file: Path to OAuth client secrets JSON file.
+            Defaults to GOOGLE_OAUTH_CLIENT_SECRETS env var or 'client_secrets.json'.
+        token_file: Path to store/load OAuth token. Defaults to 'youtube_token.json'.
+
+    Returns:
+        Credentials object if successful, None if OAuth not available or not configured.
+
+    Raises:
+        YoutubeOAuthError: If OAuth flow fails.
+        YoutubeConfigurationError: If client secrets file is missing.
+    """
+    if not GOOGLE_APIS_AVAILABLE:
+        return None
+
+    if client_secrets_file is None:
+        client_secrets_file = os.getenv(
+            "GOOGLE_OAUTH_CLIENT_SECRETS", "client_secrets.json"
+        )
+
+    if not os.path.exists(client_secrets_file):
+        return None
+
+    creds = None
+
+    # Load existing token if available
+    if os.path.exists(token_file):
+        try:
+            creds = Credentials.from_authorized_user_file(token_file, SCOPES)
+        except Exception as exc:
+            logging.warning("Failed to load token file: %s", exc)
+
+    # Refresh token if expired
+    if creds and creds.expired and creds.refresh_token:
+        try:
+            creds.refresh(Request())
+        except Exception as exc:
+            logging.warning("Failed to refresh token: %s", exc)
+            creds = None
+
+    # Run OAuth flow if no valid credentials
+    if not creds or not creds.valid:
+        try:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                client_secrets_file, SCOPES
+            )
+            # Use run_console() for terminal-only interaction
+            creds = flow.run_console()
+        except Exception as exc:
+            raise YoutubeOAuthError(
+                f"OAuth authentication failed: {exc}"
+            ) from exc
+
+    # Save credentials for next time
+    if creds and creds.valid:
+        try:
+            with open(token_file, "w") as token:
+                token.write(creds.to_json())
+        except Exception as exc:
+            logging.warning("Failed to save token file: %s", exc)
+
+    return creds if (creds and creds.valid) else None
 
 
 class YoutubeChannelNotFound(YoutubeError):
@@ -84,6 +205,11 @@ class YoutubeVideoStatistics:
     view_count: int
     like_count: int | None
     comment_count: int | None
+    duration_seconds: float | None
+    # Note: CTR and average view duration require YouTube Analytics API (OAuth)
+    # These fields are placeholders until Analytics API integration is added
+    ctr: float | None  # Click-through rate as decimal (e.g., 0.05 for 5%)
+    avg_view_duration_seconds: float | None  # Average view duration in seconds
 
 
 @dataclass(slots=True)
@@ -117,10 +243,32 @@ class YoutubeService:
         self,
         *,
         api_key: str | None,
+        oauth_credentials: Credentials | None = None,
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
         self.api_key = api_key
+        self.oauth_credentials = oauth_credentials
         self._transport = transport
+        self._youtube_service = None
+        self._analytics_service = None
+
+    def _get_youtube_service(self):
+        """Get or create YouTube Data API service."""
+        if self._youtube_service is None and self.oauth_credentials:
+            self._youtube_service = build(
+                "youtube", "v3", credentials=self.oauth_credentials
+            )
+        return self._youtube_service
+
+    def _get_analytics_service(self):
+        """Get or create YouTube Analytics API service."""
+        if self._analytics_service is None and self.oauth_credentials:
+            self._analytics_service = build(
+                "youtubeAnalytics",
+                "v2",
+                credentials=self.oauth_credentials,
+            )
+        return self._analytics_service
 
     def _create_client(self) -> httpx.AsyncClient:
         return httpx.AsyncClient(
@@ -180,7 +328,7 @@ class YoutubeService:
             for start in range(0, len(unique_ids), batch_size):
                 batch = unique_ids[start : start + batch_size]
                 params = {
-                    "part": "statistics",
+                    "part": "statistics,contentDetails",
                     "id": ",".join(batch),
                     "key": self.api_key,
                 }
@@ -196,6 +344,114 @@ class YoutubeService:
                         statistics[video_id] = stats
 
         return statistics
+
+    async def fetch_video_analytics(
+        self,
+        channel_id: str,
+        video_ids: Sequence[str],
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+    ) -> dict[str, dict[str, float | None]]:
+        """Fetch CTR and average view duration from YouTube Analytics API.
+
+        Args:
+            channel_id: YouTube channel ID (must match authenticated user's channel).
+            video_ids: List of video IDs to fetch metrics for.
+            start_date: Start date for analytics query. Defaults to 30 days ago.
+            end_date: End date for analytics query. Defaults to now.
+
+        Returns:
+            Dictionary mapping video_id to dict with 'ctr' and 'avg_view_duration_seconds' keys.
+            Returns empty dict if OAuth not available or API call fails.
+        """
+        analytics_service = self._get_analytics_service()
+        if not analytics_service:
+            return {}
+
+        if not video_ids:
+            return {}
+
+        # Default to last 30 days if not specified
+        if end_date is None:
+            end_date = datetime.now(UTC)
+        if start_date is None:
+            start_date = end_date - timedelta(days=30)
+
+        # Format dates as YYYY-MM-DD
+        start_date_str = start_date.date().isoformat()
+        end_date_str = end_date.date().isoformat()
+
+        results: dict[str, dict[str, float | None]] = {}
+
+        # YouTube Analytics API requires querying one video at a time or using filters
+        # We'll batch queries for efficiency
+        for video_id in video_ids:
+            try:
+                # Query for CTR (click-through rate)
+                ctr_response = (
+                    analytics_service.reports()
+                    .query(
+                        ids=f"channel=={channel_id}",
+                        startDate=start_date_str,
+                        endDate=end_date_str,
+                        metrics="impressions,clicks",
+                        filters=f"video=={video_id}",
+                    )
+                    .execute()
+                )
+
+                # Query for average view duration
+                avd_response = (
+                    analytics_service.reports()
+                    .query(
+                        ids=f"channel=={channel_id}",
+                        startDate=start_date_str,
+                        endDate=end_date_str,
+                        metrics="averageViewDuration",
+                        filters=f"video=={video_id}",
+                    )
+                    .execute()
+                )
+
+                ctr: float | None = None
+                avg_view_duration_seconds: float | None = None
+
+                # Parse CTR response
+                if "rows" in ctr_response and ctr_response["rows"]:
+                    row = ctr_response["rows"][0]
+                    if len(row) >= 2:
+                        impressions = float(row[0])
+                        clicks = float(row[1])
+                        if impressions > 0:
+                            ctr = clicks / impressions
+
+                # Parse average view duration (returns duration in seconds as float)
+                if "rows" in avd_response and avd_response["rows"]:
+                    row = avd_response["rows"][0]
+                    if len(row) >= 1:
+                        avg_view_duration_seconds = float(row[0])
+
+                if ctr is not None or avg_view_duration_seconds is not None:
+                    results[video_id] = {
+                        "ctr": ctr,
+                        "avg_view_duration_seconds": avg_view_duration_seconds,
+                    }
+
+            except Exception as exc:
+                if GOOGLE_APIS_AVAILABLE and isinstance(exc, HttpError):
+                    logging.warning(
+                        "Failed to fetch analytics for video %s: %s",
+                        video_id,
+                        exc,
+                    )
+                else:
+                    logging.warning(
+                        "Unexpected error fetching analytics for video %s: %s",
+                        video_id,
+                        exc,
+                    )
+
+        return results
 
     async def _resolve_channel(
         self, client: httpx.AsyncClient, identifier: str
@@ -447,11 +703,47 @@ class YoutubeService:
             return video_id, None
         like_count = coerce_int(statistics.get("likeCount"))
         comment_count = coerce_int(statistics.get("commentCount"))
+
+        # Parse duration from contentDetails
+        content_details = item.get("contentDetails")
+        duration_seconds = None
+        if isinstance(content_details, dict):
+            duration_raw = content_details.get("duration")
+            if isinstance(duration_raw, str):
+                duration_seconds = parse_iso8601_duration(duration_raw)
+
+        # Note: CTR and avg_view_duration require YouTube Analytics API
+        # which needs OAuth authentication. Setting to None for now.
         return video_id, YoutubeVideoStatistics(
             view_count=view_count,
             like_count=like_count,
             comment_count=comment_count,
+            duration_seconds=duration_seconds,
+            ctr=None,  # Requires Analytics API
+            avg_view_duration_seconds=None,  # Requires Analytics API
         )
+
+    def _merge_analytics_into_statistics(
+        self,
+        statistics: dict[str, YoutubeVideoStatistics],
+        analytics: dict[str, dict[str, float | None]],
+    ) -> dict[str, YoutubeVideoStatistics]:
+        """Merge analytics data into statistics dictionary."""
+        for video_id, stats in statistics.items():
+            if video_id in analytics:
+                analytics_data = analytics[video_id]
+                # Create new stats object with merged data
+                statistics[video_id] = YoutubeVideoStatistics(
+                    view_count=stats.view_count,
+                    like_count=stats.like_count,
+                    comment_count=stats.comment_count,
+                    duration_seconds=stats.duration_seconds,
+                    ctr=analytics_data.get("ctr"),
+                    avg_view_duration_seconds=analytics_data.get(
+                        "avg_view_duration_seconds"
+                    ),
+                )
+        return statistics
 
 
 @dataclass(slots=True)
@@ -643,6 +935,36 @@ def select_thumbnail_url(
     return None
 
 
+def parse_iso8601_duration(duration: str) -> float | None:
+    """Parse ISO 8601 duration string (e.g., 'PT1H2M10S') into total seconds."""
+
+    if not duration or not duration.startswith("PT"):
+        return None
+
+    total_seconds = 0.0
+    current_value = ""
+
+    for char in duration[2:]:  # Skip 'PT' prefix
+        if char.isdigit():
+            current_value += char
+        elif char == "H":
+            if current_value:
+                total_seconds += float(current_value) * 3600
+                current_value = ""
+        elif char == "M":
+            if current_value:
+                total_seconds += float(current_value) * 60
+                current_value = ""
+        elif char == "S":
+            if current_value:
+                total_seconds += float(current_value)
+                current_value = ""
+        else:
+            return None  # Invalid format
+
+    return total_seconds if total_seconds > 0 else None
+
+
 def coerce_int(value: object) -> int | None:
     """Convert YouTube API numeric fields into integers when possible."""
 
@@ -675,17 +997,17 @@ class VideoBreakdown:
     url: str
     published_at: datetime
     view_count: int
-    view_velocity: float
-    engagement_rate: float
+    ctr: float | None
+    avg_view_duration_seconds: float | None
+    video_length_seconds: float | None
+    score: float  # CTR × (Avg View Duration ÷ Video Length)
 
 
 @dataclass(slots=True)
 class ScoreComponents:
     """Individual subscores that roll up into the growth score."""
 
-    view_velocity: float
-    engagement: float
-    consistency: float
+    average_score: float  # Average of CTR × (Avg View Duration ÷ Video Length)
 
 
 @dataclass(slots=True)
@@ -695,8 +1017,7 @@ class ScorecardTotals:
     analyzed_uploads: int
     total_views: int
     average_views: float
-    average_view_velocity: float
-    average_engagement_rate: float
+    average_score: float
     uploads_per_week: float
     average_upload_interval_days: float | None
 
@@ -750,12 +1071,29 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Set the logging verbosity for troubleshooting.",
     )
+    parser.add_argument(
+        "--oauth-secrets",
+        dest="oauth_secrets",
+        help="Path to OAuth client secrets JSON file (defaults to GOOGLE_OAUTH_CLIENT_SECRETS env var or 'client_secrets.json').",
+    )
+    parser.add_argument(
+        "--use-analytics",
+        dest="use_analytics",
+        action="store_true",
+        help="Enable YouTube Analytics API to fetch CTR and average view duration (requires OAuth).",
+    )
 
     args = parser.parse_args(argv)
     if args.max_results < 1 or args.max_results > 50:
         parser.error("--max-results must be between 1 and 50")
 
     return args
+
+
+def load_env_file() -> None:
+    """Load environment variables from the project's .env file if present."""
+    # load_dotenv() searches for .env files from current directory upward
+    load_dotenv()
 
 
 def resolve_api_key(cli_value: str | None) -> str:
@@ -774,13 +1112,30 @@ def resolve_api_key(cli_value: str | None) -> str:
 
 
 async def fetch_feed_with_metrics(
-    service: YoutubeService, channel: str, max_results: int
+    service: YoutubeService,
+    channel: str,
+    max_results: int,
+    use_analytics: bool = False,
 ) -> tuple[YoutubeFeed, dict[str, YoutubeVideoStatistics]]:
     """Retrieve the channel feed and statistics for its uploads."""
 
     feed = await service.fetch_channel_videos(channel, max_results=max_results)
     video_ids = [video.id for video in feed.videos]
     stats = await service.fetch_video_statistics(video_ids)
+
+    # Fetch analytics metrics if OAuth is available
+    if use_analytics and service.oauth_credentials:
+        try:
+            analytics = await service.fetch_video_analytics(
+                channel_id=feed.channel_id, video_ids=video_ids
+            )
+            stats = service._merge_analytics_into_statistics(stats, analytics)
+        except Exception as exc:
+            logging.warning(
+                "Failed to fetch analytics metrics, continuing without them: %s",
+                exc,
+            )
+
     return feed, stats
 
 
@@ -802,12 +1157,13 @@ def compute_scorecard(
         stats = statistics.get(video.id)
         if stats is None:
             continue
-        view_velocity = compute_view_velocity(
-            stats.view_count, published_at, timestamp
+
+        score = compute_ctr_retention_score(
+            ctr=stats.ctr,
+            avg_view_duration_seconds=stats.avg_view_duration_seconds,
+            video_length_seconds=stats.duration_seconds,
         )
-        engagement_rate = compute_engagement_rate(
-            stats.view_count, stats.like_count, stats.comment_count
-        )
+
         breakdowns.append(
             VideoBreakdown(
                 video_id=video.id,
@@ -815,8 +1171,10 @@ def compute_scorecard(
                 url=video.url,
                 published_at=published_at,
                 view_count=stats.view_count,
-                view_velocity=view_velocity,
-                engagement_rate=engagement_rate,
+                ctr=stats.ctr,
+                avg_view_duration_seconds=stats.avg_view_duration_seconds,
+                video_length_seconds=stats.duration_seconds,
+                score=score,
             )
         )
 
@@ -825,7 +1183,7 @@ def compute_scorecard(
             "No usable metrics were returned for the requested channel."
         )
 
-    overall_score, components = calculate_scores(breakdowns, published_dates)
+    overall_score, components = calculate_scores(breakdowns)
     totals = calculate_totals(breakdowns, published_dates, timestamp)
 
     breakdowns.sort(key=lambda item: item.published_at, reverse=True)
@@ -842,35 +1200,40 @@ def compute_scorecard(
     )
 
 
+def compute_ctr_retention_score(
+    ctr: float | None,
+    avg_view_duration_seconds: float | None,
+    video_length_seconds: float | None,
+) -> float:
+    """Calculate CTR × (Avg View Duration ÷ Video Length)."""
+
+    if (
+        ctr is None
+        or avg_view_duration_seconds is None
+        or video_length_seconds is None
+    ):
+        return 0.0
+
+    if video_length_seconds <= 0:
+        return 0.0
+
+    retention_ratio = avg_view_duration_seconds / video_length_seconds
+    return ctr * retention_ratio
+
+
 def calculate_scores(
     breakdowns: Sequence[VideoBreakdown],
-    published_dates: Sequence[datetime],
 ) -> tuple[float, ScoreComponents]:
     """Compute subscores and the overall growth score."""
 
-    view_velocity_score = normalise_view_velocity(
-        fmean(item.view_velocity for item in breakdowns)
-    )
-    engagement_score = normalise_engagement(
-        fmean(item.engagement_rate for item in breakdowns)
-    )
-    consistency_score = normalise_consistency(
-        compute_average_upload_interval(published_dates)
-    )
-
-    overall_score = (
-        0.5 * view_velocity_score
-        + 0.3 * engagement_score
-        + 0.2 * consistency_score
-    )
+    average_score = fmean(item.score for item in breakdowns)
+    # Normalize to 0-100 scale (assuming typical CTR is around 0.02-0.05 and retention around 0.3-0.7)
+    # This gives typical scores in range 0.006-0.035, so multiply by ~2800 to scale to 0-100
+    normalized_score = clamp(average_score * 2800.0)
 
     return (
-        round(overall_score, 1),
-        ScoreComponents(
-            view_velocity=round(view_velocity_score, 1),
-            engagement=round(engagement_score, 1),
-            consistency=round(consistency_score, 1),
-        ),
+        round(normalized_score, 1),
+        ScoreComponents(average_score=round(average_score, 6)),
     )
 
 
@@ -883,8 +1246,7 @@ def calculate_totals(
 
     total_views = sum(item.view_count for item in breakdowns)
     average_views = fmean(item.view_count for item in breakdowns)
-    average_velocity = fmean(item.view_velocity for item in breakdowns)
-    average_engagement = fmean(item.engagement_rate for item in breakdowns)
+    average_score = fmean(item.score for item in breakdowns)
     uploads_per_week = compute_uploads_per_week(published_dates, now)
     average_interval = compute_average_upload_interval(published_dates)
 
@@ -892,8 +1254,7 @@ def calculate_totals(
         analyzed_uploads=len(breakdowns),
         total_views=total_views,
         average_views=round(average_views, 2),
-        average_view_velocity=round(average_velocity, 2),
-        average_engagement_rate=round(average_engagement, 4),
+        average_score=round(average_score, 6),
         uploads_per_week=round(uploads_per_week, 2),
         average_upload_interval_days=round(average_interval, 2)
         if average_interval is not None
@@ -1020,6 +1381,24 @@ def scorecard_to_dict(result: ScorecardResult) -> dict[str, object]:
     return payload
 
 
+def format_duration(seconds: float | None) -> str:
+    """Format duration in seconds as human-readable string."""
+
+    if seconds is None:
+        return "N/A"
+
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = int(seconds % 60)
+
+    if hours > 0:
+        return f"{hours}h {minutes}m {secs}s"
+    elif minutes > 0:
+        return f"{minutes}m {secs}s"
+    else:
+        return f"{secs}s"
+
+
 def render_scorecard(result: ScorecardResult) -> str:
     """Format the scorecard for human consumption."""
 
@@ -1030,16 +1409,13 @@ def render_scorecard(result: ScorecardResult) -> str:
         "",
         f"Growth Score: {result.overall_score:.1f}/100",
         "Components:",
-        f"  • View velocity: {result.components.view_velocity:.1f}",
-        f"  • Engagement: {result.components.engagement:.1f}",
-        f"  • Consistency: {result.components.consistency:.1f}",
+        f"  • Average score: {result.components.average_score:.6f} (CTR × retention)",
         "",
         "Totals:",
         f"  • Analyzed uploads: {result.totals.analyzed_uploads}",
         f"  • Total views: {result.totals.total_views:,}",
         f"  • Average views: {result.totals.average_views:,.2f}",
-        f"  • Avg view velocity: {result.totals.average_view_velocity:,.2f} views/day",
-        f"  • Avg engagement rate: {result.totals.average_engagement_rate:.2%}",
+        f"  • Average score: {result.totals.average_score:.6f}",
         f"  • Uploads/week: {result.totals.uploads_per_week:.2f}",
     ]
     if result.totals.average_upload_interval_days is not None:
@@ -1050,11 +1426,19 @@ def render_scorecard(result: ScorecardResult) -> str:
     lines.append("")
     lines.append("Recent uploads:")
     for video in result.videos[:5]:
+        ctr_str = f"{video.ctr * 100:.2f}%" if video.ctr else "N/A"
+        retention_str = (
+            f"{(video.avg_view_duration_seconds / video.video_length_seconds * 100):.1f}%"
+            if video.avg_view_duration_seconds
+            and video.video_length_seconds
+            and video.video_length_seconds > 0
+            else "N/A"
+        )
         lines.append(
             "  • "
             f"{video.published_at.date()} — {video.view_count:,} views, "
-            f"{video.view_velocity:,.0f} views/day, "
-            f"{video.engagement_rate:.2%} engagement — {video.title}"
+            f"CTR: {ctr_str}, Retention: {retention_str}, "
+            f"Score: {video.score:.6f} — {video.title}"
         )
     return "\n".join(lines)
 
@@ -1062,14 +1446,37 @@ def render_scorecard(result: ScorecardResult) -> str:
 async def run(argv: Sequence[str] | None = None) -> int:
     """Entry point for the async workflow."""
 
+    load_env_file()
     args = parse_args(argv)
     logging.basicConfig(level=getattr(logging, args.log_level))
 
     try:
         api_key = resolve_api_key(args.api_key)
-        service = YoutubeService(api_key=api_key)
+
+        # Try to get OAuth credentials if analytics are requested
+        oauth_creds = None
+        if args.use_analytics:
+            if not GOOGLE_APIS_AVAILABLE:
+                logging.error(
+                    "Google API libraries not installed. Install with: "
+                    "pip install google-auth google-auth-oauthlib google-api-python-client"
+                )
+                return 4
+
+            oauth_creds = get_oauth_credentials(args.oauth_secrets)
+            if not oauth_creds:
+                logging.error(
+                    "OAuth credentials not available. Provide client_secrets.json file "
+                    "or set GOOGLE_OAUTH_CLIENT_SECRETS environment variable."
+                )
+                return 5
+
+        service = YoutubeService(api_key=api_key, oauth_credentials=oauth_creds)
         feed, stats = await fetch_feed_with_metrics(
-            service, args.channel, args.max_results
+            service,
+            args.channel,
+            args.max_results,
+            use_analytics=args.use_analytics,
         )
         scorecard = compute_scorecard(feed, stats)
     except YoutubeChannelNotFound as error:
@@ -1081,6 +1488,9 @@ async def run(argv: Sequence[str] | None = None) -> int:
     except YoutubeAPIRequestError as error:
         logging.error("YouTube API error: %s", error)
         return 3
+    except YoutubeOAuthError as error:
+        logging.error("OAuth authentication error: %s", error)
+        return 6
 
     if args.as_json:
         print(json.dumps(scorecard_to_dict(scorecard), indent=2))

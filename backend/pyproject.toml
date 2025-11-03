@@ -17,6 +17,9 @@ dependencies = [
     "python-dotenv>=1.1.1",
     "sqlite-utils>=3.38",
     "uvicorn[standard]>=0.38.0",
+    "google-auth>=2.0.0",
+    "google-auth-oauthlib>=1.0.0",
+    "google-api-python-client>=2.0.0",
 ]
 
 [dependency-groups]
