@@ -9,6 +9,10 @@ uv sync
 uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
+Running `uv sync` creates a project-local virtual environment under `backend/.venv` and
+installs the dependencies listed in `pyproject.toml` and `uv.lock`, matching the
+configuration used in CI.
+
 The app exposes a root `/health` endpoint that returns `{ "status": "Storyloop API ready" }`. APScheduler starts automatically inside the FastAPI lifespan and currently runs placeholder jobs for data syncs and Growth Score recalculations.
 
 ## Testing
