@@ -11,6 +11,7 @@ Install dependencies if needed:
 The script performs an interactive OAuth flow in the terminal, then prints details
 about the most recent uploaded video plus its impressions click-through rate (CTR).
 """
+
 from __future__ import annotations
 
 import os
@@ -19,7 +20,7 @@ from datetime import UTC, datetime
 from typing import Any, Dict, List
 
 from dotenv import load_dotenv
-from google.oauth2.credentials import Credentials
+from google.auth.credentials import Credentials as GoogleCredentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import Resource, build
 
@@ -66,8 +67,10 @@ def load_client_config() -> Dict[str, Any]:
         "auth_uri": "https://accounts.google.com/o/oauth2/auth",
         "token_uri": "https://oauth2.googleapis.com/token",
         "redirect_uris": [
+            "http://localhost:8080/",
+            "http://localhost:8080",
+            "http://localhost/",
             "http://localhost",
-            "urn:ietf:wg:oauth:2.0:oob",
         ],
     }
 
@@ -77,14 +80,18 @@ def load_client_config() -> Dict[str, Any]:
     return {"installed": installed_config}
 
 
-def run_oauth_flow(client_config: Dict[str, Any]) -> Credentials:
+def run_oauth_flow(client_config: Dict[str, Any]) -> GoogleCredentials:
     flow = InstalledAppFlow.from_client_config(client_config, scopes=SCOPES)
-    # run_console prints the authorization URL and prompts for the code within the terminal.
-    credentials = flow.run_console(prompt="consent")
-    return credentials
+    # run_local_server() opens a browser, starts a local server to handle the redirect,
+    # and automatically completes the OAuth flow. This is the recommended approach.
+    print("\nStarting OAuth flow...")
+    print("A browser window will open for you to authorize the application.\n")
+    return flow.run_local_server(port=8080)
 
 
-def build_youtube_clients(credentials: Credentials) -> tuple[Resource, Resource]:
+def build_youtube_clients(
+    credentials: GoogleCredentials,
+) -> tuple[Resource, Resource]:
     youtube = build("youtube", "v3", credentials=credentials)
     analytics = build("youtubeAnalytics", "v2", credentials=credentials)
     return youtube, analytics
@@ -101,7 +108,9 @@ def fetch_latest_uploaded_video(youtube_client: Resource) -> VideoInfo:
     if not items:
         raise SystemExit("No channels found for the authenticated account.")
 
-    uploads_playlist_id = items[0]["contentDetails"]["relatedPlaylists"]["uploads"]
+    uploads_playlist_id = items[0]["contentDetails"]["relatedPlaylists"][
+        "uploads"
+    ]
 
     playlist_response: Dict[str, Any] = (
         youtube_client.playlistItems()
@@ -116,12 +125,16 @@ def fetch_latest_uploaded_video(youtube_client: Resource) -> VideoInfo:
     latest = playlist_items[0]["snippet"]
     video_id = latest["resourceId"]["videoId"]
     title = latest["title"]
-    published_at = datetime.fromisoformat(latest["publishedAt"].replace("Z", "+00:00"))
+    published_at = datetime.fromisoformat(
+        latest["publishedAt"].replace("Z", "+00:00")
+    )
 
     return VideoInfo(video_id=video_id, title=title, published_at=published_at)
 
 
-def fetch_video_ctr(analytics_client: Resource, video: VideoInfo) -> VideoAnalytics | None:
+def fetch_video_ctr(
+    analytics_client: Resource, video: VideoInfo
+) -> VideoAnalytics | None:
     start_date = video.published_at.date().isoformat()
     end_date = datetime.now(UTC).date().isoformat()
 
@@ -158,11 +171,22 @@ def main() -> None:
     print(
         "This script authenticates via OAuth, fetches your latest upload, and prints its CTR."
     )
-    print("Make sure you have created an OAuth 2.0 Client ID (Desktop type) in Google Cloud")
-    print("Set the credentials via environment variables before running this script:")
+    print(
+        "Make sure you have created an OAuth 2.0 Client ID (Desktop type) in Google Cloud"
+    )
+    print(
+        "and configured the redirect URI to include 'http://localhost' or 'http://localhost:8080'"
+    )
+    print(
+        "Set the credentials via environment variables before running this script:"
+    )
     print(f"  {CLIENT_ID_ENV}=... and {CLIENT_SECRET_ENV}=...")
-    print("  Optionally set GOOGLE_PROJECT_ID if your OAuth client expects it.\n")
-    print("Environment variables from a .env file in this directory are loaded automatically.\n")
+    print(
+        "  Optionally set GOOGLE_PROJECT_ID if your OAuth client expects it.\n"
+    )
+    print(
+        "Environment variables from a .env file in this directory are loaded automatically.\n"
+    )
 
     client_config = load_client_config()
     credentials = run_oauth_flow(client_config)
