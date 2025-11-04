@@ -4,6 +4,7 @@ __pycache__/
 *.egg-info/
 .venv/
 backend/.data/
+client_secret.json
 
 # Node
 node_modules/
