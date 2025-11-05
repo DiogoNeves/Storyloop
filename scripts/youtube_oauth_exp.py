@@ -14,6 +14,7 @@ from __future__ import annotations
 import os
 import json
 import re
+from datetime import datetime
 from pathlib import Path
 
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -30,9 +31,15 @@ TOKEN_FILE = Path(__file__).parent / "youtube_token.json"
 
 # This access scope grants read-only access to the authenticated user's YouTube account.
 # See: https://developers.google.com/youtube/v3/guides/auth/installed-apps
-SCOPES = ["https://www.googleapis.com/auth/youtube.readonly"]
+# Also includes YouTube Analytics API access for fetching video statistics
+SCOPES = [
+    "https://www.googleapis.com/auth/youtube.readonly",
+    "https://www.googleapis.com/auth/yt-analytics.readonly",
+]
 API_SERVICE_NAME = "youtube"
 API_VERSION = "v3"
+ANALYTICS_API_SERVICE_NAME = "youtubeAnalytics"
+ANALYTICS_API_VERSION = "v2"
 
 
 def get_authenticated_service():
@@ -65,6 +72,39 @@ def get_authenticated_service():
             token.write(credentials.to_json())
 
     return build(API_SERVICE_NAME, API_VERSION, credentials=credentials)
+
+
+def get_authenticated_analytics_service():
+    """Create and return an authenticated YouTube Analytics service object."""
+    credentials = None
+
+    # Try to load existing token from file
+    if TOKEN_FILE.exists():
+        credentials = Credentials.from_authorized_user_file(
+            str(TOKEN_FILE), SCOPES
+        )
+
+    # If no valid credentials, run OAuth flow
+    if not credentials or not credentials.valid:
+        flow = InstalledAppFlow.from_client_secrets_file(
+            str(CLIENT_SECRETS_FILE), SCOPES
+        )
+        credentials = flow.run_local_server(
+            host="localhost",
+            port=8080,
+            authorization_prompt_message="Please visit this URL: {url}",
+            success_message="The auth flow is complete; you may close this window.",
+            open_browser=True,
+        )
+        # Save credentials to file for future use
+        with open(TOKEN_FILE, "w") as token:
+            token.write(credentials.to_json())
+
+    return build(
+        ANALYTICS_API_SERVICE_NAME,
+        ANALYTICS_API_VERSION,
+        credentials=credentials,
+    )
 
 
 def list_latest_long_form_video(service):
@@ -255,6 +295,112 @@ def list_video_categories(service, region_code: str = "US"):
     return response
 
 
+def fetch_video_analytics(
+    analytics_service,
+    video_id: str,
+    start_date: str = "2025-10-01",
+    end_date: str = "2025-10-31",
+    metrics: str = "views,estimatedMinutesWatched,averageViewDuration,averageViewPercentage,subscribersGained",
+    dimensions: str = "day",
+    max_results: int = 100,
+):
+    """Fetch analytics statistics for a specific YouTube video.
+
+    Args:
+        analytics_service: Authenticated YouTube Analytics service object
+        video_id: The YouTube video ID to fetch stats for
+        start_date: Start date in YYYY-MM-DD format (default: "2025-10-01")
+        end_date: End date in YYYY-MM-DD format (default: "2025-10-31")
+        metrics: Comma-separated list of metrics to retrieve
+                 Available metrics include: views, watchTime, estimatedMinutesWatched,
+                 averageViewDuration, averageViewPercentage, likes, dislikes,
+                 subscribersGained, subscribersLost, etc.
+        dimensions: Dimension to group data by (default: "day")
+                    Available dimensions include: day, video, country, etc.
+        max_results: Maximum number of results to return (default: 100)
+
+    Returns:
+        Response dictionary containing analytics data
+
+    See:
+        https://developers.google.com/youtube/analytics/reference/reports/query
+    """
+    report_response = (
+        analytics_service.reports()
+        .query(
+            ids="channel==MINE",
+            startDate=start_date,
+            endDate=end_date,
+            metrics=metrics,
+            dimensions=dimensions,
+            filters=f"video=={video_id}",
+            maxResults=max_results,
+        )
+        .execute()
+    )
+    return report_response
+
+
+def fetch_video_analytics_data(video: dict) -> dict | None:
+    """Fetch analytics for a video.
+
+    Args:
+        video: Video dictionary from YouTube Data API containing at least an 'id' field
+
+    Returns:
+        Analytics data dictionary, or None if fetch failed or video ID is invalid
+    """
+    if not isinstance(video, dict) or not video.get("id"):
+        print("No video ID found, skipping analytics fetch.")
+        return None
+
+    video_id_raw = video["id"]
+    if not isinstance(video_id_raw, str):
+        print("Video ID is not a string, skipping analytics fetch.")
+        return None
+
+    video_id: str = video_id_raw
+    print(f"\n{'=' * 60}")
+    print(f"Fetching Analytics for Video: {video_id}")
+    print(f"{'=' * 60}\n")
+
+    analytics_service = get_authenticated_analytics_service()
+
+    # Get video published date to set appropriate date range
+    snippet = video.get("snippet", {})
+    published_at = (
+        snippet.get("publishedAt", "") if isinstance(snippet, dict) else ""
+    )
+    if published_at:
+        # Extract date part (YYYY-MM-DD) from ISO format
+        start_date = published_at.split("T")[0]
+        # Use current date as end date
+        end_date = datetime.now().strftime("%Y-%m-%d")
+    else:
+        # Fallback to default dates
+        start_date = "2025-10-01"
+        end_date = "2025-10-31"
+
+    try:
+        analytics_data = fetch_video_analytics(
+            analytics_service,
+            video_id=video_id,
+            start_date=start_date,
+            end_date=end_date,
+            metrics="views,estimatedMinutesWatched,averageViewDuration,averageViewPercentage,subscribersGained",
+            dimensions="day",
+        )
+        print("Video Analytics Data:")
+        print(json.dumps(analytics_data, indent=2))
+        return analytics_data
+    except Exception as e:
+        print(f"Error fetching analytics: {e}")
+        import traceback
+
+        traceback.print_exc()
+        return None
+
+
 def main():
     """Main entry point for the script."""
     # When running locally, disable OAuthlib's HTTPs verification.
@@ -268,9 +414,19 @@ def main():
     print("Latest Long-Form Video:")
     print(json.dumps(video, indent=2))
 
-    # Save to file
+    # Fetch analytics for the video
+    analytics_data = fetch_video_analytics_data(video)
+
+    # Build combined JSON object
+    combined_data = {
+        "video": video,
+        "analytics": analytics_data,
+    }
+
+    # Save combined data to file
     with open("youtube_data.json", "w", encoding="utf-8") as f:
-        json.dump(video, f, indent=2, ensure_ascii=False)
+        json.dump(combined_data, f, indent=2, ensure_ascii=False)
+    print("\nCombined video and analytics data saved to youtube_data.json")
 
 
 if __name__ == "__main__":
