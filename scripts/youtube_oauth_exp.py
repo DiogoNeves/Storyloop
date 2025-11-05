@@ -5,12 +5,15 @@ It follows the pattern from: https://googleapis.github.io/google-api-python-clie
 
 I intend to use this script to experiment with the YouTube Data API and
 understand the authentication flow, before integrating it into the backend.
+
+This also includes a way to filter out Shorts which we should integrate.
 """
 
 from __future__ import annotations
 
 import os
 import json
+import re
 from pathlib import Path
 
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -131,10 +134,13 @@ def list_latest_long_form_video(service):
 
 
 def filter_long_form_videos(videos: list[dict]) -> list[dict]:
-    """Filter videos to exclude Shorts based on aspect ratio.
+    """Filter videos to exclude Shorts based on fileDetails aspect ratio.
 
     Shorts are typically vertical (height > width) or square (height == width).
     Long-form videos are horizontal (width > height).
+
+    Uses fileDetails.videoStreams[0] which contains the actual video file dimensions.
+    Falls back to duration check (≤60 seconds) if fileDetails is not available.
 
     Args:
         videos: List of video resource dictionaries from YouTube API
@@ -148,30 +154,75 @@ def filter_long_form_videos(videos: list[dict]) -> list[dict]:
         if video.get("kind") != "youtube#video":
             continue
 
-        # Check aspect ratio from thumbnails (use maxres if available, else high)
-        thumbnails = video.get("snippet", {}).get("thumbnails", {})
-        thumbnail = (
-            thumbnails.get("maxres")
-            or thumbnails.get("high")
-            or thumbnails.get("standard")
-        )
+        # Method 1: Check fileDetails.videoStreams (most reliable - actual video dimensions)
+        is_long_form = is_long_form_by_aspect_ratio(video)
+        if is_long_form is not None:
+            if is_long_form:
+                long_form_videos.append(video)
+            continue  # Skip to next video if we determined it's a Short or Long-form
 
-        if not thumbnail:
-            continue
-
-        width = thumbnail.get("width", 0)
-        height = thumbnail.get("height", 0)
-
-        # Skip if dimensions are missing or invalid
-        if not width or not height:
-            continue
-
-        # Long-form videos are horizontal (width > height)
-        # Shorts are vertical (height > width) or square (height == width)
-        if width > height:
+        # Method 2: Fallback to duration check (≤60 seconds = Short)
+        if is_long_form_by_duration(video):
             long_form_videos.append(video)
 
     return long_form_videos
+
+
+def is_long_form_by_aspect_ratio(video: dict) -> bool | None:
+    """Check if video is long-form based on fileDetails aspect ratio.
+
+    Args:
+        video: Video resource dictionary from YouTube API
+
+    Returns:
+        True if long-form (horizontal), False if Short (vertical/square),
+        None if fileDetails not available
+    """
+    file_details = video.get("fileDetails", {})
+    video_streams = file_details.get("videoStreams", [])
+
+    if not video_streams or len(video_streams) == 0:
+        return None
+
+    stream = video_streams[0]
+    width = stream.get("widthPixels", 0)
+    height = stream.get("heightPixels", 0)
+
+    if not width or not height:
+        return None
+
+    # Long-form videos are horizontal (width > height)
+    # Shorts are vertical (height > width) or square (height == width)
+    return width > height
+
+
+def is_long_form_by_duration(video: dict) -> bool:
+    """Check if video is long-form based on duration (>60 seconds).
+
+    Args:
+        video: Video resource dictionary from YouTube API
+
+    Returns:
+        True if duration > 60 seconds (long-form), False otherwise
+    """
+    duration = video.get("contentDetails", {}).get("duration", "")
+    if not duration:
+        return False
+
+    total_seconds = 0
+    hours_match = re.search(r"(\d+)H", duration)
+    minutes_match = re.search(r"(\d+)M", duration)
+    seconds_match = re.search(r"(\d+)S", duration)
+
+    if hours_match:
+        total_seconds += int(hours_match.group(1)) * 3600
+    if minutes_match:
+        total_seconds += int(minutes_match.group(1)) * 60
+    if seconds_match:
+        total_seconds += int(seconds_match.group(1))
+
+    # Filter out Shorts (≤60 seconds)
+    return total_seconds > 60
 
 
 def list_video_categories(service, region_code: str = "US"):
