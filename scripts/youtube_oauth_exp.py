@@ -145,6 +145,18 @@ def filter_long_form_videos(videos: list[dict]) -> list[dict]:
     Args:
         videos: List of video resource dictionaries from YouTube API
 
+    For future reference once integrating:
+        YouTube Analytics API - Creator Content Type (For channel owners)
+        If you are the content owner (or have authorized access), the YouTube
+        Analytics & Reports API provides a reliable indicator. In 2023,
+        Google added a dimension called creatorContentType that classifies a
+        video view as SHORTS, VIDEO_ON_DEMAND, LIVE_STREAM, etc.
+        By querying your channel's analytics with
+        dimensions=video,creatorContentType, you can see each video's type.
+        For example, an analytics report might return a row like videoId = X,
+        creatorContentType = SHORTS for a Short
+        This clearly identifies Shorts.
+
     Returns:
         List of long-form videos (kind="youtube#video" and horizontal aspect ratio)
     """
