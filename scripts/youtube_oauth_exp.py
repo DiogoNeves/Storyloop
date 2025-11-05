@@ -2,6 +2,9 @@
 
 This script demonstrates OAuth 2.0 authentication flow for YouTube Data API.
 It follows the pattern from: https://googleapis.github.io/google-api-python-client/docs/oauth-installed.html
+
+I intend to use this script to experiment with the YouTube Data API and
+understand the authentication flow, before integrating it into the backend.
 """
 
 from __future__ import annotations
