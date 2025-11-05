@@ -112,12 +112,11 @@ def list_latest_long_form_video(service):
         for item in playlist_items_response["items"]
     ]
 
-    # Step 5: Get full video details including duration to filter for
-    # long-form videos
+    # Step 5: Get full video details including all available parts for inspection
     videos_response = (
         service.videos()
         .list(
-            part="snippet,contentDetails,statistics",
+            part="contentDetails,fileDetails,id,liveStreamingDetails,localizations,player,processingDetails,recordingDetails,snippet,statistics,status,suggestions,topicDetails",
             id=",".join(video_ids),
             maxResults=50,
         )
@@ -201,23 +200,14 @@ def main():
 
     service = get_authenticated_service()
 
-    # List video categories
-    categories = list_video_categories(service)
-    print("Video Categories:")
-    print(json.dumps(categories, indent=2))
-
     # List latest long-form video
     video = list_latest_long_form_video(service)
-    print("\nLatest Long-Form Video:")
+    print("Latest Long-Form Video:")
     print(json.dumps(video, indent=2))
 
-    # Combine and save to single file
-    combined = {
-        "videoCategories": categories,
-        "latestLongFormVideo": video,
-    }
+    # Save to file
     with open("youtube_data.json", "w", encoding="utf-8") as f:
-        json.dump(combined, f, indent=2, ensure_ascii=False)
+        json.dump(video, f, indent=2, ensure_ascii=False)
 
 
 if __name__ == "__main__":
