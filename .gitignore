@@ -5,6 +5,7 @@ __pycache__/
 .venv/
 backend/.data/
 client_secret.json
+scripts/youtube_token.json
 
 # Node
 node_modules/
