@@ -17,7 +17,9 @@ import re
 import csv
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
+from dotenv import load_dotenv
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
@@ -26,6 +28,13 @@ from googleapiclient.discovery import build
 # the OAuth 2.0 information for this application, including its client_id and
 # client_secret.
 CLIENT_SECRETS_FILE = Path(__file__).parent / "client_secret.json"
+
+ENV_CLIENT_ID = "YOUTUBE_OAUTH_CLIENT_ID"
+ENV_CLIENT_SECRET = "YOUTUBE_OAUTH_CLIENT_SECRETS"
+ENV_REDIRECT_URI = "YOUTUBE_REDIRECT_URI"
+ENV_PROJECT_ID = "GOOGLE_PROJECT_ID"
+
+DEFAULT_REDIRECT_URI = "http://localhost:8080/"
 
 # Token file to store credentials (user can delete this file to force re-authentication)
 TOKEN_FILE = Path(__file__).parent / "youtube_token.json"
@@ -43,6 +52,55 @@ ANALYTICS_API_SERVICE_NAME = "youtubeAnalytics"
 ANALYTICS_API_VERSION = "v2"
 
 
+def load_client_config() -> dict[str, Any]:
+    """Build OAuth client config from environment variables or local file."""
+    # Load environment variables from .env file if present
+    root_dir = Path(__file__).parent.parent
+    env_path = root_dir / ".env"
+    if env_path.exists():
+        load_dotenv(env_path)
+
+    client_id = os.getenv(ENV_CLIENT_ID)
+    client_secret = os.getenv(ENV_CLIENT_SECRET)
+    redirect_uri = os.getenv(ENV_REDIRECT_URI)
+    project_id = os.getenv(ENV_PROJECT_ID)
+
+    if client_id and client_secret:
+        redirect_uris = (
+            [redirect_uri] if redirect_uri else [DEFAULT_REDIRECT_URI]
+        )
+
+        client_config: dict[str, Any] = {
+            "installed": {
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "redirect_uris": redirect_uris,
+            }
+        }
+
+        if project_id:
+            client_config["installed"]["project_id"] = project_id
+
+        return client_config
+
+    if CLIENT_SECRETS_FILE.exists():
+        with open(CLIENT_SECRETS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    missing = []
+    if not client_id:
+        missing.append(ENV_CLIENT_ID)
+    if not client_secret:
+        missing.append(ENV_CLIENT_SECRET)
+
+    raise RuntimeError(
+        "Missing OAuth client configuration. Set environment variables "
+        f"{', '.join(missing)} or provide client_secret.json."
+    )
+
+
 def get_authenticated_service():
     """Create and return an authenticated YouTube service object."""
     credentials = None
@@ -55,9 +113,7 @@ def get_authenticated_service():
 
     # If no valid credentials, run OAuth flow
     if not credentials or not credentials.valid:
-        flow = InstalledAppFlow.from_client_secrets_file(
-            str(CLIENT_SECRETS_FILE), SCOPES
-        )
+        flow = InstalledAppFlow.from_client_config(load_client_config(), SCOPES)
         # You can use either run_console() or run_local_server() here
         # run_console() - user pastes code manually
         # run_local_server() - opens browser and listens on localhost
@@ -87,9 +143,7 @@ def get_authenticated_analytics_service():
 
     # If no valid credentials, run OAuth flow
     if not credentials or not credentials.valid:
-        flow = InstalledAppFlow.from_client_secrets_file(
-            str(CLIENT_SECRETS_FILE), SCOPES
-        )
+        flow = InstalledAppFlow.from_client_config(load_client_config(), SCOPES)
         credentials = flow.run_local_server(
             host="localhost",
             port=8080,
