@@ -101,6 +101,8 @@ sequenceDiagram
     DB-->>GS: Confirm
 ```
 
+See [thinking/insights.md](insights.md) for the full scoring and insights logic that GrowthScoreService follows.
+
 ## Data Flow Overview
 
 ```mermaid

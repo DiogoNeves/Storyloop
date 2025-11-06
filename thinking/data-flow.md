@@ -220,6 +220,8 @@ GrowthScoreService.recalculate_growth_score()
     │ 4. Generate insights
     │ 5. Store results
     │
+    │ See [thinking/insights.md](insights.md) for the full scoring and insights logic.
+    │
     ▼
 Database Update
     │

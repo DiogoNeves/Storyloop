@@ -95,7 +95,7 @@ Storyloop is a creator analytics journal that combines a FastAPI backend with a 
 **Backend Services:**
 
 - `YoutubeService` - Handles YouTube API integration and metric syncing
-- `GrowthScoreService` - Calculates and maintains growth score metrics
+- `GrowthScoreService` - Calculates and maintains growth score metrics. See [thinking/insights.md](insights.md) for the full scoring and insights logic.
 - `AgentService` (Future) - Handles agent interactions and manages background actions for insight tracking
 - Database abstraction through `SqliteConnectionFactory`
 

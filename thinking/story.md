@@ -14,7 +14,7 @@ Every new experiment starts with a natural-language goal: *"I want to improve re
 
 ### The Weekly Rhythm
 
-Each week, Storyloop syncs your channel data while you sleep, recalculates your Growth Score, and surfaces the shifts that matter. On Monday morning you might see, *"Videos with tighter pacing improved retention by 14%."* It's a quick pulse check that respects your creative cadence, not a firehose demanding daily refreshes.
+Each week, Storyloop syncs your channel data while you sleep, recalculates your Growth Score, and surfaces the shifts that matter. See [thinking/insights.md](insights.md) for the full scoring and insights logic behind that number. On Monday morning you might see, *"Videos with tighter pacing improved retention by 14%."* It's a quick pulse check that respects your creative cadence, not a firehose demanding daily refreshes.
 
 ### Connecting Notes to Outcomes
 

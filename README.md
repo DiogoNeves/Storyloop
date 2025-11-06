@@ -84,4 +84,4 @@ Storyloop/
 
 ## Next steps
 
-The PLAN outlines the roadmap toward ingesting YouTube data, calculating the Storyloop Growth Score, and integrating a journaling workflow. With this boilerplate in place you can begin implementing those features immediately.
+The PLAN outlines the roadmap toward ingesting YouTube data, calculating the Storyloop Growth Score, and integrating a journaling workflow. See [thinking/insights.md](thinking/insights.md) for the full scoring and insights logic. With this boilerplate in place you can begin implementing those features immediately.
