@@ -14,7 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { LinkYouTubeAccountCard } from "@/components/LinkYouTubeAccountCard";
 import { ActivityFeedItem } from "./ActivityFeedItem";
 import { ActivityDraftCard } from "./ActivityDraftCard";
 
@@ -95,59 +95,27 @@ export function ActivityFeed({
             {errorMessage}
           </p>
         ) : null}
-        <Card className="border-dashed border-primary/40 bg-primary/5">
-          <CardContent className="space-y-3 p-4">
-            <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-foreground">
-                Connect your YouTube channel
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                Paste a handle, channel URL, or ID to preview recent uploads.
-              </p>
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Input
-                value={youtubeState.channelInput}
-                onChange={(event) =>
-                  youtubeState.setChannelInput(event.target.value)
-                }
-                onKeyDown={youtubeState.handleChannelKeyDown}
-                placeholder="e.g. @Storyloop or youtube.com/@Storyloop"
-                aria-label="YouTube channel"
-              />
-              <Button
-                type="button"
-                onClick={() => {
-                  void youtubeState.handleFetchVideos();
-                }}
-                disabled={youtubeState.isLoadingVideos}
-                className="shrink-0"
-              >
-                {youtubeState.isLoadingVideos ? "Loading…" : "Load videos"}
-              </Button>
-            </div>
-            {youtubeState.youtubeFeed ? (
-              <p className="text-xs text-muted-foreground">
-                Showing {youtubeState.youtubeFeed.videos.length} recent video
-                {youtubeState.youtubeFeed.videos.length === 1 ? "" : "s"} from
-                <a
-                  href={youtubeState.youtubeFeed.channelUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="ml-1 font-medium text-primary underline-offset-2 hover:underline"
-                >
-                  {youtubeState.youtubeFeed.channelTitle}
-                </a>
-                .
-              </p>
-            ) : null}
-            {youtubeState.youtubeError ? (
-              <p className="text-sm text-destructive" role="status">
-                {youtubeState.youtubeError}
-              </p>
-            ) : null}
-          </CardContent>
-        </Card>
+        <LinkYouTubeAccountCard />
+        {youtubeState.youtubeFeed ? (
+          <p className="text-xs text-muted-foreground">
+            Showing {youtubeState.youtubeFeed.videos.length} recent video
+            {youtubeState.youtubeFeed.videos.length === 1 ? "" : "s"} from
+            <a
+              href={youtubeState.youtubeFeed.channelUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-1 font-medium text-primary underline-offset-2 hover:underline"
+            >
+              {youtubeState.youtubeFeed.channelTitle}
+            </a>
+            .
+          </p>
+        ) : null}
+        {youtubeState.youtubeError ? (
+          <p className="text-sm text-destructive" role="status">
+            {youtubeState.youtubeError}
+          </p>
+        ) : null}
         {draft && onDraftChange ? (
           <ActivityDraftCard
             draft={draft}
