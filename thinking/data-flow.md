@@ -128,6 +128,7 @@ ActivityFeed Re-renders
 **Current State:** Entries stored in React state only (not persisted)
 
 **Future Implementation:**
+
 ```
 handleSubmitDraft()
     │
@@ -174,7 +175,11 @@ Trigger Job
 YoutubeService.sync_latest_metrics()
     │
     │ [Future Implementation]
-    │ 1. Authenticate with YouTube API
+    │ 1. Authenticate with YouTube API using OAuth 2.0
+    │    - See: https://googleapis.github.io/google-api-python-client/docs/oauth-installed.html
+    │    - Load stored credentials or initiate OAuth flow
+    │    - Use google-auth-oauthlib.flow.InstalledAppFlow
+    │    - Reference implementation in scripts/youtube_oauth_exp.py
     │ 2. Fetch latest video metrics
     │    - View count
     │    - Watch time
@@ -380,6 +385,7 @@ FastAPI App State
 ### Current Models
 
 **ActivityItem (Frontend):**
+
 ```typescript
 {
   id: string
@@ -391,11 +397,13 @@ FastAPI App State
 ```
 
 **Timeline Content Types:**
+
 - **Content** (`content`, `live`, `short`, `post`): Synced from YouTube/other platforms
 - **Journal Entries** (`journal`): User-created entries
 - **Insights** (`insight`): AI-generated insights (not yet available)
 
 **HealthResponse (Backend):**
+
 ```python
 {
   "status": "healthy"
@@ -405,6 +413,7 @@ FastAPI App State
 ### Future Models
 
 **Entry (Backend):**
+
 ```python
 class Entry:
     id: UUID
@@ -418,6 +427,7 @@ class Entry:
 ```
 
 **Channel Preference (Backend):**
+
 ```python
 class ChannelPreference:
     id: UUID
@@ -428,6 +438,7 @@ class ChannelPreference:
 ```
 
 **YouTube Metrics:**
+
 ```python
 class YoutubeMetrics:
     video_id: str
@@ -441,6 +452,7 @@ class YoutubeMetrics:
 ```
 
 **Growth Score:**
+
 ```python
 class GrowthScore:
     calculated_at: datetime
@@ -551,6 +563,7 @@ Timeline updated
 ```
 
 **Key Features:**
+
 - Agent-driven: User explicitly requests tracking through agent interaction
 - Background actions: Agent can save actions to run automatically
 - Pattern detection: Analyzes performance data based on agent-configured tracking
@@ -652,9 +665,9 @@ Data flows through Storyloop follow these patterns:
 4. **Error handling** → Caught at each layer → Logged → User feedback
 
 The architecture maintains clear separation between:
+
 - **Presentation** (React components)
 - **State management** (TanStack Query, useState)
 - **API communication** (Axios client)
 - **Business logic** (FastAPI services)
 - **Data persistence** (SQLite database)
-

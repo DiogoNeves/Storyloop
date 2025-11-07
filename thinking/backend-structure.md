@@ -27,6 +27,7 @@ backend/
 ### 1. Application Entry (`main.py`)
 
 The application entry point sets up:
+
 - **FastAPI app** with title and version
 - **Lifespan handler** for startup/shutdown logic
 - **CORS middleware** for cross-origin requests
@@ -34,11 +35,13 @@ The application entry point sets up:
 - **Logfire observability** (optional, if API key provided)
 
 Key functions:
+
 - `create_app()` - Builds the FastAPI application instance
 - `build_lifespan()` - Manages scheduler lifecycle
 - `configure_logfire()` - Sets up observability
 
 **Dependencies Injected into App State:**
+
 - `app.state.settings` - Application configuration
 - `app.state.get_db` - Database connection factory
 - `app.state.youtube_service` - YouTube API service
@@ -50,6 +53,7 @@ Key functions:
 Centralized settings management using Pydantic:
 
 **Settings Model:**
+
 - `environment` - dev/production environment
 - `database_url` - SQLite database path
 - `logfire_api_key` - Optional observability token
@@ -59,6 +63,7 @@ Centralized settings management using Pydantic:
 - `enable_scheduler` - Override scheduler auto-detection
 
 **Features:**
+
 - Environment variable loading from `.env`
 - Type validation and defaults
 - Computed properties (e.g., `scheduler_enabled`)
@@ -69,11 +74,13 @@ Centralized settings management using Pydantic:
 SQLite connection management:
 
 **Key Utilities:**
+
 - `create_connection_factory()` - Returns a callable that creates connections
 - `_sqlite_path()` - Parses SQLite URL and ensures directory exists
 - Row factory configured to return `sqlite3.Row` objects
 
 **Usage Pattern:**
+
 ```python
 get_db = create_connection_factory()
 conn = get_db()
@@ -86,11 +93,14 @@ conn.close()
 APScheduler configuration for recurring jobs:
 
 **Configured Jobs:**
+
 1. **Weekly YouTube Sync** - Sundays at 3:00 AM UTC
+
    - Calls `youtube_service.sync_latest_metrics()`
    - Syncs creator metrics from YouTube API
 
 2. **Daily Growth Score** - Daily at 1:00 AM UTC
+
    - Calls `growth_score_service.recalculate_growth_score()`
    - Recalculates aggregate growth metrics
 
@@ -100,6 +110,7 @@ APScheduler configuration for recurring jobs:
    - Generates and inserts insights into timeline
 
 **Activation:**
+
 - Enabled by default in production environment
 - Disabled in development (can be overridden via `ENABLE_SCHEDULER`)
 - Gracefully handles startup/shutdown
@@ -113,10 +124,17 @@ APScheduler configuration for recurring jobs:
 **Purpose:** Sync creator metrics from YouTube API
 
 **Methods:**
+
 - `sync_latest_metrics()` - Fetches and stores latest YouTube metrics
 
 **Future Implementation:**
-- Authenticate with YouTube Data API v3
+
+- Authenticate with YouTube Data API v3 using OAuth 2.0 for installed applications
+  - See: [Google OAuth 2.0 for Installed Applications](https://googleapis.github.io/google-api-python-client/docs/oauth-installed.html)
+  - Uses `google-auth-oauthlib` and `google-api-python-client` libraries
+  - OAuth flow implemented in `scripts/youtube_oauth_exp.py` as reference
+  - Requires client credentials (client_id, client_secret) from Google Cloud Console
+  - Supports both `run_local_server()` (recommended) and `run_console()` authentication flows
 - Use saved channel preference to fetch channel-specific data
 - Fetch video performance metrics for tracked channel
 - Store CTR, view duration, retention curves
@@ -129,9 +147,11 @@ APScheduler configuration for recurring jobs:
 **Purpose:** Calculate Storyloop Growth Score. See [thinking/insights.md](insights.md) for the full scoring and insights logic.
 
 **Methods:**
+
 - `recalculate_growth_score()` - Updates growth score aggregates
 
 **Future Implementation:**
+
 - Calculate CTR × (Avg View Duration ÷ Video Length)
 - Track trends over time
 - Generate insights and recommendations
@@ -142,12 +162,14 @@ APScheduler configuration for recurring jobs:
 **Purpose:** Handle agent interactions and manage background actions for insight tracking
 
 **Methods:**
+
 - `process_user_query()` - Handle user interactions with agent
 - `save_background_action()` - Store actions requested by agent to run in background
 - `execute_background_action()` - Run saved actions (called by scheduler)
 - `generate_insight_entry()` - Create insight entries for timeline based on tracking results
 
 **Future Implementation:**
+
 - Agent integration for user interactions
 - Users can ask agent to track specific insights
 - Agent can save actions to background job queue
@@ -163,6 +185,7 @@ APScheduler configuration for recurring jobs:
 **Endpoint:** `GET /health`
 
 **Response:**
+
 ```json
 {
   "status": "healthy"
@@ -176,6 +199,7 @@ APScheduler configuration for recurring jobs:
 #### Channel Settings Router (Future: `routers/settings.py`)
 
 **Endpoints:**
+
 - `GET /settings/channel` - Retrieve saved channel preference
 - `POST /settings/channel` - Save channel preference (first-time setup)
 - `PUT /settings/channel` - Update channel preference
@@ -204,11 +228,13 @@ APScheduler configuration for recurring jobs:
 ## Testing Strategy
 
 **Test Structure:**
+
 - `tests/conftest.py` - Shared fixtures
 - `tests/test_health.py` - Health endpoint tests
 - Mirror `app/` structure for feature tests
 
 **Test Tools:**
+
 - `pytest` - Test runner
 - `pytest-asyncio` - Async test support
 - Database fixtures for isolated tests
@@ -216,6 +242,7 @@ APScheduler configuration for recurring jobs:
 ## Environment Variables
 
 Required in `.env`:
+
 ```bash
 ENV=development
 DATABASE_URL=sqlite:///backend/.data/storyloop.db
@@ -223,6 +250,7 @@ CORS_ORIGINS=http://127.0.0.1:5173,http://localhost:5173
 ```
 
 Optional:
+
 ```bash
 LOGFIRE_API_KEY=your_logfire_token
 OPENAI_API_KEY=your_openai_key
@@ -243,4 +271,3 @@ make test-backend
 uv run ruff check backend
 uv run mypy backend
 ```
-
