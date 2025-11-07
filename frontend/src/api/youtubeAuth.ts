@@ -36,8 +36,24 @@ export async function refreshYoutubeToken() {
   return response.data;
 }
 
+export async function logoutYoutube() {
+  const response = await apiClient.post<{ success: boolean; message: string }>(
+    "/youtube/auth/logout",
+  );
+  return response.data;
+}
+
+export async function deleteUser() {
+  const response = await apiClient.post<{ success: boolean; message: string }>(
+    "/youtube/auth/delete",
+  );
+  return response.data;
+}
+
 export const youtubeAuthApi = {
   startYoutubeAuth,
   getYoutubeAuthStatus,
   refreshYoutubeToken,
+  logoutYoutube,
+  deleteUser,
 };

@@ -1,4 +1,12 @@
-export function NavBar() {
+interface NavBarProps {
+  onNavigateToSettings?: () => void;
+  onNavigateToDashboard?: () => void;
+}
+
+export function NavBar({
+  onNavigateToSettings,
+  onNavigateToDashboard,
+}: NavBarProps) {
   return (
     <header className="border-b bg-background">
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
@@ -11,15 +19,23 @@ export function NavBar() {
           </span>
         </div>
         <nav className="flex items-center gap-4 text-sm text-muted-foreground">
-          <a href="#" className="hover:text-foreground">
+          <button
+            type="button"
+            onClick={onNavigateToDashboard}
+            className="hover:text-foreground"
+          >
             Dashboard
-          </a>
+          </button>
           <a href="#" className="hover:text-foreground">
             Library
           </a>
-          <a href="#" className="hover:text-foreground">
+          <button
+            type="button"
+            onClick={onNavigateToSettings}
+            className="hover:text-foreground"
+          >
             Settings
-          </a>
+          </button>
         </nav>
       </div>
     </header>

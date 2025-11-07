@@ -9,6 +9,7 @@ import { useCallback, useMemo, useState } from "react";
 
 import { ActivityFeed, type ActivityDraft } from "@/components/ActivityFeed";
 import { NavBar } from "@/components/NavBar";
+import { Settings } from "@/components/Settings";
 import { ScoreOverviewCard } from "@/components/ScoreOverviewCard";
 import {
   entriesMutations,
@@ -74,6 +75,9 @@ function ScorePlaceholder() {
 
 function DashboardShell() {
   const queryClient = useQueryClient();
+  const [currentView, setCurrentView] = useState<"dashboard" | "settings">(
+    "dashboard",
+  );
 
   const seedItems = useMemo<ActivityItem[]>(
     () => [
@@ -235,22 +239,37 @@ function DashboardShell() {
 
   return (
     <div className="min-h-screen bg-muted/20 text-foreground">
-      <NavBar />
-      <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-10">
-        <ScorePlaceholder />
-
-        <ActivityFeed
-          items={activityItems}
-          draft={draft}
-          onStartDraft={handleStartDraft}
-          onDraftChange={handleDraftChange}
-          onCancelDraft={handleCancelDraft}
-          onSubmitDraft={handleDraftSubmit}
-          isSubmittingDraft={isSavingEntry}
-          draftError={draftError}
-          errorMessage={entriesErrorMessage}
+      <NavBar
+        onNavigateToSettings={() => {
+          setCurrentView("settings");
+        }}
+        onNavigateToDashboard={() => {
+          setCurrentView("dashboard");
+        }}
+      />
+      {currentView === "settings" ? (
+        <Settings
+          onNavigateToDashboard={() => {
+            setCurrentView("dashboard");
+          }}
         />
-      </main>
+      ) : (
+        <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-10">
+          <ScorePlaceholder />
+
+          <ActivityFeed
+            items={activityItems}
+            draft={draft}
+            onStartDraft={handleStartDraft}
+            onDraftChange={handleDraftChange}
+            onCancelDraft={handleCancelDraft}
+            onSubmitDraft={handleDraftSubmit}
+            isSubmittingDraft={isSavingEntry}
+            draftError={draftError}
+            errorMessage={entriesErrorMessage}
+          />
+        </main>
+      )}
     </div>
   );
 }

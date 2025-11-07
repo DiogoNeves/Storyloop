@@ -7,8 +7,8 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 
-from app.dependencies import get_user_service
-from app.services import UserService
+from app.dependencies import get_entry_service, get_user_service
+from app.services import EntryService, UserService
 from app.services.youtube_auth import (
     YoutubeAuthConfigurationError,
     YoutubeAuthError,
@@ -136,34 +136,58 @@ async def get_auth_status(
     }
 
 
-@router.post("/refresh")
-async def refresh_token(
-    auth_service: YoutubeAuthService = Depends(get_youtube_auth_service),
+@router.post("/logout")
+async def logout(
     user_service: UserService = Depends(get_user_service),
 ):
-    """Force refresh of the access token using the stored refresh token."""
+    """Log out by clearing OAuth tokens and channel metadata.
+
+    This removes the session but keeps the user record.
+    """
     user = user_service.get_user()
+    if not user:
+        return {"success": True, "message": "Already logged out"}
 
-    if not user or not user.refresh_token:
+    # Clear tokens and channel metadata but keep user record
+    user_service.update_tokens("", None, None)
+    user_service.update_channel_metadata("", None, None)
+    user_service.clear_oauth_state()
+
+    return {
+        "success": True,
+        "message": "Logged out successfully",
+    }
+
+
+@router.post("/delete")
+async def delete_user(
+    user_service: UserService = Depends(get_user_service),
+    entry_service: EntryService = Depends(get_entry_service),
+):
+    """Delete user account and all associated data.
+
+    This permanently removes all user data including OAuth tokens and entries.
+    """
+    from contextlib import closing
+
+    user = user_service.get_user()
+    if not user:
         raise HTTPException(
-            status_code=400,
-            detail="No refresh token available. Please re-authenticate.",
+            status_code=404,
+            detail="No user account found",
         )
 
-    try:
-        access_token, token_expiry = auth_service.refresh_access_token(
-            user.refresh_token
-        )
+    # Delete all entries
+    entries = entry_service.list_entries()
+    for entry in entries:
+        entry_service.delete_entry(entry.id)
 
-        # Update tokens
-        user_service.update_tokens(access_token, user.refresh_token, token_expiry)
+    # Delete user record
+    with closing(user_service._connection_factory()) as connection:
+        connection.execute("DELETE FROM users WHERE id = 'default'")
+        connection.commit()
 
-        return {
-            "success": True,
-            "message": "Token refreshed successfully",
-        }
-    except YoutubeAuthError as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to refresh token: {exc}",
-        ) from exc
+    return {
+        "success": True,
+        "message": "User account and all data deleted successfully",
+    }
