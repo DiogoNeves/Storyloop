@@ -57,19 +57,24 @@ async def test_youtube_videos_endpoint_returns_payload():
     test_transport = httpx.MockTransport(handler)
 
     settings = Settings(
-        YOUTUBE_API_KEY="test-key", DATABASE_URL="sqlite:///:memory:"
+        YOUTUBE_API_KEY="test-key",
+        DATABASE_URL="sqlite:///:memory:",
+        YOUTUBE_CLIENT_ID="client-id",
+        YOUTUBE_CLIENT_SECRET="client-secret",
+        YOUTUBE_REDIRECT_URI="http://localhost:8000/youtube/auth/callback",
     )
     app = create_app(settings)
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://testserver"
-    ) as client:
-        app.state.youtube_service = YoutubeService(
-            api_key="test-key", transport=test_transport
-        )
-        response = await client.get(
-            "/youtube/videos", params={"channel": "@storyloop"}
-        )
+    async with app.router.lifespan_context(app):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://testserver"
+        ) as client:
+            app.state.youtube_service = YoutubeService(
+                api_key="test-key", transport=test_transport
+            )
+            response = await client.get(
+                "/youtube/videos", params={"channel": "@storyloop"}
+            )
 
     assert response.status_code == 200
     payload = response.json()

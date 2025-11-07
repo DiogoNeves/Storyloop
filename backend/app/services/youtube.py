@@ -5,15 +5,22 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Any, Literal
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any, Literal
 
 from collections.abc import AsyncIterator
 
 import httpx
+from googleapiclient.discovery import build
 
 from app.services.youtube_identifier import build_lookup_candidates
 from app.utils.datetime import parse_datetime, parse_duration_seconds
+
+if TYPE_CHECKING:  # pragma: no cover - imports for typing only
+    from googleapiclient.discovery import Resource
+
+    from app.services.users import UserService
+    from app.services.youtube_oauth import YoutubeOAuthService
 
 logger = logging.getLogger(__name__)
 
@@ -632,6 +639,38 @@ class YoutubeService:
     def sync_latest_metrics(self) -> None:
         """Log a placeholder sync until real metrics synchronization is wired in."""
         logger.info("Pretending to sync latest YouTube metrics.")
+
+    def build_authenticated_client(
+        self,
+        user_service: "UserService",
+        oauth_service: "YoutubeOAuthService",
+    ) -> "Resource":
+        """Return an authenticated Google API client based on stored credentials."""
+
+        record = user_service.get_active_user()
+        if record is None or not record.credentials_json:
+            raise YoutubeConfigurationError(
+                "No stored OAuth credentials available for the active user"
+            )
+
+        credentials = oauth_service.deserialize_credentials(record.credentials_json)
+        if credentials.expired:
+            if not credentials.refresh_token:
+                raise YoutubeConfigurationError(
+                    "Stored credentials are expired and cannot be refreshed"
+                )
+            oauth_service.refresh_credentials(credentials)
+            user_service.upsert_credentials(
+                oauth_service.serialize_credentials(credentials),
+                datetime.now(tz=UTC),
+            )
+
+        return build(
+            "youtube",
+            "v3",
+            credentials=credentials,
+            cache_discovery=False,
+        )
 
 
 def _select_thumbnail_url(
