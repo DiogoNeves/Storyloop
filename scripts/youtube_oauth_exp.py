@@ -688,7 +688,9 @@ def fetch_video_analytics_data(video: dict) -> dict | None:
     # Note: These metrics may not be available - video-level CTR is not officially
     # supported by the YouTube Analytics API, but we'll attempt to fetch them anyway.
     ctr_metrics = "impressions,clicks,impressionsClickThroughRate"
-    standard_metrics = "views,estimatedMinutesWatched,averageViewDuration,averageViewPercentage,subscribersGained"
+    # Include subscribersLost for SPV calculation
+    # Note: relativeRetentionPerformance cannot be queried with 'day' dimension, fetch separately
+    standard_metrics = "views,estimatedMinutesWatched,averageViewDuration,averageViewPercentage,subscribersGained,subscribersLost"
 
     # First, try with CTR metrics included
     all_metrics = f"{standard_metrics},{ctr_metrics}"
@@ -757,6 +759,39 @@ def fetch_video_analytics_data(video: dict) -> dict | None:
     # Calculate or extract CTR from the data if available
     if analytics_data:
         analytics_data = calculate_ctr_from_data(analytics_data, video_id)
+
+    # Fetch relativeRetentionPerformance separately (cannot be queried with 'day' dimension)
+    if analytics_data:
+        try:
+            print("Attempting to fetch relativeRetentionPerformance...")
+            rrp_data = fetch_video_analytics(
+                analytics_service,
+                video_id=video_id,
+                start_date=start_date,
+                end_date=end_date,
+                metrics="relativeRetentionPerformance",
+                dimensions="video",  # Use 'video' dimension instead of 'day'
+            )
+            # Merge relativeRetentionPerformance into analytics_data metadata
+            if rrp_data and rrp_data.get("rows"):
+                if "metadata" not in analytics_data:
+                    analytics_data["metadata"] = {}
+                rrp_rows = rrp_data.get("rows", [])
+                if rrp_rows and len(rrp_rows) > 0:
+                    rrp_value = rrp_rows[0][0] if rrp_rows[0] else None
+                    if rrp_value is not None:
+                        analytics_data["metadata"][
+                            "relativeRetentionPerformance"
+                        ] = float(rrp_value)
+                        print(
+                            f"✓ relativeRetentionPerformance retrieved: {rrp_value}"
+                        )
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "not supported" in error_msg or "invalid" in error_msg:
+                print(f"⚠ relativeRetentionPerformance not available: {e}")
+            else:
+                print(f"⚠ Error fetching relativeRetentionPerformance: {e}")
 
     print("Video Analytics Data:")
     print(json.dumps(analytics_data, indent=2))
@@ -901,6 +936,466 @@ def merge_ctr_into_analytics(analytics_data: dict, ctr_data: dict) -> dict:
     return analytics_data
 
 
+def calculate_vv7(analytics_data: dict, published_date: str) -> float | None:
+    """Calculate View Velocity 7d (VV7) - sum of views from days 0-6 after publish.
+
+    Args:
+        analytics_data: Analytics data dictionary with daily metrics
+        published_date: Video publish date in YYYY-MM-DD format
+
+    Returns:
+        VV7 value (sum of views from first 7 days), or None if insufficient data
+    """
+    rows = analytics_data.get("rows", [])
+    column_headers = analytics_data.get("columnHeaders", [])
+    metric_indices = _get_metric_indices(column_headers)
+
+    if "views" not in metric_indices:
+        return None
+
+    views_idx = metric_indices["views"]
+    date_idx = None
+
+    # Find date dimension index
+    for i, header in enumerate(column_headers):
+        if (
+            header.get("columnType") == "DIMENSION"
+            and header.get("name") == "day"
+        ):
+            date_idx = i
+            break
+
+    if date_idx is None:
+        return None
+
+    # Parse published date
+    try:
+        pub_date = datetime.strptime(published_date, "%Y-%m-%d")
+    except ValueError:
+        return None
+
+    vv7 = 0
+    days_counted = 0
+
+    for row in rows:
+        if len(row) <= max(views_idx, date_idx):
+            continue
+
+        try:
+            row_date_str = row[date_idx]
+            row_date = datetime.strptime(row_date_str, "%Y-%m-%d")
+            days_since_publish = (row_date - pub_date).days
+
+            # Count views from days 0-6 (first 7 days)
+            if 0 <= days_since_publish <= 6:
+                views = int(row[views_idx]) if row[views_idx] else 0
+                vv7 += views
+                days_counted += 1
+        except (ValueError, TypeError, IndexError):
+            continue
+
+    # Return None only if no data available for days 0-6
+    # Return 0.0 if we have data but all views are 0 (valid case)
+    if days_counted == 0:
+        return None
+    return float(vv7)
+
+
+def calculate_avp(analytics_data: dict) -> float | None:
+    """Calculate Average View Percentage (AVP).
+
+    Args:
+        analytics_data: Analytics data dictionary with averageViewPercentage metric
+
+    Returns:
+        AVP value (0-1 range), or None if not available
+    """
+    column_headers = analytics_data.get("columnHeaders", [])
+    metric_indices = _get_metric_indices(column_headers)
+
+    if "averageViewPercentage" not in metric_indices:
+        return None
+
+    avp_idx = metric_indices["averageViewPercentage"]
+    rows = analytics_data.get("rows", [])
+
+    # Get the most recent non-zero AVP value
+    for row in reversed(rows):
+        if len(row) > avp_idx:
+            try:
+                avp_value = float(row[avp_idx]) if row[avp_idx] else None
+                if avp_value is not None and avp_value > 0:
+                    return avp_value / 100.0  # Convert percentage to 0-1 range
+            except (ValueError, TypeError):
+                continue
+
+    return None
+
+
+def calculate_ehs(analytics_data: dict) -> float | None:
+    """Calculate Early Hook Score (EHS) from relativeRetentionPerformance.
+
+    Uses YouTube's relativeRetentionPerformance metric which is already normalized to
+    "average performance for videos of similar length." This metric represents retention
+    performance relative to similar videos and can be used directly (0-100 scale).
+
+    For early channels (< 5 videos), relativeRetentionPerformance is used directly.
+    For established channels (≥ 5 videos), it's z-scored against channel history.
+
+    Args:
+        analytics_data: Analytics data dictionary with relativeRetentionPerformance metric
+                       (may be in metadata if fetched separately, or in rows if available)
+
+    Returns:
+        EHS value (0-100 scale from relativeRetentionPerformance), or None if not available
+    """
+    # First check if relativeRetentionPerformance is in metadata (fetched separately)
+    metadata = analytics_data.get("metadata", {})
+    if "relativeRetentionPerformance" in metadata:
+        rrp_value = metadata["relativeRetentionPerformance"]
+        if rrp_value is not None:
+            return max(0.0, min(100.0, float(rrp_value)))
+
+    # Otherwise, check if it's in the rows (if queried with compatible dimensions)
+    column_headers = analytics_data.get("columnHeaders", [])
+    metric_indices = _get_metric_indices(column_headers)
+
+    if "relativeRetentionPerformance" not in metric_indices:
+        return None
+
+    rrp_idx = metric_indices["relativeRetentionPerformance"]
+    rows = analytics_data.get("rows", [])
+
+    # Get the most recent non-zero relativeRetentionPerformance value
+    # This metric is already normalized (0-100) by YouTube
+    for row in reversed(rows):
+        if len(row) > rrp_idx:
+            try:
+                rrp_value = float(row[rrp_idx]) if row[rrp_idx] else None
+                if rrp_value is not None:
+                    # relativeRetentionPerformance is already on 0-100 scale
+                    # Clamp to ensure it's within expected range
+                    return max(0.0, min(100.0, rrp_value))
+            except (ValueError, TypeError):
+                continue
+
+    return None
+
+
+def calculate_spv(
+    analytics_data: dict, published_date: str, views_28d: int | None = None
+) -> float | None:
+    """Calculate Subscribers per 1K Views (SPV).
+
+    SPV = (subsGained - subsLost) / views_28d * 1000
+
+    Args:
+        analytics_data: Analytics data dictionary with subscriber metrics
+        published_date: Video publish date in YYYY-MM-DD format
+        views_28d: Total views in first 28 days (if None, will calculate from daily data)
+
+    Returns:
+        SPV value, or None if insufficient data
+    """
+    column_headers = analytics_data.get("columnHeaders", [])
+    metric_indices = _get_metric_indices(column_headers)
+    rows = analytics_data.get("rows", [])
+
+    has_subs_gained = "subscribersGained" in metric_indices
+    has_subs_lost = "subscribersLost" in metric_indices
+    has_views = "views" in metric_indices
+
+    if not has_subs_gained:
+        return None
+
+    subs_gained_idx = metric_indices["subscribersGained"]
+    subs_lost_idx = metric_indices["subscribersLost"] if has_subs_lost else None
+    views_idx = metric_indices["views"] if has_views else None
+
+    # Find date dimension index
+    date_idx = None
+    for i, header in enumerate(column_headers):
+        if (
+            header.get("columnType") == "DIMENSION"
+            and header.get("name") == "day"
+        ):
+            date_idx = i
+            break
+
+    # Parse published date
+    try:
+        pub_date = datetime.strptime(published_date, "%Y-%m-%d")
+    except ValueError:
+        return None
+
+    total_subs_gained = 0
+    total_subs_lost = 0
+    views_28d_calculated = 0
+
+    # Sum subscribers gained/lost and views from first 28 days
+    # Date dimension is required for proper filtering
+    if date_idx is None:
+        return None
+
+    for row in rows:
+        # Validate date and check if row is within 28-day window
+        if len(row) <= date_idx:
+            continue
+
+        try:
+            row_date_str = row[date_idx]
+            row_date = datetime.strptime(row_date_str, "%Y-%m-%d")
+            days_since_publish = (row_date - pub_date).days
+
+            # Only count metrics from first 28 days (days 0-27)
+            if days_since_publish < 0 or days_since_publish > 27:
+                continue
+        except (ValueError, TypeError, IndexError):
+            # Skip rows with invalid dates
+            continue
+
+        # Accumulate metrics only for rows that passed date validation
+        try:
+            if len(row) > subs_gained_idx:
+                subs_gained = (
+                    int(row[subs_gained_idx]) if row[subs_gained_idx] else 0
+                )
+                total_subs_gained += subs_gained
+
+            if subs_lost_idx and len(row) > subs_lost_idx:
+                subs_lost = int(row[subs_lost_idx]) if row[subs_lost_idx] else 0
+                total_subs_lost += subs_lost
+
+            if views_idx and len(row) > views_idx:
+                views = int(row[views_idx]) if row[views_idx] else 0
+                views_28d_calculated += views
+        except (ValueError, TypeError):
+            continue
+
+    # Use provided views_28d or calculated value
+    if views_28d is None:
+        views_28d = views_28d_calculated
+
+    if views_28d is None or views_28d == 0:
+        return None
+
+    net_subs = total_subs_gained - total_subs_lost
+    spv = (net_subs / views_28d) * 1000
+
+    return float(spv)
+
+
+def calculate_z_score(value: float, mean: float, std_dev: float) -> float:
+    """Calculate z-score for normalization.
+
+    Args:
+        value: The value to normalize
+        mean: Mean of the baseline distribution
+        std_dev: Standard deviation of the baseline distribution
+
+    Returns:
+        Z-score value
+    """
+    if std_dev == 0:
+        return 0.0
+    return (value - mean) / std_dev
+
+
+def normalize_to_0_100(
+    z_score: float, min_z: float = -3.0, max_z: float = 3.0
+) -> float:
+    """Normalize z-score to 0-100 range.
+
+    Args:
+        z_score: Z-score value
+        min_z: Minimum expected z-score (default: -3)
+        max_z: Maximum expected z-score (default: 3)
+
+    Returns:
+        Normalized value in 0-100 range
+    """
+    # Clamp z-score to expected range
+    clamped_z = max(min_z, min(max_z, z_score))
+    # Normalize to 0-100
+    normalized = ((clamped_z - min_z) / (max_z - min_z)) * 100
+    return max(0.0, min(100.0, normalized))
+
+
+def calculate_sgi(
+    analytics_data: dict,
+    video: dict,
+    baseline_data: list[dict] | None = None,
+    channel_video_count: int | None = None,
+) -> dict:
+    """Calculate Storyloop Growth Index (SGI) score.
+
+    SGI is a CTR-free Expected Satisfied Watch Time per Impression metric that measures
+    video performance across Discovery (40%), RetentionQuality (45%), and Loyalty (15%).
+
+    Formula: SGI = 0.40 * Discovery + 0.45 * RetentionQuality + 0.15 * Loyalty
+
+    Components:
+        - Discovery: View Velocity 7d (VV7) - sum of views from first 7 days
+        - RetentionQuality: Uses relativeRetentionPerformance (YouTube's normalized metric).
+          For early channels (< 5 videos): retention_quality = 0.6*AVP + 0.4*EHS (absolute, not z-scored)
+          For established channels (≥ 5 videos): retention_quality = z(0.6*AVP + 0.4*EHS)
+          EHS uses relativeRetentionPerformance which is already normalized to similar-length videos.
+        - Loyalty: Subscribers per 1K Views (SPV) = (subsGained - subsLost) / views_28d * 1000
+
+    Reading Results:
+        - sgi_scaled: Final score (0-100), higher is better
+        - discovery_score, retention_score, loyalty_score: Individual component scores (0-100)
+        - components: Raw values (vv7, avp, ehs, spv) before normalization
+        - note: Calculation mode (early channel vs established channel with z-scores)
+
+    For detailed formulas and methodology, see: thinking/insights.md
+
+    Args:
+        analytics_data: YouTube Analytics API data with daily metrics (views, averageViewPercentage,
+                       subscribersGained, subscribersLost, relativeRetentionPerformance, day dimension)
+        video: Video dict with id and snippet.publishedAt
+        baseline_data: Optional historical video data for z-score calculation (None = prototype mode)
+        channel_video_count: Number of videos on the channel (used to determine early vs established)
+
+    Returns:
+        Dict with components (raw values), discovery_score, retention_score, loyalty_score,
+        sgi_raw, sgi_scaled (0-100), and note (calculation mode).
+    """
+    snippet = video.get("snippet", {})
+    published_at = (
+        snippet.get("publishedAt", "") if isinstance(snippet, dict) else ""
+    )
+    published_date = published_at.split("T")[0] if published_at else None
+
+    if not published_date:
+        return {
+            "error": "Video publish date not available",
+            "sgi": None,
+        }
+
+    # Calculate raw component values for SGI score
+    # Discovery component: View Velocity 7d (VV7) - sum of views from first 7 days
+    vv7 = calculate_vv7(analytics_data, published_date)
+    # Retention component: Average View Percentage (AVP) - how much of video viewers watch
+    avp = calculate_avp(analytics_data)
+    # Retention component: Early Hook Score (EHS) - retention performance in opening sections
+    # May be None if retention curve data not available via API
+    ehs = calculate_ehs(analytics_data)
+    # Loyalty component: Subscribers per 1K Views (SPV) - conversion rate to subscribers
+    spv = calculate_spv(analytics_data, published_date)
+
+    components = {
+        "vv7": vv7,
+        "avp": avp,
+        "ehs": ehs,
+        "spv": spv,
+    }
+
+    # Determine if this is an early channel (< 5 videos) or established channel
+    # For early channels, use relativeRetentionPerformance directly (already normalized by YouTube)
+    # For established channels, use z-scores against channel history
+    is_early_channel = (
+        channel_video_count is not None and channel_video_count < 5
+    )
+
+    # For prototyping without baseline, use simple normalization
+    # In production, these would be z-scores against historical data
+    if baseline_data is None or len(baseline_data) == 0:
+        # Calculate raw component values
+        discovery_raw = vv7 if vv7 is not None else None
+
+        # RetentionQuality: 0.6 * AVP + 0.4 * EHS
+        # EHS uses relativeRetentionPerformance (0-100 scale, already normalized by YouTube)
+        # For early channels: use absolute values (relativeRetentionPerformance is the baseline)
+        # For established channels: would use z-scores (when baseline_data is available)
+        if avp is not None:
+            if ehs is not None:
+                # EHS is already on 0-100 scale from relativeRetentionPerformance
+                # Convert AVP (0-1) to 0-100 scale for consistency
+                avp_scaled = avp * 100
+                retention_raw = 0.6 * avp_scaled + 0.4 * ehs
+            else:
+                # When EHS unavailable, use only AVP component (0.6 weight)
+                retention_raw = 0.6 * avp * 100
+        else:
+            # When AVP unavailable but EHS is available, use EHS as proxy for retention quality
+            # EHS represents retention performance relative to similar videos, so it's a reasonable fallback
+            if ehs is not None:
+                retention_raw = (
+                    ehs  # Use EHS directly as proxy (already 0-100 scale)
+                )
+            else:
+                retention_raw = None
+
+        loyalty_raw = spv if spv is not None else None
+
+        # Normalize to 0-100 using reasonable assumptions for prototype
+        # These are rough estimates - in production, use z-scores against baseline
+
+        # Discovery: VV7 typically ranges from hundreds to millions
+        # Assume reasonable range: 0-100k views in 7 days maps to 0-100
+        if discovery_raw is not None:
+            # Use log scale for discovery (views can vary widely)
+            if discovery_raw > 0:
+                discovery_z = (
+                    discovery_raw / 10000.0 - 1.0
+                ) / 2.0  # Rough z-score proxy
+            else:
+                discovery_z = -2.0
+            discovery_score = normalize_to_0_100(discovery_z)
+        else:
+            discovery_score = 0.0
+
+        # Retention: retention_raw is already on 0-100 scale (from AVP*100 + EHS)
+        # For early channels: use directly (relativeRetentionPerformance is the baseline)
+        # For established channels: would z-score against channel history
+        if retention_raw is not None:
+            if is_early_channel:
+                # Early channel: use absolute value directly (relativeRetentionPerformance baseline)
+                retention_score = max(0.0, min(100.0, retention_raw))
+            else:
+                # Established channel: use rough z-score proxy (would use real z-score with baseline)
+                retention_z = (
+                    retention_raw - 50.0
+                ) / 20.0  # Rough z-score proxy
+                retention_score = normalize_to_0_100(retention_z)
+        else:
+            retention_score = 0.0
+
+        # Loyalty: SPV typically ranges from -10 to +50 per 1K views
+        # Assume reasonable range: -5 to +20 maps to 0-100
+        if loyalty_raw is not None:
+            loyalty_z = (loyalty_raw - 7.5) / 5.0  # Rough z-score proxy
+            loyalty_score = normalize_to_0_100(loyalty_z)
+        else:
+            loyalty_score = 0.0
+
+        # Calculate weighted SGI
+        sgi_raw = (
+            0.40 * discovery_score
+            + 0.45 * retention_score
+            + 0.15 * loyalty_score
+        )
+        sgi_scaled = max(0.0, min(100.0, sgi_raw))
+
+        return {
+            "components": components,
+            "discovery_score": round(discovery_score, 2),
+            "retention_score": round(retention_score, 2),
+            "loyalty_score": round(loyalty_score, 2),
+            "sgi_raw": round(sgi_raw, 2),
+            "sgi_scaled": round(sgi_scaled, 2),
+            "note": f"Scores calculated without baseline (prototype mode). {'Early channel mode: using relativeRetentionPerformance directly as baseline.' if is_early_channel else 'Established channel: would use z-scores against historical video data.'}",
+        }
+
+    # TODO: Implement proper z-score calculation against baseline_data
+    # This would require calculating mean/std for each component from baseline
+    return {
+        "components": components,
+        "note": "Baseline z-score calculation not yet implemented",
+    }
+
+
 def main():
     """Main entry point for the script."""
     # When running locally, disable OAuthlib's HTTPs verification.
@@ -939,16 +1434,62 @@ def main():
                 f"   Then run this script again to automatically import CTR."
             )
 
+    # Calculate SGI score
+    sgi_result = None
+    if analytics_data:
+        print("\n" + "=" * 60)
+        print("Calculating Storyloop Growth Index (SGI)")
+        print("=" * 60 + "\n")
+        # For prototyping, pass None for channel_video_count (will use established channel logic)
+        # In production, fetch actual channel video count to determine early vs established
+        sgi_result = calculate_sgi(
+            analytics_data, video, channel_video_count=None
+        )
+
+        if "error" not in sgi_result:
+            print("SGI Score Breakdown:")
+            print(
+                f"  Discovery (40%): {sgi_result.get('discovery_score', 'N/A')}"
+            )
+            print(
+                f"  Retention (45%): {sgi_result.get('retention_score', 'N/A')}"
+            )
+            print(f"  Loyalty (15%): {sgi_result.get('loyalty_score', 'N/A')}")
+            print(f"\n  SGI Score: {sgi_result.get('sgi_scaled', 'N/A')}/100")
+            print("\n  Component Values:")
+            components = sgi_result.get("components", {})
+            if components.get("vv7") is not None:
+                print(f"    VV7 (View Velocity 7d): {components['vv7']:.0f}")
+            if components.get("avp") is not None:
+                print(
+                    f"    AVP (Average View %): {components['avp'] * 100:.2f}%"
+                )
+            if components.get("ehs") is not None:
+                print(f"    EHS (Early Hook Score): {components['ehs']:.2f}")
+            else:
+                print(
+                    "    EHS (Early Hook Score): Not available (requires retention curve data)"
+                )
+            if components.get("spv") is not None:
+                print(f"    SPV (Subs per 1K Views): {components['spv']:.2f}")
+
+            if "note" in sgi_result:
+                print(f"\n  Note: {sgi_result['note']}")
+        else:
+            print(f"Error calculating SGI: {sgi_result.get('error')}")
+
     # Build combined JSON object
     combined_data = {
         "video": video,
         "analytics": analytics_data,
+        "sgi": sgi_result,
     }
 
     # Save combined data to file
-    with open("youtube_data.json", "w", encoding="utf-8") as f:
+    output_file = Path(__file__).parent.parent / "youtube_data.json"
+    with open(output_file, "w", encoding="utf-8") as f:
         json.dump(combined_data, f, indent=2, ensure_ascii=False)
-    print("\nCombined video and analytics data saved to youtube_data.json")
+    print(f"\nCombined video, analytics, and SGI data saved to {output_file}")
 
 
 if __name__ == "__main__":
