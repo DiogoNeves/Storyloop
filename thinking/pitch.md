@@ -10,7 +10,7 @@ Offer a creative companion that translates raw metrics into narrative insights s
 
 ## Solution
 
-Storyloop combines a FastAPI backend, React frontend, and automated YouTube sync to deliver a daily Growth Score, weekly metric refreshes, and journal-linked insights that tie creative decisions to measurable outcomes.
+Storyloop combines a FastAPI backend, React frontend, and automated YouTube sync to deliver a daily Growth Score, weekly metric refreshes, and journal-linked insights that tie creative decisions to measurable outcomes. See [thinking/insights.md](insights.md) for the full scoring and insights logic.
 
 ## Product Experience
 
