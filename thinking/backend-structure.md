@@ -126,7 +126,7 @@ APScheduler configuration for recurring jobs:
 
 **Current State:** Placeholder implementation
 
-**Purpose:** Calculate Storyloop Growth Score
+**Purpose:** Calculate Storyloop Growth Score. See [thinking/insights.md](insights.md) for the full scoring and insights logic.
 
 **Methods:**
 - `recalculate_growth_score()` - Updates growth score aggregates

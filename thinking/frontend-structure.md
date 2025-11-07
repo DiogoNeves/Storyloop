@@ -71,7 +71,7 @@ frontend/
 
 ### ActivityFeed Component
 
-**Purpose:** Display and manage the timeline of content, journal entries, and insights
+**Purpose:** Display and manage the timeline of content, journal entries, and insights. See [thinking/insights.md](insights.md) for the full scoring and insights logic that powers these summaries.
 
 **Props:**
 
