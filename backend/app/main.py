@@ -16,7 +16,13 @@ from app.config import Settings, settings
 from app.db import SqliteConnectionFactory, create_connection_factory
 from app.routers import api_router
 from app.scheduler import create_scheduler
-from app.services import EntryService, GrowthScoreService, YoutubeService
+from app.services import (
+    EntryService,
+    GrowthScoreService,
+    UserService,
+    YoutubeService,
+)
+from app.services.youtube_auth import YoutubeAuthService
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +50,10 @@ def build_lifespan(
 
     entry_service = EntryService(connection_factory)
     entry_service.ensure_schema()
+    user_service = UserService(connection_factory)
+    user_service.ensure_schema()
     youtube_service = YoutubeService(api_key=active_settings.youtube_api_key)
+    youtube_auth_service = YoutubeAuthService(active_settings)
     growth_score_service = GrowthScoreService()
     scheduler: AsyncIOScheduler | None = None
 
@@ -59,7 +68,9 @@ def build_lifespan(
         app.state.settings = active_settings
         app.state.get_db = connection_factory
         app.state.entry_service = entry_service
+        app.state.user_service = user_service
         app.state.youtube_service = youtube_service
+        app.state.youtube_auth_service = youtube_auth_service
         app.state.growth_score_service = growth_score_service
 
         if scheduler is not None:
