@@ -35,12 +35,12 @@ class Settings(BaseModel):
     youtube_api_key: str | None = Field(default=None, alias="YOUTUBE_API_KEY")
     youtube_client_id: str | None = Field(
         default=None,
-        alias="YOUTUBE_CLIENT_ID",
+        alias="YOUTUBE_OAUTH_CLIENT_ID",
         description="OAuth client id for YouTube",
     )
     youtube_client_secret: str | None = Field(
         default=None,
-        alias="YOUTUBE_CLIENT_SECRET",
+        alias="YOUTUBE_OAUTH_CLIENT_SECRET",
         description="OAuth client secret for YouTube",
     )
     youtube_redirect_uri: str | None = Field(

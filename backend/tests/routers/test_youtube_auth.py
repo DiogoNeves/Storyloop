@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
+from google.oauth2.credentials import Credentials
 from httpx import ASGITransport, AsyncClient
 
 from app.config import Settings
@@ -11,13 +12,23 @@ from app.main import create_app
 from app.services.users import UserService
 
 
-class FakeCredentials:
+class FakeCredentials(Credentials):
     def __init__(self, *, expired: bool = False) -> None:
-        self.expired = expired
-        self.refresh_token = "refresh-token"
+        # Initialize with minimal required parameters
+        super().__init__(token="fake-token")
+        self._expired = expired
+        self._refresh_token = "refresh-token"
+
+    @property
+    def expired(self) -> bool:
+        return self._expired
+
+    @property
+    def refresh_token(self) -> str:
+        return self._refresh_token
 
     def to_json(self) -> str:  # pragma: no cover - simple passthrough
-        return "{\"token\": \"abc\"}"
+        return '{"token": "abc"}'
 
 
 class FakeFlow:
@@ -29,7 +40,10 @@ class FakeFlow:
 
     def authorization_url(self, **_: Any) -> tuple[str, str]:
         self.authorization_called = True
-        return "https://accounts.google.com/o/oauth2/auth?state=" + self._state, self._state
+        return (
+            "https://accounts.google.com/o/oauth2/auth?state=" + self._state,
+            self._state,
+        )
 
     def fetch_token(self, *, code: str) -> None:
         self.fetched_code = code
@@ -57,7 +71,7 @@ class FakeOAuthService:
         return self._credentials
 
     def refresh_credentials(self, credentials: FakeCredentials) -> None:
-        credentials.expired = False
+        credentials._expired = False
         self.refreshed = True
 
 
@@ -90,7 +104,9 @@ class FakeYoutubeService:
         self.payload = payload
         self.called = False
 
-    def build_authenticated_client(self, *_: Any, **__: Any) -> FakeYoutubeClient:
+    def build_authenticated_client(
+        self, *_: Any, **__: Any
+    ) -> FakeYoutubeClient:
         self.called = True
         return FakeYoutubeClient(self.payload)
 
@@ -99,8 +115,8 @@ def create_test_app() -> tuple[Any, FakeOAuthService, FakeYoutubeService]:
     settings = Settings(
         DATABASE_URL="sqlite:///:memory:",
         YOUTUBE_API_KEY="test-key",
-        YOUTUBE_CLIENT_ID="client-id",
-        YOUTUBE_CLIENT_SECRET="client-secret",
+        YOUTUBE_OAUTH_CLIENT_ID="client-id",
+        YOUTUBE_OAUTH_CLIENT_SECRET="client-secret",
         YOUTUBE_REDIRECT_URI="http://localhost:8000/youtube/auth/callback",
         CORS_ORIGINS="http://frontend.test",
     )
@@ -114,10 +130,14 @@ def create_test_app() -> tuple[Any, FakeOAuthService, FakeYoutubeService]:
                     "snippet": {
                         "title": "Storyloop",
                         "thumbnails": {
-                            "default": {"url": "https://img.youtube.com/123.jpg"}
+                            "default": {
+                                "url": "https://img.youtube.com/123.jpg"
+                            }
                         },
                     },
-                    "contentDetails": {"relatedPlaylists": {"uploads": "UU123"}},
+                    "contentDetails": {
+                        "relatedPlaylists": {"uploads": "UU123"}
+                    },
                 }
             ]
         }
@@ -168,7 +188,7 @@ async def test_status_reports_link_state() -> None:
         ) as client:
             user_service: UserService = app.state.user_service
             user_service.upsert_credentials(
-                "{\"token\": \"abc\"}", datetime.now(tz=UTC)
+                '{"token": "abc"}', datetime.now(tz=UTC)
             )
             user_service.update_channel_info(
                 channel_id="UC123",

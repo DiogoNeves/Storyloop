@@ -1,4 +1,13 @@
-"""Helpers for managing YouTube OAuth credentials."""
+"""Helpers for managing YouTube OAuth credentials.
+
+This service provides utilities for constructing Google OAuth flows and managing
+credential serialization/deserialization for YouTube API access. It wraps the
+Google Auth libraries (`google_auth_oauthlib.flow.Flow` and
+`google.oauth2.credentials.Credentials`) with a simplified interface.
+
+See `app.routers.youtube_auth` for endpoint-level documentation on the OAuth
+flow.
+"""
 
 from __future__ import annotations
 
@@ -44,10 +53,10 @@ class YoutubeOAuthService:
 
     def __init__(self, settings: Settings) -> None:
         if not settings.youtube_client_id:
-            msg = "Missing YOUTUBE_CLIENT_ID configuration."
+            msg = "Missing YOUTUBE_OAUTH_CLIENT_ID configuration."
             raise YoutubeConfigurationError(msg)
         if not settings.youtube_client_secret:
-            msg = "Missing YOUTUBE_CLIENT_SECRET configuration."
+            msg = "Missing YOUTUBE_OAUTH_CLIENT_SECRET configuration."
             raise YoutubeConfigurationError(msg)
         if not settings.youtube_redirect_uri:
             msg = "Missing YOUTUBE_REDIRECT_URI configuration."
