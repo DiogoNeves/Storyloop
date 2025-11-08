@@ -23,6 +23,7 @@ from app.services import (
     YoutubeOAuthService,
     YoutubeService,
 )
+from app.services.youtube import YoutubeConfigurationError
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +70,12 @@ def build_lifespan(
         app.state.entry_service = entry_service
         app.state.user_service = user_service
         app.state.youtube_service = youtube_service
-        app.state.youtube_oauth_service = YoutubeOAuthService(active_settings)
+        try:
+            app.state.youtube_oauth_service = YoutubeOAuthService(
+                active_settings
+            )
+        except YoutubeConfigurationError:
+            app.state.youtube_oauth_service = None
         app.state.growth_score_service = growth_score_service
 
         if scheduler is not None:

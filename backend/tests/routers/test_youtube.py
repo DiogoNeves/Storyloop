@@ -59,8 +59,8 @@ async def test_youtube_videos_endpoint_returns_payload():
     settings = Settings(
         YOUTUBE_API_KEY="test-key",
         DATABASE_URL="sqlite:///:memory:",
-        YOUTUBE_CLIENT_ID="client-id",
-        YOUTUBE_CLIENT_SECRET="client-secret",
+        YOUTUBE_OAUTH_CLIENT_ID="client-id",
+        YOUTUBE_OAUTH_CLIENT_SECRET="client-secret",
         YOUTUBE_REDIRECT_URI="http://localhost:8000/youtube/auth/callback",
     )
     app = create_app(settings)
