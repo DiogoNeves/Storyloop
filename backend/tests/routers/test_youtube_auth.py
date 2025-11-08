@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
+from google.oauth2.credentials import Credentials
 from httpx import ASGITransport, AsyncClient
 
 from app.config import Settings
@@ -11,10 +12,20 @@ from app.main import create_app
 from app.services.users import UserService
 
 
-class FakeCredentials:
+class FakeCredentials(Credentials):
     def __init__(self, *, expired: bool = False) -> None:
-        self.expired = expired
-        self.refresh_token = "refresh-token"
+        # Initialize with minimal required parameters
+        super().__init__(token="fake-token")
+        self._expired = expired
+        self._refresh_token = "refresh-token"
+
+    @property
+    def expired(self) -> bool:
+        return self._expired
+
+    @property
+    def refresh_token(self) -> str:
+        return self._refresh_token
 
     def to_json(self) -> str:  # pragma: no cover - simple passthrough
         return '{"token": "abc"}'
@@ -60,7 +71,7 @@ class FakeOAuthService:
         return self._credentials
 
     def refresh_credentials(self, credentials: FakeCredentials) -> None:
-        credentials.expired = False
+        credentials._expired = False
         self.refreshed = True
 
 
