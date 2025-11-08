@@ -3,7 +3,7 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .venv/
-backend/.data/
+backend/data/
 client_secret.json
 scripts/youtube_token.json
 youtube_data.json
