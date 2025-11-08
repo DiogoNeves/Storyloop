@@ -1,4 +1,38 @@
-"""OAuth endpoints for YouTube authentication."""
+"""OAuth endpoints for YouTube authentication.
+
+This module implements the OAuth 2.0 authorization code flow for YouTube API
+access through three endpoints:
+
+**`POST /youtube/auth/start`**:
+    Initiates the OAuth flow by generating an authorization URL. Uses
+    `YoutubeOAuthService.create_flow()` to create a Google OAuth flow instance
+    with a state parameter for CSRF protection. The state is persisted in the
+    database, and the authorization URL is returned to the frontend for the user
+    to visit.
+
+**`GET /youtube/auth/callback`**:
+    Handles Google's redirect after user consent. Validates the state parameter,
+    then uses `YoutubeOAuthService.create_flow()` again to recreate the flow
+    and exchange the authorization code for tokens via `flow.fetch_token()`.
+    The obtained credentials are serialized using `YoutubeOAuthService.serialize_credentials()`
+    and stored in the database. After successful authentication, fetches the
+    user's YouTube channel information and redirects back to the frontend.
+
+**`GET /youtube/auth/status`**:
+    Checks the current authentication state. Uses `YoutubeOAuthService.deserialize_credentials()`
+    to load stored credentials and determine if they are expired (indicating
+    whether a refresh is needed).
+
+**Credential refresh** (handled by `YoutubeService.build_authenticated_client()`):
+    When building authenticated YouTube API clients, credentials are loaded via
+    `deserialize_credentials()`, refreshed if expired using `refresh_credentials()`,
+    and persisted back using `serialize_credentials()`.
+
+References:
+- Google OAuth 2.0: https://developers.google.com/identity/protocols/oauth2
+- YouTube Data API: https://developers.google.com/youtube/v3/docs
+- google-auth-oauthlib: https://google-auth-oauthlib.readthedocs.io/
+"""
 
 from __future__ import annotations
 
@@ -8,6 +42,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
+from google.oauth2.credentials import Credentials
 
 from app.dependencies import (
     get_user_service,
@@ -60,9 +95,14 @@ def complete_youtube_auth(
     try:
         flow.fetch_token(code=code)
     except Exception as exc:  # pragma: no cover - passthrough for Google errors
-        raise HTTPException(status_code=400, detail="Failed to exchange OAuth code") from exc
+        raise HTTPException(
+            status_code=400, detail="Failed to exchange OAuth code"
+        ) from exc
 
     credentials = flow.credentials
+    if not isinstance(credentials, Credentials):
+        raise HTTPException(status_code=400, detail="Invalid credentials")
+
     serialized = oauth_service.serialize_credentials(credentials)
     user_service.upsert_credentials(serialized, datetime.now(tz=UTC))
     user_service.clear_oauth_state()
