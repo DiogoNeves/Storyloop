@@ -143,6 +143,7 @@ Settings are managed through `backend/app/config.py` using Pydantic:
 **Design:** [Main Screen Design](../design/main-screen.png)
 
 - **Top Section:** Growth Score and simple score chart visualization
+  - **Insights Card:** When relevant timely insights are available, an insights card will be displayed in the top header alongside the time series chart with the score. This card surfaces actionable insights derived from recent performance patterns (e.g., hook improvements, content length patterns, upload timing optimizations, conversion efficiency trends). See [Insights Card Design](../design/insights-card.png) and [Insights Full Design](../design/insights-full.png).
 - **Timeline Section:** Unified chronological feed showing:
   - Content items (videos, lives, shorts, posts, etc.)
   - Journal entries (simple user-created entries, no automatic parsing)
