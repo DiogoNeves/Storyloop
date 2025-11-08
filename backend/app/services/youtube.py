@@ -17,8 +17,6 @@ from app.services.youtube_identifier import build_lookup_candidates
 from app.utils.datetime import parse_datetime, parse_duration_seconds
 
 if TYPE_CHECKING:  # pragma: no cover - imports for typing only
-    from googleapiclient.discovery import Resource
-
     from app.services.users import UserService
     from app.services.youtube_oauth import YoutubeOAuthService
 
@@ -45,6 +43,7 @@ class YoutubeApiClient(Protocol):
     def channels(self) -> ChannelsResource:
         """Access channels resource."""
         ...
+
 
 logger = logging.getLogger(__name__)
 
@@ -147,7 +146,7 @@ class YoutubeVideo:
         # Source: https://support.google.com/youtube/answer/15424877
         # The playlistItems response does not expose aspect ratio, so we approximate using duration.
         is_short = duration_seconds is not None and duration_seconds <= 180
-        
+
         # Log warning if duration is missing (could lead to misclassification)
         if duration_str is None:
             logger.debug(
@@ -677,7 +676,9 @@ class YoutubeService:
                 "No stored OAuth credentials available for the active user"
             )
 
-        credentials = oauth_service.deserialize_credentials(record.credentials_json)
+        credentials = oauth_service.deserialize_credentials(
+            record.credentials_json
+        )
         if credentials.expired:
             if not credentials.refresh_token:
                 raise YoutubeConfigurationError(
