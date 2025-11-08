@@ -1,3 +1,5 @@
+import { createQueryKeys } from "@lukemorales/query-key-factory";
+
 import { apiClient } from "@/api/client";
 
 export interface YoutubeVideoResponse {
@@ -19,6 +21,25 @@ export interface YoutubeFeedResponse {
   videos: YoutubeVideoResponse[];
 }
 
+export interface YoutubeAuthStartResponse {
+  authorizationUrl: string;
+  state: string;
+}
+
+export interface YoutubeChannelLink {
+  id: string;
+  title: string | null;
+  url: string | null;
+  thumbnailUrl: string | null;
+  updatedAt: string | null;
+}
+
+export interface YoutubeLinkStatusResponse {
+  linked: boolean;
+  refreshNeeded: boolean;
+  channel: YoutubeChannelLink | null;
+}
+
 export async function fetchChannelVideos(channel: string) {
   const response = await apiClient.get<YoutubeFeedResponse>("/youtube/videos", {
     params: { channel },
@@ -26,6 +47,33 @@ export async function fetchChannelVideos(channel: string) {
   return response.data;
 }
 
+export async function startLink(): Promise<YoutubeAuthStartResponse> {
+  const response = await apiClient.post<YoutubeAuthStartResponse>(
+    "/youtube/auth/start",
+  );
+  return response.data;
+}
+
+export async function linkStatus(): Promise<YoutubeLinkStatusResponse> {
+  const response = await apiClient.get<YoutubeLinkStatusResponse>(
+    "/youtube/auth/status",
+  );
+  return response.data;
+}
+
+export const youtubeQueries = createQueryKeys("youtube", {
+  authStatus: () => ({
+    queryKey: ["youtube", "auth", "status"],
+    queryFn: linkStatus,
+  }),
+  channelVideos: (channel: string) => ({
+    queryKey: ["youtube", "channels", channel, "videos"],
+    queryFn: () => fetchChannelVideos(channel),
+  }),
+});
+
 export const youtubeApi = {
   fetchChannelVideos,
+  startLink,
+  linkStatus,
 };
