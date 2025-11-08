@@ -1,40 +1,12 @@
 """Helpers for managing YouTube OAuth credentials.
 
-This service is used by the OAuth endpoints in `app.routers.youtube_auth` to
-manage the YouTube OAuth 2.0 authorization code flow. The methods are called
-at specific points in the authentication lifecycle:
+This service provides utilities for constructing Google OAuth flows and managing
+credential serialization/deserialization for YouTube API access. It wraps the
+Google Auth libraries (`google_auth_oauthlib.flow.Flow` and
+`google.oauth2.credentials.Credentials`) with a simplified interface.
 
-**`/youtube/auth/start` (POST endpoint)**:
-    - Calls `create_flow()` to generate a Google OAuth flow instance with a
-      state parameter for CSRF protection. The router then calls
-      `flow.authorization_url()` to get the URL the user should visit.
-
-**`/youtube/auth/callback` (GET endpoint)**:
-    - Calls `create_flow()` again with the state from the query parameters.
-    - After exchanging the authorization code for tokens via `flow.fetch_token()`,
-      calls `serialize_credentials()` to convert the `Credentials` object to
-      JSON for database storage.
-
-**`/youtube/auth/status` (GET endpoint)**:
-    - Calls `deserialize_credentials()` to load stored credentials and check
-      if they are expired (to determine if `refreshNeeded` is true).
-
-**When building authenticated YouTube API clients** (via
-`YoutubeService.build_authenticated_client()`):
-    - Calls `deserialize_credentials()` to load stored credentials.
-    - If expired, calls `refresh_credentials()` to refresh the access token
-      using the refresh token.
-    - After refreshing, calls `serialize_credentials()` again to persist the
-      updated credentials back to the database.
-
-This service wraps the Google Auth libraries:
-- `google_auth_oauthlib.flow.Flow` for the OAuth flow
-- `google.oauth2.credentials.Credentials` for token management
-
-References:
-- Google OAuth 2.0: https://developers.google.com/identity/protocols/oauth2
-- YouTube Data API: https://developers.google.com/youtube/v3/docs
-- google-auth-oauthlib: https://google-auth-oauthlib.readthedocs.io/
+See `app.routers.youtube_auth` for endpoint-level documentation on the OAuth
+flow.
 """
 
 from __future__ import annotations

@@ -6,7 +6,7 @@ import logging
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
 
 from collections.abc import AsyncIterator
 
@@ -21,6 +21,30 @@ if TYPE_CHECKING:  # pragma: no cover - imports for typing only
 
     from app.services.users import UserService
     from app.services.youtube_oauth import YoutubeOAuthService
+
+
+class ChannelsList(Protocol):
+    """Protocol for channels().list() return type."""
+
+    def execute(self) -> dict[str, Any]:
+        """Execute the API request."""
+        ...
+
+
+class ChannelsResource(Protocol):
+    """Protocol for channels() return type."""
+
+    def list(self, *, part: str, mine: bool, **kwargs: Any) -> ChannelsList:
+        """List channels."""
+        ...
+
+
+class YoutubeApiClient(Protocol):
+    """Protocol for YouTube API client with dynamically generated methods."""
+
+    def channels(self) -> ChannelsResource:
+        """Access channels resource."""
+        ...
 
 logger = logging.getLogger(__name__)
 
@@ -644,7 +668,7 @@ class YoutubeService:
         self,
         user_service: "UserService",
         oauth_service: "YoutubeOAuthService",
-    ) -> "Resource":
+    ) -> "YoutubeApiClient":
         """Return an authenticated Google API client based on stored credentials."""
 
         record = user_service.get_active_user()
@@ -665,12 +689,13 @@ class YoutubeService:
                 datetime.now(tz=UTC),
             )
 
-        return build(
+        client = build(
             "youtube",
             "v3",
             credentials=credentials,
             cache_discovery=False,
         )
+        return cast("YoutubeApiClient", client)
 
 
 def _select_thumbnail_url(
