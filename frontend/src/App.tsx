@@ -6,6 +6,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import { ActivityFeed, type ActivityDraft } from "@/components/ActivityFeed";
 import { NavBar } from "@/components/NavBar";
@@ -19,6 +20,7 @@ import {
 import { healthQueries } from "@/api/health";
 import { cn } from "@/lib/utils";
 import { type ActivityItem, entryToActivityItem } from "@/lib/types/entries";
+import { YoutubeAuthCallback } from "@/pages/YoutubeAuthCallback";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -69,7 +71,9 @@ function HealthBadge({ className }: { className?: string }) {
 }
 
 function ScorePlaceholder() {
-  return <ScoreOverviewCard healthBadge={<HealthBadge className="sm:mt-1" />} />;
+  return (
+    <ScoreOverviewCard healthBadge={<HealthBadge className="sm:mt-1" />} />
+  );
 }
 
 function DashboardShell() {
@@ -257,9 +261,14 @@ function DashboardShell() {
 
 export function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <DashboardShell />
-    </QueryClientProvider>
+    <BrowserRouter>
+      <QueryClientProvider client={queryClient}>
+        <Routes>
+          <Route path="/" element={<DashboardShell />} />
+          <Route path="/auth/callback" element={<YoutubeAuthCallback />} />
+        </Routes>
+      </QueryClientProvider>
+    </BrowserRouter>
   );
 }
 

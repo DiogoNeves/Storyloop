@@ -32,8 +32,40 @@ class ChannelsList(Protocol):
 class ChannelsResource(Protocol):
     """Protocol for channels() return type."""
 
-    def list(self, *, part: str, mine: bool, **kwargs: Any) -> ChannelsList:
+    def list(self, *, part: str, **kwargs: Any) -> ChannelsList:
         """List channels."""
+        ...
+
+
+class PlaylistItemsList(Protocol):
+    """Protocol for playlistItems().list() return type."""
+
+    def execute(self) -> dict[str, Any]:
+        """Execute the API request."""
+        ...
+
+
+class PlaylistItemsResource(Protocol):
+    """Protocol for playlistItems() return type."""
+
+    def list(self, **kwargs: Any) -> PlaylistItemsList:
+        """List playlist items."""
+        ...
+
+
+class VideosList(Protocol):
+    """Protocol for videos().list() return type."""
+
+    def execute(self) -> dict[str, Any]:
+        """Execute the API request."""
+        ...
+
+
+class VideosResource(Protocol):
+    """Protocol for videos() return type."""
+
+    def list(self, **kwargs: Any) -> VideosList:
+        """List videos."""
         ...
 
 
@@ -42,6 +74,14 @@ class YoutubeApiClient(Protocol):
 
     def channels(self) -> ChannelsResource:
         """Access channels resource."""
+        ...
+
+    def playlistItems(self) -> PlaylistItemsResource:
+        """Access playlistItems resource."""
+        ...
+
+    def videos(self) -> VideosResource:
+        """Access videos resource."""
         ...
 
 
@@ -662,6 +702,132 @@ class YoutubeService:
     def sync_latest_metrics(self) -> None:
         """Log a placeholder sync until real metrics synchronization is wired in."""
         logger.info("Pretending to sync latest YouTube metrics.")
+
+    def fetch_authenticated_channel_videos(
+        self,
+        user_service: "UserService",
+        oauth_service: "YoutubeOAuthService",
+        channel_id: str | None = None,
+        *,
+        max_results: int = 50,
+    ) -> YoutubeFeed:
+        """Return recent uploads for the authenticated user's channel.
+
+        If channel_id is provided, fetches videos for that channel.
+        Otherwise, fetches videos for the authenticated user's own channel.
+
+        Args:
+            user_service: Service for accessing user data.
+            oauth_service: Service for OAuth credential management.
+            channel_id: Optional channel ID. If None, uses authenticated user's channel.
+            max_results: Maximum number of videos to return.
+
+        Returns:
+            YoutubeFeed with channel metadata and videos.
+
+        Raises:
+            YoutubeConfigurationError: If credentials are missing or invalid.
+            YoutubeChannelNotFound: If the channel cannot be found.
+        """
+        if max_results <= 0:
+            return YoutubeFeed(
+                channel_id="",
+                channel_title="",
+                channel_description=None,
+                channel_url="",
+                channel_thumbnail_url=None,
+                videos=[],
+            )
+
+        client = self.build_authenticated_client(user_service, oauth_service)
+
+        # Fetch channel info
+        if channel_id:
+            channel_response = (
+                client.channels()
+                .list(
+                    part="snippet,contentDetails", id=channel_id, maxResults=1
+                )
+                .execute()
+            )
+        else:
+            channel_response = (
+                client.channels()
+                .list(part="snippet,contentDetails", mine=True, maxResults=1)
+                .execute()
+            )
+
+        channel_items = channel_response.get("items", [])
+        if not isinstance(channel_items, list) or not channel_items:
+            raise YoutubeChannelNotFound("Channel not found")
+
+        channel_data = channel_items[0]
+        channel = YoutubeChannel.from_api_item(channel_data)
+        if channel is None:
+            raise YoutubeChannelNotFound("Channel data is invalid")
+
+        # Fetch playlist items
+        videos: list[YoutubeVideo] = []
+        playlist_items: list[dict[str, Any]] = []
+        durations: dict[str, str | None] = {}
+        page_token: str | None = None
+
+        while len(videos) < max_results:
+            # Fetch a page of playlist items
+            playlist_params: dict[str, Any] = {
+                "part": "snippet,contentDetails",
+                "playlistId": channel.uploads_playlist_id,
+                "maxResults": min(MAX_RESULTS_CAP, max_results),
+            }
+            if page_token:
+                playlist_params["pageToken"] = page_token
+
+            playlist_response = (
+                client.playlistItems().list(**playlist_params).execute()
+            )
+            items = playlist_response.get("items", [])
+            if not isinstance(items, list):
+                items = []
+
+            if not items:
+                break
+
+            playlist_items.extend(items)
+            page_token = playlist_response.get("nextPageToken")
+
+            # Extract video IDs and fetch durations
+            video_ids = self._extract_video_ids(items)
+            if video_ids:
+                # Fetch video details including durations
+                video_params = {
+                    "part": "contentDetails",
+                    "id": ",".join(video_ids[:50]),  # API limit is 50
+                }
+                video_response = client.videos().list(**video_params).execute()
+                video_items = video_response.get("items", [])
+                if isinstance(video_items, list):
+                    batch_durations = self._extract_durations_from_payload(
+                        {"items": video_items}
+                    )
+                    durations.update(batch_durations)
+
+            # Build videos from accumulated playlist items
+            built_videos = self._build_videos_with_durations(
+                playlist_items, durations
+            )
+            videos = built_videos[:max_results]
+
+            if len(videos) >= max_results or not page_token:
+                break
+
+        return YoutubeFeed(
+            channel_id=channel.id,
+            channel_title=channel.title,
+            channel_description=channel.description,
+            channel_url=channel.url,
+            channel_thumbnail_url=channel.thumbnail_url,
+            videos=videos,
+        )
 
     def build_authenticated_client(
         self,
