@@ -22,6 +22,10 @@ class UserRecord:
     channel_url: str | None
     channel_thumbnail_url: str | None
     channel_updated_at: datetime | None
+    # Serialized OAuth credentials (JSON string) containing access token, refresh token,
+    # and expiry. Used to build authenticated YouTube API clients for fetching channel
+    # info during OAuth callback and checking authentication status. Credentials are
+    # automatically refreshed when expired.
     credentials_json: str | None
     credentials_updated_at: datetime | None
     oauth_state: str | None
@@ -187,4 +191,3 @@ class UserService:
                 (_DEFAULT_USER_ID,),
             )
             connection.commit()
-
