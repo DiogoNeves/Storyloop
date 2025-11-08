@@ -11,12 +11,19 @@ access through three endpoints:
     to visit.
 
 **`GET /youtube/auth/callback`**:
-    Handles Google's redirect after user consent. Validates the state parameter,
-    then uses `YoutubeOAuthService.create_flow()` again to recreate the flow
-    and exchange the authorization code for tokens via `flow.fetch_token()`.
+    Relay endpoint that simply redirects the browser to the frontend callback
+    route while preserving any query parameters returned by Google (for example
+    the authorization `code`, `state`, or error information). This keeps
+    existing OAuth redirect URIs functional while moving credential exchange to
+    the backend POST endpoint.
+
+**`POST /youtube/auth/callback`**:
+    Handles OAuth callback from frontend. Accepts authorization code and state
+    in request body, validates the state parameter, then uses `YoutubeOAuthService.create_flow()`
+    to recreate the flow and exchange the authorization code for tokens via `flow.fetch_token()`.
     The obtained credentials are serialized using `YoutubeOAuthService.serialize_credentials()`
     and stored in the database. After successful authentication, fetches the
-    user's YouTube channel information and redirects back to the frontend.
+    user's YouTube channel information and returns success status.
 
 **`GET /youtube/auth/status`**:
     Checks the current authentication state. Uses `YoutubeOAuthService.deserialize_credentials()`
@@ -36,13 +43,17 @@ References:
 
 from __future__ import annotations
 
+import logging
 import secrets
+import warnings
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from google.oauth2.credentials import Credentials
+from pydantic import BaseModel
 
 from app.dependencies import (
     get_user_service,
@@ -53,7 +64,16 @@ from app.services.users import UserService
 from app.services.youtube import YoutubeConfigurationError, YoutubeService
 from app.services.youtube_oauth import YoutubeOAuthService
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/youtube/auth", tags=["youtube"])
+
+
+class OAuthCallbackRequest(BaseModel):
+    """Request body for OAuth callback endpoint."""
+
+    code: str
+    state: str
 
 
 @router.post("/start")
@@ -75,15 +95,61 @@ def start_youtube_auth(
 
 
 @router.get("/callback")
-def complete_youtube_auth(
+def relay_youtube_auth_callback(
     request: Request,
-    code: str = Query(..., min_length=1),
-    state: str = Query(..., min_length=1),
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    error_description: str | None = None,
+) -> RedirectResponse:
+    """Redirect OAuth responses to the frontend callback route."""
+
+    settings = request.app.state.settings
+    redirect_base = settings.cors_origins[0] if settings.cors_origins else "/"
+    redirect_base = redirect_base.rstrip("/")
+    if not redirect_base:
+        redirect_base = "/"
+
+    target_url = f"{redirect_base}/youtube/auth/callback"
+
+    query_params: dict[str, str] = {}
+    if code:
+        query_params["code"] = code
+    if state:
+        query_params["state"] = state
+    if error:
+        query_params["error"] = error
+    if error_description:
+        query_params["error_description"] = error_description
+
+    if query_params:
+        target_url = f"{target_url}?{urlencode(query_params)}"
+
+    return RedirectResponse(url=target_url, status_code=302)
+
+
+@router.post("/callback")
+def complete_youtube_auth(
+    body: OAuthCallbackRequest,
     user_service: UserService = Depends(get_user_service),
     oauth_service: YoutubeOAuthService = Depends(get_youtube_oauth_service),
     youtube_service: YoutubeService = Depends(get_youtube_service),
-) -> RedirectResponse:
-    """Handle Google's OAuth callback, persisting credentials and metadata."""
+) -> dict[str, str]:
+    """Handle Google's OAuth callback, persisting credentials and metadata.
+
+    Accepts code and state in request body (JSON) and returns success status.
+    Frontend should call this endpoint after receiving OAuth redirect.
+    """
+
+    code = body.code.strip() if body.code else ""
+    state = body.state.strip() if body.state else ""
+
+    if not code:
+        raise HTTPException(
+            status_code=400, detail="Missing authorization code"
+        )
+    if not state:
+        raise HTTPException(status_code=400, detail="Missing state parameter")
 
     record = user_service.get_active_user()
     if record is None or record.oauth_state is None:
@@ -93,11 +159,26 @@ def complete_youtube_auth(
 
     flow = oauth_service.create_flow(state=state)
     try:
-        flow.fetch_token(code=code)
+        # Suppress scope change warnings - Google may return additional scopes
+        # beyond what we requested, which is valid OAuth behavior. If we don't
+        # suppress this, oauthlib raises it as an exception and fetch_token
+        # doesn't complete.
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message=".*Scope has changed.*",
+                category=Warning,
+            )
+            flow.fetch_token(code=code)
     except Exception as exc:  # pragma: no cover - passthrough for Google errors
-        raise HTTPException(
-            status_code=400, detail="Failed to exchange OAuth code"
-        ) from exc
+        message = "Failed to exchange OAuth code"
+        detail = None
+        if exc.args:
+            detail = str(exc.args[0])
+        logger.exception("%s: %s", message, detail or exc)
+        if detail:
+            message = f"{message}: {detail}"
+        raise HTTPException(status_code=400, detail=message) from exc
 
     credentials = flow.credentials
     if not isinstance(credentials, Credentials):
@@ -129,10 +210,7 @@ def complete_youtube_auth(
             updated_at=datetime.now(tz=UTC),
         )
 
-    settings = request.app.state.settings
-    redirect_targets = settings.cors_origins
-    redirect_url = redirect_targets[0] if redirect_targets else "/"
-    return RedirectResponse(url=redirect_url, status_code=302)
+    return {"status": "success"}
 
 
 @router.get("/status")

@@ -53,6 +53,15 @@ export interface YoutubeMeVideosResponse {
   videos: YoutubeVideoResponse[];
 }
 
+export interface YoutubeAuthCallbackRequest {
+  code: string;
+  state: string;
+}
+
+export interface YoutubeAuthCallbackResponse {
+  status: string;
+}
+
 export async function fetchChannelVideos(channel: string) {
   const response = await apiClient.get<YoutubeFeedResponse>("/youtube/videos", {
     params: { channel },
@@ -88,6 +97,16 @@ export async function fetchMyVideos(): Promise<YoutubeMeVideosResponse> {
   return response.data;
 }
 
+export async function completeCallback(
+  request: YoutubeAuthCallbackRequest,
+): Promise<YoutubeAuthCallbackResponse> {
+  const response = await apiClient.post<YoutubeAuthCallbackResponse>(
+    "/youtube/auth/callback",
+    request,
+  );
+  return response.data;
+}
+
 export const youtubeQueries = createQueryKeys("youtube", {
   authStatus: () => ({
     queryKey: ["youtube", "auth", "status"],
@@ -113,4 +132,5 @@ export const youtubeApi = {
   linkStatus,
   fetchMyChannel,
   fetchMyVideos,
+  completeCallback,
 };
