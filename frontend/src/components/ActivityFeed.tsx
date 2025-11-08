@@ -56,18 +56,27 @@ export function ActivityFeed({
   const combinedItems = useMemo(() => {
     const baseItems = [...items];
     if (!youtubeState.youtubeFeed) {
-      return baseItems.sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-      );
+      // Precompute timestamps for efficient sorting
+      const itemsWithTimestamps = baseItems.map((item) => ({
+        item,
+        timestamp: new Date(item.date).getTime(),
+      }));
+      itemsWithTimestamps.sort((a, b) => b.timestamp - a.timestamp);
+      return itemsWithTimestamps.map(({ item }) => item);
     }
 
     const videoItems = youtubeState.youtubeFeed.videos.map(
       youtubeVideoToActivityItem,
     );
 
-    return [...baseItems, ...videoItems].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-    );
+    // Precompute timestamps for efficient sorting
+    const allItems = [...baseItems, ...videoItems];
+    const itemsWithTimestamps = allItems.map((item) => ({
+      item,
+      timestamp: new Date(item.date).getTime(),
+    }));
+    itemsWithTimestamps.sort((a, b) => b.timestamp - a.timestamp);
+    return itemsWithTimestamps.map(({ item }) => item);
   }, [items, youtubeState.youtubeFeed]);
 
   return (

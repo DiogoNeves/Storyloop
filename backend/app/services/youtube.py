@@ -14,7 +14,11 @@ import httpx
 from googleapiclient.discovery import build
 
 from app.services.youtube_identifier import build_lookup_candidates
-from app.utils.datetime import parse_datetime, parse_duration_seconds
+from app.utils.datetime import parse_datetime
+from app.utils.youtube_video import (
+    choose_thumbnail,
+    classify_video_type,
+)
 
 if TYPE_CHECKING:  # pragma: no cover - imports for typing only
     from app.services.users import UserService
@@ -123,45 +127,26 @@ class YoutubeVideo:
                 published_at_raw,
             )
             return None
-        thumbnail_url = _select_thumbnail_url(
+        thumbnail_url = choose_thumbnail(
             snippet.get("thumbnails"),
             ("high", "medium", "standard", "default"),
         )
 
         # Extract live broadcast content from snippet
         live_broadcast_content = snippet.get("liveBroadcastContent", "none")
-        is_live = live_broadcast_content in ("live", "upcoming")
 
-        # Extract duration from contentDetails
-        # Note: playlistItems.contentDetails doesn't include duration, but we check
-        # in case it's available in future API versions
+        # Extract content details and file details for classification
         content_details = item.get("contentDetails", {})
-        duration_str = (
-            content_details.get("duration")
-            if isinstance(content_details, dict)
-            else None
+        file_details = item.get("fileDetails", {})
+
+        # Classify video type using helper
+        video_type = classify_video_type(
+            content_details if isinstance(content_details, dict) else None,
+            file_details if isinstance(file_details, dict) else None,
+            live_broadcast_content,
         )
-        duration_seconds = parse_duration_seconds(duration_str)
-        # YouTube Shorts are videos up to 3 minutes (180 seconds) with a vertical/square aspect ratio.
-        # Source: https://support.google.com/youtube/answer/15424877
-        # The playlistItems response does not expose aspect ratio, so we approximate using duration.
-        is_short = duration_seconds is not None and duration_seconds <= 180
 
-        # Log warning if duration is missing (could lead to misclassification)
-        if duration_str is None:
-            logger.debug(
-                "Video %s missing duration; defaulting to 'video' type",
-                video_id,
-            )
-
-        # Determine video type
         video_url = f"https://www.youtube.com/watch?v={video_id}"
-        if is_live:
-            video_type: Literal["short", "live", "video"] = "live"
-        elif is_short:
-            video_type = "short"
-        else:
-            video_type = "video"
 
         return cls(
             id=video_id,
@@ -210,7 +195,7 @@ class YoutubeChannel:
         snippet_dict: dict[str, Any] = (
             snippet if isinstance(snippet, dict) else {}
         )
-        thumbnail_url = _select_thumbnail_url(
+        thumbnail_url = choose_thumbnail(
             snippet_dict.get("thumbnails"),
             ("high", "medium", "default"),
         )
@@ -470,47 +455,66 @@ class YoutubeService:
                 video_ids.append(video_id)
         return video_ids
 
-    def _extract_durations_from_payload(
+    def _extract_metadata_from_payload(
         self, video_payload: dict[str, Any]
-    ) -> dict[str, str | None]:
-        """Extract video durations from a videos.list API response."""
+    ) -> tuple[dict[str, str | None], dict[str, dict[str, Any]]]:
+        """Extract video durations and file details from a videos.list API response.
+
+        Returns:
+            Tuple of (durations dict, file_details dict)
+        """
         durations: dict[str, str | None] = {}
+        file_details_map: dict[str, dict[str, Any]] = {}
         video_items = video_payload.get("items", [])
         if not isinstance(video_items, list):
-            return durations
+            return durations, file_details_map
 
         for video_item in video_items:
             if not isinstance(video_item, dict):
                 continue
             video_id = video_item.get("id")
+            if not video_id:
+                continue
+
             content_details = video_item.get("contentDetails", {})
             duration = (
                 content_details.get("duration")
                 if isinstance(content_details, dict)
                 else None
             )
-            if video_id:
-                durations[video_id] = duration
+            durations[video_id] = duration
 
-        return durations
+            file_details = video_item.get("fileDetails", {})
+            if isinstance(file_details, dict) and file_details:
+                file_details_map[video_id] = file_details
 
-    async def _fetch_video_durations(
+        return durations, file_details_map
+
+    async def _fetch_video_metadata(
         self, client: httpx.AsyncClient, video_ids: list[str]
-    ) -> dict[str, str | None]:
-        """Fetch video durations in batches.
+    ) -> tuple[dict[str, str | None], dict[str, dict[str, Any]]]:
+        """Fetch video durations and file details in batches.
+
+        Note: fileDetails requires OAuth authentication and may not be available
+        for API-key-only requests. Falls back gracefully when unavailable.
 
         Docs: https://developers.google.com/youtube/v3/docs/videos/list
+
+        Returns:
+            Tuple of (durations dict, file_details dict)
         """
         durations: dict[str, str | None] = {}
+        file_details_map: dict[str, dict[str, Any]] = {}
         if not video_ids:
-            return durations
+            return durations, file_details_map
 
         # YouTube API allows up to 50 video IDs per request
         batch_size = 50
         for i in range(0, len(video_ids), batch_size):
             batch = video_ids[i : i + batch_size]
+            # Request contentDetails (always available) and fileDetails (OAuth only)
             video_params = {
-                "part": "contentDetails",
+                "part": "contentDetails,fileDetails",
                 "id": ",".join(batch),
                 "key": self.api_key,
             }
@@ -518,25 +522,42 @@ class YoutubeService:
                 video_payload = await self._request_json(
                     client, "videos", video_params
                 )
-                batch_durations = self._extract_durations_from_payload(
-                    video_payload
+                batch_durations, batch_file_details = (
+                    self._extract_metadata_from_payload(video_payload)
                 )
                 durations.update(batch_durations)
+                file_details_map.update(batch_file_details)
             except YoutubeAPIRequestError:
-                # If video details fetch fails, continue without durations
-                logger.warning(
-                    "Failed to fetch video details for batch starting at index %s",
-                    i,
-                )
+                # If video details fetch fails, try with contentDetails only
+                # (fileDetails requires OAuth and may not be available)
+                try:
+                    video_params_fallback = {
+                        "part": "contentDetails",
+                        "id": ",".join(batch),
+                        "key": self.api_key,
+                    }
+                    video_payload = await self._request_json(
+                        client, "videos", video_params_fallback
+                    )
+                    batch_durations, _ = self._extract_metadata_from_payload(
+                        video_payload
+                    )
+                    durations.update(batch_durations)
+                except YoutubeAPIRequestError:
+                    logger.warning(
+                        "Failed to fetch video details for batch starting at index %s",
+                        i,
+                    )
 
-        return durations
+        return durations, file_details_map
 
-    def _build_videos_with_durations(
+    def _build_videos_with_metadata(
         self,
         playlist_items: list[dict[str, Any]],
         durations: dict[str, str | None],
+        file_details_map: dict[str, dict[str, Any]],
     ) -> list[YoutubeVideo]:
-        """Build YoutubeVideo objects from playlist items with duration data."""
+        """Build YoutubeVideo objects from playlist items with duration and file details."""
         videos: list[YoutubeVideo] = []
         for item in playlist_items:
             if not isinstance(item, dict):
@@ -559,6 +580,10 @@ class YoutubeService:
                     item["contentDetails"]["duration"] = durations[video_id]
             else:
                 item["contentDetails"] = {"duration": durations.get(video_id)}
+
+            # Add file details if available
+            if video_id in file_details_map:
+                item["fileDetails"] = file_details_map[video_id]
 
             video = YoutubeVideo.from_playlist_item(item)
             if video is None:
@@ -587,6 +612,7 @@ class YoutubeService:
         videos: list[YoutubeVideo] = []
         playlist_items: list[dict[str, Any]] = []
         durations: dict[str, str | None] = {}
+        file_details_map: dict[str, dict[str, Any]] = {}
         page_token: str | None = None
 
         while len(videos) < max_results:
@@ -603,17 +629,19 @@ class YoutubeService:
 
             playlist_items.extend(items)
 
-            # Extract video IDs for new items and fetch their durations
+            # Extract video IDs for new items and fetch their metadata
             new_video_ids = self._extract_video_ids(items)
             if new_video_ids:
-                new_durations = await self._fetch_video_durations(
-                    client, new_video_ids
-                )
+                (
+                    new_durations,
+                    new_file_details,
+                ) = await self._fetch_video_metadata(client, new_video_ids)
                 durations.update(new_durations)
+                file_details_map.update(new_file_details)
 
             # Build videos from all accumulated playlist items
-            built_videos = self._build_videos_with_durations(
-                playlist_items, durations
+            built_videos = self._build_videos_with_metadata(
+                playlist_items, durations, file_details_map
             )
             # Only take up to max_results videos
             videos = built_videos[:max_results]
@@ -697,18 +725,3 @@ class YoutubeService:
             cache_discovery=False,
         )
         return cast("YoutubeApiClient", client)
-
-
-def _select_thumbnail_url(
-    thumbnails: Any, preferred_order: tuple[str, ...]
-) -> str | None:
-    """Return the best available thumbnail URL from a thumbnails payload."""
-    if not isinstance(thumbnails, dict):
-        return None
-    for key in preferred_order:
-        candidate = thumbnails.get(key)
-        if isinstance(candidate, dict):
-            url = candidate.get("url")
-            if isinstance(url, str) and url:
-                return url
-    return None
