@@ -162,6 +162,76 @@ def get_authenticated_analytics_service():
     )
 
 
+def get_channel_details(service):
+    """Get channel details for the authenticated user.
+
+    Extracts only the fields matching the UserRecord schema:
+    - channel_id
+    - channel_title
+    - channel_url
+    - channel_thumbnail_url
+    - channel_updated_at
+
+    Args:
+        service: Authenticated YouTube service object
+
+    Returns:
+        Dictionary containing channel information matching UserRecord schema, or None if no channel found
+    """
+    channel_response = (
+        service.channels()
+        .list(part="id,snippet", mine=True, maxResults=1)
+        .execute()
+    )
+
+    items = channel_response.get("items", [])
+    if not items:
+        return None
+
+    item = items[0]
+    channel_id = item.get("id")
+    snippet = item.get("snippet", {})
+
+    # Extract fields matching UserRecord schema
+    channel_title = snippet.get("title")
+
+    # Build channel URL - prefer custom URL if available
+    custom_url = snippet.get("customUrl")
+    if custom_url:
+        channel_url = f"https://www.youtube.com/@{custom_url.lstrip('@')}"
+    else:
+        channel_url = f"https://www.youtube.com/channel/{channel_id}"
+
+    # Get thumbnail URL (prefer default, fallback to any available)
+    thumbnails = snippet.get("thumbnails", {})
+    channel_thumbnail_url = (
+        thumbnails.get("default", {}).get("url")
+        or thumbnails.get("medium", {}).get("url")
+        or thumbnails.get("high", {}).get("url")
+    )
+
+    # Use publishedAt as channel_updated_at (closest available timestamp)
+    published_at_str = snippet.get("publishedAt")
+    channel_updated_at = None
+    if published_at_str:
+        try:
+            channel_updated_at = datetime.fromisoformat(
+                published_at_str.replace("Z", "+00:00")
+            )
+        except (ValueError, AttributeError):
+            pass
+
+    return {
+        "channel_id": channel_id,
+        "channel_title": channel_title,
+        "channel_url": channel_url,
+        "channel_thumbnail_url": channel_thumbnail_url,
+        "channel_updated_at": channel_updated_at.isoformat()
+        if channel_updated_at
+        else None,
+    }
+
+
 def list_latest_long_form_video(service):
     """List latest YouTube long form video for the authenticated user.
 
@@ -793,8 +863,6 @@ def fetch_video_analytics_data(video: dict) -> dict | None:
             else:
                 print(f"⚠ Error fetching relativeRetentionPerformance: {e}")
 
-    print("Video Analytics Data:")
-    print(json.dumps(analytics_data, indent=2))
     return analytics_data
 
 
@@ -1404,92 +1472,41 @@ def main():
 
     service = get_authenticated_service()
 
-    # List latest long-form video
+    # Get channel details
+    channel = get_channel_details(service)
+
+    # Get latest video and calculate SGI score
     video = list_latest_long_form_video(service)
-    print("Latest Long-Form Video:")
-    print(json.dumps(video, indent=2))
+    sgi_score = None
 
-    # Fetch analytics for the video
-    analytics_data = fetch_video_analytics_data(video)
+    if video and video.get("id"):
+        # Fetch analytics for the video
+        analytics_data = fetch_video_analytics_data(video)
 
-    # Try to import CTR from CSV if available
-    if analytics_data:
-        csv_path = Path(__file__).parent.parent / "youtube_ctr_export.csv"
-        if csv_path.exists():
-            print(f"\nAttempting to import CTR from CSV: {csv_path}")
-            video_id_raw = video.get("id", "")
-            video_id = video_id_raw if isinstance(video_id_raw, str) else ""
-            ctr_data = import_ctr_from_csv(csv_path, video_id)
-            if ctr_data:
-                analytics_data = merge_ctr_into_analytics(
-                    analytics_data, ctr_data
-                )
-                print(f"✓ CTR imported from CSV: {ctr_data['average_ctr']}%")
-            else:
-                print("⚠ Could not import CTR from CSV")
-        else:
-            print(
-                f"\n💡 Tip: To get real CTR data, export from YouTube Studio and save as:\n"
-                f"   {csv_path}\n"
-                f"   Then run this script again to automatically import CTR."
+        if analytics_data:
+            # Calculate SGI score
+            sgi_result = calculate_sgi(
+                analytics_data, video, channel_video_count=None
             )
+            if "error" not in sgi_result:
+                sgi_score = sgi_result.get("sgi_scaled")
 
-    # Calculate SGI score
-    sgi_result = None
-    if analytics_data:
-        print("\n" + "=" * 60)
-        print("Calculating Storyloop Growth Index (SGI)")
-        print("=" * 60 + "\n")
-        # For prototyping, pass None for channel_video_count (will use established channel logic)
-        # In production, fetch actual channel video count to determine early vs established
-        sgi_result = calculate_sgi(
-            analytics_data, video, channel_video_count=None
-        )
-
-        if "error" not in sgi_result:
-            print("SGI Score Breakdown:")
-            print(
-                f"  Discovery (40%): {sgi_result.get('discovery_score', 'N/A')}"
-            )
-            print(
-                f"  Retention (45%): {sgi_result.get('retention_score', 'N/A')}"
-            )
-            print(f"  Loyalty (15%): {sgi_result.get('loyalty_score', 'N/A')}")
-            print(f"\n  SGI Score: {sgi_result.get('sgi_scaled', 'N/A')}/100")
-            print("\n  Component Values:")
-            components = sgi_result.get("components", {})
-            if components.get("vv7") is not None:
-                print(f"    VV7 (View Velocity 7d): {components['vv7']:.0f}")
-            if components.get("avp") is not None:
-                print(
-                    f"    AVP (Average View %): {components['avp'] * 100:.2f}%"
-                )
-            if components.get("ehs") is not None:
-                print(f"    EHS (Early Hook Score): {components['ehs']:.2f}")
-            else:
-                print(
-                    "    EHS (Early Hook Score): Not available (requires retention curve data)"
-                )
-            if components.get("spv") is not None:
-                print(f"    SPV (Subs per 1K Views): {components['spv']:.2f}")
-
-            if "note" in sgi_result:
-                print(f"\n  Note: {sgi_result['note']}")
-        else:
-            print(f"Error calculating SGI: {sgi_result.get('error')}")
-
-    # Build combined JSON object
-    combined_data = {
-        "video": video,
-        "analytics": analytics_data,
-        "sgi": sgi_result,
-    }
-
-    # Save combined data to file
-    output_file = Path(__file__).parent.parent / "youtube_data.json"
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(combined_data, f, indent=2, ensure_ascii=False)
-    print(f"\nCombined video, analytics, and SGI data saved to {output_file}")
+    # Display channel with score
+    if channel:
+        print("Channel:")
+        print("-" * 80)
+        print(f"Channel: {channel['channel_title']}")
+        print(f"  ID: {channel['channel_id']}")
+        print(f"  URL: {channel['channel_url']}")
+        if channel["channel_thumbnail_url"]:
+            print(f"  Thumbnail: {channel['channel_thumbnail_url']}")
+        if channel["channel_updated_at"]:
+            print(f"  Updated: {channel['channel_updated_at']}")
+        if sgi_score is not None:
+            print(f"  SGI Score: {sgi_score:.2f}/100")
+        print()
+    else:
+        print("No channel found.")
 
 
 if __name__ == "__main__":
