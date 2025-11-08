@@ -1,14 +1,28 @@
 import "@testing-library/jest-dom/vitest";
 
-// Mock ResizeObserver for Recharts ResponsiveContainer
-globalThis.ResizeObserver = class ResizeObserver {
+class ResizeObserver {
+  callback: ResizeObserverCallback;
+
+  constructor(callback: ResizeObserverCallback) {
+    this.callback = callback;
+  }
+
   observe() {
-    // no-op
+    // noop - jsdom doesn't lay out elements
   }
+
   unobserve() {
-    // no-op
+    // noop - jsdom doesn't lay out elements
   }
+
   disconnect() {
-    // no-op
+    // noop
   }
-};
+}
+
+if (!globalThis.ResizeObserver) {
+  // Vitest runs in a jsdom environment which does not implement ResizeObserver.
+  // Recharts requires it to measure chart containers during render.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (globalThis as any).ResizeObserver = ResizeObserver;
+}

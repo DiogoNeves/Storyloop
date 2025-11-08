@@ -1,82 +1,67 @@
-import { useState, useCallback } from "react";
-import { isAxiosError } from "axios";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 
-import { youtubeApi, type YoutubeFeedResponse } from "@/api/youtube";
+import {
+  youtubeApi,
+  youtubeQueries,
+  type YoutubeFeedResponse,
+  type YoutubeLinkStatusResponse,
+} from "@/api/youtube";
+
+interface UseYouTubeFeedResult {
+  youtubeFeed: YoutubeFeedResponse | null;
+  youtubeError: string | null;
+  isLoading: boolean;
+  isLinked: boolean;
+  linkStatus: YoutubeLinkStatusResponse | null;
+}
 
 /**
- * Hook for managing YouTube channel feed state and operations.
- * 
- * Encapsulates the state and logic for fetching and displaying YouTube videos.
+ * Hook for retrieving YouTube uploads for the linked account.
+ *
+ * Automatically loads the stored channel and surfaces a fallback message when
+ * no link exists, replacing the old manual channel picker.
  */
-export function useYouTubeFeed() {
-  const [channelInput, setChannelInput] = useState("");
-  const [isLoadingVideos, setIsLoadingVideos] = useState(false);
-  const [youtubeError, setYoutubeError] = useState<string | null>(null);
-  const [youtubeFeed, setYoutubeFeed] = useState<YoutubeFeedResponse | null>(
-    null,
-  );
+export function useYouTubeFeed(): UseYouTubeFeedResult {
+  const linkStatusQuery = useQuery(youtubeQueries.authStatus());
 
-  const handleFetchVideos = useCallback(async () => {
-    const trimmed = channelInput.trim();
-    if (!trimmed) {
-      setYoutubeError("Enter a YouTube channel handle, link, or ID.");
-      return;
+  const channelId = useMemo(() => {
+    if (!linkStatusQuery.data?.linked) {
+      return null;
     }
+    return linkStatusQuery.data.channel?.id ?? null;
+  }, [linkStatusQuery.data]);
 
-    setIsLoadingVideos(true);
-    setYoutubeError(null);
-
-    try {
-      const feed = await youtubeApi.fetchChannelVideos(trimmed);
-      setYoutubeFeed(feed);
-    } catch (error: unknown) {
-      if (isAxiosError(error)) {
-        const status = error.response?.status;
-        const data = error.response?.data as unknown;
-        const detail =
-          typeof data === "object" &&
-          data !== null &&
-          "detail" in data &&
-          typeof (data as { detail: unknown }).detail === "string"
-            ? (data as { detail: string }).detail
-            : null;
-        if (status === 404) {
-          setYoutubeError(
-            detail ?? "We couldn't find that channel on YouTube.",
-          );
-        } else if (status === 503) {
-          setYoutubeError(
-            detail ?? "The server hasn't been configured for YouTube yet.",
-          );
-        } else {
-          setYoutubeError(detail ?? "We couldn't load videos from YouTube.");
-        }
-      } else {
-        setYoutubeError("We couldn't load videos from YouTube.");
+  const videosQuery = useQuery({
+    queryKey: youtubeQueries
+      .channelVideos(channelId ?? "unlinked")
+      .queryKey,
+    queryFn: async () => {
+      if (!channelId) {
+        throw new Error("No linked channel available");
       }
-    } finally {
-      setIsLoadingVideos(false);
-    }
-  }, [channelInput]);
-
-  const handleChannelKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLInputElement>) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        void handleFetchVideos();
-      }
+      return youtubeApi.fetchChannelVideos(channelId);
     },
-    [handleFetchVideos],
-  );
+    enabled: Boolean(channelId),
+  });
+
+  const youtubeError = useMemo(() => {
+    if (videosQuery.isError) {
+      const error = videosQuery.error;
+      if (error instanceof Error && error.message) {
+        return error.message;
+      }
+      return "We couldn't load videos from your linked YouTube channel.";
+    }
+    return null;
+  }, [videosQuery.error, videosQuery.isError]);
 
   return {
-    channelInput,
-    setChannelInput,
-    isLoadingVideos,
+    youtubeFeed: videosQuery.data ?? null,
     youtubeError,
-    youtubeFeed,
-    handleFetchVideos,
-    handleChannelKeyDown,
+    isLoading: linkStatusQuery.isLoading || videosQuery.isLoading,
+    isLinked: Boolean(linkStatusQuery.data?.linked),
+    linkStatus: linkStatusQuery.data ?? null,
   };
 }
 
