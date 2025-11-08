@@ -150,7 +150,11 @@ Generate weekly or post-upload insights directly from the stored metrics:
 - **Upload timing:** Compare VV7 by day/hour → “Tuesday morning videos gain 22% more early views.”
 - **Conversion efficiency:** Compare SPV versus the median → “This topic attracted 2.4× more subscribers per 1K views.”
 
-Each insight should present a sentence with a numeric delta so creators can act on it. These insights derive from statistical comparisons—z-scores, moving averages, or percentile shifts—computed against the creator’s own history.
+Each insight should present a sentence with a numeric delta so creators can act on it. These insights derive from statistical comparisons—z-scores, moving averages, or percentile shifts—computed against the creator's own history.
+
+## Insights Display
+
+Relevant timely insights are displayed in an insights card positioned in the top header section alongside the growth score time series chart. The insights card appears when actionable insights are available, surfacing the most relevant patterns and recommendations based on recent performance data. See [Architecture Overview](architecture.md) for dashboard layout details.
 
 ## Future Work
 
