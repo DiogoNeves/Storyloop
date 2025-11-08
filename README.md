@@ -49,6 +49,21 @@ Built for creators who want control without complexity, Storyloop turns your cha
 
 6. Visit `http://127.0.0.1:5173` to confirm the UI renders and reports backend health status.
 
+## YouTube OAuth setup
+
+Storyloop now supports authenticating against the YouTube Data API via OAuth. Configure the following environment variables (see
+`.env.example` for placeholders):
+
+- `YOUTUBE_CLIENT_ID` – the Google Cloud OAuth client for a "Web application".
+- `YOUTUBE_CLIENT_SECRET` – the matching secret for the client above.
+- `YOUTUBE_REDIRECT_URI` – must match the redirect registered with Google (default:
+  `http://127.0.0.1:8000/youtube/auth/callback`).
+
+The backend creates a `users` table on startup to store the active creator’s channel metadata and OAuth credentials. Columns
+include the primary key (`id`), serialized credential JSON (`credentials_json` and `credentials_updated_at`), saved channel
+details (`channel_id`, `channel_title`, `channel_url`, `channel_thumbnail_url`, `channel_updated_at`), and the most recent
+OAuth state token (`oauth_state`, `oauth_state_created_at`).
+
 ## Project layout
 
 ```
