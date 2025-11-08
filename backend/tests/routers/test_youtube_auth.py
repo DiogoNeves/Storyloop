@@ -207,6 +207,35 @@ async def test_status_reports_link_state() -> None:
 
 
 @pytest.mark.asyncio
+async def test_complete_post_exchanges_code_and_updates_user() -> None:
+    app, fake_oauth, fake_youtube = create_test_app()
+    async with app.router.lifespan_context(app):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://testserver"
+        ) as client:
+            user_service: UserService = app.state.user_service
+            now = datetime.now(tz=UTC) - timedelta(minutes=5)
+            user_service.save_oauth_state("state-token", now)
+            response = await client.post(
+                "/youtube/auth/complete",
+                json={"code": "auth-code", "state": "state-token"},
+            )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["success"] is True
+    assert fake_youtube.called is True
+    assert fake_oauth.latest_flow is not None
+    assert fake_oauth.latest_flow.fetched_code == "auth-code"
+
+    record = app.state.user_service.get_active_user()
+    assert record is not None
+    assert record.credentials_json is not None
+    assert record.channel_id == "UC123"
+    assert record.oauth_state is None
+
+
+@pytest.mark.asyncio
 async def test_callback_exchanges_code_and_updates_user() -> None:
     app, fake_oauth, fake_youtube = create_test_app()
     async with app.router.lifespan_context(app):

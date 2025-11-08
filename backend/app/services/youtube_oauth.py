@@ -25,6 +25,7 @@ from app.services.youtube import YoutubeConfigurationError
 
 YOUTUBE_OAUTH_SCOPES: Sequence[str] = (
     "https://www.googleapis.com/auth/youtube.readonly",
+    "https://www.googleapis.com/auth/yt-analytics.readonly",
 )
 
 
