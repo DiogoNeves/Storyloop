@@ -57,7 +57,7 @@ Storyloop now supports authenticating against the YouTube Data API via OAuth. Co
 - `YOUTUBE_CLIENT_ID` – the Google Cloud OAuth client for a "Web application".
 - `YOUTUBE_CLIENT_SECRET` – the matching secret for the client above.
 - `YOUTUBE_REDIRECT_URI` – must match the redirect registered with Google (default:
-  `http://127.0.0.1:8000/youtube/auth/callback`).
+  `http://localhost:5173/auth/callback`).
 
 The backend creates a `users` table on startup to store the active creator’s channel metadata and OAuth credentials. Columns
 include the primary key (`id`), serialized credential JSON (`credentials_json` and `credentials_updated_at`), saved channel

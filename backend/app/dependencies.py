@@ -40,3 +40,10 @@ def get_youtube_oauth_service(request: Request) -> YoutubeOAuthService:
             ),
         )
     return oauth_service
+
+
+def get_youtube_oauth_service_optional(
+    request: Request,
+) -> YoutubeOAuthService | None:
+    """Extract YoutubeOAuthService from application state, returning None if not configured."""
+    return request.app.state.youtube_oauth_service
