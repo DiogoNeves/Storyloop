@@ -5,9 +5,6 @@ __pycache__/
 .venv/
 backend/.data/
 .data/
-*.db
-storyloop.db
-storylook.db
 client_secret.json
 scripts/youtube_token.json
 youtube_data.json
