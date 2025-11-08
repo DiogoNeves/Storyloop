@@ -40,6 +40,15 @@ export interface YoutubeLinkStatusResponse {
   channel: YoutubeChannelLink | null;
 }
 
+export interface YoutubeCompleteLinkRequest {
+  code: string;
+  state: string;
+}
+
+export interface YoutubeCompleteLinkResponse {
+  success: boolean;
+}
+
 export async function fetchChannelVideos(channel: string) {
   const response = await apiClient.get<YoutubeFeedResponse>("/youtube/videos", {
     params: { channel },
@@ -61,6 +70,16 @@ export async function linkStatus(): Promise<YoutubeLinkStatusResponse> {
   return response.data;
 }
 
+export async function completeLink(
+  request: YoutubeCompleteLinkRequest,
+): Promise<YoutubeCompleteLinkResponse> {
+  const response = await apiClient.post<YoutubeCompleteLinkResponse>(
+    "/youtube/auth/complete",
+    request,
+  );
+  return response.data;
+}
+
 export const youtubeQueries = createQueryKeys("youtube", {
   authStatus: () => ({
     queryKey: ["youtube", "auth", "status"],
@@ -76,4 +95,5 @@ export const youtubeApi = {
   fetchChannelVideos,
   startLink,
   linkStatus,
+  completeLink,
 };
