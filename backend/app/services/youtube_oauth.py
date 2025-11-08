@@ -44,10 +44,10 @@ class YoutubeOAuthService:
 
     def __init__(self, settings: Settings) -> None:
         if not settings.youtube_client_id:
-            msg = "Missing YOUTUBE_CLIENT_ID configuration."
+            msg = "Missing YOUTUBE_OAUTH_CLIENT_ID configuration."
             raise YoutubeConfigurationError(msg)
         if not settings.youtube_client_secret:
-            msg = "Missing YOUTUBE_CLIENT_SECRET configuration."
+            msg = "Missing YOUTUBE_OAUTH_CLIENT_SECRET configuration."
             raise YoutubeConfigurationError(msg)
         if not settings.youtube_redirect_uri:
             msg = "Missing YOUTUBE_REDIRECT_URI configuration."
