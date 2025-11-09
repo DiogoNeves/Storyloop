@@ -73,8 +73,12 @@ export function ActivityFeed({
 
   const channelThumbnailUrl =
     youtubeState.youtubeFeed?.channelThumbnailUrl?.trim() || null;
+  const isValidUrl =
+    channelThumbnailUrl &&
+    (channelThumbnailUrl.startsWith("http://") ||
+      channelThumbnailUrl.startsWith("https://"));
   const shouldShowThumbnail =
-    channelThumbnailUrl && channelThumbnailUrl.length > 0 && !thumbnailError;
+    isValidUrl && channelThumbnailUrl.length > 0 && !thumbnailError;
 
   // Reset thumbnail error when the URL changes
   useEffect(() => {
@@ -88,8 +92,9 @@ export function ActivityFeed({
           {shouldShowThumbnail ? (
             <img
               src={channelThumbnailUrl}
-              alt={`${youtubeState.youtubeFeed.channelTitle} channel thumbnail`}
+              alt={`${youtubeState.youtubeFeed?.channelTitle ?? "YouTube"} channel thumbnail`}
               className="h-12 w-12 shrink-0 rounded-full"
+              loading="lazy"
               onError={() => setThumbnailError(true)}
             />
           ) : null}
