@@ -13,6 +13,10 @@ export interface YoutubeVideoResponse {
   privacyStatus: "public" | "unlisted" | "private";
 }
 
+export interface YoutubeVideoDetailResponse extends YoutubeVideoResponse {
+  transcript: string | null;
+}
+
 export interface YoutubeFeedResponse {
   channelId: string;
   channelTitle: string;
@@ -64,6 +68,15 @@ export async function fetchChannelVideos(
   return response.data;
 }
 
+export async function fetchVideoDetail(
+  videoId: string,
+): Promise<YoutubeVideoDetailResponse> {
+  const response = await apiClient.get<YoutubeVideoDetailResponse>(
+    `/youtube/videos/${videoId}`,
+  );
+  return response.data;
+}
+
 export async function startLink(): Promise<YoutubeAuthStartResponse> {
   const response = await apiClient.post<YoutubeAuthStartResponse>(
     "/youtube/auth/start",
@@ -100,10 +113,15 @@ export const youtubeQueries = createQueryKeys("youtube", {
     queryKey: ["youtube", "channels", channel, "videos", videoType ?? "all"],
     queryFn: () => fetchChannelVideos(channel, videoType),
   }),
+  videoDetail: (videoId: string) => ({
+    queryKey: ["youtube", "videos", videoId, "detail"],
+    queryFn: () => fetchVideoDetail(videoId),
+  }),
 });
 
 export const youtubeApi = {
   fetchChannelVideos,
+  fetchVideoDetail,
   startLink,
   linkStatus,
   completeLink,
