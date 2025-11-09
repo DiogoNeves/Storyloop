@@ -99,7 +99,30 @@ export function ActivityFeed({
             />
           ) : null}
           <div className="space-y-1">
-            <CardTitle className="text-lg">Recent activity</CardTitle>
+            <div className="flex items-baseline gap-2">
+              <CardTitle className="text-lg">Recent activity</CardTitle>
+              {youtubeState.youtubeFeed?.channelUrl ? (
+                <a
+                  href={youtubeState.youtubeFeed.channelUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-medium text-primary underline-offset-2 hover:underline"
+                >
+                  open {youtubeState.youtubeFeed?.channelTitle ?? "YouTube"}{" "}
+                  channel
+                </a>
+              ) : youtubeState.linkStatus?.channel?.url ? (
+                <a
+                  href={youtubeState.linkStatus.channel.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-medium text-primary underline-offset-2 hover:underline"
+                >
+                  Open {youtubeState.linkStatus.channel.title ?? "YouTube"}{" "}
+                  channel
+                </a>
+              ) : null}
+            </div>
             <CardDescription>
               A combined stream of publishing milestones, insights, and journal
               reflections.
@@ -121,22 +144,7 @@ export function ActivityFeed({
             {errorMessage}
           </p>
         ) : null}
-        <LinkYouTubeAccountCard />
-        {youtubeState.youtubeFeed ? (
-          <p className="text-xs text-muted-foreground">
-            Showing {youtubeState.youtubeFeed.videos.length} recent video
-            {youtubeState.youtubeFeed.videos.length === 1 ? "" : "s"} from
-            <a
-              href={youtubeState.youtubeFeed.channelUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-1 font-medium text-primary underline-offset-2 hover:underline"
-            >
-              {youtubeState.youtubeFeed.channelTitle}
-            </a>
-            .
-          </p>
-        ) : null}
+        {!youtubeState.isLinked ? <LinkYouTubeAccountCard /> : null}
         {youtubeState.youtubeError ? (
           <p className="text-sm text-destructive" role="status">
             {youtubeState.youtubeError}
