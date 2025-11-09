@@ -79,6 +79,18 @@ class FixtureLoader:
                 without_page.pop("pageToken", None)
                 if without_page:
                     suffixes.append(self._params_to_suffix(without_page))
+            
+            # For handle/username lookups, add fallback to ID-based fixture
+            # This allows any handle/username to resolve to the demo channel
+            if "forHandle" in filtered or "forUsername" in filtered:
+                id_fallback = dict(filtered)
+                # Remove handle/username params and add ID param
+                id_fallback.pop("forHandle", None)
+                id_fallback.pop("forUsername", None)
+                id_fallback["id"] = "UCDEMOCHANNEL"
+                if id_fallback:
+                    suffixes.append(self._params_to_suffix(id_fallback))
+        
         suffixes.append("default")
 
         candidates: list[Path] = []
