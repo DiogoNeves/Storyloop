@@ -96,7 +96,7 @@ export function ActivityFeed({
           ) : null}
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <CardTitle className="text-lg">Recent activity</CardTitle>
+              <CardTitle className="text-lg">Recent Activity</CardTitle>
               <InfoModal
                 title="About the Activity Feed"
                 description="Learn how to use the activity feed for journaling"
