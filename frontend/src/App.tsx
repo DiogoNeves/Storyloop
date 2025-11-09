@@ -18,8 +18,10 @@ import {
   type Entry,
 } from "@/api/entries";
 import { healthQueries } from "@/api/health";
+import { growthQueries } from "@/api/growth";
 import { cn } from "@/lib/utils";
 import { type ActivityItem, entryToActivityItem } from "@/lib/types/entries";
+import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
 import { YoutubeAuthCallback } from "@/pages/YoutubeAuthCallback";
 
 const queryClient = new QueryClient({
@@ -71,8 +73,24 @@ function HealthBadge({ className }: { className?: string }) {
 }
 
 function ScorePlaceholder() {
+  const youtubeState = useYouTubeFeed();
+  const growthScoreQuery = useQuery(
+    growthQueries.score(youtubeState.channelId),
+  );
+
+  const errorMessage = growthScoreQuery.isError
+    ? growthScoreQuery.error instanceof Error
+      ? growthScoreQuery.error.message
+      : "We couldn't calculate your growth score."
+    : null;
+
   return (
-    <ScoreOverviewCard healthBadge={<HealthBadge className="sm:mt-1" />} />
+    <ScoreOverviewCard
+      healthBadge={<HealthBadge className="sm:mt-1" />}
+      score={growthScoreQuery.data ?? null}
+      isLoading={growthScoreQuery.isPending}
+      error={errorMessage}
+    />
   );
 }
 
