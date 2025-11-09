@@ -22,9 +22,7 @@ import {
   type CreateEntryInput,
   type Entry,
 } from "@/api/entries";
-import { healthQueries } from "@/api/health";
 import { growthQueries } from "@/api/growth";
-import { cn } from "@/lib/utils";
 import { type ActivityItem, entryToActivityItem } from "@/lib/types/entries";
 import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
 import { YoutubeAuthCallback } from "@/pages/YoutubeAuthCallback";
@@ -37,45 +35,6 @@ const queryClient = new QueryClient({
     },
   },
 });
-
-function HealthBadge({ className }: { className?: string }) {
-  const { data, status, error } = useQuery(healthQueries.status());
-
-  const label =
-    status === "pending"
-      ? "Checking backend…"
-      : status === "error"
-        ? "API offline"
-        : (data?.status ?? "API ready");
-
-  const badgeClassName =
-    status === "error"
-      ? "bg-destructive/10 text-destructive"
-      : status === "pending"
-        ? "bg-secondary text-secondary-foreground"
-        : "bg-emerald-500/10 text-emerald-600";
-
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium",
-        badgeClassName,
-        className,
-      )}
-    >
-      <span
-        className="mr-1.5 inline-flex h-2 w-2 rounded-full bg-current"
-        aria-hidden="true"
-      />
-      {label}
-      {status === "error" && error instanceof Error ? (
-        <span className="ml-2 hidden text-xs text-muted-foreground sm:inline">
-          ({error.message})
-        </span>
-      ) : null}
-    </span>
-  );
-}
 
 function ScorePlaceholder({
   channelId,
@@ -100,7 +59,6 @@ function ScorePlaceholder({
 
   return (
     <ScoreOverviewCard
-      healthBadge={<HealthBadge className="sm:mt-1" />}
       score={growthScoreQuery.data ?? null}
       isLoading={growthScoreQuery.isPending}
       error={errorMessage}
@@ -121,7 +79,7 @@ function DashboardShell() {
   const [publicOnly, setPublicOnly] = useLocalStorageState<boolean>(
     "publicOnlyFilter",
     {
-      defaultValue: false,
+      defaultValue: true,
     },
   );
 
