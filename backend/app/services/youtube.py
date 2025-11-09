@@ -1073,6 +1073,169 @@ class YoutubeService:
             channel, max_results=max_results, video_type=video_type
         )
 
+    async def fetch_video_detail(
+        self,
+        video_id: str,
+        *,
+        user_service: "UserService | None" = None,
+        oauth_service: "YoutubeOAuthService | None" = None,
+    ) -> YoutubeVideo:
+        """Return details for a single video by ID.
+
+        Automatically chooses between authenticated and API key-based requests
+        based on available credentials. Falls back to API key method if
+        authentication fails or is unavailable.
+
+        Args:
+            video_id: YouTube video ID.
+            user_service: Service for accessing user data (required for authenticated requests).
+            oauth_service: Service for OAuth credential management (required for authenticated requests).
+
+        Returns:
+            YoutubeVideo with video details.
+
+        Raises:
+            YoutubeAPIRequestError: If the video cannot be found or API request fails.
+        """
+        if not video_id:
+            raise YoutubeAPIRequestError("Video ID is required")
+
+        # Check if we should attempt authenticated request
+        is_authenticated = False
+        if user_service is not None and oauth_service is not None:
+            record = user_service.get_active_user()
+            is_authenticated = (
+                record is not None and record.credentials_json is not None
+            )
+
+        if (
+            is_authenticated
+            and user_service is not None
+            and oauth_service is not None
+        ):
+            # Try authenticated method first
+            try:
+                return self._fetch_video_detail_authenticated(
+                    video_id, user_service, oauth_service
+                )
+            except YoutubeConfigurationError:
+                # Fall back to API key method if auth fails
+                pass
+
+        # Use API key method (either no auth available or auth failed)
+        return await self._fetch_video_detail_with_api_key(video_id)
+
+    async def _fetch_video_detail_with_api_key(
+        self, video_id: str
+    ) -> YoutubeVideo:
+        """Fetch video details using API key authentication."""
+        if not self.api_key:
+            raise YoutubeConfigurationError("YouTube API key not configured")
+
+        async with self.client_session() as client:
+            params = {
+                "part": "contentDetails,snippet,status",
+                "id": video_id,
+                "key": self.api_key,
+            }
+            payload = await self._request_json(client, "videos", params)
+            items = payload.get("items", [])
+            if not isinstance(items, list) or not items:
+                raise YoutubeAPIRequestError(f"Video {video_id} not found")
+
+            # Find the video item matching the requested video_id
+            # (in case fixture returns multiple videos)
+            video_item = None
+            for item in items:
+                if isinstance(item, dict) and item.get("id") == video_id:
+                    video_item = item
+                    break
+
+            if video_item is None:
+                raise YoutubeAPIRequestError(f"Video {video_id} not found")
+
+            snippet = video_item.get("snippet", {})
+            content_details = video_item.get("contentDetails", {})
+            status = video_item.get("status", {})
+
+            # Create a playlist item-like dict
+            playlist_item_like = {
+                "snippet": {
+                    **snippet,
+                    "resourceId": {"videoId": video_id},
+                    "liveBroadcastContent": snippet.get(
+                        "liveBroadcastContent", "none"
+                    ),
+                    "privacyStatus": status.get("privacyStatus", "public")
+                    if isinstance(status, dict)
+                    else "public",
+                },
+                "contentDetails": content_details,
+            }
+
+            video = YoutubeVideo.from_playlist_item(playlist_item_like)
+            if video is None:
+                raise YoutubeAPIRequestError(
+                    f"Failed to parse video {video_id}"
+                )
+            return video
+
+    def _fetch_video_detail_authenticated(
+        self,
+        video_id: str,
+        user_service: "UserService",
+        oauth_service: "YoutubeOAuthService",
+    ) -> YoutubeVideo:
+        """Fetch video details using OAuth authentication."""
+        client = self.build_authenticated_client(user_service, oauth_service)
+
+        video_response = (
+            client.videos()
+            .list(
+                part="contentDetails,snippet,status", id=video_id, maxResults=1
+            )
+            .execute()
+        )
+
+        items = video_response.get("items", [])
+        if not isinstance(items, list) or not items:
+            raise YoutubeAPIRequestError(f"Video {video_id} not found")
+
+        # Find the video item matching the requested video_id
+        # (in case fixture returns multiple videos)
+        video_item = None
+        for item in items:
+            if isinstance(item, dict) and item.get("id") == video_id:
+                video_item = item
+                break
+
+        if video_item is None:
+            raise YoutubeAPIRequestError(f"Video {video_id} not found")
+
+        snippet = video_item.get("snippet", {})
+        content_details = video_item.get("contentDetails", {})
+        status = video_item.get("status", {})
+
+        # Create a playlist item-like dict
+        playlist_item_like = {
+            "snippet": {
+                **snippet,
+                "resourceId": {"videoId": video_id},
+                "liveBroadcastContent": snippet.get(
+                    "liveBroadcastContent", "none"
+                ),
+                "privacyStatus": status.get("privacyStatus", "public")
+                if isinstance(status, dict)
+                else "public",
+            },
+            "contentDetails": content_details,
+        }
+
+        video = YoutubeVideo.from_playlist_item(playlist_item_like)
+        if video is None:
+            raise YoutubeAPIRequestError(f"Failed to parse video {video_id}")
+        return video
+
 
 def _select_thumbnail_url(
     thumbnails: Any, preferred_order: tuple[str, ...]
