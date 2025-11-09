@@ -1,0 +1,80 @@
+{
+  "kind": "youtube#videoListResponse",
+  "etag": "demo-videos",
+  "pageInfo": {
+    "totalResults": 5,
+    "resultsPerPage": 5
+  },
+  "items": [
+    {
+      "kind": "youtube#video",
+      "etag": "demo-video-1",
+      "id": "DEMO_VIDEO_1",
+      "snippet": {
+        "liveBroadcastContent": "none"
+      },
+      "contentDetails": {
+        "duration": "PT4M30S"
+      },
+      "status": {
+        "privacyStatus": "public"
+      }
+    },
+    {
+      "kind": "youtube#video",
+      "etag": "demo-video-2",
+      "id": "DEMO_VIDEO_2",
+      "snippet": {
+        "liveBroadcastContent": "none"
+      },
+      "contentDetails": {
+        "duration": "PT1M45S"
+      },
+      "status": {
+        "privacyStatus": "unlisted"
+      }
+    },
+    {
+      "kind": "youtube#video",
+      "etag": "demo-video-3",
+      "id": "DEMO_VIDEO_3",
+      "snippet": {
+        "liveBroadcastContent": "live"
+      },
+      "contentDetails": {
+        "duration": "PT0S"
+      },
+      "status": {
+        "privacyStatus": "public"
+      }
+    },
+    {
+      "kind": "youtube#video",
+      "etag": "demo-video-4",
+      "id": "DEMO_VIDEO_4",
+      "snippet": {
+        "liveBroadcastContent": "none"
+      },
+      "contentDetails": {
+        "duration": "PT45S"
+      },
+      "status": {
+        "privacyStatus": "public"
+      }
+    },
+    {
+      "kind": "youtube#video",
+      "etag": "demo-video-5",
+      "id": "DEMO_VIDEO_5",
+      "snippet": {
+        "liveBroadcastContent": "none"
+      },
+      "contentDetails": {
+        "duration": "PT2M15S"
+      },
+      "status": {
+        "privacyStatus": "public"
+      }
+    }
+  ]
+}
