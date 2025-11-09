@@ -27,7 +27,7 @@ Scripts need access to backend dependencies managed by `uv`. You have two option
 cd backend
 source .venv/bin/activate  # or: vactivate
 cd ..
-python scripts/youtube_oauth_exp.py
+python scripts/example_script.py
 ```
 
 ### Option 2: Use `uv run` from Backend Directory
@@ -43,7 +43,7 @@ uv run python ../scripts/<script_name>.py
 
 ```bash
 cd backend
-uv run python ../scripts/youtube_oauth_exp.py
+uv run python ../scripts/example_script.py
 ```
 
 ### Available Scripts
@@ -53,8 +53,8 @@ uv run python ../scripts/youtube_oauth_exp.py
   - Run directly: `python scripts/dev.py` (after activating venv)
   - Or use the Makefile shortcut: `make dev`
 
-- **`youtube_oauth_exp.py`** – YouTube OAuth experimentation and testing script.
-  - Run with: `python scripts/youtube_oauth_exp.py` (after activating venv)
+- **`example_script.py`** – Example script for demonstration purposes.
+  - Run with: `python scripts/example_script.py` (after activating venv)
 
 ### Why Activation is Needed
 
