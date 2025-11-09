@@ -106,6 +106,10 @@ def build_lifespan(
         if active_settings.youtube_demo_mode:
             scenario = active_settings.youtube_demo_scenario or "default"
             demo_mode_details = f"enabled (scenario={scenario})"
+            logger.info(
+                "Using demo database: %s (demo mode prevents writes to production database)",
+                active_settings.effective_database_url,
+            )
         logger.info(
             "Application configured for %s environment with YouTube demo mode %s",
             active_settings.environment,
@@ -141,9 +145,9 @@ def create_app(active_settings: Settings | None = None) -> FastAPI:
     logging.basicConfig(level=logging.INFO)
     resolved_settings = active_settings or settings
     configure_logfire(resolved_settings)
-    connection_factory = create_connection_factory(
-        resolved_settings.database_url
-    )
+    # Use demo database when demo mode is enabled to avoid polluting the real database
+    database_url = resolved_settings.effective_database_url
+    connection_factory = create_connection_factory(database_url)
 
     application = FastAPI(
         title="Storyloop API",
