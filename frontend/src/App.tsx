@@ -12,7 +12,10 @@ import useLocalStorageState from "use-local-storage-state";
 import { ActivityFeed, type ActivityDraft } from "@/components/ActivityFeed";
 import { NavBar } from "@/components/NavBar";
 import { ScoreOverviewCard } from "@/components/ScoreOverviewCard";
-import { ContentTypeToggles, type ContentType } from "@/components/ContentTypeToggles";
+import {
+  ContentTypeTabs,
+  type ContentTypeFilter,
+} from "@/components/ContentTypeTabs";
 import {
   entriesMutations,
   entriesQueries,
@@ -75,13 +78,18 @@ function HealthBadge({ className }: { className?: string }) {
 }
 
 function ScorePlaceholder({
-  videoType,
+  contentTypeFilter,
 }: {
-  videoType?: "short" | "video" | null;
+  contentTypeFilter: ContentTypeFilter;
 }) {
-  const youtubeState = useYouTubeFeed(videoType ?? null);
+  const youtubeState = useYouTubeFeed(
+    contentTypeFilter === "all" ? null : contentTypeFilter,
+  );
   const growthScoreQuery = useQuery(
-    growthQueries.score(youtubeState.channelId, videoType ?? null),
+    growthQueries.score(
+      youtubeState.channelId,
+      contentTypeFilter === "all" ? null : contentTypeFilter,
+    ),
   );
 
   const errorMessage = growthScoreQuery.isError
@@ -104,38 +112,18 @@ function DashboardShell() {
   const queryClient = useQueryClient();
 
   // Content type filter state - persisted in local storage
-  const [selectedContentTypesArray, setSelectedContentTypesArray] =
-    useLocalStorageState<ContentType[]>("contentTypeSelection", {
-      defaultValue: ["video", "short"],
+  const [contentTypeFilter, setContentTypeFilter] =
+    useLocalStorageState<ContentTypeFilter>("contentTypeFilter", {
+      defaultValue: "all",
     });
 
-  // Convert array to Set for easier manipulation
-  const selectedContentTypes = useMemo(
-    () => new Set(selectedContentTypesArray),
-    [selectedContentTypesArray],
-  );
-
-  // Convert Set back to array for storage
-  const setSelectedContentTypes = useCallback(
-    (types: Set<ContentType>) => {
-      setSelectedContentTypesArray(Array.from(types));
-    },
-    [setSelectedContentTypesArray],
-  );
-
-  // Determine videoType filter: null if both selected, otherwise the single type
+  // Determine videoType filter for API calls: null if "all", otherwise the type
   const videoTypeFilter = useMemo<"short" | "video" | null>(() => {
-    if (selectedContentTypes.size === 2) {
-      return null; // Both selected, no filter
+    if (contentTypeFilter === "all") {
+      return null;
     }
-    if (selectedContentTypes.has("video")) {
-      return "video";
-    }
-    if (selectedContentTypes.has("short")) {
-      return "short";
-    }
-    return null; // Fallback (shouldn't happen)
-  }, [selectedContentTypes]);
+    return contentTypeFilter;
+  }, [contentTypeFilter]);
 
   const seedItems = useMemo<ActivityItem[]>(
     () => [
@@ -187,10 +175,13 @@ function DashboardShell() {
   // Combine stored entries with YouTube videos, filter by content type, and limit to 50
   const activityItems = useMemo<ActivityItem[]>(() => {
     const baseItems = [...storedActivityItems];
-    
+
     // Add YouTube videos if available
-    if (youtubeState.youtubeFeed) {
-      const videoItems = youtubeState.youtubeFeed.videos.map((video) => ({
+    if (youtubeState.youtubeFeed?.videos) {
+      const videos = Array.isArray(youtubeState.youtubeFeed.videos)
+        ? youtubeState.youtubeFeed.videos
+        : [];
+      const videoItems = videos.map((video) => ({
         id: `youtube:${video.id}`,
         title: video.title,
         summary: video.description,
@@ -202,11 +193,12 @@ function DashboardShell() {
         videoType: video.videoType,
       }));
 
-      // Filter YouTube videos by selected content types
+      // Filter YouTube videos by selected content type
       const filteredVideoItems = videoItems.filter((item) => {
         if (!item.videoType) return true; // Include items without videoType
         if (item.videoType === "live") return true; // Always include live videos
-        return selectedContentTypes.has(item.videoType as ContentType);
+        if (contentTypeFilter === "all") return true; // Include all when "all" is selected
+        return item.videoType === contentTypeFilter;
       });
 
       baseItems.push(...filteredVideoItems);
@@ -219,7 +211,7 @@ function DashboardShell() {
   }, [
     storedActivityItems,
     youtubeState.youtubeFeed,
-    selectedContentTypes,
+    contentTypeFilter,
   ]);
 
   // Fallback to seed items if no stored entries and no YouTube feed
@@ -343,11 +335,11 @@ function DashboardShell() {
     <div className="min-h-screen bg-muted/20 text-foreground">
       <NavBar />
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-10">
-        <ScorePlaceholder videoType={videoTypeFilter} />
+        <ScorePlaceholder contentTypeFilter={contentTypeFilter} />
 
-        <ContentTypeToggles
-          selectedTypes={selectedContentTypes}
-          onChange={setSelectedContentTypes}
+        <ContentTypeTabs
+          value={contentTypeFilter}
+          onChange={setContentTypeFilter}
         />
 
         <ActivityFeed
