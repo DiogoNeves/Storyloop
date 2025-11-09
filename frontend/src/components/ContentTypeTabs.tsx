@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export type ContentTypeFilter = "all" | "video" | "short";
+export type ContentTypeFilter = "all" | "video" | "short" | "live";
 
 interface ContentTypeTabsProps {
   value: ContentTypeFilter;
@@ -63,6 +63,12 @@ export function ContentTypeTabs({
         value="short"
         isSelected={value === "short"}
         onClick={() => onChange("short")}
+      />
+      <ContentTypeTab
+        label="Lives"
+        value="live"
+        isSelected={value === "live"}
+        onClick={() => onChange("live")}
       />
     </div>
   );

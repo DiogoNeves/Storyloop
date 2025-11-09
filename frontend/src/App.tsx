@@ -118,7 +118,7 @@ function DashboardShell() {
     });
 
   // Determine videoType filter for API calls: null if "all", otherwise the type
-  const videoTypeFilter = useMemo<"short" | "video" | null>(() => {
+  const videoTypeFilter = useMemo<"short" | "video" | "live" | null>(() => {
     if (contentTypeFilter === "all") {
       return null;
     }
@@ -196,7 +196,6 @@ function DashboardShell() {
       // Filter YouTube videos by selected content type
       const filteredVideoItems = videoItems.filter((item) => {
         if (!item.videoType) return true; // Include items without videoType
-        if (item.videoType === "live") return true; // Always include live videos
         if (contentTypeFilter === "all") return true; // Include all when "all" is selected
         return item.videoType === contentTypeFilter;
       });
