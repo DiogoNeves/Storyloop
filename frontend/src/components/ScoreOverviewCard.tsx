@@ -3,7 +3,6 @@ import { type ReactNode } from "react";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -119,14 +118,8 @@ export function ScoreOverviewCard({
 
   return (
     <Card>
-      <CardHeader className="flex flex-col gap-4 space-y-0 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
-          <CardTitle className="text-lg">Storyloop Score</CardTitle>
-          <CardDescription>
-            Storyloop Growth Index combining discovery momentum, retention quality,
-            and subscriber loyalty.
-          </CardDescription>
-        </div>
+      <CardHeader className="flex flex-col gap-2 space-y-0 sm:flex-row sm:items-start sm:justify-between">
+        <CardTitle className="text-lg">Storyloop Score</CardTitle>
         {healthBadge}
       </CardHeader>
       <CardContent>
