@@ -1,0 +1,162 @@
+{
+  "kind": "youtube#playlistItemListResponse",
+  "etag": "demo-playlist-items",
+  "nextPageToken": null,
+  "pageInfo": {
+    "totalResults": 5,
+    "resultsPerPage": 5
+  },
+  "items": [
+    {
+      "kind": "youtube#playlistItem",
+      "etag": "demo-video-1",
+      "id": "UUDEMOCHANNEL001",
+      "snippet": {
+        "publishedAt": "2024-04-01T12:00:00Z",
+        "title": "Welcome to Storyloop",
+        "description": "An introduction to the Storyloop storytelling platform.",
+        "thumbnails": {
+          "high": {
+            "url": "https://example.com/videos/welcome/high.jpg"
+          },
+          "medium": {
+            "url": "https://example.com/videos/welcome/medium.jpg"
+          },
+          "default": {
+            "url": "https://example.com/videos/welcome/default.jpg"
+          }
+        },
+        "resourceId": {
+          "kind": "youtube#video",
+          "videoId": "DEMO_VIDEO_1"
+        },
+        "liveBroadcastContent": "none"
+      },
+      "contentDetails": {
+        "videoId": "DEMO_VIDEO_1",
+        "videoPublishedAt": "2024-04-01T12:00:00Z"
+      }
+    },
+    {
+      "kind": "youtube#playlistItem",
+      "etag": "demo-video-2",
+      "id": "UUDEMOCHANNEL002",
+      "snippet": {
+        "publishedAt": "2024-04-05T15:30:00Z",
+        "title": "Capturing Audience Insights",
+        "description": "How Storyloop surfaces actionable viewer insights.",
+        "thumbnails": {
+          "high": {
+            "url": "https://example.com/videos/insights/high.jpg"
+          },
+          "medium": {
+            "url": "https://example.com/videos/insights/medium.jpg"
+          },
+          "default": {
+            "url": "https://example.com/videos/insights/default.jpg"
+          }
+        },
+        "resourceId": {
+          "kind": "youtube#video",
+          "videoId": "DEMO_VIDEO_2"
+        },
+        "liveBroadcastContent": "none"
+      },
+      "contentDetails": {
+        "videoId": "DEMO_VIDEO_2",
+        "videoPublishedAt": "2024-04-05T15:30:00Z"
+      }
+    },
+    {
+      "kind": "youtube#playlistItem",
+      "etag": "demo-video-3",
+      "id": "UUDEMOCHANNEL003",
+      "snippet": {
+        "publishedAt": "2024-04-10T18:45:00Z",
+        "title": "Live Creator Q&A",
+        "description": "A live session answering creator questions.",
+        "thumbnails": {
+          "high": {
+            "url": "https://example.com/videos/live/high.jpg"
+          },
+          "medium": {
+            "url": "https://example.com/videos/live/medium.jpg"
+          },
+          "default": {
+            "url": "https://example.com/videos/live/default.jpg"
+          }
+        },
+        "resourceId": {
+          "kind": "youtube#video",
+          "videoId": "DEMO_VIDEO_3"
+        },
+        "liveBroadcastContent": "live"
+      },
+      "contentDetails": {
+        "videoId": "DEMO_VIDEO_3",
+        "videoPublishedAt": "2024-04-10T18:45:00Z"
+      }
+    },
+    {
+      "kind": "youtube#playlistItem",
+      "etag": "demo-video-4",
+      "id": "UUDEMOCHANNEL004",
+      "snippet": {
+        "publishedAt": "2024-04-12T10:20:00Z",
+        "title": "Quick Tip: Storytelling Basics",
+        "description": "A quick 45-second guide to storytelling fundamentals.",
+        "thumbnails": {
+          "high": {
+            "url": "https://example.com/videos/quicktip/high.jpg"
+          },
+          "medium": {
+            "url": "https://example.com/videos/quicktip/medium.jpg"
+          },
+          "default": {
+            "url": "https://example.com/videos/quicktip/default.jpg"
+          }
+        },
+        "resourceId": {
+          "kind": "youtube#video",
+          "videoId": "DEMO_VIDEO_4"
+        },
+        "liveBroadcastContent": "none"
+      },
+      "contentDetails": {
+        "videoId": "DEMO_VIDEO_4",
+        "videoPublishedAt": "2024-04-12T10:20:00Z"
+      }
+    },
+    {
+      "kind": "youtube#playlistItem",
+      "etag": "demo-video-5",
+      "id": "UUDEMOCHANNEL005",
+      "snippet": {
+        "publishedAt": "2024-04-15T14:10:00Z",
+        "title": "Behind the Scenes: Content Creation",
+        "description": "A short glimpse into our content creation process.",
+        "thumbnails": {
+          "high": {
+            "url": "https://example.com/videos/behindscenes/high.jpg"
+          },
+          "medium": {
+            "url": "https://example.com/videos/behindscenes/medium.jpg"
+          },
+          "default": {
+            "url": "https://example.com/videos/behindscenes/default.jpg"
+          }
+        },
+        "resourceId": {
+          "kind": "youtube#video",
+          "videoId": "DEMO_VIDEO_5"
+        },
+        "liveBroadcastContent": "none"
+      },
+      "contentDetails": {
+        "videoId": "DEMO_VIDEO_5",
+        "videoPublishedAt": "2024-04-15T14:10:00Z"
+      }
+    }
+  ]
+}
+

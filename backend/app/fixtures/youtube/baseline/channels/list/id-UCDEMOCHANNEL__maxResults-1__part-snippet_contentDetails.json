@@ -1,0 +1,35 @@
+{
+  "kind": "youtube#channelListResponse",
+  "etag": "not_a_real_etag",
+  "pageInfo": {
+    "totalResults": 1,
+    "resultsPerPage": 1
+  },
+  "items": [
+    {
+      "kind": "youtube#channel",
+      "etag": "demo-channel",
+      "id": "UCDEMOCHANNEL",
+      "snippet": {
+        "title": "Storyloop Demo Channel",
+        "description": "Curated uploads used by the Storyloop demo mode.",
+        "thumbnails": {
+          "default": {
+            "url": "https://example.com/demo/default.jpg"
+          },
+          "medium": {
+            "url": "https://example.com/demo/medium.jpg"
+          },
+          "high": {
+            "url": "https://example.com/demo/high.jpg"
+          }
+        }
+      },
+      "contentDetails": {
+        "relatedPlaylists": {
+          "uploads": "UUDEMOCHANNEL"
+        }
+      }
+    }
+  ]
+}

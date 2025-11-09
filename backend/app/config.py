@@ -11,7 +11,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 ROOT_DIR = BASE_DIR.parent
-DEFAULT_DATABASE_PATH = (BASE_DIR / ".data" / "storyloop.db").resolve()
+DEFAULT_DATABASE_PATH = (BASE_DIR / "data" / "storyloop.db").resolve()
+DEFAULT_DEMO_DATABASE_PATH = (BASE_DIR / "data" / "storyloop-demo.db").resolve()
 
 
 def _load_dotenv() -> None:
@@ -29,6 +30,11 @@ class Settings(BaseModel):
     environment: str = Field(default="development", alias="ENV")
     database_url: str = Field(
         default=f"sqlite:///{DEFAULT_DATABASE_PATH}", alias="DATABASE_URL"
+    )
+    demo_database_url: str | None = Field(
+        default=f"sqlite:///{DEFAULT_DEMO_DATABASE_PATH}",
+        alias="DEMO_DATABASE_URL",
+        description="Database URL to use when demo mode is enabled. Defaults to storyloop-demo.db in .data directory.",
     )
     logfire_api_key: str | None = Field(default=None, alias="LOGFIRE_API_KEY")
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
@@ -89,6 +95,13 @@ class Settings(BaseModel):
         if self.enable_scheduler is not None:
             return self.enable_scheduler
         return self.environment.lower() == "production"
+
+    @property
+    def effective_database_url(self) -> str:
+        """Return the database URL to use, switching to demo DB when demo mode is enabled."""
+        if self.youtube_demo_mode:
+            return self.demo_database_url
+        return self.database_url
 
     @classmethod
     def load(cls) -> "Settings":
