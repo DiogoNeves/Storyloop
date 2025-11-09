@@ -1,11 +1,3 @@
-import { type ReactNode } from "react";
-
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import type {
   GrowthScoreComponent,
   GrowthScoreResponse,
@@ -74,7 +66,6 @@ function ScoreHeadline({
 }
 
 interface ScoreOverviewCardProps {
-  healthBadge?: ReactNode;
   score?: GrowthScoreResponse | null;
   isLoading?: boolean;
   error?: string | null;
@@ -107,7 +98,6 @@ function buildComponentSummaries(
 }
 
 export function ScoreOverviewCard({
-  healthBadge,
   score,
   isLoading = false,
   error,
@@ -117,30 +107,24 @@ export function ScoreOverviewCard({
   const showError = Boolean(error);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-col gap-2 space-y-0 sm:flex-row sm:items-start sm:justify-between">
-        <CardTitle className="text-lg">Storyloop Score</CardTitle>
-        {healthBadge}
-      </CardHeader>
-      <CardContent>
-        {showError ? (
-          <p className="mb-4 text-sm text-destructive" role="status">
-            {error}
-          </p>
-        ) : null}
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-1">
-            <ScoreHeadline
-              currentScore={currentScore}
-              isLoading={isLoading}
-              components={components}
-            />
-          </div>
-          <div className="lg:col-span-2">
-            <InsightsCard />
-          </div>
+    <>
+      {showError ? (
+        <p className="mb-4 text-sm text-destructive" role="status">
+          {error}
+        </p>
+      ) : null}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-1">
+          <ScoreHeadline
+            currentScore={currentScore}
+            isLoading={isLoading}
+            components={components}
+          />
         </div>
-      </CardContent>
-    </Card>
+        <div className="lg:col-span-2">
+          <InsightsCard />
+        </div>
+      </div>
+    </>
   );
 }
