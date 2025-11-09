@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import useLocalStorageState from "use-local-storage-state";
 
 import { ActivityFeed, type ActivityDraft } from "@/components/ActivityFeed";
 import { NavBar } from "@/components/NavBar";
@@ -102,10 +103,25 @@ function ScorePlaceholder({
 function DashboardShell() {
   const queryClient = useQueryClient();
 
-  // Content type filter state - default to both selected
-  const [selectedContentTypes, setSelectedContentTypes] = useState<
-    Set<ContentType>
-  >(new Set(["video", "short"]));
+  // Content type filter state - persisted in local storage
+  const [selectedContentTypesArray, setSelectedContentTypesArray] =
+    useLocalStorageState<ContentType[]>("contentTypeSelection", {
+      defaultValue: ["video", "short"],
+    });
+
+  // Convert array to Set for easier manipulation
+  const selectedContentTypes = useMemo(
+    () => new Set(selectedContentTypesArray),
+    [selectedContentTypesArray],
+  );
+
+  // Convert Set back to array for storage
+  const setSelectedContentTypes = useCallback(
+    (types: Set<ContentType>) => {
+      setSelectedContentTypesArray(Array.from(types));
+    },
+    [setSelectedContentTypesArray],
+  );
 
   // Determine videoType filter: null if both selected, otherwise the single type
   const videoTypeFilter = useMemo<"short" | "video" | null>(() => {
