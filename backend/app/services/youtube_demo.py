@@ -1,4 +1,14 @@
-"""Demo-only YouTube service that replays canned API responses."""
+"""Demo-only YouTube service that replays canned API responses.
+
+This module provides demo implementations of YouTube services that use pre-recorded
+fixture data instead of making real API calls. This is useful for development,
+testing, and demonstrations without requiring YouTube API credentials or OAuth setup.
+
+To enable demo mode, set the YOUTUBE_DEMO_MODE environment variable to true.
+Optionally, specify a fixture scenario with YOUTUBE_DEMO_SCENARIO (defaults to "baseline").
+
+See backend/README.md for detailed documentation on demo mode usage and fixture structure.
+"""
 
 from __future__ import annotations
 
@@ -79,7 +89,7 @@ class FixtureLoader:
                 without_page.pop("pageToken", None)
                 if without_page:
                     suffixes.append(self._params_to_suffix(without_page))
-            
+
             # For handle/username lookups, add fallback to ID-based fixture
             # This allows any handle/username to resolve to the demo channel
             if "forHandle" in filtered or "forUsername" in filtered:
@@ -90,7 +100,7 @@ class FixtureLoader:
                 id_fallback["id"] = "UCDEMOCHANNEL"
                 if id_fallback:
                     suffixes.append(self._params_to_suffix(id_fallback))
-        
+
         suffixes.append("default")
 
         candidates: list[Path] = []

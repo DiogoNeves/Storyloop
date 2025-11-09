@@ -59,10 +59,14 @@ Storyloop now supports authenticating against the YouTube Data API via OAuth. Co
 - `YOUTUBE_REDIRECT_URI` – must match the redirect registered with Google (default:
   `http://localhost:5173/auth/callback`).
 
-The backend creates a `users` table on startup to store the active creator’s channel metadata and OAuth credentials. Columns
+The backend creates a `users` table on startup to store the active creator's channel metadata and OAuth credentials. Columns
 include the primary key (`id`), serialized credential JSON (`credentials_json` and `credentials_updated_at`), saved channel
 details (`channel_id`, `channel_title`, `channel_url`, `channel_thumbnail_url`, `channel_updated_at`), and the most recent
 OAuth state token (`oauth_state`, `oauth_state_created_at`).
+
+### Demo Mode
+
+For development and testing without YouTube API credentials, enable demo mode by setting `YOUTUBE_DEMO_MODE=true`. Demo mode uses pre-recorded fixture data and a separate demo database. See [backend/README.md](backend/README.md#youtube-demo-mode) for detailed documentation.
 
 ## Project layout
 
