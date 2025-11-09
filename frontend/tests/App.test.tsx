@@ -105,6 +105,34 @@ vi.mock("@/api/entries", () => {
   };
 });
 
+vi.mock("@/api/growth", () => {
+  const scoreResponse = {
+    totalScore: 68.3,
+    scoreDelta: 18.3,
+    updatedAt: "2024-01-02T12:00:00.000Z",
+    isEarlyChannel: false,
+    breakdown: {
+      discovery: { rawValue: 48_250, score: 56.7, weight: 0.4 },
+      retention: { rawValue: 67.8, score: 68.1, weight: 0.45 },
+      loyalty: { rawValue: 6.56, score: 100.0, weight: 0.15 },
+    },
+  };
+
+  const scoreQueryFn = vi.fn().mockResolvedValue(scoreResponse);
+
+  return {
+    growthQueries: {
+      score: (channelId?: string | null) => ({
+        queryKey: ["growth", "score", channelId ?? "unlinked"],
+        queryFn: scoreQueryFn,
+      }),
+    },
+    growthApi: {
+      fetchGrowthScore: scoreQueryFn,
+    },
+  };
+});
+
 describe("App", () => {
   it("renders the dashboard and health status", async () => {
     render(<App />);
@@ -113,6 +141,10 @@ describe("App", () => {
     expect(
       screen.getByRole("button", { name: /\+ entry/i }),
     ).toBeInTheDocument();
+
+    await waitFor(() => expect(screen.getByText("68.3")).toBeInTheDocument());
+    expect(screen.getByText("▲18.3 pts")).toBeInTheDocument();
+    expect(screen.getByText(/Discovery · 40%/i)).toBeInTheDocument();
 
     await waitFor(() =>
       expect(screen.getByText(/Storyloop API ready/i)).toBeInTheDocument(),

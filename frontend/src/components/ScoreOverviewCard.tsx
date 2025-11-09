@@ -18,6 +18,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import type {
+  GrowthScoreComponent,
+  GrowthScoreResponse,
+} from "@/api/growth";
 import { cn } from "@/lib/utils";
 
 export interface ScoreTrendDatum {
@@ -40,6 +44,43 @@ const scoreTrendData: ScoreTrendDatum[] = [
   { week: "Dec 23", score: 84, ctr: 5.4, retention: 65 },
   { week: "Dec 30", score: 86, ctr: 5.6, retention: 67 },
 ];
+
+interface ScoreComponentSummary {
+  id: "discovery" | "retention" | "loyalty";
+  label: string;
+  score: number | null;
+  weight: number;
+}
+
+function formatUpdatedLabel(updatedAt: string | null, isLoading: boolean): string {
+  if (isLoading) {
+    return "Calculating score…";
+  }
+  if (!updatedAt) {
+    return "Updated just now";
+  }
+  const parsed = new Date(updatedAt);
+  if (Number.isNaN(parsed.getTime())) {
+    return "Updated recently";
+  }
+  const elapsedMs = Date.now() - parsed.getTime();
+  if (elapsedMs <= 0) {
+    return "Updated just now";
+  }
+  const elapsedMinutes = Math.floor(elapsedMs / 60_000);
+  if (elapsedMinutes < 1) {
+    return "Updated just now";
+  }
+  if (elapsedMinutes < 60) {
+    return `Updated ${elapsedMinutes}m ago`;
+  }
+  const elapsedHours = Math.floor(elapsedMinutes / 60);
+  if (elapsedHours < 24) {
+    return `Updated ${elapsedHours}h ago`;
+  }
+  const elapsedDays = Math.floor(elapsedHours / 24);
+  return `Updated ${elapsedDays}d ago`;
+}
 
 function ScoreTooltipContent({
   active,
@@ -93,13 +134,34 @@ function ScoreTooltipContent({
 }
 
 interface ScoreHeadlineProps {
-  currentScore: number;
-  change: number;
+  currentScore: number | null;
+  change: number | null;
   updatedLabel: string;
+  isLoading: boolean;
+  components: ScoreComponentSummary[];
 }
 
-function ScoreHeadline({ currentScore, change, updatedLabel }: ScoreHeadlineProps) {
-  const changeIsPositive = change >= 0;
+function ScoreHeadline({
+  currentScore,
+  change,
+  updatedLabel,
+  isLoading,
+  components,
+}: ScoreHeadlineProps) {
+  const hasScore = typeof currentScore === "number" && Number.isFinite(currentScore);
+  const hasChange = typeof change === "number" && Number.isFinite(change);
+  const changeIsPositive = hasChange ? (change as number) >= 0 : true;
+
+  const scoreDisplay = hasScore ? currentScore!.toFixed(1) : "—";
+  const changeDisplay = hasChange
+    ? `${changeIsPositive ? "▲" : "▼"}${Math.abs(change as number).toFixed(1)} pts`
+    : "—";
+
+  const changeClassName = hasChange
+    ? changeIsPositive
+      ? "bg-emerald-500/10 text-emerald-600"
+      : "bg-destructive/10 text-destructive"
+    : "bg-muted text-muted-foreground";
 
   return (
     <div className="flex h-full flex-col justify-between rounded-2xl border border-border/70 bg-gradient-to-br from-primary/10 via-background to-background p-6 shadow-inner">
@@ -108,24 +170,40 @@ function ScoreHeadline({ currentScore, change, updatedLabel }: ScoreHeadlineProp
           Current score
         </p>
         <div className="mt-4 flex items-baseline gap-4">
-          <span className="text-5xl font-semibold leading-none tracking-tight text-foreground">
-            {currentScore}
+          <span
+            className={cn(
+              "text-5xl font-semibold leading-none tracking-tight",
+              isLoading ? "text-muted-foreground/80" : "text-foreground",
+            )}
+          >
+            {scoreDisplay}
           </span>
           <span
             className={cn(
               "flex items-center rounded-full px-2.5 py-1 text-xs font-medium",
-              changeIsPositive
-                ? "bg-emerald-500/10 text-emerald-600"
-                : "bg-destructive/10 text-destructive",
+              changeClassName,
             )}
           >
-            {changeIsPositive ? "▲" : "▼"}
-            {Math.abs(change).toFixed(1)} pts
+            {changeDisplay}
           </span>
         </div>
         <p className="mt-2 text-sm text-muted-foreground">
-          Momentum over the past 30 days based on CTR and watch time retention.
+          Momentum across discovery, retention quality, and loyalty.
         </p>
+        {components.length > 0 ? (
+          <dl className="mt-5 grid gap-2 text-sm text-muted-foreground">
+            {components.map((component) => (
+              <div key={component.id} className="flex items-center justify-between">
+                <dt>{component.label}</dt>
+                <dd className="font-medium text-foreground">
+                  {typeof component.score === "number"
+                    ? `${component.score.toFixed(1)} pts`
+                    : "—"}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
       </div>
       <div className="mt-6 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
         <div className="flex items-center gap-2">
@@ -203,12 +281,48 @@ function ScoreTrendChart({ data }: ScoreTrendChartProps) {
 
 interface ScoreOverviewCardProps {
   healthBadge?: ReactNode;
+  score?: GrowthScoreResponse | null;
+  isLoading?: boolean;
+  error?: string | null;
 }
 
-export function ScoreOverviewCard({ healthBadge }: ScoreOverviewCardProps) {
-  const currentScore = 86;
-  const change = 4.2;
-  const updatedLabel = "Updated 2h ago";
+function buildComponentSummaries(
+  score: GrowthScoreResponse | null | undefined,
+): ScoreComponentSummary[] {
+  if (!score) {
+    return [];
+  }
+
+  const { discovery, retention, loyalty } = score.breakdown;
+  const toSummary = (
+    id: ScoreComponentSummary["id"],
+    label: string,
+    component: GrowthScoreComponent,
+  ): ScoreComponentSummary => ({
+    id,
+    label: `${label} · ${Math.round(component.weight * 100)}%`,
+    score: component.score,
+    weight: component.weight,
+  });
+
+  return [
+    toSummary("discovery", "Discovery", discovery),
+    toSummary("retention", "Retention quality", retention),
+    toSummary("loyalty", "Loyalty", loyalty),
+  ];
+}
+
+export function ScoreOverviewCard({
+  healthBadge,
+  score,
+  isLoading = false,
+  error,
+}: ScoreOverviewCardProps) {
+  const currentScore = score?.totalScore ?? null;
+  const change = score?.scoreDelta ?? null;
+  const updatedLabel = formatUpdatedLabel(score?.updatedAt ?? null, isLoading);
+  const components = buildComponentSummaries(score);
+  const showError = Boolean(error);
 
   return (
     <Card>
@@ -216,14 +330,26 @@ export function ScoreOverviewCard({ healthBadge }: ScoreOverviewCardProps) {
         <div className="space-y-1">
           <CardTitle className="text-lg">Storyloop Score</CardTitle>
           <CardDescription>
-            Line chart placeholder representing CTR × (Avg View Duration ÷ Video Length).
+            Storyloop Growth Index combining discovery momentum, retention quality,
+            and subscriber loyalty.
           </CardDescription>
         </div>
         {healthBadge}
       </CardHeader>
       <CardContent>
+        {showError ? (
+          <p className="mb-4 text-sm text-destructive" role="status">
+            {error}
+          </p>
+        ) : null}
         <div className="grid gap-6 lg:grid-cols-[minmax(0,260px)_1fr]">
-          <ScoreHeadline currentScore={currentScore} change={change} updatedLabel={updatedLabel} />
+          <ScoreHeadline
+            currentScore={currentScore}
+            change={change}
+            updatedLabel={updatedLabel}
+            isLoading={isLoading}
+            components={components}
+          />
           <div className="h-72 rounded-2xl border border-border/60 bg-background/40 p-4">
             <ScoreTrendChart data={scoreTrendData} />
           </div>
