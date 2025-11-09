@@ -1,7 +1,6 @@
 import { type ActivityItem } from "@/lib/types/entries";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 
 export const categoryBadgeClass: Record<ActivityItem["category"], string> = {
   content: "bg-accent text-accent-foreground",
@@ -59,7 +58,7 @@ export function ActivityFeedItem({
           </div>
         </div>
         <div className="flex gap-4">
-          <div className="flex flex-1 flex-col gap-2">
+          <div className="flex flex-1 flex-col gap-2 pr-20">
             <h3 className="text-sm font-semibold text-foreground">
               {item.linkUrl ? (
                 <a
@@ -119,32 +118,29 @@ export function ActivityFeedItem({
           ) : null}
         </div>
         {onEdit || onDelete ? (
-          <div className="absolute bottom-4 right-4 hidden items-center gap-1 group-hover:flex">
+          <div className="absolute bottom-2 right-4 hidden items-center gap-2 group-hover:flex">
             {onEdit ? (
-              <Button
+              <button
                 type="button"
-                size="sm"
-                variant="ghost"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                 onClick={() => {
                   onEdit();
                 }}
               >
                 Edit
-              </Button>
+              </button>
             ) : null}
             {onDelete ? (
-              <Button
+              <button
                 type="button"
-                size="sm"
-                variant="ghost"
-                className="text-destructive hover:text-white"
+                className="text-xs text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
                 onClick={() => {
                   onDelete();
                 }}
                 disabled={isDeleting}
               >
                 {isDeleting ? "Deleting…" : "Delete"}
-              </Button>
+              </button>
             ) : null}
           </div>
         ) : null}
