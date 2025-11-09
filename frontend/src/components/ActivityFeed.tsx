@@ -57,7 +57,7 @@ export function ActivityFeed({
   const editingState = useEntryEditing();
   const [thumbnailError, setThumbnailError] = useState(false);
 
-  const channelThumbnailUrl = youtubeFeed?.channelThumbnailUrl?.trim() || null;
+  const channelThumbnailUrl = youtubeFeed?.channelThumbnailUrl?.trim() ?? null;
   const isValidUrl =
     channelThumbnailUrl &&
     (channelThumbnailUrl.startsWith("http://") ||

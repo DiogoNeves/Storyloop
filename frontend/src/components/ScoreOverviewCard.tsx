@@ -25,7 +25,7 @@ function ScoreHeadline({
 }: ScoreHeadlineProps) {
   const hasScore = typeof currentScore === "number" && Number.isFinite(currentScore);
 
-  const scoreDisplay = hasScore ? currentScore!.toFixed(1) : "—";
+  const scoreDisplay = hasScore ? currentScore.toFixed(1) : "—";
 
   return (
     <div className="flex h-full flex-col justify-between rounded-2xl border border-border/70 bg-gradient-to-br from-primary/10 via-background to-background p-6 shadow-inner">

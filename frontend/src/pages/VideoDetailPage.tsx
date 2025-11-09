@@ -19,14 +19,14 @@ export function VideoDetailPage() {
 
   const video = videoDetailQuery.data;
   const publishedDate = video?.publishedAt
-    ? new Date(video.publishedAt).toLocaleString(undefined, {
+    ? new Date(String(video.publishedAt)).toLocaleString(undefined, {
         dateStyle: "long",
         timeStyle: "short",
       })
     : null;
 
-  const transcriptText = video?.transcript?.trim();
-  const descriptionText = video?.description?.trim();
+  const transcriptText = video?.transcript ? String(video.transcript).trim() : "";
+  const descriptionText = video?.description ? String(video.description).trim() : "";
 
   return (
     <div className="min-h-screen bg-muted/20 text-foreground">
@@ -47,7 +47,9 @@ export function VideoDetailPage() {
             <p className="text-sm text-muted-foreground">Loading video details…</p>
           ) : videoDetailQuery.isError ? (
             <p className="text-sm text-destructive">
-              {videoDetailQuery.error.message}
+              {videoDetailQuery.error instanceof Error
+                ? videoDetailQuery.error.message
+                : String(videoDetailQuery.error)}
             </p>
           ) : !video ? (
             <p className="text-sm text-muted-foreground">
@@ -57,12 +59,12 @@ export function VideoDetailPage() {
             <div className="space-y-6">
               <div className="space-y-4">
                 <h1 className="text-2xl font-semibold text-foreground">
-                  {video.title}
+                  {String(video.title)}
                 </h1>
                 <div className="flex flex-col gap-2 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
                   <span>{publishedDate ?? "Publish date unavailable"}</span>
                   <a
-                    href={video.url}
+                    href={String(video.url)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline"
@@ -72,7 +74,7 @@ export function VideoDetailPage() {
                 </div>
                 <div className="aspect-video w-full overflow-hidden rounded-md border border-border bg-black">
                   <iframe
-                    title={video.title}
+                    title={String(video.title)}
                     src={`https://www.youtube.com/embed/${videoId}`}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
