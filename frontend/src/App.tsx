@@ -11,6 +11,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ActivityFeed, type ActivityDraft } from "@/components/ActivityFeed";
 import { NavBar } from "@/components/NavBar";
 import { ScoreOverviewCard } from "@/components/ScoreOverviewCard";
+import { ContentTypeToggles, type ContentType } from "@/components/ContentTypeToggles";
 import {
   entriesMutations,
   entriesQueries,
@@ -72,10 +73,14 @@ function HealthBadge({ className }: { className?: string }) {
   );
 }
 
-function ScorePlaceholder() {
-  const youtubeState = useYouTubeFeed();
+function ScorePlaceholder({
+  videoType,
+}: {
+  videoType?: "short" | "video" | null;
+}) {
+  const youtubeState = useYouTubeFeed(videoType ?? null);
   const growthScoreQuery = useQuery(
-    growthQueries.score(youtubeState.channelId),
+    growthQueries.score(youtubeState.channelId, videoType ?? null),
   );
 
   const errorMessage = growthScoreQuery.isError
@@ -96,6 +101,25 @@ function ScorePlaceholder() {
 
 function DashboardShell() {
   const queryClient = useQueryClient();
+
+  // Content type filter state - default to both selected
+  const [selectedContentTypes, setSelectedContentTypes] = useState<
+    Set<ContentType>
+  >(new Set(["video", "short"]));
+
+  // Determine videoType filter: null if both selected, otherwise the single type
+  const videoTypeFilter = useMemo<"short" | "video" | null>(() => {
+    if (selectedContentTypes.size === 2) {
+      return null; // Both selected, no filter
+    }
+    if (selectedContentTypes.has("video")) {
+      return "video";
+    }
+    if (selectedContentTypes.has("short")) {
+      return "short";
+    }
+    return null; // Fallback (shouldn't happen)
+  }, [selectedContentTypes]);
 
   const seedItems = useMemo<ActivityItem[]>(
     () => [
@@ -141,8 +165,52 @@ function DashboardShell() {
     return storedEntries.map(entryToActivityItem);
   }, [storedEntries]);
 
-  const activityItems =
-    storedActivityItems.length > 0 ? storedActivityItems : seedItems;
+  // Fetch YouTube videos with filter
+  const youtubeState = useYouTubeFeed(videoTypeFilter);
+
+  // Combine stored entries with YouTube videos, filter by content type, and limit to 50
+  const activityItems = useMemo<ActivityItem[]>(() => {
+    const baseItems = [...storedActivityItems];
+    
+    // Add YouTube videos if available
+    if (youtubeState.youtubeFeed) {
+      const videoItems = youtubeState.youtubeFeed.videos.map((video) => ({
+        id: `youtube:${video.id}`,
+        title: video.title,
+        summary: video.description,
+        date: video.publishedAt,
+        category: "content" as const,
+        linkUrl: video.url,
+        thumbnailUrl: video.thumbnailUrl ?? undefined,
+        videoId: video.id,
+        videoType: video.videoType,
+      }));
+
+      // Filter YouTube videos by selected content types
+      const filteredVideoItems = videoItems.filter((item) => {
+        if (!item.videoType) return true; // Include items without videoType
+        if (item.videoType === "live") return true; // Always include live videos
+        return selectedContentTypes.has(item.videoType as ContentType);
+      });
+
+      baseItems.push(...filteredVideoItems);
+    }
+
+    // Sort by date (newest first) and limit to 50
+    return baseItems
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 50);
+  }, [
+    storedActivityItems,
+    youtubeState.youtubeFeed,
+    selectedContentTypes,
+  ]);
+
+  // Fallback to seed items if no stored entries and no YouTube feed
+  const displayItems =
+    storedActivityItems.length > 0 || youtubeState.youtubeFeed
+      ? activityItems
+      : seedItems;
 
   const [draft, setDraft] = useState<ActivityDraft | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
@@ -259,10 +327,19 @@ function DashboardShell() {
     <div className="min-h-screen bg-muted/20 text-foreground">
       <NavBar />
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-10">
-        <ScorePlaceholder />
+        <ScorePlaceholder videoType={videoTypeFilter} />
+
+        <ContentTypeToggles
+          selectedTypes={selectedContentTypes}
+          onChange={setSelectedContentTypes}
+        />
 
         <ActivityFeed
-          items={activityItems}
+          items={displayItems}
+          youtubeFeed={youtubeState.youtubeFeed}
+          isLinked={youtubeState.isLinked}
+          linkStatus={youtubeState.linkStatus}
+          youtubeError={youtubeState.youtubeError}
           draft={draft}
           onStartDraft={handleStartDraft}
           onDraftChange={handleDraftChange}

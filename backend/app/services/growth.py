@@ -23,16 +23,30 @@ class GrowthScoreService:
         """Log a placeholder recalculation until real metrics are wired in."""
         logger.info("Pretending to recalculate growth score aggregates.")
 
-    def load_latest_score(self, channel_id: str | None = None) -> ScoreComputation:
-        """Calculate the latest Storyloop Growth Index for the given channel."""
+    def load_latest_score(
+        self, channel_id: str | None = None, video_type: str | None = None
+    ) -> ScoreComputation:
+        """Calculate the latest Storyloop Growth Index for the given channel.
 
-        current_video, baseline_videos = self._load_sample_dataset(channel_id)
+        Args:
+            channel_id: Optional channel identifier.
+            video_type: Optional filter by video type ("short", "live", or "video").
+        """
+        current_video, baseline_videos = self._load_sample_dataset(
+            channel_id, video_type
+        )
         return compute_growth_score(current_video, baseline_videos)
 
     def _load_sample_dataset(
-        self, channel_id: str | None
+        self, channel_id: str | None, video_type: str | None = None
     ) -> tuple[VideoScoreInputs, Sequence[VideoScoreInputs]]:
-        """Return a deterministic dataset while API integrations are in progress."""
+        """Return a deterministic dataset while API integrations are in progress.
+
+        Args:
+            channel_id: Optional channel identifier (currently unused).
+            video_type: Optional filter by video type (currently unused, will be
+                applied when real metrics are wired in).
+        """
 
         baseline: list[VideoScoreInputs] = [
             VideoScoreInputs(

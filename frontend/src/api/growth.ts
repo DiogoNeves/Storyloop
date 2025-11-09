@@ -22,17 +22,35 @@ export interface GrowthScoreResponse {
   breakdown: GrowthScoreBreakdown;
 }
 
-export async function fetchGrowthScore(channelId?: string | null) {
+export async function fetchGrowthScore(
+  channelId?: string | null,
+  videoType?: "short" | "video" | "live" | null,
+) {
+  const params: { channelId?: string; videoType?: string } = {};
+  if (channelId) {
+    params.channelId = channelId;
+  }
+  if (videoType) {
+    params.videoType = videoType;
+  }
   const response = await apiClient.get<GrowthScoreResponse>("/growth/score", {
-    params: channelId ? { channelId } : undefined,
+    params: Object.keys(params).length > 0 ? params : undefined,
   });
   return response.data;
 }
 
 export const growthQueries = createQueryKeys("growth", {
-  score: (channelId?: string | null) => ({
-    queryKey: ["growth", "score", channelId ?? "unlinked"],
-    queryFn: () => fetchGrowthScore(channelId),
+  score: (
+    channelId?: string | null,
+    videoType?: "short" | "video" | "live" | null,
+  ) => ({
+    queryKey: [
+      "growth",
+      "score",
+      channelId ?? "unlinked",
+      videoType ?? "all",
+    ],
+    queryFn: () => fetchGrowthScore(channelId, videoType),
   }),
 });
 

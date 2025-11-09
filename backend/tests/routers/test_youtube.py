@@ -81,3 +81,72 @@ async def test_youtube_videos_endpoint_returns_payload():
     assert payload["channelId"] == "UC555"
     assert payload["channelTitle"] == "Example Channel"
     assert payload["videos"][0]["id"] == "abc123"
+
+
+@pytest.mark.asyncio
+async def test_youtube_videos_endpoint_accepts_video_type_filter():
+    """Test that the endpoint accepts and passes through videoType parameter."""
+    channel_payload = {
+        "items": [
+            {
+                "id": "UC666",
+                "snippet": {
+                    "title": "Test Channel",
+                    "thumbnails": {
+                        "default": {"url": "https://img.youtube.com/default.jpg"}
+                    },
+                },
+                "contentDetails": {"relatedPlaylists": {"uploads": "UU666"}},
+            }
+        ]
+    }
+    playlist_payload = {
+        "items": [
+            {
+                "snippet": {
+                    "title": "Test video",
+                    "publishedAt": "2024-02-10T08:30:00Z",
+                    "resourceId": {"videoId": "test123"},
+                }
+            }
+        ]
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/channels"):
+            return httpx.Response(200, json=channel_payload)
+        if request.url.path.endswith("/playlistItems"):
+            return httpx.Response(200, json=playlist_payload)
+        if request.url.path.endswith("/videos"):
+            return httpx.Response(200, json={"items": []})
+        if request.url.path.endswith("/search"):
+            return httpx.Response(200, json={"items": []})
+        raise AssertionError(f"Unhandled URL {request.url}")
+
+    test_transport = httpx.MockTransport(handler)
+
+    settings = Settings(
+        YOUTUBE_API_KEY="test-key",
+        DATABASE_URL="sqlite:///:memory:",
+        YOUTUBE_OAUTH_CLIENT_ID="client-id",
+        YOUTUBE_OAUTH_CLIENT_SECRET="client-secret",
+        YOUTUBE_REDIRECT_URI="http://localhost:8000/youtube/auth/callback",
+    )
+    app = create_app(settings)
+
+    async with app.router.lifespan_context(app):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://testserver"
+        ) as client:
+            app.state.youtube_service = YoutubeService(
+                api_key="test-key", transport=test_transport
+            )
+            # Test with videoType parameter
+            response = await client.get(
+                "/youtube/videos",
+                params={"channel": "@test", "videoType": "short"},
+            )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["channelId"] == "UC666"
