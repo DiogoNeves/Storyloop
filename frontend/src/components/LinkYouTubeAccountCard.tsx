@@ -105,50 +105,7 @@ export function LinkYouTubeAccountCard() {
     );
   }
 
-  const channel = statusQuery.data?.channel ?? null;
-  const refreshNeeded = statusQuery.data?.refreshNeeded ?? false;
-
-  return (
-    <Card>
-      <CardHeader className="p-4 pb-2">
-        <CardTitle className="text-sm font-semibold text-foreground">
-          Connected YouTube channel
-        </CardTitle>
-        <CardDescription>
-          {refreshNeeded
-            ? "Your connection may need to be refreshed soon."
-            : "We're automatically pulling recent uploads from this channel."}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="p-4 pt-2">
-        {channel ? (
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-foreground">
-              {channel.title ?? "Linked channel"}
-            </p>
-            {channel.url ? (
-              <a
-                href={channel.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm font-medium text-primary underline-offset-2 hover:underline"
-              >
-                View channel on YouTube
-              </a>
-            ) : null}
-            {channel.updatedAt ? (
-              <p className="text-xs text-muted-foreground">
-                Last synced {new Date(channel.updatedAt).toLocaleString()}
-              </p>
-            ) : null}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Your channel is linked. We'll show new uploads here automatically.
-          </p>
-        )}
-      </CardContent>
-    </Card>
-  );
+  // When linked, don't render the card (it's handled in ActivityFeed)
+  return null;
 }
 
