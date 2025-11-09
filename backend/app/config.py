@@ -48,6 +48,16 @@ class Settings(BaseModel):
         alias="YOUTUBE_REDIRECT_URI",
         description="OAuth redirect URI for YouTube integrations",
     )
+    youtube_demo_mode: bool = Field(
+        default=False,
+        alias="YOUTUBE_DEMO_MODE",
+        description="Enable demo fixtures for YouTube integrations",
+    )
+    youtube_demo_scenario: str | None = Field(
+        default=None,
+        alias="YOUTUBE_DEMO_SCENARIO",
+        description="Optional fixture scenario to load when demo mode is enabled",
+    )
     cors_origins: list[str] = Field(
         default_factory=lambda: [
             "http://127.0.0.1:5173",
