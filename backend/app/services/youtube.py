@@ -1017,6 +1017,62 @@ class YoutubeService:
         )
         return cast("YoutubeApiClient", client)
 
+    async def fetch_channel_feed(
+        self,
+        channel: str,
+        *,
+        video_type: str | None = None,
+        user_service: "UserService | None" = None,
+        oauth_service: "YoutubeOAuthService | None" = None,
+        max_results: int = 50,
+    ) -> YoutubeFeed:
+        """Return recent uploads for the provided channel identifier.
+
+        Automatically chooses between authenticated and API key-based requests
+        based on available credentials. Falls back to API key method if
+        authentication fails or is unavailable.
+
+        Args:
+            channel: Channel identifier (handle, ID, or URL).
+            video_type: Optional filter by video type ("short", "live", or "video").
+            user_service: Service for accessing user data (required for authenticated requests).
+            oauth_service: Service for OAuth credential management (required for authenticated requests).
+            max_results: Maximum number of videos to return.
+
+        Returns:
+            YoutubeFeed with channel metadata and videos.
+        """
+        # Check if we should attempt authenticated request
+        is_authenticated = False
+        if user_service is not None and oauth_service is not None:
+            record = user_service.get_active_user()
+            is_authenticated = (
+                record is not None and record.credentials_json is not None
+            )
+
+        if (
+            is_authenticated
+            and user_service is not None
+            and oauth_service is not None
+        ):
+            # Try authenticated method first
+            try:
+                return self.fetch_authenticated_channel_videos(
+                    user_service,
+                    oauth_service,
+                    channel_id=channel,
+                    max_results=max_results,
+                    video_type=video_type,
+                )
+            except YoutubeConfigurationError:
+                # Fall back to API key method if auth fails
+                pass
+
+        # Use API key method (either no auth available or auth failed)
+        return await self.fetch_channel_videos(
+            channel, max_results=max_results, video_type=video_type
+        )
+
 
 def _select_thumbnail_url(
     thumbnails: Any, preferred_order: tuple[str, ...]

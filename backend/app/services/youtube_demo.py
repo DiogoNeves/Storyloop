@@ -6,16 +6,28 @@ import json
 import logging
 import os
 import re
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Mapping
+from typing import TYPE_CHECKING, Any, Mapping
 
 import httpx
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import Flow
 
 from app.services.youtube import (
     YoutubeAPIRequestError,
     YoutubeApiClient,
+    YoutubeFeed,
     YoutubeService,
 )
+from app.services.youtube_oauth import (
+    YOUTUBE_OAUTH_SCOPES,
+    YoutubeOAuthService,
+)
+from app.services.users import UserRecord, UserService
+
+if TYPE_CHECKING:
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -148,6 +160,140 @@ class FakeYoutubeApiClient(YoutubeApiClient):
         return FakeYoutubeResource(self._loader, "videos")
 
 
+class DemoYoutubeOAuthService(YoutubeOAuthService):
+    """Demo OAuth service that always returns valid demo credentials."""
+
+    def __init__(self) -> None:
+        # Create minimal Settings for parent initialization
+        # Parent requires OAuth config, but we'll override methods anyway
+        from app.config import Settings
+
+        dummy_settings = Settings(
+            YOUTUBE_OAUTH_CLIENT_ID="demo_client_id",
+            YOUTUBE_OAUTH_CLIENT_SECRET="demo_client_secret",
+            YOUTUBE_REDIRECT_URI="http://localhost:5173/youtube/auth/callback",
+        )
+        super().__init__(dummy_settings)
+
+    @property
+    def redirect_uri(self) -> str:
+        """Return demo redirect URI."""
+        return "http://localhost:5173/youtube/auth/callback"
+
+    def create_flow(self, *, state: str | None = None) -> Flow:
+        """Create a demo OAuth flow (may not be used in demo mode)."""
+        # In demo mode, OAuth flow endpoints may not be used
+        # But if they are, we need to return something that won't crash
+        # For now, raise an error indicating demo mode doesn't support OAuth flows
+        raise YoutubeAPIRequestError(
+            "OAuth flow is not supported in demo mode. Use demo fixtures instead."
+        )
+
+    def deserialize_credentials(self, credentials_json: str) -> Credentials:
+        """Return demo credentials that are always valid."""
+        # Create a minimal credentials object that won't expire
+        # The demo service doesn't actually use these credentials
+        data = (
+            json.loads(credentials_json)
+            if isinstance(credentials_json, str)
+            else credentials_json
+        )
+        # Ensure credentials appear valid (not expired)
+        if isinstance(data, dict):
+            data.setdefault("expiry", None)  # No expiry
+            data.setdefault("token", "demo_token")
+            data.setdefault("refresh_token", "demo_refresh_token")
+        return Credentials.from_authorized_user_info(
+            data if isinstance(data, dict) else {}, scopes=YOUTUBE_OAUTH_SCOPES
+        )
+
+    def serialize_credentials(self, credentials: Credentials) -> str:
+        """Serialize demo credentials."""
+        return credentials.to_json()
+
+    def refresh_credentials(self, credentials: Credentials) -> None:
+        """No-op for demo mode - credentials never expire."""
+        pass
+
+
+class DemoUserService(UserService):
+    """Demo user service that always returns a user with demo credentials."""
+
+    def __init__(self, real_user_service: UserService) -> None:
+        # Store reference to real service for delegation
+        self._real_service = real_user_service
+        # Use the same connection factory
+        super().__init__(real_user_service._connection_factory)
+
+    def get_active_user(self) -> UserRecord:
+        """Always return a demo user with credentials."""
+        # Try to get real user first, but if none exists, return demo user
+        real_user = self._real_service.get_active_user()
+        if real_user is not None and real_user.credentials_json:
+            return real_user
+
+        # Return demo user with demo channel info
+        demo_credentials = json.dumps(
+            {
+                "token": "demo_access_token",
+                "refresh_token": "demo_refresh_token",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "client_id": "demo_client_id",
+                "client_secret": "demo_client_secret",
+                "scopes": list(YOUTUBE_OAUTH_SCOPES),
+            }
+        )
+
+        return UserRecord(
+            id="active",
+            channel_id="UCDEMOCHANNEL",
+            channel_title="Storyloop Demo Channel",
+            channel_url="https://www.youtube.com/channel/UCDEMOCHANNEL",
+            channel_thumbnail_url="https://example.com/demo/high.jpg",
+            channel_updated_at=datetime.now(tz=UTC),
+            credentials_json=demo_credentials,
+            credentials_updated_at=datetime.now(tz=UTC),
+            oauth_state=None,
+            oauth_state_created_at=None,
+        )
+
+    # Delegate all other methods to real service
+    def ensure_schema(self) -> None:
+        return self._real_service.ensure_schema()
+
+    def upsert_credentials(
+        self,
+        credentials_json: str | None,
+        refreshed_at: datetime | None,
+    ) -> None:
+        return self._real_service.upsert_credentials(
+            credentials_json, refreshed_at
+        )
+
+    def update_channel_info(
+        self,
+        *,
+        channel_id: str,
+        channel_title: str | None,
+        channel_url: str | None,
+        thumbnail_url: str | None,
+        updated_at: datetime | None,
+    ) -> None:
+        return self._real_service.update_channel_info(
+            channel_id=channel_id,
+            channel_title=channel_title,
+            channel_url=channel_url,
+            thumbnail_url=thumbnail_url,
+            updated_at=updated_at,
+        )
+
+    def save_oauth_state(self, state: str, created_at: datetime) -> None:
+        return self._real_service.save_oauth_state(state, created_at)
+
+    def clear_oauth_state(self) -> None:
+        return self._real_service.clear_oauth_state()
+
+
 class DemoYoutubeService(YoutubeService):
     """YouTube service variant that sources responses from fixture bundles."""
 
@@ -159,13 +305,17 @@ class DemoYoutubeService(YoutubeService):
         transport: httpx.AsyncBaseTransport | None = None,
         client: httpx.AsyncClient | None = None,
     ) -> None:
-        super().__init__(api_key=api_key or "demo", transport=transport, client=client)
+        super().__init__(
+            api_key=api_key or "demo", transport=transport, client=client
+        )
         selected_scenario = scenario or os.getenv(
             "YOUTUBE_DEMO_SCENARIO", "baseline"
         )
         try:
             self._fixture_loader = FixtureLoader(selected_scenario)
-        except FileNotFoundError as exc:  # pragma: no cover - configuration error
+        except (
+            FileNotFoundError
+        ) as exc:  # pragma: no cover - configuration error
             raise YoutubeAPIRequestError(str(exc)) from exc
         self._scenario = selected_scenario
 
@@ -185,5 +335,41 @@ class DemoYoutubeService(YoutubeService):
     ) -> FakeYoutubeApiClient:
         return FakeYoutubeApiClient(self._fixture_loader)
 
+    async def fetch_channel_feed(
+        self,
+        channel: str,
+        *,
+        video_type: str | None = None,
+        user_service: Any | None = None,
+        oauth_service: Any | None = None,
+        max_results: int = 50,
+    ) -> YoutubeFeed:
+        """Return recent uploads using demo fixtures.
 
-__all__ = ["DemoYoutubeService", "FakeYoutubeApiClient"]
+        In demo mode, always uses authenticated method with fixtures.
+        Assumes user_service and oauth_service are provided via dependency injection.
+        """
+        # In demo mode, always use authenticated method with fixtures
+        # Services should be provided via dependency injection
+        if user_service is None or oauth_service is None:
+            raise YoutubeAPIRequestError(
+                "Demo mode requires user_service and oauth_service to be provided"
+            )
+
+        # Always use authenticated method in demo mode
+        # fetch_authenticated_channel_videos is synchronous, so we call it directly
+        return self.fetch_authenticated_channel_videos(
+            user_service,
+            oauth_service,
+            channel_id=channel,
+            max_results=max_results,
+            video_type=video_type,
+        )
+
+
+__all__ = [
+    "DemoYoutubeService",
+    "DemoYoutubeOAuthService",
+    "DemoUserService",
+    "FakeYoutubeApiClient",
+]

@@ -11,6 +11,10 @@ from app.services import (
     YoutubeOAuthService,
     YoutubeService,
 )
+from app.services.youtube_demo import (
+    DemoUserService,
+    DemoYoutubeOAuthService,
+)
 
 
 def get_entry_service(request: Request) -> EntryService:
@@ -24,8 +28,15 @@ def get_youtube_service(request: Request) -> YoutubeService:
 
 
 def get_user_service(request: Request) -> UserService:
-    """Extract UserService from application state."""
-    return request.app.state.user_service
+    """Extract UserService from application state.
+
+    In demo mode, returns DemoUserService wrapping the real service.
+    """
+    real_service = request.app.state.user_service
+    demo_mode = getattr(request.app.state, "youtube_demo_mode", False)
+    if demo_mode:
+        return DemoUserService(real_service)
+    return real_service
 
 
 def get_growth_score_service(request: Request) -> GrowthScoreService:
@@ -38,7 +49,13 @@ def get_growth_score_service(request: Request) -> GrowthScoreService:
 
 
 def get_youtube_oauth_service(request: Request) -> YoutubeOAuthService:
-    """Extract YoutubeOAuthService from application state."""
+    """Extract YoutubeOAuthService from application state.
+
+    In demo mode, returns DemoYoutubeOAuthService.
+    """
+    demo_mode = getattr(request.app.state, "youtube_demo_mode", False)
+    if demo_mode:
+        return DemoYoutubeOAuthService()
     oauth_service = request.app.state.youtube_oauth_service
     if oauth_service is None:
         raise HTTPException(
@@ -55,7 +72,13 @@ def get_youtube_oauth_service(request: Request) -> YoutubeOAuthService:
 def get_youtube_oauth_service_optional(
     request: Request,
 ) -> YoutubeOAuthService | None:
-    """Extract YoutubeOAuthService from application state, returning None if not configured."""
+    """Extract YoutubeOAuthService from application state, returning None if not configured.
+
+    In demo mode, always returns DemoYoutubeOAuthService.
+    """
+    demo_mode = getattr(request.app.state, "youtube_demo_mode", False)
+    if demo_mode:
+        return DemoYoutubeOAuthService()
     return request.app.state.youtube_oauth_service
 
 
