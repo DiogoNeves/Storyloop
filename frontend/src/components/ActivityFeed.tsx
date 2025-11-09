@@ -6,13 +6,7 @@ import {
 } from "@/lib/types/entries";
 import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
 import { useEntryEditing } from "@/hooks/useEntryEditing";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LinkYouTubeAccountCard } from "@/components/LinkYouTubeAccountCard";
 import { ActivityFeedItem } from "./ActivityFeedItem";
@@ -99,34 +93,28 @@ export function ActivityFeed({
             />
           ) : null}
           <div className="space-y-1">
-            <div className="flex items-baseline gap-2">
-              <CardTitle className="text-lg">Recent activity</CardTitle>
-              {youtubeState.youtubeFeed?.channelUrl ? (
-                <a
-                  href={youtubeState.youtubeFeed.channelUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs font-medium text-primary underline-offset-2 hover:underline"
-                >
-                  open {youtubeState.youtubeFeed?.channelTitle ?? "YouTube"}{" "}
-                  channel
-                </a>
-              ) : youtubeState.linkStatus?.channel?.url ? (
-                <a
-                  href={youtubeState.linkStatus.channel.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs font-medium text-primary underline-offset-2 hover:underline"
-                >
-                  Open {youtubeState.linkStatus.channel.title ?? "YouTube"}{" "}
-                  channel
-                </a>
-              ) : null}
-            </div>
-            <CardDescription>
-              A combined stream of publishing milestones, insights, and journal
-              reflections.
-            </CardDescription>
+            <CardTitle className="text-lg">Recent activity</CardTitle>
+            {youtubeState.youtubeFeed?.channelUrl ? (
+              <a
+                href={youtubeState.youtubeFeed.channelUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-medium text-primary underline-offset-2 hover:underline"
+              >
+                View {youtubeState.youtubeFeed?.channelTitle ?? "YouTube"} on
+                YouTube
+              </a>
+            ) : youtubeState.linkStatus?.channel?.url ? (
+              <a
+                href={youtubeState.linkStatus.channel.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-medium text-primary underline-offset-2 hover:underline"
+              >
+                View {youtubeState.linkStatus.channel.title ?? "YouTube"} on
+                YouTube
+              </a>
+            ) : null}
           </div>
         </div>
         <Button
