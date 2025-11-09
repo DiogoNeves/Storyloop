@@ -28,6 +28,12 @@ from app.services.youtube import YoutubeConfigurationError
 logger = logging.getLogger(__name__)
 
 
+try:  # pragma: no cover - optional dependency until demo mode ships
+    from app.services.youtube_demo import DemoYoutubeService
+except ImportError:  # pragma: no cover - fallback when demo service not yet available
+    DemoYoutubeService = None  # type: ignore[assignment]
+
+
 def configure_logfire(active_settings: Settings) -> None:
     """Initialize Logfire observability."""
     send_to_logfire_value: Literal["if-token-present"] = "if-token-present"
@@ -53,13 +59,28 @@ def build_lifespan(
     user_service.ensure_schema()
     entry_service = EntryService(connection_factory)
     entry_service.ensure_schema()
-    youtube_service = YoutubeService(api_key=active_settings.youtube_api_key)
+
+    youtube_service: YoutubeService | None = None
+    demo_youtube_service = None
+    if active_settings.youtube_demo_mode:
+        if DemoYoutubeService is None:
+            raise RuntimeError(
+                "YouTube demo mode requested but DemoYoutubeService is unavailable."
+            )
+        demo_youtube_service = DemoYoutubeService(
+            scenario=active_settings.youtube_demo_scenario
+        )
+        resolved_youtube_service = demo_youtube_service
+    else:
+        youtube_service = YoutubeService(api_key=active_settings.youtube_api_key)
+        resolved_youtube_service = youtube_service
+
     growth_score_service = GrowthScoreService()
     scheduler: AsyncIOScheduler | None = None
 
     if active_settings.scheduler_enabled:
         scheduler = create_scheduler(
-            youtube_sync_job=youtube_service.sync_latest_metrics,
+            youtube_sync_job=resolved_youtube_service.sync_latest_metrics,
             growth_score_job=growth_score_service.recalculate_growth_score,
         )
 
@@ -69,7 +90,10 @@ def build_lifespan(
         app.state.get_db = connection_factory
         app.state.entry_service = entry_service
         app.state.user_service = user_service
-        app.state.youtube_service = youtube_service
+        app.state.youtube_service = youtube_service or resolved_youtube_service
+        app.state.youtube_demo_service = demo_youtube_service
+        app.state.active_youtube_service = resolved_youtube_service
+        app.state.youtube_demo_mode = active_settings.youtube_demo_mode
         try:
             app.state.youtube_oauth_service = YoutubeOAuthService(
                 active_settings
@@ -78,16 +102,29 @@ def build_lifespan(
             app.state.youtube_oauth_service = None
         app.state.growth_score_service = growth_score_service
 
+        demo_mode_details = "disabled"
+        if active_settings.youtube_demo_mode:
+            scenario = active_settings.youtube_demo_scenario or "default"
+            demo_mode_details = f"enabled (scenario={scenario})"
+        logger.info(
+            "Application configured for %s environment with YouTube demo mode %s",
+            active_settings.environment,
+            demo_mode_details,
+        )
+
         if scheduler is not None:
             app.state.scheduler = scheduler
             scheduler.start()
             logger.info(
-                "Scheduler started with %d jobs", len(scheduler.get_jobs())
+                "Scheduler started with %d jobs (YouTube demo mode: %s)",
+                len(scheduler.get_jobs()),
+                demo_mode_details,
             )
         else:
             logger.info(
-                "Scheduler disabled for %s environment",
+                "Scheduler disabled for %s environment (YouTube demo mode: %s)",
                 active_settings.environment,
+                demo_mode_details,
             )
         try:
             yield
