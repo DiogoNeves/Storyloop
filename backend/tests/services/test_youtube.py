@@ -318,3 +318,106 @@ async def test_fetch_channel_videos_raises_for_malformed_json():
 
     with pytest.raises(YoutubeAPIRequestError):
         await service.fetch_channel_videos("@storyloop", max_results=5)
+
+
+@pytest.mark.asyncio
+async def test_fetch_channel_videos_filters_by_video_type():
+    """Test that video type filtering works correctly."""
+    channel_payload = {
+        "items": [
+            {
+                "id": "UC444",
+                "snippet": {
+                    "title": "Storyloop",
+                    "thumbnails": {
+                        "default": {"url": "https://img.youtube.com/default.jpg"},
+                    },
+                },
+                "contentDetails": {"relatedPlaylists": {"uploads": "UU444"}},
+            }
+        ]
+    }
+    playlist_payload = {
+        "items": [
+            {
+                "snippet": {
+                    "title": "Long video",
+                    "description": "",
+                    "publishedAt": "2024-01-01T12:00:00Z",
+                    "resourceId": {"videoId": "vid-long"},
+                }
+            },
+            {
+                "snippet": {
+                    "title": "Short video",
+                    "description": "",
+                    "publishedAt": "2024-01-02T12:00:00Z",
+                    "resourceId": {"videoId": "vid-short"},
+                }
+            },
+            {
+                "snippet": {
+                    "title": "Another long video",
+                    "description": "",
+                    "publishedAt": "2024-01-03T12:00:00Z",
+                    "resourceId": {"videoId": "vid-long2"},
+                }
+            },
+        ]
+    }
+    # Duration responses: vid-long and vid-long2 are > 180s (long videos),
+    # vid-short is <= 180s (short)
+    video_durations = {
+        "vid-long,vid-short,vid-long2": {
+            "items": [
+                {
+                    "id": "vid-long",
+                    "contentDetails": {"duration": "PT5M30S"},  # 330 seconds
+                },
+                {
+                    "id": "vid-short",
+                    "contentDetails": {"duration": "PT2M30S"},  # 150 seconds
+                },
+                {
+                    "id": "vid-long2",
+                    "contentDetails": {"duration": "PT10M0S"},  # 600 seconds
+                },
+            ]
+        }
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/channels"):
+            return httpx.Response(200, json=channel_payload)
+        if request.url.path.endswith("/playlistItems"):
+            return httpx.Response(200, json=playlist_payload)
+        if request.url.path.endswith("/videos"):
+            # Video duration lookup
+            video_ids = request.url.params.get("id", "")
+            return httpx.Response(200, json=video_durations.get(video_ids, {"items": []}))
+        if request.url.path.endswith("/search"):
+            return httpx.Response(200, json={"items": []})
+        raise AssertionError(f"Unhandled URL {request.url}")
+
+    service = YoutubeService(api_key="test-key", transport=httpx.MockTransport(handler))
+
+    # Test filtering for shorts only
+    feed_short = await service.fetch_channel_videos(
+        "@storyloop", max_results=50, video_type="short"
+    )
+    assert len(feed_short.videos) == 1
+    assert feed_short.videos[0].id == "vid-short"
+    assert feed_short.videos[0].video_type == "short"
+
+    # Test filtering for long videos only
+    feed_long = await service.fetch_channel_videos(
+        "@storyloop", max_results=50, video_type="video"
+    )
+    assert len(feed_long.videos) == 2
+    assert all(v.video_type == "video" for v in feed_long.videos)
+    ids = {v.id for v in feed_long.videos}
+    assert ids == {"vid-long", "vid-long2"}
+
+    # Test without filter (should return all)
+    feed_all = await service.fetch_channel_videos("@storyloop", max_results=50)
+    assert len(feed_all.videos) == 3

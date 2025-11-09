@@ -49,9 +49,16 @@ export interface YoutubeCompleteLinkResponse {
   success: boolean;
 }
 
-export async function fetchChannelVideos(channel: string) {
+export async function fetchChannelVideos(
+  channel: string,
+  videoType?: "short" | "video" | "live" | null,
+) {
+  const params: { channel: string; videoType?: string } = { channel };
+  if (videoType) {
+    params.videoType = videoType;
+  }
   const response = await apiClient.get<YoutubeFeedResponse>("/youtube/videos", {
-    params: { channel },
+    params,
   });
   return response.data;
 }
@@ -85,9 +92,12 @@ export const youtubeQueries = createQueryKeys("youtube", {
     queryKey: ["youtube", "auth", "status"],
     queryFn: linkStatus,
   }),
-  channelVideos: (channel: string) => ({
-    queryKey: ["youtube", "channels", channel, "videos"],
-    queryFn: () => fetchChannelVideos(channel),
+  channelVideos: (
+    channel: string,
+    videoType?: "short" | "video" | "live" | null,
+  ) => ({
+    queryKey: ["youtube", "channels", channel, "videos", videoType ?? "all"],
+    queryFn: () => fetchChannelVideos(channel, videoType),
   }),
 });
 

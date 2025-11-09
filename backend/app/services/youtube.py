@@ -324,9 +324,19 @@ class YoutubeService:
             yield client
 
     async def fetch_channel_videos(
-        self, identifier: str, *, max_results: int = 50
+        self,
+        identifier: str,
+        *,
+        max_results: int = 50,
+        video_type: str | None = None,
     ) -> YoutubeFeed:
-        """Return recent uploads for the provided channel identifier."""
+        """Return recent uploads for the provided channel identifier.
+
+        Args:
+            identifier: Channel identifier (handle, ID, or URL).
+            max_results: Maximum number of videos to return.
+            video_type: Optional filter by video type ("short", "live", or "video").
+        """
         if not self.api_key:
             raise YoutubeConfigurationError("YouTube API key not configured")
 
@@ -339,7 +349,10 @@ class YoutubeService:
         async with self.client_session() as client:
             channel = await self._resolve_channel(client, trimmed_identifier)
             videos = await self._fetch_videos(
-                client, channel.uploads_playlist_id, max_results=max_results
+                client,
+                channel.uploads_playlist_id,
+                max_results=max_results,
+                video_type=video_type,
             )
 
         return YoutubeFeed(
@@ -613,11 +626,21 @@ class YoutubeService:
         playlist_id: str,
         *,
         max_results: int,
+        video_type: str | None = None,
     ) -> list[YoutubeVideo]:
         """Fetch uploads from the channel's uploads playlist.
 
         Ensures that up to max_results successfully converted videos are returned,
         fetching additional pages if some playlist items fail to convert.
+
+        If video_type is specified, filters videos to match that type and continues
+        fetching until max_results matching videos are found.
+
+        Args:
+            client: HTTP client for API requests.
+            playlist_id: Uploads playlist ID.
+            max_results: Maximum number of videos to return.
+            video_type: Optional filter by video type ("short", "live", or "video").
 
         Docs: https://developers.google.com/youtube/v3/docs/playlistItems/list
         """
@@ -655,6 +678,13 @@ class YoutubeService:
             built_videos = self._build_videos_with_durations(
                 playlist_items, durations
             )
+
+            # Filter by video type if specified
+            if video_type:
+                built_videos = [
+                    v for v in built_videos if v.video_type == video_type
+                ]
+
             # Only take up to max_results videos
             videos = built_videos[:max_results]
 
@@ -710,6 +740,7 @@ class YoutubeService:
         channel_id: str | None = None,
         *,
         max_results: int = 50,
+        video_type: str | None = None,
     ) -> YoutubeFeed:
         """Return recent uploads for the authenticated user's channel.
 
@@ -721,6 +752,7 @@ class YoutubeService:
             oauth_service: Service for OAuth credential management.
             channel_id: Optional channel ID. If None, uses authenticated user's channel.
             max_results: Maximum number of videos to return.
+            video_type: Optional filter by video type ("short", "live", or "video").
 
         Returns:
             YoutubeFeed with channel metadata and videos.
@@ -815,6 +847,13 @@ class YoutubeService:
             built_videos = self._build_videos_with_durations(
                 playlist_items, durations
             )
+
+            # Filter by video type if specified
+            if video_type:
+                built_videos = [
+                    v for v in built_videos if v.video_type == video_type
+                ]
+
             videos = built_videos[:max_results]
 
             if len(videos) >= max_results or not page_token:

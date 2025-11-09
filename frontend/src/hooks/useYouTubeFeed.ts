@@ -22,8 +22,12 @@ interface UseYouTubeFeedResult {
  *
  * Automatically loads the stored channel and surfaces a fallback message when
  * no link exists, replacing the old manual channel picker.
+ *
+ * @param videoType - Optional filter by video type ("short", "video", or "live").
  */
-export function useYouTubeFeed(): UseYouTubeFeedResult {
+export function useYouTubeFeed(
+  videoType?: "short" | "video" | "live" | null,
+): UseYouTubeFeedResult {
   const linkStatusQuery = useQuery(youtubeQueries.authStatus());
 
   const channelId = useMemo(() => {
@@ -35,13 +39,13 @@ export function useYouTubeFeed(): UseYouTubeFeedResult {
 
   const videosQuery = useQuery({
     queryKey: youtubeQueries
-      .channelVideos(channelId ?? "unlinked")
+      .channelVideos(channelId ?? "unlinked", videoType)
       .queryKey,
     queryFn: async () => {
       if (!channelId) {
         throw new Error("No linked channel available");
       }
-      return youtubeApi.fetchChannelVideos(channelId);
+      return youtubeApi.fetchChannelVideos(channelId, videoType);
     },
     enabled: Boolean(channelId),
   });

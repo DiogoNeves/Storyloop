@@ -1,10 +1,10 @@
-import { useMemo, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 
-import {
-  type ActivityItem,
-  youtubeVideoToActivityItem,
-} from "@/lib/types/entries";
-import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
+import type { ActivityItem } from "@/lib/types/entries";
+import type {
+  YoutubeFeedResponse,
+  YoutubeLinkStatusResponse,
+} from "@/api/youtube";
 import { useEntryEditing } from "@/hooks/useEntryEditing";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,10 @@ export interface ActivityDraft {
 
 interface ActivityFeedProps {
   items: ActivityItem[];
+  youtubeFeed?: YoutubeFeedResponse | null;
+  isLinked?: boolean;
+  linkStatus?: YoutubeLinkStatusResponse | null;
+  youtubeError?: string | null;
   draft?: ActivityDraft | null;
   onStartDraft?: () => void;
   onDraftChange?: (draft: ActivityDraft) => void;
@@ -37,6 +41,10 @@ interface ActivityFeedProps {
 
 export function ActivityFeed({
   items,
+  youtubeFeed,
+  isLinked = false,
+  linkStatus,
+  youtubeError,
   draft,
   onStartDraft,
   onDraftChange,
@@ -46,29 +54,10 @@ export function ActivityFeed({
   draftError,
   errorMessage,
 }: ActivityFeedProps) {
-  const youtubeState = useYouTubeFeed();
   const editingState = useEntryEditing();
   const [thumbnailError, setThumbnailError] = useState(false);
 
-  const combinedItems = useMemo(() => {
-    const baseItems = [...items];
-    if (!youtubeState.youtubeFeed) {
-      return baseItems.sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-      );
-    }
-
-    const videoItems = youtubeState.youtubeFeed.videos.map(
-      youtubeVideoToActivityItem,
-    );
-
-    return [...baseItems, ...videoItems].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-    );
-  }, [items, youtubeState.youtubeFeed]);
-
-  const channelThumbnailUrl =
-    youtubeState.youtubeFeed?.channelThumbnailUrl?.trim() || null;
+  const channelThumbnailUrl = youtubeFeed?.channelThumbnailUrl?.trim() || null;
   const isValidUrl =
     channelThumbnailUrl &&
     (channelThumbnailUrl.startsWith("http://") ||
@@ -88,7 +77,7 @@ export function ActivityFeed({
           {shouldShowThumbnail ? (
             <img
               src={channelThumbnailUrl}
-              alt={`${youtubeState.youtubeFeed?.channelTitle ?? "YouTube"} channel thumbnail`}
+              alt={`${youtubeFeed?.channelTitle ?? "YouTube"} channel thumbnail`}
               className="h-12 w-12 shrink-0 rounded-full"
               loading="lazy"
               onError={() => setThumbnailError(true)}
@@ -105,25 +94,23 @@ export function ActivityFeed({
                 <ActivityFeedInfo />
               </InfoModal>
             </div>
-            {youtubeState.youtubeFeed?.channelUrl ? (
+            {youtubeFeed?.channelUrl ? (
               <a
-                href={youtubeState.youtubeFeed.channelUrl}
+                href={youtubeFeed.channelUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs font-medium text-primary underline-offset-2 hover:underline"
               >
-                View {youtubeState.youtubeFeed?.channelTitle ?? "YouTube"} on
-                YouTube
+                View {youtubeFeed?.channelTitle ?? "YouTube"} on YouTube
               </a>
-            ) : youtubeState.linkStatus?.channel?.url ? (
+            ) : linkStatus?.channel?.url ? (
               <a
-                href={youtubeState.linkStatus.channel.url}
+                href={linkStatus.channel.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs font-medium text-primary underline-offset-2 hover:underline"
               >
-                View {youtubeState.linkStatus.channel.title ?? "YouTube"} on
-                YouTube
+                View {linkStatus.channel.title ?? "YouTube"} on YouTube
               </a>
             ) : null}
           </div>
@@ -143,10 +130,10 @@ export function ActivityFeed({
             {errorMessage}
           </p>
         ) : null}
-        {!youtubeState.isLinked ? <LinkYouTubeAccountCard /> : null}
-        {youtubeState.youtubeError ? (
+        {!isLinked ? <LinkYouTubeAccountCard /> : null}
+        {youtubeError ? (
           <p className="text-sm text-destructive" role="status">
-            {youtubeState.youtubeError}
+            {youtubeError}
           </p>
         ) : null}
         {draft && onDraftChange ? (
@@ -162,7 +149,7 @@ export function ActivityFeed({
             idPrefix="new-entry"
           />
         ) : null}
-        {combinedItems.map((item) => {
+        {items.map((item) => {
           const isEditing =
             editingState.editingEntryId === item.id &&
             editingState.editingDraft;

@@ -49,11 +49,18 @@ class GrowthScoreResponse(BaseModel):
 @router.get("/score", response_model=GrowthScoreResponse)
 def read_growth_score(
     channel_id: str | None = Query(default=None, alias="channelId"),
+    video_type: str | None = Query(default=None, alias="videoType"),
     service: GrowthScoreService = Depends(get_growth_score_service),
 ) -> GrowthScoreResponse:
-    """Return the Storyloop Growth Index for the requested channel."""
+    """Return the Storyloop Growth Index for the requested channel.
 
-    computation = service.load_latest_score(channel_id=channel_id)
+    Args:
+        channel_id: Optional channel identifier.
+        video_type: Optional filter by video type ("short", "live", or "video").
+    """
+    computation = service.load_latest_score(
+        channel_id=channel_id, video_type=video_type
+    )
     return _serialize_score(computation)
 
 
