@@ -14,6 +14,7 @@ interface UseYouTubeFeedResult {
   isLoading: boolean;
   isLinked: boolean;
   linkStatus: YoutubeLinkStatusResponse | null;
+  channelId: string | null;
 }
 
 /**
@@ -62,6 +63,7 @@ export function useYouTubeFeed(): UseYouTubeFeedResult {
     isLoading: linkStatusQuery.isLoading || videosQuery.isLoading,
     isLinked: Boolean(linkStatusQuery.data?.linked),
     linkStatus: linkStatusQuery.data ?? null,
+    channelId,
   };
 }
 
