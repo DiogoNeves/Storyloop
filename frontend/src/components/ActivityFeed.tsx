@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 
 import {
   type ActivityItem,
@@ -52,6 +52,7 @@ export function ActivityFeed({
 }: ActivityFeedProps) {
   const youtubeState = useYouTubeFeed();
   const editingState = useEntryEditing();
+  const [thumbnailError, setThumbnailError] = useState(false);
 
   const combinedItems = useMemo(() => {
     const baseItems = [...items];
@@ -70,15 +71,35 @@ export function ActivityFeed({
     );
   }, [items, youtubeState.youtubeFeed]);
 
+  const channelThumbnailUrl =
+    youtubeState.youtubeFeed?.channelThumbnailUrl?.trim() || null;
+  const shouldShowThumbnail =
+    channelThumbnailUrl && channelThumbnailUrl.length > 0 && !thumbnailError;
+
+  // Reset thumbnail error when the URL changes
+  useEffect(() => {
+    setThumbnailError(false);
+  }, [channelThumbnailUrl]);
+
   return (
     <Card>
       <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
-          <CardTitle className="text-lg">Recent activity</CardTitle>
-          <CardDescription>
-            A combined stream of publishing milestones, insights, and journal
-            reflections.
-          </CardDescription>
+        <div className="flex items-start gap-3">
+          {shouldShowThumbnail ? (
+            <img
+              src={channelThumbnailUrl}
+              alt={`${youtubeState.youtubeFeed.channelTitle} channel thumbnail`}
+              className="h-12 w-12 shrink-0 rounded-full"
+              onError={() => setThumbnailError(true)}
+            />
+          ) : null}
+          <div className="space-y-1">
+            <CardTitle className="text-lg">Recent activity</CardTitle>
+            <CardDescription>
+              A combined stream of publishing milestones, insights, and journal
+              reflections.
+            </CardDescription>
+          </div>
         </div>
         <Button
           type="button"
