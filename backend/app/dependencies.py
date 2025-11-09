@@ -57,3 +57,8 @@ def get_youtube_oauth_service_optional(
 ) -> YoutubeOAuthService | None:
     """Extract YoutubeOAuthService from application state, returning None if not configured."""
     return request.app.state.youtube_oauth_service
+
+
+def get_youtube_demo_mode(request: Request) -> bool:
+    """Extract YouTube demo mode status from application state."""
+    return getattr(request.app.state, "youtube_demo_mode", False)
