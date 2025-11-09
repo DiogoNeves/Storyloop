@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { LinkYouTubeAccountCard } from "@/components/LinkYouTubeAccountCard";
 import { ActivityFeedItem } from "./ActivityFeedItem";
 import { ActivityDraftCard } from "./ActivityDraftCard";
+import { InfoModal } from "./InfoModal";
+import { ActivityFeedInfo } from "./ActivityFeedInfo";
 
 export type { ActivityItem };
 
@@ -93,7 +95,16 @@ export function ActivityFeed({
             />
           ) : null}
           <div className="space-y-1">
-            <CardTitle className="text-lg">Recent activity</CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-lg">Recent activity</CardTitle>
+              <InfoModal
+                title="About the Activity Feed"
+                description="Learn how to use the activity feed for journaling"
+                triggerLabel="Learn more about the activity feed"
+              >
+                <ActivityFeedInfo />
+              </InfoModal>
+            </div>
             {youtubeState.youtubeFeed?.channelUrl ? (
               <a
                 href={youtubeState.youtubeFeed.channelUrl}
