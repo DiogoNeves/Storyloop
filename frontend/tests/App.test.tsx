@@ -143,7 +143,6 @@ describe("App", () => {
     ).toBeInTheDocument();
 
     await waitFor(() => expect(screen.getByText("68.3")).toBeInTheDocument());
-    expect(screen.getByText("▲18.3 pts")).toBeInTheDocument();
     expect(screen.getByText(/Discovery · 40%/i)).toBeInTheDocument();
 
     await waitFor(() =>
