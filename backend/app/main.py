@@ -106,7 +106,7 @@ def build_lifespan(
         if active_settings.youtube_demo_mode:
             scenario = active_settings.youtube_demo_scenario or "default"
             demo_mode_details = f"enabled (scenario={scenario})"
-            logger.info(
+        logger.info(
                 "Using demo database: %s (demo mode prevents writes to production database)",
                 active_settings.effective_database_url,
             )

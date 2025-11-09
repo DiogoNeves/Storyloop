@@ -56,7 +56,6 @@ from pydantic import BaseModel
 
 from app.dependencies import (
     get_user_service,
-    get_youtube_demo_mode,
     get_youtube_oauth_service,
     get_youtube_oauth_service_optional,
     get_youtube_service,
@@ -197,28 +196,12 @@ def complete_youtube_auth(
 
 @router.get("/status")
 def youtube_auth_status(
-    request: Request,
     user_service: UserService = Depends(get_user_service),
     oauth_service: YoutubeOAuthService | None = Depends(
         get_youtube_oauth_service_optional
     ),
-    demo_mode: bool = Depends(get_youtube_demo_mode),
 ) -> dict[str, Any]:
     """Return the stored authentication state for the active user."""
-
-    # In demo mode, always return as if authenticated with demo channel
-    if demo_mode:
-        return {
-            "linked": True,
-            "channel": {
-                "id": "UCDEMOCHANNEL",
-                "title": "Storyloop Demo Channel",
-                "url": "https://www.youtube.com/channel/UCDEMOCHANNEL",
-                "thumbnailUrl": "https://example.com/demo/high.jpg",
-                "updatedAt": None,
-            },
-            "refreshNeeded": False,
-        }
 
     # If OAuth is not configured, return not linked
     if oauth_service is None:
