@@ -23,9 +23,6 @@ interface UseYouTubeFeedResult {
 /**
  * Hook for retrieving YouTube uploads for the linked account.
  *
- * Automatically loads the stored channel and surfaces a fallback message when
- * no link exists, replacing the old manual channel picker.
- *
  * Channel info is cached separately and not refetched when videoType changes.
  * Only videos are refetched when the filter changes.
  *
@@ -43,30 +40,23 @@ export function useYouTubeFeed(
     return linkStatusQuery.data.channel?.id ?? null;
   }, [linkStatusQuery.data]);
 
-  // Fetch channel info once (without videoType filter) - cached separately
-  const channelInfoQuery = useQuery<YoutubeChannelInfo>({
-    queryKey: youtubeQueries.channelVideos(channelId ?? "unlinked", null).queryKey,
+  // Fetch full feed once (for channel info) - cached forever
+  // Use a distinct query key to avoid collisions
+  const fullFeedQuery = useQuery<YoutubeFeedResponse>({
+    queryKey: ["youtube", "channels", channelId ?? "unlinked", "feed"],
     queryFn: async () => {
       if (!channelId) {
         throw new Error("No linked channel available");
       }
-      const feed = await youtubeApi.fetchChannelVideos(channelId, null);
-      return {
-        channelId: feed.channelId,
-        channelTitle: feed.channelTitle,
-        channelDescription: feed.channelDescription,
-        channelUrl: feed.channelUrl,
-        channelThumbnailUrl: feed.channelThumbnailUrl,
-      };
+      return youtubeApi.fetchChannelVideos(channelId, null);
     },
     enabled: Boolean(channelId),
-    staleTime: Infinity, // Channel info rarely changes; cache indefinitely
+    staleTime: Infinity, // Channel info doesn't change, cache forever
   });
 
-  // Fetch videos with filter - refetches when videoType changes
-  const videosQuery = useQuery<YoutubeVideoResponse[]>({
-    queryKey: youtubeQueries
-      .channelVideos(channelId ?? "unlinked", videoType)
+  // Fetch filtered videos - refetches when videoType changes
+  const filteredVideosQuery = useQuery<YoutubeVideoResponse[]>({
+    queryKey: youtubeQueries.channelVideos(channelId ?? "unlinked", videoType)
       .queryKey,
     queryFn: async () => {
       if (!channelId) {
@@ -80,25 +70,39 @@ export function useYouTubeFeed(
 
   // Combine cached channel info with filtered videos
   const youtubeFeed = useMemo<YoutubeFeedResponse | null>(() => {
-    if (!channelInfoQuery.data || !videosQuery.data) {
+    if (!fullFeedQuery.data) {
       return null;
     }
-    return {
-      ...channelInfoQuery.data,
-      videos: videosQuery.data,
+
+    // Extract channel info from cached full feed
+    const channelInfo: YoutubeChannelInfo = {
+      channelId: fullFeedQuery.data.channelId,
+      channelTitle: fullFeedQuery.data.channelTitle,
+      channelDescription: fullFeedQuery.data.channelDescription,
+      channelUrl: fullFeedQuery.data.channelUrl,
+      channelThumbnailUrl: fullFeedQuery.data.channelThumbnailUrl,
     };
-  }, [channelInfoQuery.data, videosQuery.data]);
+
+    // Use filtered videos if available, otherwise use videos from full feed
+    const videos = filteredVideosQuery.data ?? fullFeedQuery.data.videos;
+    const videosArray = Array.isArray(videos) ? videos : [];
+
+    return {
+      ...channelInfo,
+      videos: videosArray,
+    };
+  }, [fullFeedQuery.data, filteredVideosQuery.data]);
 
   const youtubeError = useMemo(() => {
-    if (channelInfoQuery.isError) {
-      const error = channelInfoQuery.error;
+    if (fullFeedQuery.isError) {
+      const error = fullFeedQuery.error;
       if (error instanceof Error && error.message) {
         return error.message;
       }
       return "We couldn't load channel information.";
     }
-    if (videosQuery.isError) {
-      const error = videosQuery.error;
+    if (filteredVideosQuery.isError) {
+      const error = filteredVideosQuery.error;
       if (error instanceof Error && error.message) {
         return error.message;
       }
@@ -106,10 +110,10 @@ export function useYouTubeFeed(
     }
     return null;
   }, [
-    channelInfoQuery.error,
-    channelInfoQuery.isError,
-    videosQuery.error,
-    videosQuery.isError,
+    fullFeedQuery.error,
+    fullFeedQuery.isError,
+    filteredVideosQuery.error,
+    filteredVideosQuery.isError,
   ]);
 
   return {
@@ -117,11 +121,10 @@ export function useYouTubeFeed(
     youtubeError,
     isLoading:
       linkStatusQuery.isLoading ||
-      channelInfoQuery.isLoading ||
-      videosQuery.isLoading,
+      fullFeedQuery.isLoading ||
+      (videoType !== null && filteredVideosQuery.isLoading),
     isLinked: Boolean(linkStatusQuery.data?.linked),
     linkStatus: linkStatusQuery.data ?? null,
     channelId,
   };
 }
-

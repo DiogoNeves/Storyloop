@@ -84,15 +84,13 @@ function ScorePlaceholder({
   channelId: string | null;
   contentTypeFilter: ContentTypeFilter;
 }) {
-  const growthScoreQuery = useQuery(
-    growthQueries.score(
+  const growthScoreQuery = useQuery({
+    ...growthQueries.score(
       channelId,
       contentTypeFilter === "all" ? null : contentTypeFilter,
     ),
-    {
-      enabled: Boolean(channelId),
-    },
-  );
+    enabled: Boolean(channelId),
+  });
 
   const errorMessage = growthScoreQuery.isError
     ? growthScoreQuery.error instanceof Error
@@ -179,8 +177,11 @@ function DashboardShell() {
     const baseItems = [...storedActivityItems];
 
     // Add YouTube videos if available
-    if (youtubeState.youtubeFeed) {
-      const videoItems = youtubeState.youtubeFeed.videos.map((video) => ({
+    if (youtubeState.youtubeFeed?.videos) {
+      const videos = Array.isArray(youtubeState.youtubeFeed.videos)
+        ? youtubeState.youtubeFeed.videos
+        : [];
+      const videoItems = videos.map((video) => ({
         id: `youtube:${video.id}`,
         title: video.title,
         summary: video.description,
@@ -207,11 +208,7 @@ function DashboardShell() {
     return baseItems
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 50);
-  }, [
-    storedActivityItems,
-    youtubeState.youtubeFeed,
-    contentTypeFilter,
-  ]);
+  }, [storedActivityItems, youtubeState.youtubeFeed, contentTypeFilter]);
 
   // Fallback to seed items if no stored entries and no YouTube feed
   const displayItems =
