@@ -10,6 +10,7 @@ export interface YoutubeVideoResponse {
   url: string;
   thumbnailUrl: string | null;
   videoType: "short" | "live" | "video";
+  privacyStatus: "public" | "unlisted" | "private";
 }
 
 export interface YoutubeFeedResponse {

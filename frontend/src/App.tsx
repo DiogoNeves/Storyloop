@@ -117,6 +117,14 @@ function DashboardShell() {
       defaultValue: "all",
     });
 
+  // Public only filter state - persisted in local storage
+  const [publicOnly, setPublicOnly] = useLocalStorageState<boolean>(
+    "publicOnlyFilter",
+    {
+      defaultValue: false,
+    },
+  );
+
   // Determine videoType filter for API calls: null if "all", otherwise the type
   const videoTypeFilter = useMemo<"short" | "video" | "live" | null>(() => {
     if (contentTypeFilter === "all") {
@@ -191,23 +199,44 @@ function DashboardShell() {
         thumbnailUrl: video.thumbnailUrl ?? undefined,
         videoId: video.id,
         videoType: video.videoType,
+        privacyStatus: video.privacyStatus,
       }));
 
-      // Filter YouTube videos by selected content type
+      // Filter YouTube videos by selected content type and privacy status
       const filteredVideoItems = videoItems.filter((item) => {
-        if (!item.videoType) return true; // Include items without videoType
-        if (contentTypeFilter === "all") return true; // Include all when "all" is selected
-        return item.videoType === contentTypeFilter;
+        // Filter by content type
+        if (!item.videoType) {
+          // Include items without videoType only if not filtering by type
+          if (contentTypeFilter !== "all") return false;
+        } else {
+          if (contentTypeFilter !== "all") {
+            if (item.videoType !== contentTypeFilter) return false;
+          }
+        }
+
+        // Filter by privacy status if "public only" is enabled
+        if (publicOnly) {
+          // Only include public videos (exclude unlisted and private)
+          if (item.privacyStatus !== "public") return false;
+        }
+
+        return true;
       });
 
       baseItems.push(...filteredVideoItems);
     }
 
     // Sort by date (newest first) and limit to 50
-    return baseItems
+    // Create a new array to avoid mutating the original
+    return [...baseItems]
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 50);
-  }, [storedActivityItems, youtubeState.youtubeFeed, contentTypeFilter]);
+  }, [
+    storedActivityItems,
+    youtubeState.youtubeFeed,
+    contentTypeFilter,
+    publicOnly,
+  ]);
 
   // Fallback to seed items if no stored entries and no YouTube feed
   const displayItems =
@@ -338,6 +367,8 @@ function DashboardShell() {
         <ContentTypeTabs
           value={contentTypeFilter}
           onChange={setContentTypeFilter}
+          publicOnly={publicOnly}
+          onPublicOnlyChange={setPublicOnly}
         />
 
         <ActivityFeed
