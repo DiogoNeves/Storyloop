@@ -24,14 +24,14 @@ vi.mock("@/api/youtube", async (importOriginal) => {
     ...actual,
     youtubeApi: {
       ...actual.youtubeApi,
-      startLink: () => startLinkMock(),
-      linkStatus: () => linkStatusMock(),
+      startLink: () => Promise.resolve(startLinkMock()),
+      linkStatus: () => Promise.resolve(linkStatusMock()),
     },
     youtubeQueries: {
       ...actual.youtubeQueries,
       authStatus: () => ({
         queryKey: ["youtube", "auth", "status"],
-        queryFn: () => linkStatusMock(),
+        queryFn: () => Promise.resolve(linkStatusMock()),
       }),
     },
   };
@@ -72,7 +72,9 @@ describe("LinkYouTubeAccountCard", () => {
   });
 
   it("renders a loading state while link status is pending", () => {
-    linkStatusMock.mockReturnValue(new Promise(() => {}));
+    linkStatusMock.mockReturnValue(new Promise(() => {
+      // Intentionally empty promise for loading state test
+    }));
 
     renderWithClient(<LinkYouTubeAccountCard />);
 

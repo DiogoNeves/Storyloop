@@ -23,6 +23,6 @@ class ResizeObserver {
 if (!globalThis.ResizeObserver) {
   // Vitest runs in a jsdom environment which does not implement ResizeObserver.
   // Recharts requires it to measure chart containers during render.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
   (globalThis as any).ResizeObserver = ResizeObserver;
 }

@@ -4,6 +4,7 @@ import { type ActivityItem } from "@/lib/types/entries";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const categoryBadgeClass: Record<ActivityItem["category"], string> = {
   content: "bg-accent text-accent-foreground",
   insight: "",

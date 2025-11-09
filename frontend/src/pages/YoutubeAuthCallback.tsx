@@ -43,7 +43,7 @@ export function YoutubeAuthCallback() {
         });
         // Redirect to dashboard after a short delay
         setTimeout(() => {
-          navigate("/");
+          void navigate("/");
         }, 2000);
       })
       .catch((error) => {
@@ -100,7 +100,7 @@ export function YoutubeAuthCallback() {
             <Button
               type="button"
               onClick={() => {
-                navigate("/");
+                void navigate("/");
               }}
               className="w-full"
             >
@@ -130,7 +130,7 @@ export function YoutubeAuthCallback() {
           <Button
             type="button"
             onClick={() => {
-              navigate("/");
+              void navigate("/");
             }}
             className="w-full"
           >
