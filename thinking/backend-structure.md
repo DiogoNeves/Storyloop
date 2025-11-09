@@ -132,7 +132,7 @@ APScheduler configuration for recurring jobs:
 - Authenticate with YouTube Data API v3 using OAuth 2.0 for installed applications
   - See: [Google OAuth 2.0 for Installed Applications](https://googleapis.github.io/google-api-python-client/docs/oauth-installed.html)
   - Uses `google-auth-oauthlib` and `google-api-python-client` libraries
-  - OAuth flow implemented in `scripts/youtube_oauth_exp.py` as reference
+  - OAuth flow implemented in `scripts/example_script.py` as reference
   - Requires client credentials (client_id, client_secret) from Google Cloud Console
   - Supports both `run_local_server()` (recommended) and `run_console()` authentication flows
 - Use saved channel preference to fetch channel-specific data

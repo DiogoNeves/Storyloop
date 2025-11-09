@@ -179,7 +179,7 @@ YoutubeService.sync_latest_metrics()
     │    - See: https://googleapis.github.io/google-api-python-client/docs/oauth-installed.html
     │    - Load stored credentials or initiate OAuth flow
     │    - Use google-auth-oauthlib.flow.InstalledAppFlow
-    │    - Reference implementation in scripts/youtube_oauth_exp.py
+    │    - Reference implementation in scripts/example_script.py
     │ 2. Fetch latest video metrics
     │    - View count
     │    - Watch time
