@@ -78,18 +78,20 @@ function HealthBadge({ className }: { className?: string }) {
 }
 
 function ScorePlaceholder({
+  channelId,
   contentTypeFilter,
 }: {
+  channelId: string | null;
   contentTypeFilter: ContentTypeFilter;
 }) {
-  const youtubeState = useYouTubeFeed(
-    contentTypeFilter === "all" ? null : contentTypeFilter,
-  );
   const growthScoreQuery = useQuery(
     growthQueries.score(
-      youtubeState.channelId,
+      channelId,
       contentTypeFilter === "all" ? null : contentTypeFilter,
     ),
+    {
+      enabled: Boolean(channelId),
+    },
   );
 
   const errorMessage = growthScoreQuery.isError
@@ -177,11 +179,8 @@ function DashboardShell() {
     const baseItems = [...storedActivityItems];
 
     // Add YouTube videos if available
-    if (youtubeState.youtubeFeed?.videos) {
-      const videos = Array.isArray(youtubeState.youtubeFeed.videos)
-        ? youtubeState.youtubeFeed.videos
-        : [];
-      const videoItems = videos.map((video) => ({
+    if (youtubeState.youtubeFeed) {
+      const videoItems = youtubeState.youtubeFeed.videos.map((video) => ({
         id: `youtube:${video.id}`,
         title: video.title,
         summary: video.description,
@@ -335,7 +334,10 @@ function DashboardShell() {
     <div className="min-h-screen bg-muted/20 text-foreground">
       <NavBar />
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-10">
-        <ScorePlaceholder contentTypeFilter={contentTypeFilter} />
+        <ScorePlaceholder
+          channelId={youtubeState.channelId}
+          contentTypeFilter={contentTypeFilter}
+        />
 
         <ContentTypeTabs
           value={contentTypeFilter}

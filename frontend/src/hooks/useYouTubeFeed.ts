@@ -6,7 +6,10 @@ import {
   youtubeQueries,
   type YoutubeFeedResponse,
   type YoutubeLinkStatusResponse,
+  type YoutubeVideoResponse,
 } from "@/api/youtube";
+
+type YoutubeChannelInfo = Omit<YoutubeFeedResponse, "videos">;
 
 interface UseYouTubeFeedResult {
   youtubeFeed: YoutubeFeedResponse | null;
@@ -41,14 +44,13 @@ export function useYouTubeFeed(
   }, [linkStatusQuery.data]);
 
   // Fetch channel info once (without videoType filter) - cached separately
-  const channelInfoQuery = useQuery({
+  const channelInfoQuery = useQuery<YoutubeChannelInfo>({
     queryKey: youtubeQueries.channelVideos(channelId ?? "unlinked", null).queryKey,
     queryFn: async () => {
       if (!channelId) {
         throw new Error("No linked channel available");
       }
       const feed = await youtubeApi.fetchChannelVideos(channelId, null);
-      // Extract only channel info, not videos
       return {
         channelId: feed.channelId,
         channelTitle: feed.channelTitle,
@@ -58,11 +60,11 @@ export function useYouTubeFeed(
       };
     },
     enabled: Boolean(channelId),
-    staleTime: Infinity, // Channel info doesn't change, cache forever
+    staleTime: Infinity, // Channel info rarely changes; cache indefinitely
   });
 
   // Fetch videos with filter - refetches when videoType changes
-  const videosQuery = useQuery({
+  const videosQuery = useQuery<YoutubeVideoResponse[]>({
     queryKey: youtubeQueries
       .channelVideos(channelId ?? "unlinked", videoType)
       .queryKey,
@@ -71,7 +73,6 @@ export function useYouTubeFeed(
         throw new Error("No linked channel available");
       }
       const feed = await youtubeApi.fetchChannelVideos(channelId, videoType);
-      // Extract only videos, channel info comes from cached query
       return feed.videos;
     },
     enabled: Boolean(channelId),
@@ -82,11 +83,9 @@ export function useYouTubeFeed(
     if (!channelInfoQuery.data || !videosQuery.data) {
       return null;
     }
-    // Ensure videos is an array
-    const videos = Array.isArray(videosQuery.data) ? videosQuery.data : [];
     return {
       ...channelInfoQuery.data,
-      videos,
+      videos: videosQuery.data,
     };
   }, [channelInfoQuery.data, videosQuery.data]);
 
