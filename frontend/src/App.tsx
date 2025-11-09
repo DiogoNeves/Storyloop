@@ -26,6 +26,7 @@ import { growthQueries } from "@/api/growth";
 import { type ActivityItem, entryToActivityItem } from "@/lib/types/entries";
 import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
 import { YoutubeAuthCallback } from "@/pages/YoutubeAuthCallback";
+import { VideoDetailPage } from "@/pages/VideoDetailPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -355,6 +356,7 @@ export function App() {
       <QueryClientProvider client={queryClient}>
         <Routes>
           <Route path="/" element={<DashboardShell />} />
+          <Route path="/videos/:videoId" element={<VideoDetailPage />} />
           <Route path="/auth/callback" element={<YoutubeAuthCallback />} />
         </Routes>
       </QueryClientProvider>

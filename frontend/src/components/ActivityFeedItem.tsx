@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 import { type ActivityItem } from "@/lib/types/entries";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,6 +32,7 @@ export function ActivityFeedItem({
   const truncatedSummary =
     summary.length > 280 ? `${summary.slice(0, 277).trimEnd()}…` : summary;
   const showThumbnail = item.category === "content" && Boolean(item.thumbnailUrl);
+  const detailPath = item.videoId ? `/videos/${item.videoId}` : null;
 
   return (
     <Card className="group">
@@ -60,7 +63,14 @@ export function ActivityFeedItem({
         <div className="flex gap-4">
           <div className="flex flex-1 flex-col gap-2 pr-20">
             <h3 className="text-sm font-semibold text-foreground">
-              {item.linkUrl ? (
+              {detailPath ? (
+                <Link
+                  to={detailPath}
+                  className="text-primary underline-offset-2 hover:underline"
+                >
+                  {item.title}
+                </Link>
+              ) : item.linkUrl ? (
                 <a
                   href={item.linkUrl}
                   target="_blank"
@@ -78,19 +88,41 @@ export function ActivityFeedItem({
                 {truncatedSummary}
               </p>
             ) : null}
-            {item.category === "content" && item.linkUrl ? (
-              <a
-                href={item.linkUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-auto inline-flex pt-2 text-xs font-medium text-primary underline-offset-2 hover:underline"
-              >
-                Watch on YouTube
-              </a>
+            {item.category === "content" ? (
+              detailPath ? (
+                <Link
+                  to={detailPath}
+                  className="mt-auto inline-flex pt-2 text-xs font-medium text-primary underline-offset-2 hover:underline"
+                >
+                  View video details
+                </Link>
+              ) : item.linkUrl ? (
+                <a
+                  href={item.linkUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-auto inline-flex pt-2 text-xs font-medium text-primary underline-offset-2 hover:underline"
+                >
+                  Watch on YouTube
+                </a>
+              ) : null
             ) : null}
           </div>
           {showThumbnail && item.thumbnailUrl ? (
-            item.linkUrl ? (
+            detailPath ? (
+              <Link
+                to={detailPath}
+                className="relative h-24 w-24 shrink-0 overflow-hidden rounded-md border border-border sm:h-28 sm:w-28"
+                aria-label={`View details for ${item.title}`}
+              >
+                <img
+                  src={item.thumbnailUrl}
+                  alt={`Thumbnail for ${item.title}`}
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
+              </Link>
+            ) : item.linkUrl ? (
               <a
                 href={item.linkUrl}
                 target="_blank"
