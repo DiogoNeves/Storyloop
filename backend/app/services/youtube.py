@@ -119,6 +119,7 @@ class YoutubeVideo:
     url: str
     thumbnail_url: str | None
     video_type: Literal["short", "live", "video"]
+    privacy_status: str  # "public", "unlisted", "private"
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the video into a JSON-friendly dictionary."""
@@ -130,6 +131,7 @@ class YoutubeVideo:
             "url": self.url,
             "thumbnailUrl": self.thumbnail_url,
             "videoType": self.video_type,
+            "privacyStatus": self.privacy_status,
         }
 
     @classmethod
@@ -169,12 +171,14 @@ class YoutubeVideo:
         )
 
         # Extract live broadcast content from snippet
+        # liveBroadcastContent can be: "live" (currently live), "upcoming" (scheduled),
+        # or "none" (not live/regular video). Completed live streams become "none".
         live_broadcast_content = snippet.get("liveBroadcastContent", "none")
         is_live = live_broadcast_content in ("live", "upcoming")
 
         # Extract duration from contentDetails
-        # Note: playlistItems.contentDetails doesn't include duration, but we check
-        # in case it's available in future API versions
+        # Duration is fetched separately via videos.list API since playlistItems
+        # doesn't include it. Duration is in ISO 8601 format (e.g., "PT3M30S").
         content_details = item.get("contentDetails", {})
         duration_str = (
             content_details.get("duration")
@@ -182,9 +186,11 @@ class YoutubeVideo:
             else None
         )
         duration_seconds = parse_duration_seconds(duration_str)
+
         # YouTube Shorts are videos up to 3 minutes (180 seconds) with a vertical/square aspect ratio.
         # Source: https://support.google.com/youtube/answer/15424877
         # The playlistItems response does not expose aspect ratio, so we approximate using duration.
+        # Note: Live streams can also be Shorts (live Shorts), but live status takes precedence.
         is_short = duration_seconds is not None and duration_seconds <= 180
 
         # Log warning if duration is missing (could lead to misclassification)
@@ -194,7 +200,12 @@ class YoutubeVideo:
                 video_id,
             )
 
-        # Determine video type
+        # Extract privacy status from snippet (added by _build_videos_with_details)
+        # Defaults to "public" if not available
+        privacy_status = snippet.get("privacyStatus", "public")
+
+        # Determine video type with priority: live > short > video
+        # This ensures live streams (including live Shorts) are correctly identified as "live"
         video_url = f"https://www.youtube.com/watch?v={video_id}"
         if is_live:
             video_type: Literal["short", "live", "video"] = "live"
@@ -211,6 +222,7 @@ class YoutubeVideo:
             url=video_url,
             thumbnail_url=thumbnail_url,
             video_type=video_type,
+            privacy_status=privacy_status,
         )
 
 
@@ -547,23 +559,76 @@ class YoutubeService:
 
         return durations
 
-    async def _fetch_video_durations(
+    def _extract_live_broadcast_content_from_payload(
+        self, video_payload: dict[str, Any]
+    ) -> dict[str, str]:
+        """Extract liveBroadcastContent from a videos.list API response."""
+        live_content: dict[str, str] = {}
+        video_items = video_payload.get("items", [])
+        if not isinstance(video_items, list):
+            return live_content
+
+        for video_item in video_items:
+            if not isinstance(video_item, dict):
+                continue
+            video_id = video_item.get("id")
+            snippet = video_item.get("snippet", {})
+            live_broadcast_content = (
+                snippet.get("liveBroadcastContent", "none")
+                if isinstance(snippet, dict)
+                else "none"
+            )
+            if video_id:
+                live_content[video_id] = live_broadcast_content
+
+        return live_content
+
+    def _extract_privacy_status_from_payload(
+        self, video_payload: dict[str, Any]
+    ) -> dict[str, str]:
+        """Extract privacyStatus from a videos.list API response."""
+        privacy_status: dict[str, str] = {}
+        video_items = video_payload.get("items", [])
+        if not isinstance(video_items, list):
+            return privacy_status
+
+        for video_item in video_items:
+            if not isinstance(video_item, dict):
+                continue
+            video_id = video_item.get("id")
+            status = video_item.get("status", {})
+            privacy = (
+                status.get("privacyStatus", "public")
+                if isinstance(status, dict)
+                else "public"
+            )
+            if video_id:
+                privacy_status[video_id] = privacy
+
+        return privacy_status
+
+    async def _fetch_video_details(
         self, client: httpx.AsyncClient, video_ids: list[str]
-    ) -> dict[str, str | None]:
-        """Fetch video durations in batches.
+    ) -> tuple[dict[str, str | None], dict[str, str], dict[str, str]]:
+        """Fetch video durations, live broadcast content, and privacy status in batches.
+
+        Returns:
+            Tuple of (durations dict, live_broadcast_content dict, privacy_status dict)
 
         Docs: https://developers.google.com/youtube/v3/docs/videos/list
         """
         durations: dict[str, str | None] = {}
+        live_content: dict[str, str] = {}
+        privacy_status: dict[str, str] = {}
         if not video_ids:
-            return durations
+            return durations, live_content, privacy_status
 
         # YouTube API allows up to 50 video IDs per request
         batch_size = 50
         for i in range(0, len(video_ids), batch_size):
             batch = video_ids[i : i + batch_size]
             video_params = {
-                "part": "contentDetails",
+                "part": "contentDetails,snippet,status",
                 "id": ",".join(batch),
                 "key": self.api_key,
             }
@@ -574,22 +639,34 @@ class YoutubeService:
                 batch_durations = self._extract_durations_from_payload(
                     video_payload
                 )
+                batch_live_content = (
+                    self._extract_live_broadcast_content_from_payload(
+                        video_payload
+                    )
+                )
+                batch_privacy_status = (
+                    self._extract_privacy_status_from_payload(video_payload)
+                )
                 durations.update(batch_durations)
+                live_content.update(batch_live_content)
+                privacy_status.update(batch_privacy_status)
             except YoutubeAPIRequestError:
-                # If video details fetch fails, continue without durations
+                # If video details fetch fails, continue without details
                 logger.warning(
                     "Failed to fetch video details for batch starting at index %s",
                     i,
                 )
 
-        return durations
+        return durations, live_content, privacy_status
 
-    def _build_videos_with_durations(
+    def _build_videos_with_details(
         self,
         playlist_items: list[dict[str, Any]],
         durations: dict[str, str | None],
+        live_content: dict[str, str],
+        privacy_status: dict[str, str],
     ) -> list[YoutubeVideo]:
-        """Build YoutubeVideo objects from playlist items with duration data."""
+        """Build YoutubeVideo objects from playlist items with duration, live content, and privacy data."""
         videos: list[YoutubeVideo] = []
         for item in playlist_items:
             if not isinstance(item, dict):
@@ -612,6 +689,15 @@ class YoutubeService:
                     item["contentDetails"]["duration"] = durations[video_id]
             else:
                 item["contentDetails"] = {"duration": durations.get(video_id)}
+
+            # Update liveBroadcastContent from videos.list API if available
+            # This ensures we have the most up-to-date live status
+            if isinstance(snippet, dict) and video_id in live_content:
+                snippet["liveBroadcastContent"] = live_content[video_id]
+
+            # Add privacyStatus to snippet if available
+            if isinstance(snippet, dict) and video_id in privacy_status:
+                snippet["privacyStatus"] = privacy_status[video_id]
 
             video = YoutubeVideo.from_playlist_item(item)
             if video is None:
@@ -650,6 +736,8 @@ class YoutubeService:
         videos: list[YoutubeVideo] = []
         playlist_items: list[dict[str, Any]] = []
         durations: dict[str, str | None] = {}
+        live_content: dict[str, str] = {}
+        privacy_status: dict[str, str] = {}
         page_token: str | None = None
 
         while len(videos) < max_results:
@@ -666,17 +754,21 @@ class YoutubeService:
 
             playlist_items.extend(items)
 
-            # Extract video IDs for new items and fetch their durations
+            # Extract video IDs for new items and fetch their details (duration + live status + privacy)
             new_video_ids = self._extract_video_ids(items)
             if new_video_ids:
-                new_durations = await self._fetch_video_durations(
-                    client, new_video_ids
-                )
+                (
+                    new_durations,
+                    new_live_content,
+                    new_privacy_status,
+                ) = await self._fetch_video_details(client, new_video_ids)
                 durations.update(new_durations)
+                live_content.update(new_live_content)
+                privacy_status.update(new_privacy_status)
 
             # Build videos from all accumulated playlist items
-            built_videos = self._build_videos_with_durations(
-                playlist_items, durations
+            built_videos = self._build_videos_with_details(
+                playlist_items, durations, live_content, privacy_status
             )
 
             # Filter by video type if specified
@@ -684,6 +776,10 @@ class YoutubeService:
                 built_videos = [
                     v for v in built_videos if v.video_type == video_type
                 ]
+
+            # Sort by published date (newest first) to ensure consistent ordering
+            # This is important after filtering, as the order might be disrupted
+            built_videos.sort(key=lambda v: v.published_at, reverse=True)
 
             # Only take up to max_results videos
             videos = built_videos[:max_results]
@@ -802,6 +898,8 @@ class YoutubeService:
         videos: list[YoutubeVideo] = []
         playlist_items: list[dict[str, Any]] = []
         durations: dict[str, str | None] = {}
+        live_content: dict[str, str] = {}
+        privacy_status: dict[str, str] = {}
         page_token: str | None = None
 
         while len(videos) < max_results:
@@ -827,12 +925,12 @@ class YoutubeService:
             playlist_items.extend(items)
             page_token = playlist_response.get("nextPageToken")
 
-            # Extract video IDs and fetch durations
+            # Extract video IDs and fetch details (duration + live status + privacy)
             video_ids = self._extract_video_ids(items)
             if video_ids:
-                # Fetch video details including durations
+                # Fetch video details including durations, live status, and privacy
                 video_params = {
-                    "part": "contentDetails",
+                    "part": "contentDetails,snippet,status",
                     "id": ",".join(video_ids[:50]),  # API limit is 50
                 }
                 video_response = client.videos().list(**video_params).execute()
@@ -841,11 +939,23 @@ class YoutubeService:
                     batch_durations = self._extract_durations_from_payload(
                         {"items": video_items}
                     )
+                    batch_live_content = (
+                        self._extract_live_broadcast_content_from_payload(
+                            {"items": video_items}
+                        )
+                    )
+                    batch_privacy_status = (
+                        self._extract_privacy_status_from_payload(
+                            {"items": video_items}
+                        )
+                    )
                     durations.update(batch_durations)
+                    live_content.update(batch_live_content)
+                    privacy_status.update(batch_privacy_status)
 
             # Build videos from accumulated playlist items
-            built_videos = self._build_videos_with_durations(
-                playlist_items, durations
+            built_videos = self._build_videos_with_details(
+                playlist_items, durations, live_content, privacy_status
             )
 
             # Filter by video type if specified
@@ -853,6 +963,10 @@ class YoutubeService:
                 built_videos = [
                     v for v in built_videos if v.video_type == video_type
                 ]
+
+            # Sort by published date (newest first) to ensure consistent ordering
+            # This is important after filtering, as the order might be disrupted
+            built_videos.sort(key=lambda v: v.published_at, reverse=True)
 
             videos = built_videos[:max_results]
 

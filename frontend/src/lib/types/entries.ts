@@ -36,6 +36,7 @@ export interface ActivityItem {
   thumbnailUrl?: string;
   videoId?: string;
   videoType?: "short" | "live" | "video";
+  privacyStatus?: "public" | "unlisted" | "private";
 }
 
 /**
@@ -77,6 +78,6 @@ export function youtubeVideoToActivityItem(
     thumbnailUrl: video.thumbnailUrl ?? undefined,
     videoId: video.id,
     videoType: video.videoType,
+    privacyStatus: video.privacyStatus,
   };
 }
-
