@@ -12,6 +12,7 @@ from collections.abc import AsyncIterator
 
 import httpx
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 from app.services.youtube_identifier import build_lookup_candidates
 from app.utils.datetime import parse_datetime, parse_duration_seconds
@@ -69,6 +70,34 @@ class VideosResource(Protocol):
         ...
 
 
+class CaptionsList(Protocol):
+    """Protocol for captions().list() return type."""
+
+    def execute(self) -> dict[str, Any]:
+        """Execute the API request."""
+        ...
+
+
+class CaptionsDownload(Protocol):
+    """Protocol for captions().download() return type."""
+
+    def execute(self) -> Any:
+        """Execute the caption download request."""
+        ...
+
+
+class CaptionsResource(Protocol):
+    """Protocol for captions() return type."""
+
+    def list(self, *, videoId: str, **kwargs: Any) -> CaptionsList:
+        """List captions for a video."""
+        ...
+
+    def download(self, **kwargs: Any) -> CaptionsDownload:
+        """Download caption track contents."""
+        ...
+
+
 class YoutubeApiClient(Protocol):
     """Protocol for YouTube API client with dynamically generated methods."""
 
@@ -82,6 +111,10 @@ class YoutubeApiClient(Protocol):
 
     def videos(self) -> VideosResource:
         """Access videos resource."""
+        ...
+
+    def captions(self) -> CaptionsResource:
+        """Access captions resource."""
         ...
 
 
@@ -133,6 +166,21 @@ class YoutubeVideo:
             "videoType": self.video_type,
             "privacyStatus": self.privacy_status,
         }
+
+    def with_transcript(self, transcript: str | None) -> "YoutubeVideoDetail":
+        """Return a detailed representation including transcript information."""
+
+        return YoutubeVideoDetail(
+            id=self.id,
+            title=self.title,
+            description=self.description,
+            published_at=self.published_at,
+            url=self.url,
+            thumbnail_url=self.thumbnail_url,
+            video_type=self.video_type,
+            privacy_status=self.privacy_status,
+            transcript=transcript,
+        )
 
     @classmethod
     def from_playlist_item(cls, item: dict[str, Any]) -> YoutubeVideo | None:
@@ -224,6 +272,20 @@ class YoutubeVideo:
             video_type=video_type,
             privacy_status=privacy_status,
         )
+
+
+@dataclass(slots=True)
+class YoutubeVideoDetail(YoutubeVideo):
+    """Structured representation of a YouTube video including transcript."""
+
+    transcript: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize the detailed video including transcript."""
+
+        payload = super().to_dict()
+        payload["transcript"] = self.transcript
+        return payload
 
 
 @dataclass(slots=True)
@@ -776,10 +838,7 @@ class YoutubeService:
                 built_videos = [
                     v for v in built_videos if v.video_type == video_type
                 ]
-
-            # Sort by published date (newest first) to ensure consistent ordering
-            # This is important after filtering, as the order might be disrupted
-            built_videos.sort(key=lambda v: v.published_at, reverse=True)
+                built_videos.sort(key=lambda v: v.published_at, reverse=True)
 
             # Only take up to max_results videos
             videos = built_videos[:max_results]
@@ -963,10 +1022,7 @@ class YoutubeService:
                 built_videos = [
                     v for v in built_videos if v.video_type == video_type
                 ]
-
-            # Sort by published date (newest first) to ensure consistent ordering
-            # This is important after filtering, as the order might be disrupted
-            built_videos.sort(key=lambda v: v.published_at, reverse=True)
+                built_videos.sort(key=lambda v: v.published_at, reverse=True)
 
             videos = built_videos[:max_results]
 
@@ -1079,7 +1135,7 @@ class YoutubeService:
         *,
         user_service: "UserService | None" = None,
         oauth_service: "YoutubeOAuthService | None" = None,
-    ) -> YoutubeVideo:
+    ) -> YoutubeVideoDetail:
         """Return details for a single video by ID.
 
         Automatically chooses between authenticated and API key-based requests
@@ -1127,7 +1183,7 @@ class YoutubeService:
 
     async def _fetch_video_detail_with_api_key(
         self, video_id: str
-    ) -> YoutubeVideo:
+    ) -> YoutubeVideoDetail:
         """Fetch video details using API key authentication."""
         if not self.api_key:
             raise YoutubeConfigurationError("YouTube API key not configured")
@@ -1178,14 +1234,14 @@ class YoutubeService:
                 raise YoutubeAPIRequestError(
                     f"Failed to parse video {video_id}"
                 )
-            return video
+            return video.with_transcript(None)
 
     def _fetch_video_detail_authenticated(
         self,
         video_id: str,
         user_service: "UserService",
         oauth_service: "YoutubeOAuthService",
-    ) -> YoutubeVideo:
+    ) -> YoutubeVideoDetail:
         """Fetch video details using OAuth authentication."""
         client = self.build_authenticated_client(user_service, oauth_service)
 
@@ -1234,7 +1290,65 @@ class YoutubeService:
         video = YoutubeVideo.from_playlist_item(playlist_item_like)
         if video is None:
             raise YoutubeAPIRequestError(f"Failed to parse video {video_id}")
-        return video
+        transcript = self._download_transcript_authenticated(client, video_id)
+        return video.with_transcript(transcript)
+
+    def _download_transcript_authenticated(
+        self, client: "YoutubeApiClient", video_id: str
+    ) -> str | None:
+        """Return transcript text for a video using an authenticated client."""
+
+        try:
+            captions_resource = client.captions()
+        except AttributeError:  # pragma: no cover - defensive for custom clients
+            logger.debug(
+                "Authenticated YouTube client did not expose captions resource"
+            )
+            return None
+
+        try:
+            response = (
+                captions_resource.list(part="snippet", videoId=video_id).execute()
+            )
+        except HttpError as exc:
+            logger.info(
+                "Unable to list captions for video %s: %s", video_id, exc
+            )
+            return None
+        except Exception:  # pragma: no cover - unexpected failure fallback
+            logger.exception(
+                "Unexpected error while listing captions for video %s", video_id
+            )
+            return None
+
+        items = response.get("items", []) if isinstance(response, dict) else []
+        caption_id: str | None = None
+        if isinstance(items, list):
+            for item in items:
+                if isinstance(item, dict):
+                    caption_id = item.get("id")
+                    if caption_id:
+                        break
+        if not caption_id:
+            return None
+
+        try:
+            download_payload = (
+                captions_resource.download(id=caption_id, tfmt="vtt").execute()
+            )
+        except HttpError as exc:
+            logger.info(
+                "Unable to download captions for video %s: %s", video_id, exc
+            )
+            return None
+        except Exception:  # pragma: no cover - unexpected failure fallback
+            logger.exception(
+                "Unexpected error while downloading captions for video %s",
+                video_id,
+            )
+            return None
+
+        return _normalize_transcript_payload(download_payload)
 
 
 def _select_thumbnail_url(
@@ -1250,3 +1364,28 @@ def _select_thumbnail_url(
             if isinstance(url, str) and url:
                 return url
     return None
+
+
+def _normalize_transcript_payload(payload: Any) -> str | None:
+    """Convert download payloads into normalized transcript text."""
+
+    if payload is None:
+        return None
+    if isinstance(payload, tuple) and payload:
+        return _normalize_transcript_payload(payload[0])
+    if isinstance(payload, dict):
+        for key in ("body", "data"):
+            if key in payload:
+                normalized = _normalize_transcript_payload(payload[key])
+                if normalized:
+                    return normalized
+        return None
+    if isinstance(payload, bytes):
+        text = payload.decode("utf-8", errors="ignore")
+    elif isinstance(payload, str):
+        text = payload
+    else:
+        return None
+
+    normalized_text = text.strip("\ufeff\n\r\t ")
+    return normalized_text or None

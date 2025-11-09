@@ -1,5 +1,7 @@
 import httpx
 import pytest
+from googleapiclient.errors import HttpError
+from types import SimpleNamespace
 
 from app.services.youtube import (
     YoutubeAPIRequestError,
@@ -284,6 +286,22 @@ async def test_fetch_channel_videos_paginates_playlist_items():
     assert ids == ["vid-1", "vid-2", "vid-3"]
 
 
+class _StubUserService:
+    """Lightweight user service stub returning stored credentials."""
+
+    def __init__(self, credentials_json: str | None = "{}") -> None:
+        self._record = SimpleNamespace(credentials_json=credentials_json)
+
+    def get_active_user(self):  # pragma: no cover - simple data holder
+        return self._record
+
+
+class _ResponseStub:
+    status = 403
+    reason = "Forbidden"
+    headers: dict[str, str] = {}
+
+
 @pytest.mark.asyncio
 async def test_fetch_channel_videos_raises_for_malformed_json():
     channel_payload = {
@@ -421,3 +439,152 @@ async def test_fetch_channel_videos_filters_by_video_type():
     # Test without filter (should return all)
     feed_all = await service.fetch_channel_videos("@storyloop", max_results=50)
     assert len(feed_all.videos) == 3
+
+
+class _StubRequest:
+    def __init__(self, payload: dict | str | None = None, exc: Exception | None = None) -> None:
+        self._payload = payload
+        self._exc = exc
+
+    def execute(self):
+        if self._exc is not None:
+            raise self._exc
+        return self._payload
+
+
+class _StubVideosResource:
+    def __init__(self, payload: dict) -> None:
+        self._payload = payload
+        self.last_kwargs: dict[str, object] | None = None
+
+    def list(self, **kwargs):
+        self.last_kwargs = kwargs
+        return _StubRequest(self._payload)
+
+
+class _StubCaptionsResource:
+    def __init__(
+        self,
+        *,
+        list_payload: dict,
+        download_payload: str | dict | None = None,
+        download_exc: Exception | None = None,
+    ) -> None:
+        self._list_payload = list_payload
+        self._download_payload = download_payload
+        self._download_exc = download_exc
+        self.list_kwargs: dict[str, object] | None = None
+        self.download_kwargs: dict[str, object] | None = None
+
+    def list(self, **kwargs):
+        self.list_kwargs = kwargs
+        return _StubRequest(self._list_payload)
+
+    def download(self, **kwargs):
+        self.download_kwargs = kwargs
+        return _StubRequest(self._download_payload, self._download_exc)
+
+
+class _StubYoutubeClient:
+    def __init__(
+        self,
+        video_payload: dict,
+        captions_resource: _StubCaptionsResource,
+    ) -> None:
+        self._videos_resource = _StubVideosResource(video_payload)
+        self._captions_resource = captions_resource
+
+    def videos(self):
+        return self._videos_resource
+
+    def captions(self):
+        return self._captions_resource
+
+
+@pytest.mark.asyncio
+async def test_fetch_video_detail_authenticated_includes_transcript(monkeypatch):
+    video_payload = {
+        "items": [
+            {
+                "id": "vid-123",
+                "snippet": {
+                    "title": "Sample video",
+                    "description": "An example",
+                    "publishedAt": "2024-01-05T12:00:00Z",
+                    "thumbnails": {"default": {"url": "https://example.com/thumb.jpg"}},
+                    "liveBroadcastContent": "none",
+                },
+                "contentDetails": {"duration": "PT1M30S"},
+                "status": {"privacyStatus": "public"},
+            }
+        ]
+    }
+    captions_resource = _StubCaptionsResource(
+        list_payload={"items": [{"id": "caption-1"}]},
+        download_payload="Example transcript\n",
+    )
+    client = _StubYoutubeClient(video_payload, captions_resource)
+
+    service = YoutubeService(api_key="unused")
+    user_service = _StubUserService()
+    oauth_service = object()
+
+    monkeypatch.setattr(
+        YoutubeService,
+        "build_authenticated_client",
+        lambda self, user_service, oauth_service: client,
+    )
+
+    detail = await service.fetch_video_detail(
+        "vid-123", user_service=user_service, oauth_service=oauth_service
+    )
+
+    assert detail.id == "vid-123"
+    assert detail.transcript == "Example transcript"
+    assert captions_resource.list_kwargs == {"part": "snippet", "videoId": "vid-123"}
+    assert captions_resource.download_kwargs == {"id": "caption-1", "tfmt": "vtt"}
+
+
+@pytest.mark.asyncio
+async def test_fetch_video_detail_transcript_fallback_on_error(monkeypatch):
+    video_payload = {
+        "items": [
+            {
+                "id": "vid-999",
+                "snippet": {
+                    "title": "Another video",
+                    "description": "",
+                    "publishedAt": "2024-03-01T12:00:00Z",
+                    "thumbnails": {"default": {"url": "https://example.com/thumb2.jpg"}},
+                    "liveBroadcastContent": "none",
+                },
+                "contentDetails": {"duration": "PT2M"},
+                "status": {"privacyStatus": "public"},
+            }
+        ]
+    }
+    http_error = HttpError(_ResponseStub(), b"Forbidden")
+    captions_resource = _StubCaptionsResource(
+        list_payload={"items": [{"id": "caption-x"}]},
+        download_exc=http_error,
+    )
+    client = _StubYoutubeClient(video_payload, captions_resource)
+
+    service = YoutubeService(api_key="unused")
+    user_service = _StubUserService()
+    oauth_service = object()
+
+    monkeypatch.setattr(
+        YoutubeService,
+        "build_authenticated_client",
+        lambda self, user_service, oauth_service: client,
+    )
+
+    detail = await service.fetch_video_detail(
+        "vid-999", user_service=user_service, oauth_service=oauth_service
+    )
+
+    assert detail.id == "vid-999"
+    assert detail.transcript is None
+    assert captions_resource.list_kwargs == {"part": "snippet", "videoId": "vid-999"}
+    assert captions_resource.download_kwargs == {"id": "caption-x", "tfmt": "vtt"}

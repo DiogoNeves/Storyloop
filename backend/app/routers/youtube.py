@@ -71,9 +71,6 @@ async def get_video_detail(
             user_service=user_service,
             oauth_service=oauth_service,
         )
-        # Convert to dict and add transcript field (null for now, can be extended later)
-        video_dict = video.to_dict()
-        video_dict["transcript"] = None
-        return video_dict
+        return video.to_dict()
     except YoutubeError as exc:
         raise handle_youtube_error(exc) from exc
