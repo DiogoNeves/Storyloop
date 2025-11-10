@@ -87,8 +87,8 @@ export function useEntryEditing() {
     }
     const trimmedTitle = editingDraft.title.trim();
     const trimmedSummary = editingDraft.summary.trim();
-    if (trimmedTitle.length === 0 || trimmedSummary.length === 0) {
-      setEditingError("Add a title and entry before saving.");
+    if (trimmedTitle.length === 0) {
+      setEditingError("Add a title before saving.");
       return;
     }
 

@@ -68,6 +68,29 @@ def test_save_entries_returns_only_new_records(
     assert [item["id"] for item in body] == ["entry-b"]
 
 
+def test_save_entry_without_summary_defaults_to_blank(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    app = _create_test_app(memory_connection_factory)
+    client = TestClient(app)
+
+    now = datetime.now(tz=UTC)
+    payload = [
+        {
+            "id": "entry-no-summary",
+            "title": "Entry without description",
+            "date": now.isoformat(),
+            "category": "journal",
+        }
+    ]
+
+    response = client.post("/entries/", json=payload)
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["summary"] == ""
+
+
 def test_list_entries_returns_persisted_records(
     memory_connection_factory: SqliteConnectionFactory,
 ) -> None:
@@ -129,6 +152,37 @@ def test_get_entry_returns_single_record(
     body = response.json()
     assert body["id"] == "entry-1"
     assert body["videoId"] == "linked-video"
+
+
+def test_update_entry_allows_blank_summary(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    app = _create_test_app(memory_connection_factory)
+    client = TestClient(app)
+
+    now = datetime.now(tz=UTC)
+    payload = [
+        {
+            "id": "entry-blank-summary",
+            "title": "Persisted entry",
+            "summary": "Stored for update.",
+            "date": now.isoformat(),
+            "category": "journal",
+        }
+    ]
+
+    response = client.post("/entries/", json=payload)
+    assert response.status_code == 200
+
+    update_payload = {
+        "title": "Updated title",
+        "summary": " ",
+    }
+
+    response = client.put("/entries/entry-blank-summary", json=update_payload)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["summary"] == ""
 
 
 def test_update_entry_modifies_record(

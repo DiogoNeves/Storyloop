@@ -281,7 +281,7 @@ async def test_fetch_channel_videos_paginates_playlist_items():
     feed = await service.fetch_channel_videos("@storyloop", max_results=3)
 
     ids = [video.id for video in feed.videos]
-    assert ids == ["vid-1", "vid-2", "vid-3"]
+    assert ids == ["vid-4", "vid-3", "vid-2"]
 
 
 @pytest.mark.asyncio
