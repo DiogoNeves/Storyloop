@@ -12,9 +12,9 @@ export function InsightsCard() {
         <h2 className="mb-4 text-lg font-semibold text-foreground">
           Key Insight
         </h2>
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,200px)_1fr]">
-          {/* Left section - Top retention clip */}
-          <div className="space-y-3">
+        <div className="space-y-4 lg:grid lg:grid-cols-[minmax(0,200px)_1fr] lg:gap-6 lg:space-y-0">
+          {/* Left section - Top retention clip (large screens only) */}
+          <div className="hidden space-y-3 lg:block">
             <h3 className="text-sm font-semibold text-foreground">
               Top retention clip
             </h3>
@@ -50,8 +50,55 @@ export function InsightsCard() {
           </div>
 
           {/* Right section - Retention metrics */}
-          <div className="flex flex-col justify-between space-y-4">
-            <div className="space-y-4">
+          <div className="flex flex-col justify-between space-y-4 lg:space-y-4">
+            {/* On small screens: heading + thumbnail + score */}
+            <div className="space-y-3 lg:hidden">
+              <h3 className="text-sm font-semibold text-foreground">
+                Top retention clip
+              </h3>
+              <div className="flex gap-4">
+                {/* Small thumbnail */}
+                <div className="relative h-20 w-32 shrink-0 overflow-hidden rounded-lg bg-muted">
+                  <div className="flex h-full items-center justify-center bg-gradient-to-br from-muted to-muted/50">
+                    <svg
+                      className="h-6 w-6 text-muted-foreground/40"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                  </div>
+                  {/* Time badge overlay */}
+                  <div className="absolute bottom-1 left-1 flex items-center gap-0.5 rounded bg-black/85 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                    <span>▶</span>
+                    <span>1:17-27</span>
+                  </div>
+                </div>
+                {/* Score */}
+                <div className="space-y-1">
+                  <div className="text-3xl font-bold text-foreground">92%</div>
+                  <div className="space-y-0.5 text-xs text-muted-foreground">
+                    <div>held 92% vs</div>
+                    <div>78% median</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* On large screens: score at top */}
+            <div className="hidden space-y-4 lg:block">
               <div className="space-y-1">
                 <div className="text-4xl font-bold text-foreground">92%</div>
                 <div className="space-y-0.5 text-sm text-muted-foreground">
@@ -59,14 +106,16 @@ export function InsightsCard() {
                   <div>78% median</div>
                 </div>
               </div>
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <p>
-                  This segment maintains exceptional viewer retention, holding
-                  92% of viewers compared to your channel's 78% median. The
-                  strong narrative hook and visual pacing in this clip create
-                  compelling momentum that keeps audiences engaged.
-                </p>
-              </div>
+            </div>
+
+            {/* Description - always below */}
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <p>
+                This segment maintains exceptional viewer retention, holding 92%
+                of viewers compared to your channel's 78% median. The strong
+                narrative hook and visual pacing in this clip create compelling
+                momentum that keeps audiences engaged.
+              </p>
             </div>
           </div>
         </div>
@@ -74,4 +123,3 @@ export function InsightsCard() {
     </div>
   );
 }
-
