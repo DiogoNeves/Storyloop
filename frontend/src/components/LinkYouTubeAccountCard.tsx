@@ -105,7 +105,62 @@ export function LinkYouTubeAccountCard() {
     );
   }
 
-  // When linked, don't render the card (it's handled in ActivityFeed)
-  return null;
+  const channel = statusQuery.data?.channel ?? null;
+  const updatedAt = channel?.updatedAt
+    ? new Date(channel.updatedAt).toLocaleString(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    : null;
+
+  return (
+    <Card>
+      <CardHeader className="p-4 pb-2">
+        <CardTitle className="text-sm font-semibold text-foreground">
+          Connected YouTube channel
+        </CardTitle>
+        <CardDescription>
+          {statusQuery.data?.refreshNeeded
+            ? "Refresh your link to keep uploads in sync."
+            : "Uploads from your channel will appear in the activity feed."}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4 p-4 pt-2 text-sm text-muted-foreground">
+        {channel ? (
+          <div className="flex items-center gap-3">
+            {channel.thumbnailUrl ? (
+              <img
+                src={channel.thumbnailUrl}
+                alt={`${channel.title ?? "YouTube channel"} thumbnail`}
+                className="h-10 w-10 rounded-full border border-border object-cover"
+              />
+            ) : null}
+            <div className="space-y-1">
+              <p className="font-medium text-foreground">
+                {channel.title ?? "YouTube channel"}
+              </p>
+              {updatedAt ? (
+                <p className="text-xs text-muted-foreground">
+                  Last checked {updatedAt}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ) : (
+          <p>Your YouTube channel is linked.</p>
+        )}
+        {channel?.url ? (
+          <a
+            href={channel.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-medium text-primary underline-offset-2 hover:underline"
+          >
+            View channel on YouTube
+          </a>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
 }
 

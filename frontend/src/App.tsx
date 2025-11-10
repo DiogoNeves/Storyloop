@@ -23,10 +23,12 @@ import {
   type Entry,
 } from "@/api/entries";
 import { growthQueries } from "@/api/growth";
+import { healthQueries } from "@/api/health";
 import { type ActivityItem, entryToActivityItem } from "@/lib/types/entries";
 import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
 import { YoutubeAuthCallback } from "@/pages/YoutubeAuthCallback";
 import { VideoDetailPage } from "@/pages/VideoDetailPage";
+import { JournalDetailPage } from "@/pages/JournalDetailPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,10 +48,9 @@ function ScorePlaceholder({
 }) {
   const growthScoreQuery = useQuery({
     ...growthQueries.score(
-      channelId,
+      channelId ?? null,
       contentTypeFilter === "all" ? null : contentTypeFilter,
     ),
-    enabled: Boolean(channelId),
   });
 
   const errorMessage = growthScoreQuery.isError
@@ -138,6 +139,8 @@ function DashboardShell() {
 
   // Fetch YouTube videos with filter
   const youtubeState = useYouTubeFeed(videoTypeFilter);
+
+  const healthStatusQuery = useQuery(healthQueries.status());
 
   // Combine stored entries with YouTube videos, filter by content type, and limit to 50
   const activityItems = useMemo<ActivityItem[]>(() => {
@@ -345,6 +348,22 @@ function DashboardShell() {
           draftError={draftError}
           errorMessage={entriesErrorMessage}
         />
+
+        <div>
+          {healthStatusQuery.isLoading ? (
+            <p className="text-xs text-muted-foreground" role="status">
+              Checking API health…
+            </p>
+          ) : healthStatusQuery.isError ? (
+            <p className="text-xs text-destructive" role="status">
+              We couldn't reach the Storyloop API.
+            </p>
+          ) : healthStatusQuery.data?.status ? (
+            <p className="text-xs text-muted-foreground" role="status">
+              {healthStatusQuery.data.status}
+            </p>
+          ) : null}
+        </div>
       </main>
     </div>
   );
@@ -357,6 +376,7 @@ export function App() {
         <Routes>
           <Route path="/" element={<DashboardShell />} />
           <Route path="/videos/:videoId" element={<VideoDetailPage />} />
+          <Route path="/journals/:journalId" element={<JournalDetailPage />} />
           <Route path="/auth/callback" element={<YoutubeAuthCallback />} />
         </Routes>
       </QueryClientProvider>
