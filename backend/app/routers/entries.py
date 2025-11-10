@@ -23,20 +23,25 @@ class EntryCreate(BaseModel):
 
     id: str = Field(min_length=1)
     title: str = Field(min_length=1)
-    summary: str = Field(min_length=1)
+    summary: str = Field(default="")
     occurred_at: datetime = Field(alias="date")
     category: Literal["content", "insight", "journal"] = "journal"
     link_url: str | None = Field(default=None, alias="linkUrl")
     thumbnail_url: str | None = Field(default=None, alias="thumbnailUrl")
     video_id: str | None = Field(default=None, alias="videoId")
 
-    @field_validator("title", "summary", mode="after")
+    @field_validator("title", mode="after")
     @classmethod
-    def _strip_and_validate(cls, value: str) -> str:
+    def _strip_and_validate_title(cls, value: str) -> str:
         stripped = value.strip()
         if not stripped:
             raise ValueError("must not be empty or whitespace")
         return stripped
+
+    @field_validator("summary", mode="after")
+    @classmethod
+    def _strip_summary(cls, value: str) -> str:
+        return value.strip()
 
 
 class EntryResponse(BaseModel):
@@ -82,15 +87,22 @@ class EntryUpdate(BaseModel):
     thumbnail_url: str | None = Field(default=None, alias="thumbnailUrl")
     video_id: str | None = Field(default=None, alias="videoId")
 
-    @field_validator("title", "summary", mode="after")
+    @field_validator("title", mode="after")
     @classmethod
-    def _strip_optional(cls, value: str | None) -> str | None:
+    def _strip_optional_title(cls, value: str | None) -> str | None:
         if value is None:
             return None
         stripped = value.strip()
         if not stripped:
             raise ValueError("must not be empty or whitespace")
         return stripped
+
+    @field_validator("summary", mode="after")
+    @classmethod
+    def _strip_optional_summary(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip()
 
 
 def _create_to_record(entry: EntryCreate) -> EntryRecord:

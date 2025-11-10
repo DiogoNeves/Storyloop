@@ -147,6 +147,7 @@ export function ActivityFeed({
             submitLabel="Create entry"
             category="journal"
             idPrefix="new-entry"
+            showVideoInput={false}
           />
         ) : null}
         {items.map((item) => {

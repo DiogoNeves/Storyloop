@@ -20,6 +20,7 @@ export interface ActivityDraftCardProps {
   idPrefix?: string;
   onDelete?: () => void;
   isDeleting?: boolean;
+  showVideoInput?: boolean;
 }
 
 export function ActivityDraftCard({
@@ -34,9 +35,9 @@ export function ActivityDraftCard({
   idPrefix = "entry",
   onDelete,
   isDeleting,
+  showVideoInput = true,
 }: ActivityDraftCardProps) {
-  const isSubmitDisabled =
-    draft.title.trim().length === 0 || draft.summary.trim().length === 0;
+  const isSubmitDisabled = draft.title.trim().length === 0;
   const dateInputId = `${idPrefix}-date`;
   const titleInputId = `${idPrefix}-title`;
   const summaryInputId = `${idPrefix}-summary`;
@@ -80,7 +81,7 @@ export function ActivityDraftCard({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor={summaryInputId}>Entry</Label>
+          <Label htmlFor={summaryInputId}>Entry (optional)</Label>
           <Textarea
             id={summaryInputId}
             placeholder="Capture the beats, insights, or takeaways…"
@@ -92,20 +93,22 @@ export function ActivityDraftCard({
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor={videoInputId}>Linked video ID (optional)</Label>
-          <Input
-            id={videoInputId}
-            placeholder="e.g. abcd1234"
-            value={draft.videoId}
-            onChange={(event) =>
-              onChange({ ...draft, videoId: event.target.value })
-            }
-          />
-          <p className="text-xs text-muted-foreground">
-            Paste a YouTube video ID to reference a synced upload.
-          </p>
-        </div>
+        {showVideoInput ? (
+          <div className="space-y-2">
+            <Label htmlFor={videoInputId}>Linked video ID (optional)</Label>
+            <Input
+              id={videoInputId}
+              placeholder="e.g. abcd1234"
+              value={draft.videoId}
+              onChange={(event) =>
+                onChange({ ...draft, videoId: event.target.value })
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              Paste a YouTube video ID to reference a synced upload.
+            </p>
+          </div>
+        ) : null}
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
