@@ -267,8 +267,8 @@ function DashboardShell() {
 
     const trimmedTitle = draft.title.trim();
     const trimmedSummary = draft.summary.trim();
-    if (trimmedTitle.length === 0 || trimmedSummary.length === 0) {
-      setDraftError("Add a title and entry before saving.");
+    if (trimmedTitle.length === 0) {
+      setDraftError("Add a title before saving.");
       return;
     }
 
