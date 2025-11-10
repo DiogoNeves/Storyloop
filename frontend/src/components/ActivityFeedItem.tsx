@@ -33,7 +33,12 @@ export function ActivityFeedItem({
   const truncatedSummary =
     summary.length > 280 ? `${summary.slice(0, 277).trimEnd()}…` : summary;
   const showThumbnail = item.category === "content" && Boolean(item.thumbnailUrl);
-  const detailPath = item.videoId ? `/videos/${item.videoId}` : null;
+  const detailPath =
+    item.category === "content" && item.videoId
+      ? `/videos/${item.videoId}`
+      : item.category === "journal"
+        ? `/journals/${item.id}`
+        : null;
 
   return (
     <Card className="group">
