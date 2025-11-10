@@ -156,11 +156,13 @@ Settings are managed through `backend/app/config.py` using Pydantic:
 - Background jobs execute tracking actions periodically
 - Insights are generated through agent interactions, not automatic parsing of journal entries
 - Journal entries remain simple and user-focused
+- See [AI Agent Design](ai-agent.md) for comprehensive design details
 
 ### Future Extensions
 
 - Agent integration for user interactions and insight tracking
   - **Design:** [Agent/Chatbot Design](../design/with-chatbot.png) (Future)
+  - **Detailed Design:** [AI Agent Design](ai-agent.md)
 - Agent can save background actions to monitor patterns over time
 - OpenAI integration for AI-powered agent interactions
 - Video detail pages (per-video view with deeper insights and related notes)
