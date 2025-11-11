@@ -38,6 +38,16 @@ class Settings(BaseModel):
     )
     logfire_api_key: str | None = Field(default=None, alias="LOGFIRE_API_KEY")
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
+    chatkit_workflow_id: str | None = Field(
+        default=None,
+        alias="CHATKIT_WORKFLOW_ID",
+        description="Workflow identifier used when creating ChatKit sessions.",
+    )
+    chatkit_api_base: str = Field(
+        default="https://api.openai.com/v1",
+        alias="CHATKIT_API_BASE",
+        description="Optional base URL for ChatKit API requests.",
+    )
     youtube_api_key: str | None = Field(default=None, alias="YOUTUBE_API_KEY")
     youtube_client_id: str | None = Field(
         default=None,

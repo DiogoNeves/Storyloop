@@ -26,6 +26,8 @@ Environment variables are loaded via `.env` and `python-dotenv`. Default values 
 - `DATABASE_URL` (`sqlite:///backend/.data/storyloop.db` by default)
 - `LOGFIRE_API_KEY`
 - `OPENAI_API_KEY`
+- `CHATKIT_WORKFLOW_ID`
+- `CHATKIT_API_BASE` (optional, defaults to `https://api.openai.com/v1`)
 - `YOUTUBE_API_KEY`
 - `ENV`
 
