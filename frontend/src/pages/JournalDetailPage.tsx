@@ -78,6 +78,7 @@ export function JournalDetailPage() {
   const renderVideoCard = (
     label: string,
     video: YoutubeVideoResponse | null,
+    emptyMessage: string,
   ) => {
     if (!youtubeState.isLinked) {
       return (
@@ -113,7 +114,7 @@ export function JournalDetailPage() {
       return (
         <Card>
           <CardContent className="p-4 text-sm text-muted-foreground">
-            We couldn’t find a video {label.toLowerCase()} this journal entry.
+            {emptyMessage}
           </CardContent>
         </Card>
       );
@@ -176,8 +177,16 @@ export function JournalDetailPage() {
               <div className="h-px w-full bg-border" aria-hidden="true" />
 
               <div className="grid gap-4 md:grid-cols-2">
-                {renderVideoCard("Published before this journal", adjacentVideos.previous)}
-                {renderVideoCard("Published after this journal", adjacentVideos.next)}
+                {renderVideoCard(
+                  "Published before this journal",
+                  adjacentVideos.previous,
+                  "No earlier video yet—this journal leads the way!",
+                )}
+                {renderVideoCard(
+                  "Published after this journal",
+                  adjacentVideos.next,
+                  "No later video yet—stay tuned!",
+                )}
               </div>
             </div>
           )}
