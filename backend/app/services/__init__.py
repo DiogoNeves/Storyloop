@@ -1,5 +1,6 @@
 """Service layer modules."""
 
+from app.services.chatkit import ChatKitService, ChatKitConfigurationError
 from app.services.entries import EntryRecord, EntryService
 from app.services.growth import GrowthScoreService
 from app.services.youtube import YoutubeService
@@ -18,6 +19,8 @@ __all__ = [
     "GrowthScoreService",
     "UserRecord",
     "UserService",
+    "ChatKitService",
+    "ChatKitConfigurationError",
     "DemoYoutubeService",
     "DemoYoutubeOAuthService",
     "DemoUserService",

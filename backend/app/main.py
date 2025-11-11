@@ -17,6 +17,8 @@ from app.db import SqliteConnectionFactory, create_connection_factory
 from app.routers import api_router
 from app.scheduler import create_scheduler
 from app.services import (
+    ChatKitConfigurationError,
+    ChatKitService,
     EntryService,
     GrowthScoreService,
     UserService,
@@ -77,6 +79,14 @@ def build_lifespan(
 
     growth_score_service = GrowthScoreService()
     scheduler: AsyncIOScheduler | None = None
+    try:
+        chatkit_service = ChatKitService(
+            api_key=active_settings.openai_api_key,
+            workflow_id=active_settings.chatkit_workflow_id,
+            default_file_uploads_enabled=active_settings.chatkit_file_uploads_enabled,
+        )
+    except ChatKitConfigurationError:
+        chatkit_service = None
 
     if active_settings.scheduler_enabled:
         scheduler = create_scheduler(
@@ -94,6 +104,7 @@ def build_lifespan(
         app.state.youtube_demo_service = demo_youtube_service
         app.state.active_youtube_service = resolved_youtube_service
         app.state.youtube_demo_mode = active_settings.youtube_demo_mode
+        app.state.chatkit_service = chatkit_service
         try:
             app.state.youtube_oauth_service = YoutubeOAuthService(
                 active_settings

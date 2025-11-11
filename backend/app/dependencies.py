@@ -11,6 +11,7 @@ from app.services import (
     YoutubeOAuthService,
     YoutubeService,
 )
+from app.services.chatkit import ChatKitService
 from app.services.youtube_demo import (
     DemoUserService,
     DemoYoutubeOAuthService,
@@ -85,3 +86,18 @@ def get_youtube_oauth_service_optional(
 def get_youtube_demo_mode(request: Request) -> bool:
     """Extract YouTube demo mode status from application state."""
     return getattr(request.app.state, "youtube_demo_mode", False)
+
+
+def get_chatkit_service(request: Request) -> ChatKitService:
+    """Extract ChatKitService from application state, raising when unavailable."""
+
+    service = getattr(request.app.state, "chatkit_service", None)
+    if service is None:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "ChatKit is not configured. Set OPENAI_API_KEY and CHATKIT_WORKFLOW_ID "
+                "environment variables."
+            ),
+        )
+    return service
