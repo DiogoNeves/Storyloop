@@ -185,7 +185,7 @@ export function JournalDetailPage() {
                 {renderVideoCard(
                   "Published after this journal",
                   adjacentVideos.next,
-                  "No later video yet—stay tuned!",
+                  "Looking forward to your next video!",
                 )}
               </div>
             </div>
