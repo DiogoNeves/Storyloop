@@ -30,7 +30,8 @@ function ScoreHeadline({
   return (
     <div className="flex h-full flex-col justify-between rounded-2xl border border-border/70 bg-gradient-to-br from-primary/10 via-background to-background p-6 shadow-inner">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <h2 className="text-sm font-semibold text-foreground">Storyloop Score</h2>
+        <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Current score
         </p>
         <div className="mt-4 flex items-baseline gap-4">
