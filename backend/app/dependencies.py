@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import HTTPException, Request
 
 from app.services import (
+    ChatkitService,
     EntryService,
     GrowthScoreService,
     UserService,
@@ -85,3 +86,17 @@ def get_youtube_oauth_service_optional(
 def get_youtube_demo_mode(request: Request) -> bool:
     """Extract YouTube demo mode status from application state."""
     return getattr(request.app.state, "youtube_demo_mode", False)
+
+
+def get_chatkit_service(request: Request) -> ChatkitService:
+    """Return the configured ChatKit service instance."""
+
+    service = getattr(request.app.state, "chatkit_service", None)
+    if service is None:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "ChatKit is not configured. Ensure OPENAI_API_KEY is set on the backend."
+            ),
+        )
+    return service

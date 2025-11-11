@@ -16,6 +16,7 @@ import {
   ContentTypeTabs,
   type ContentTypeFilter,
 } from "@/components/ContentTypeTabs";
+import { StoryloopAgentPanel } from "@/components/StoryloopAgentPanel";
 import {
   entriesMutations,
   entriesQueries,
@@ -320,49 +321,56 @@ function DashboardShell() {
   return (
     <div className="min-h-screen bg-muted/20 text-foreground">
       <NavBar />
-      <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-10">
-        <ScorePlaceholder
-          channelId={youtubeState.channelId}
-          contentTypeFilter={contentTypeFilter}
-        />
+      <main className="mx-auto w-full max-w-6xl px-6 py-10">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_21rem] xl:grid-cols-[minmax(0,1fr)_24rem]">
+          <div className="flex min-w-0 flex-col gap-6">
+            <ScorePlaceholder
+              channelId={youtubeState.channelId}
+              contentTypeFilter={contentTypeFilter}
+            />
 
-        <ContentTypeTabs
-          value={contentTypeFilter}
-          onChange={setContentTypeFilter}
-          publicOnly={publicOnly}
-          onPublicOnlyChange={setPublicOnly}
-        />
+            <ContentTypeTabs
+              value={contentTypeFilter}
+              onChange={setContentTypeFilter}
+              publicOnly={publicOnly}
+              onPublicOnlyChange={setPublicOnly}
+            />
 
-        <ActivityFeed
-          items={displayItems}
-          youtubeFeed={youtubeState.youtubeFeed}
-          isLinked={youtubeState.isLinked}
-          linkStatus={youtubeState.linkStatus}
-          youtubeError={youtubeState.youtubeError}
-          draft={draft}
-          onStartDraft={handleStartDraft}
-          onDraftChange={handleDraftChange}
-          onCancelDraft={handleCancelDraft}
-          onSubmitDraft={handleDraftSubmit}
-          isSubmittingDraft={isSavingEntry}
-          draftError={draftError}
-          errorMessage={entriesErrorMessage}
-        />
+            <ActivityFeed
+              items={displayItems}
+              youtubeFeed={youtubeState.youtubeFeed}
+              isLinked={youtubeState.isLinked}
+              linkStatus={youtubeState.linkStatus}
+              youtubeError={youtubeState.youtubeError}
+              draft={draft}
+              onStartDraft={handleStartDraft}
+              onDraftChange={handleDraftChange}
+              onCancelDraft={handleCancelDraft}
+              onSubmitDraft={handleDraftSubmit}
+              isSubmittingDraft={isSavingEntry}
+              draftError={draftError}
+              errorMessage={entriesErrorMessage}
+            />
 
-        <div>
-          {healthStatusQuery.isLoading ? (
-            <p className="text-xs text-muted-foreground" role="status">
-              Checking API health…
-            </p>
-          ) : healthStatusQuery.isError ? (
-            <p className="text-xs text-destructive" role="status">
-              We couldn't reach the Storyloop API.
-            </p>
-          ) : healthStatusQuery.data?.status ? (
-            <p className="text-xs text-muted-foreground" role="status">
-              {healthStatusQuery.data.status}
-            </p>
-          ) : null}
+            <div>
+              {healthStatusQuery.isLoading ? (
+                <p className="text-xs text-muted-foreground" role="status">
+                  Checking API health…
+                </p>
+              ) : healthStatusQuery.isError ? (
+                <p className="text-xs text-destructive" role="status">
+                  We couldn't reach the Storyloop API.
+                </p>
+              ) : healthStatusQuery.data?.status ? (
+                <p className="text-xs text-muted-foreground" role="status">
+                  {healthStatusQuery.data.status}
+                </p>
+              ) : null}
+            </div>
+          </div>
+          <aside className="min-w-0">
+            <StoryloopAgentPanel />
+          </aside>
         </div>
       </main>
     </div>

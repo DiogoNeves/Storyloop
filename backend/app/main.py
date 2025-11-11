@@ -17,6 +17,7 @@ from app.db import SqliteConnectionFactory, create_connection_factory
 from app.routers import api_router
 from app.scheduler import create_scheduler
 from app.services import (
+    ChatkitService,
     EntryService,
     GrowthScoreService,
     UserService,
@@ -76,6 +77,19 @@ def build_lifespan(
         resolved_youtube_service = youtube_service
 
     growth_score_service = GrowthScoreService()
+    chatkit_service: ChatkitService | None = None
+    if active_settings.openai_api_key:
+        try:
+            chatkit_service = ChatkitService(
+                api_key=active_settings.openai_api_key
+            )
+        except Exception as exc:  # pragma: no cover - configuration failure
+            logger.exception("Failed to initialise ChatKit service: %s", exc)
+            chatkit_service = None
+    else:
+        logger.warning(
+            "ChatKit service disabled: OPENAI_API_KEY is not configured."
+        )
     scheduler: AsyncIOScheduler | None = None
 
     if active_settings.scheduler_enabled:
@@ -94,6 +108,7 @@ def build_lifespan(
         app.state.youtube_demo_service = demo_youtube_service
         app.state.active_youtube_service = resolved_youtube_service
         app.state.youtube_demo_mode = active_settings.youtube_demo_mode
+        app.state.chatkit_service = chatkit_service
         try:
             app.state.youtube_oauth_service = YoutubeOAuthService(
                 active_settings
