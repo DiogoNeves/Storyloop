@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
+import useLocalStorageState from "use-local-storage-state";
 
 import { entriesQueries, type Entry } from "@/api/entries";
 import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
@@ -8,6 +9,7 @@ import { NavBar } from "@/components/NavBar";
 import { VideoLinkCard } from "@/components/VideoLinkCard";
 import { Card, CardContent } from "@/components/ui/card";
 import type { YoutubeVideoResponse } from "@/api/youtube";
+import type { ContentTypeFilter } from "@/components/ContentTypeTabs";
 
 export function JournalDetailPage() {
   const { journalId } = useParams<{ journalId: string }>();
@@ -41,14 +43,55 @@ export function JournalDetailPage() {
 
   const summaryText = entry?.summary?.trim() ?? "";
 
-  const youtubeState = useYouTubeFeed(null);
+  // Read filter state from localStorage (same as ActivityFeed)
+  const [contentTypeFilter] = useLocalStorageState<ContentTypeFilter>(
+    "contentTypeFilter",
+    {
+      defaultValue: "all",
+    },
+  );
+
+  const [publicOnly] = useLocalStorageState<boolean>("publicOnlyFilter", {
+    defaultValue: true,
+  });
+
+  // Determine videoType filter for API calls: null if "all", otherwise the type
+  const videoTypeFilter = useMemo<"short" | "video" | "live" | null>(() => {
+    if (contentTypeFilter === "all") {
+      return null;
+    }
+    return contentTypeFilter;
+  }, [contentTypeFilter]);
+
+  const youtubeState = useYouTubeFeed(videoTypeFilter);
 
   const adjacentVideos = useMemo(() => {
     if (!youtubeState.youtubeFeed?.videos || !journalDate) {
       return { previous: null, next: null };
     }
 
-    const sortedVideos = [...youtubeState.youtubeFeed.videos].sort(
+    // Apply the same filtering logic as ActivityFeed
+    const filteredVideos = youtubeState.youtubeFeed.videos.filter((video) => {
+      // Filter by content type
+      if (!video.videoType) {
+        // Include items without videoType only if not filtering by type
+        if (contentTypeFilter !== "all") return false;
+      } else {
+        if (contentTypeFilter !== "all") {
+          if (video.videoType !== contentTypeFilter) return false;
+        }
+      }
+
+      // Filter by privacy status if "public only" is enabled
+      if (publicOnly) {
+        // Only include public videos (exclude unlisted and private)
+        if (video.privacyStatus !== "public") return false;
+      }
+
+      return true;
+    });
+
+    const sortedVideos = [...filteredVideos].sort(
       (a, b) =>
         new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime(),
     );
@@ -73,7 +116,12 @@ export function JournalDetailPage() {
     }
 
     return { previous, next };
-  }, [journalDate, youtubeState.youtubeFeed?.videos]);
+  }, [
+    journalDate,
+    youtubeState.youtubeFeed?.videos,
+    contentTypeFilter,
+    publicOnly,
+  ]);
 
   const renderVideoCard = (
     label: string,
