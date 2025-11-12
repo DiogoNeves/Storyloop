@@ -65,7 +65,6 @@ export function useEntryEditing() {
       title: item.title,
       summary: item.summary,
       date: toDateTimeLocalInput(item.date),
-      videoId: item.videoId ?? "",
     });
     setEditingError(null);
   }, []);
@@ -92,13 +91,11 @@ export function useEntryEditing() {
       return;
     }
 
-    const trimmedVideoId = editingDraft.videoId.trim();
     const payload: UpdateEntryInput = {
       id: editingEntryId,
       title: trimmedTitle,
       summary: trimmedSummary,
       date: new Date(editingDraft.date).toISOString(),
-      videoId: trimmedVideoId.length > 0 ? trimmedVideoId : null,
     };
 
     try {
