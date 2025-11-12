@@ -28,7 +28,6 @@ export interface CreateEntryInput {
   category: Entry["category"];
   linkUrl?: string | null;
   thumbnailUrl?: string | null;
-  videoId?: string | null;
 }
 
 export interface UpdateEntryInput extends Partial<CreateEntryInput> {
@@ -130,7 +129,6 @@ export const entriesMutations = {
               ...("title" in input ? { title: input.title! } : {}),
               ...("summary" in input ? { summary: input.summary! } : {}),
               ...("date" in input ? { date: input.date! } : {}),
-              ...("videoId" in input ? { videoId: input.videoId ?? null } : {}),
             }
           : entry,
       );
@@ -145,7 +143,6 @@ export const entriesMutations = {
           ...("title" in input ? { title: input.title! } : {}),
           ...("summary" in input ? { summary: input.summary! } : {}),
           ...("date" in input ? { date: input.date! } : {}),
-          ...("videoId" in input ? { videoId: input.videoId ?? null } : {}),
         });
       }
 
