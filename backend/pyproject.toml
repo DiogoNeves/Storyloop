@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11.8"
 dependencies = [
     "apscheduler>=3.11.0",
+    "claude-agent-sdk>=0.1.6,<0.2.0",
     "fastapi>=0.120.0",
     "google-api-python-client>=2.186.0",
     "google-auth-oauthlib>=1.2.3",
