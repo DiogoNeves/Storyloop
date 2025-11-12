@@ -1,18 +1,23 @@
-import { useMemo } from "react";
+import { useMemo, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import useLocalStorageState from "use-local-storage-state";
 
 import { entriesQueries, type Entry } from "@/api/entries";
 import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
+import { useEntryEditing } from "@/hooks/useEntryEditing";
+import { entryToActivityItem } from "@/lib/types/entries";
 import { NavBar } from "@/components/NavBar";
 import { VideoLinkCard } from "@/components/VideoLinkCard";
+import { ActivityDraftCard } from "@/components/ActivityDraftCard";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { YoutubeVideoResponse } from "@/api/youtube";
 import type { ContentTypeFilter } from "@/components/ContentTypeTabs";
 
 export function JournalDetailPage() {
   const { journalId } = useParams<{ journalId: string }>();
+  const navigate = useNavigate();
 
   const entryQuery = useQuery<Entry, Error>({
     queryKey: journalId
@@ -25,6 +30,44 @@ export function JournalDetailPage() {
   });
 
   const entry = entryQuery.data;
+
+  // Set up editing state
+  const editingState = useEntryEditing();
+  const isEditing = entry && editingState.editingEntryId === entry.id;
+  const activityItem = entry ? entryToActivityItem(entry) : null;
+  const deletionInitiatedRef = useRef(false);
+
+  // Track when deletion is initiated
+  useEffect(() => {
+    if (
+      editingState.deletingEntryId &&
+      journalId &&
+      editingState.deletingEntryId === journalId
+    ) {
+      deletionInitiatedRef.current = true;
+    }
+  }, [editingState.deletingEntryId, journalId]);
+
+  // Redirect to home page if entry is deleted
+  useEffect(() => {
+    if (
+      deletionInitiatedRef.current &&
+      journalId &&
+      !editingState.isDeleting(journalId) &&
+      (!entry || entryQuery.isError)
+    ) {
+      // Entry was successfully deleted, navigate away
+      deletionInitiatedRef.current = false;
+      navigate("/");
+    }
+  }, [
+    deletionInitiatedRef,
+    editingState.isDeleting,
+    entry,
+    entryQuery.isError,
+    journalId,
+    navigate,
+  ]);
 
   const journalDate = useMemo(() => {
     if (!entry?.date) {
@@ -196,24 +239,65 @@ export function JournalDetailPage() {
             </p>
           ) : !entry ? (
             <p className="text-sm text-muted-foreground">
-              We couldn’t find this journal entry.
+              We couldn't find this journal entry.
             </p>
+          ) : isEditing && editingState.editingDraft ? (
+            <div className="space-y-6">
+              <ActivityDraftCard
+                draft={editingState.editingDraft}
+                onChange={editingState.handleEditDraftChange}
+                onCancel={editingState.cancelEdit}
+                onSubmit={() => {
+                  void editingState.submitEdit();
+                }}
+                isSubmitting={editingState.isUpdating}
+                errorMessage={editingState.editingError}
+                submitLabel="Save changes"
+                category={entry.category}
+                idPrefix={`edit-entry-${entry.id}`}
+                onDelete={() => {
+                  void editingState.deleteEntry(entry.id);
+                }}
+                isDeleting={editingState.isDeleting(entry.id)}
+              />
+
+              <div className="h-px w-full bg-border" aria-hidden="true" />
+
+              <div className="grid gap-4 md:grid-cols-2">
+                {renderVideoCard(
+                  "Published before this journal",
+                  adjacentVideos.previous,
+                  "No earlier video yet—this journal leads the way!",
+                )}
+                {renderVideoCard(
+                  "Published after this journal",
+                  adjacentVideos.next,
+                  "Looking forward to your next video!",
+                )}
+              </div>
+            </div>
           ) : (
             <div className="space-y-6">
               <div className="space-y-4">
-                <h1 className="text-2xl font-semibold text-foreground">
-                  {entry.title}
-                </h1>
+                <div className="flex items-start justify-between gap-4">
+                  <h1 className="text-2xl font-semibold text-foreground">
+                    {entry.title}
+                  </h1>
+                  {activityItem && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        editingState.startEdit(activityItem);
+                      }}
+                    >
+                      Edit entry
+                    </Button>
+                  )}
+                </div>
                 <div className="flex flex-col gap-2 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
                   <span>{formattedDate ?? "Entry date unavailable"}</span>
-                  {entry.videoId ? (
-                    <Link
-                      to={`/videos/${entry.videoId}`}
-                      className="inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline"
-                    >
-                      View linked video
-                    </Link>
-                  ) : null}
                 </div>
                 <p className="whitespace-pre-line text-sm text-muted-foreground">
                   {summaryText.length > 0

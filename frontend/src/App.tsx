@@ -248,7 +248,6 @@ function DashboardShell() {
       title: "",
       summary: "",
       date: formatNowAsDateTimeLocal(),
-      videoId: "",
     });
     setDraftError(null);
   }, [draft, formatNowAsDateTimeLocal]);
@@ -275,15 +274,12 @@ function DashboardShell() {
       return;
     }
 
-    const trimmedVideoId = draft.videoId.trim();
-
     const entryInput: CreateEntryInput = {
       id: crypto.randomUUID(),
       title: trimmedTitle,
       summary: trimmedSummary,
       date: new Date(draft.date).toISOString(),
       category: "journal",
-      videoId: trimmedVideoId.length > 0 ? trimmedVideoId : null,
     };
 
     try {

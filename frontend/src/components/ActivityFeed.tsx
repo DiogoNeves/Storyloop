@@ -20,7 +20,6 @@ export interface ActivityDraft {
   title: string;
   summary: string;
   date: string; // datetime-local string
-  videoId: string;
 }
 
 interface ActivityFeedProps {
@@ -147,7 +146,6 @@ export function ActivityFeed({
             submitLabel="Create entry"
             category="journal"
             idPrefix="new-entry"
-            showVideoInput={false}
           />
         ) : null}
         {items.map((item) => {

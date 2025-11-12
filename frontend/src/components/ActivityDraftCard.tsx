@@ -20,7 +20,6 @@ export interface ActivityDraftCardProps {
   idPrefix?: string;
   onDelete?: () => void;
   isDeleting?: boolean;
-  showVideoInput?: boolean;
 }
 
 export function ActivityDraftCard({
@@ -35,13 +34,11 @@ export function ActivityDraftCard({
   idPrefix = "entry",
   onDelete,
   isDeleting,
-  showVideoInput = true,
 }: ActivityDraftCardProps) {
   const isSubmitDisabled = draft.title.trim().length === 0;
   const dateInputId = `${idPrefix}-date`;
   const titleInputId = `${idPrefix}-title`;
   const summaryInputId = `${idPrefix}-summary`;
-  const videoInputId = `${idPrefix}-video`;
 
   return (
     <Card className="border-dashed border-primary/40 bg-primary/5">
@@ -92,23 +89,6 @@ export function ActivityDraftCard({
             rows={6}
           />
         </div>
-
-        {showVideoInput ? (
-          <div className="space-y-2">
-            <Label htmlFor={videoInputId}>Linked video ID (optional)</Label>
-            <Input
-              id={videoInputId}
-              placeholder="e.g. abcd1234"
-              value={draft.videoId}
-              onChange={(event) =>
-                onChange({ ...draft, videoId: event.target.value })
-              }
-            />
-            <p className="text-xs text-muted-foreground">
-              Paste a YouTube video ID to reference a synced upload.
-            </p>
-          </div>
-        ) : null}
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
