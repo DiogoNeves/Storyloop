@@ -17,6 +17,7 @@ from app.db import SqliteConnectionFactory, create_connection_factory
 from app.routers import api_router
 from app.scheduler import create_scheduler
 from app.services import (
+    AgentService,
     EntryService,
     GrowthScoreService,
     UserService,
@@ -101,6 +102,18 @@ def build_lifespan(
         except YoutubeConfigurationError:
             app.state.youtube_oauth_service = None
         app.state.growth_score_service = growth_score_service
+
+        # Initialize agent service if API key is available
+        # SDK uses ANTHROPIC_API_KEY from environment, so ensure it's set
+        agent_service = None
+        if active_settings.anthropic_api_key:
+            import os
+
+            # Set in environment if not already set (SDK reads from env)
+            if "ANTHROPIC_API_KEY" not in os.environ:
+                os.environ["ANTHROPIC_API_KEY"] = active_settings.anthropic_api_key
+            agent_service = AgentService(api_key=active_settings.anthropic_api_key)
+        app.state.agent_service = agent_service
 
         demo_mode_details = "disabled"
         if active_settings.youtube_demo_mode:

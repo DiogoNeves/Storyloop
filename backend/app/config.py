@@ -38,6 +38,11 @@ class Settings(BaseModel):
     )
     logfire_api_key: str | None = Field(default=None, alias="LOGFIRE_API_KEY")
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
+    anthropic_api_key: str | None = Field(
+        default=None,
+        alias="ANTHROPIC_API_KEY",
+        description="API key for Claude Agent SDK authentication",
+    )
     youtube_api_key: str | None = Field(default=None, alias="YOUTUBE_API_KEY")
     youtube_client_id: str | None = Field(
         default=None,

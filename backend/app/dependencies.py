@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import HTTPException, Request
 
 from app.services import (
+    AgentService,
     EntryService,
     GrowthScoreService,
     UserService,
@@ -85,3 +86,17 @@ def get_youtube_oauth_service_optional(
 def get_youtube_demo_mode(request: Request) -> bool:
     """Extract YouTube demo mode status from application state."""
     return getattr(request.app.state, "youtube_demo_mode", False)
+
+
+def get_agent_service(request: Request) -> AgentService:
+    """Extract AgentService from application state."""
+    service = getattr(request.app.state, "agent_service", None)
+    if service is None:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Agent service is not configured. Please set ANTHROPIC_API_KEY"
+                " environment variable."
+            ),
+        )
+    return service

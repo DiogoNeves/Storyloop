@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter
 
+from app.routers.agent import router as agent_router
 from app.routers.entries import router as entries_router
 from app.routers.growth import router as growth_router
 from app.routers.health import router as health_router
@@ -14,5 +15,6 @@ api_router.include_router(entries_router)
 api_router.include_router(growth_router)
 api_router.include_router(youtube_router)
 api_router.include_router(youtube_auth_router)
+api_router.include_router(agent_router)
 
 __all__ = ["api_router"]
