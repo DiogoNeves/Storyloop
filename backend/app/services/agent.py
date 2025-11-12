@@ -7,13 +7,15 @@ from typing import Any, AsyncIterator
 
 from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
 from claude_agent_sdk.types import Message, StreamEvent
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 logger = logging.getLogger(__name__)
 
 
 class AgentContext(BaseModel):
     """Context capsule for agent interactions."""
+
+    model_config = ConfigDict(populate_by_name=True)
 
     current_page: str | None = Field(default=None, alias="currentPage")
     visible_items: list[dict[str, Any]] = Field(default_factory=list, alias="visibleItems")
@@ -25,6 +27,8 @@ class AgentContext(BaseModel):
 class ChatRequest(BaseModel):
     """Request payload for agent chat."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     message: str = Field(min_length=1)
     context: AgentContext | None = None
     session_id: str = Field(default="default", alias="sessionId")
@@ -32,6 +36,8 @@ class ChatRequest(BaseModel):
 
 class ChatChunk(BaseModel):
     """Streaming chunk from agent response."""
+
+    model_config = ConfigDict(populate_by_name=True)
 
     type: str  # "message", "event", etc.
     content: str | dict[str, Any]
@@ -41,6 +47,8 @@ class ChatChunk(BaseModel):
 
 class ChatResponse(BaseModel):
     """Complete non-streaming chat response."""
+
+    model_config = ConfigDict(populate_by_name=True)
 
     message: str
     session_id: str = Field(alias="sessionId")
