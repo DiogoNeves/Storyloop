@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type JSX } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -66,54 +66,48 @@ export function YoutubeAuthCallback() {
       });
   }, [searchParams, navigate, queryClient]);
 
+  let cardContent: JSX.Element;
+
   if (status === null || status === "processing") {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/20 p-6">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-6">
-            <div className="flex flex-col items-center gap-4">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-              <p className="text-sm text-muted-foreground" role="status">
-                Completing YouTube authorization…
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (status === "success") {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/20 p-6">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Authorization successful</CardTitle>
-            <CardDescription>
-              Your YouTube channel has been linked successfully.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Redirecting to dashboard…
+    cardContent = (
+      <Card className="w-full max-w-md">
+        <CardContent className="p-6">
+          <div className="flex flex-col items-center gap-4">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            <p className="text-sm text-muted-foreground" role="status">
+              Completing YouTube authorization…
             </p>
-            <Button
-              type="button"
-              onClick={() => {
-                void navigate("/");
-              }}
-              className="w-full"
-            >
-              Go to Dashboard
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
     );
-  }
-
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/20 p-6">
+  } else if (status === "success") {
+    cardContent = (
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Authorization successful</CardTitle>
+          <CardDescription>
+            Your YouTube channel has been linked successfully.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Redirecting to dashboard…
+          </p>
+          <Button
+            type="button"
+            onClick={() => {
+              void navigate("/");
+            }}
+            className="w-full"
+          >
+            Go to Dashboard
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  } else {
+    cardContent = (
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Authorization failed</CardTitle>
@@ -138,6 +132,14 @@ export function YoutubeAuthCallback() {
           </Button>
         </CardContent>
       </Card>
+    );
+  }
+
+  return (
+    <div className="mx-auto flex w-full max-w-xl flex-col">
+      <div className="flex min-h-[60vh] items-center justify-center py-12">
+        {cardContent}
+      </div>
     </div>
   );
 }

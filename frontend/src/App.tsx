@@ -6,11 +6,11 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import useLocalStorageState from "use-local-storage-state";
 
 import { ActivityFeed, type ActivityDraft } from "@/components/ActivityFeed";
-import { NavBar } from "@/components/NavBar";
+import { AppLayout } from "@/components/AppLayout";
 import { ScoreOverviewCard } from "@/components/ScoreOverviewCard";
 import {
   ContentTypeTabs,
@@ -68,7 +68,7 @@ function ScorePlaceholder({
   );
 }
 
-function DashboardShell() {
+function DashboardPage() {
   const queryClient = useQueryClient();
 
   // Content type filter state - persisted in local storage
@@ -314,54 +314,59 @@ function DashboardShell() {
   }, [entriesError, entriesStatus]);
 
   return (
-    <div className="min-h-screen bg-muted/20 text-foreground">
-      <NavBar />
-      <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-10">
-        <ScorePlaceholder
-          channelId={youtubeState.channelId}
-          contentTypeFilter={contentTypeFilter}
-        />
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+      <ScorePlaceholder
+        channelId={youtubeState.channelId}
+        contentTypeFilter={contentTypeFilter}
+      />
 
-        <ContentTypeTabs
-          value={contentTypeFilter}
-          onChange={setContentTypeFilter}
-          publicOnly={publicOnly}
-          onPublicOnlyChange={setPublicOnly}
-        />
+      <ContentTypeTabs
+        value={contentTypeFilter}
+        onChange={setContentTypeFilter}
+        publicOnly={publicOnly}
+        onPublicOnlyChange={setPublicOnly}
+      />
 
-        <ActivityFeed
-          items={displayItems}
-          youtubeFeed={youtubeState.youtubeFeed}
-          isLinked={youtubeState.isLinked}
-          linkStatus={youtubeState.linkStatus}
-          youtubeError={youtubeState.youtubeError}
-          draft={draft}
-          onStartDraft={handleStartDraft}
-          onDraftChange={handleDraftChange}
-          onCancelDraft={handleCancelDraft}
-          onSubmitDraft={handleDraftSubmit}
-          isSubmittingDraft={isSavingEntry}
-          draftError={draftError}
-          errorMessage={entriesErrorMessage}
-        />
+      <ActivityFeed
+        items={displayItems}
+        youtubeFeed={youtubeState.youtubeFeed}
+        isLinked={youtubeState.isLinked}
+        linkStatus={youtubeState.linkStatus}
+        youtubeError={youtubeState.youtubeError}
+        draft={draft}
+        onStartDraft={handleStartDraft}
+        onDraftChange={handleDraftChange}
+        onCancelDraft={handleCancelDraft}
+        onSubmitDraft={handleDraftSubmit}
+        isSubmittingDraft={isSavingEntry}
+        draftError={draftError}
+        errorMessage={entriesErrorMessage}
+      />
 
-        <div>
-          {healthStatusQuery.isLoading ? (
-            <p className="text-xs text-muted-foreground" role="status">
-              Checking API health…
-            </p>
-          ) : healthStatusQuery.isError ? (
-            <p className="text-xs text-destructive" role="status">
-              We couldn't reach the Storyloop API.
-            </p>
-          ) : healthStatusQuery.data?.status ? (
-            <p className="text-xs text-muted-foreground" role="status">
-              {healthStatusQuery.data.status}
-            </p>
-          ) : null}
-        </div>
-      </main>
+      <div>
+        {healthStatusQuery.isLoading ? (
+          <p className="text-xs text-muted-foreground" role="status">
+            Checking API health…
+          </p>
+        ) : healthStatusQuery.isError ? (
+          <p className="text-xs text-destructive" role="status">
+            We couldn't reach the Storyloop API.
+          </p>
+        ) : healthStatusQuery.data?.status ? (
+          <p className="text-xs text-muted-foreground" role="status">
+            {healthStatusQuery.data.status}
+          </p>
+        ) : null}
+      </div>
     </div>
+  );
+}
+
+function AppLayoutContainer() {
+  return (
+    <AppLayout>
+      <Outlet />
+    </AppLayout>
   );
 }
 
@@ -370,10 +375,12 @@ export function App() {
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
         <Routes>
-          <Route path="/" element={<DashboardShell />} />
-          <Route path="/videos/:videoId" element={<VideoDetailPage />} />
-          <Route path="/journals/:journalId" element={<JournalDetailPage />} />
-          <Route path="/auth/callback" element={<YoutubeAuthCallback />} />
+          <Route element={<AppLayoutContainer />}>
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="/videos/:videoId" element={<VideoDetailPage />} />
+            <Route path="/journals/:journalId" element={<JournalDetailPage />} />
+            <Route path="/auth/callback" element={<YoutubeAuthCallback />} />
+          </Route>
         </Routes>
       </QueryClientProvider>
     </BrowserRouter>
