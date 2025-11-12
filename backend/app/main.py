@@ -17,6 +17,7 @@ from app.db import SqliteConnectionFactory, create_connection_factory
 from app.routers import api_router
 from app.scheduler import create_scheduler
 from app.services import (
+    AgentService,
     EntryService,
     GrowthScoreService,
     UserService,
@@ -76,6 +77,7 @@ def build_lifespan(
         resolved_youtube_service = youtube_service
 
     growth_score_service = GrowthScoreService()
+    agent_service = AgentService()
     scheduler: AsyncIOScheduler | None = None
 
     if active_settings.scheduler_enabled:
@@ -94,6 +96,7 @@ def build_lifespan(
         app.state.youtube_demo_service = demo_youtube_service
         app.state.active_youtube_service = resolved_youtube_service
         app.state.youtube_demo_mode = active_settings.youtube_demo_mode
+        app.state.agent_service = agent_service
         try:
             app.state.youtube_oauth_service = YoutubeOAuthService(
                 active_settings
