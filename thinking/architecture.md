@@ -96,14 +96,15 @@ Storyloop is a creator analytics journal that combines a FastAPI backend with a 
 
 - `YoutubeService` - Handles YouTube API integration and metric syncing
 - `GrowthScoreService` - Calculates and maintains growth score metrics. See [thinking/insights.md](insights.md) for the full scoring and insights logic.
+- `ChatKitService` - Manages OpenAI ChatKit session creation and client token issuance
 - `AgentService` (Future) - Handles agent interactions and manages background actions for insight tracking
 - Database abstraction through `SqliteConnectionFactory`
 
 **Frontend Modules:**
 
 - API layer (`src/api/`) - Centralized HTTP client and query definitions
-- Components (`src/components/`) - Reusable UI components
-- Pages (`src/App.tsx`) - Main application view
+- Components (`src/components/`) - Reusable UI components including `ChatKitPanel`
+- Pages (`src/App.tsx`) - Main application view with integrated ChatKit sidebar
 
 ### Environment Configuration
 
@@ -151,11 +152,14 @@ Settings are managed through `backend/app/config.py` using Pydantic:
 
 **Agent Integration:**
 
-- Users interact with an AI agent to ask questions and request insight tracking
+- Users interact with an AI agent via ChatKit (OpenAI) to ask questions and request insight tracking
+- ChatKit panel appears in a right-hand sidebar on the main dashboard
+- Backend creates ChatKit sessions using OpenAI API and returns short-lived client secrets
 - Agent can save actions to run in the background
 - Background jobs execute tracking actions periodically
 - Insights are generated through agent interactions, not automatic parsing of journal entries
 - Journal entries remain simple and user-focused
+- Tool endpoints (e.g., `youtube_get_metrics`) allow the agent to fetch YouTube data on behalf of authenticated users
 
 ### Future Extensions
 

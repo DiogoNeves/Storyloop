@@ -15,6 +15,7 @@ dependencies = [
     "google-auth-oauthlib>=1.2.3",
     "httpx>=0.28.1",
     "logfire>=4.14.2",
+    "openai>=1.0.0",
     "pydantic>=2.12.3",
     "python-dotenv>=1.1.1",
     "sqlite-utils>=3.38",

@@ -68,6 +68,32 @@ OAuth state token (`oauth_state`, `oauth_state_created_at`).
 
 For development and testing without YouTube API credentials, enable demo mode by setting `YOUTUBE_DEMO_MODE=true`. Demo mode uses pre-recorded fixture data and a separate demo database. See [backend/README.md](backend/README.md#youtube-demo-mode) for detailed documentation.
 
+## ChatKit Integration
+
+Storyloop includes OpenAI ChatKit integration for an AI assistant panel. The assistant appears in a right-hand sidebar on the main dashboard.
+
+### Setup
+
+1. **Environment Variable**: Ensure `OPENAI_API_KEY` is set in your `.env` file.
+
+2. **Workflow ID** (optional): By default, ChatKit uses a demo workflow placeholder (`demo-workflow-placeholder`). To use a real workflow:
+   - Create a workflow in OpenAI's Agent Builder
+   - Set `CHATKIT_WORKFLOW_ID` in your `.env` file to your workflow ID
+
+3. **Backend Endpoints**:
+   - `POST /chatkit/session` - Creates a ChatKit session and returns a client secret
+   - `POST /chatkit/tools/youtube_get_metrics` - Placeholder tool endpoint for YouTube metrics (returns mock data)
+
+### Frontend Integration
+
+The ChatKit panel is automatically included in the main dashboard layout. It:
+- Fetches a session token from the backend on mount
+- Handles token refresh automatically
+- Displays loading and error states gracefully
+- Is hidden on smaller screens (mobile) and visible on desktop (`lg:` breakpoint)
+
+The panel uses the `@openai/chatkit-react` package and loads the ChatKit script from OpenAI's CDN.
+
 ## Project layout
 
 ```

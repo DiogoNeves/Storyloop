@@ -10,6 +10,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import useLocalStorageState from "use-local-storage-state";
 
 import { ActivityFeed, type ActivityDraft } from "@/components/ActivityFeed";
+import { ChatKitPanel } from "@/components/ChatKitPanel";
 import { NavBar } from "@/components/NavBar";
 import { ScoreOverviewCard } from "@/components/ScoreOverviewCard";
 import {
@@ -320,51 +321,59 @@ function DashboardShell() {
   return (
     <div className="min-h-screen bg-muted/20 text-foreground">
       <NavBar />
-      <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-10">
-        <ScorePlaceholder
-          channelId={youtubeState.channelId}
-          contentTypeFilter={contentTypeFilter}
-        />
+      <div className="mx-auto flex w-full max-w-7xl gap-6 px-6 py-10">
+        <main className="flex w-full max-w-6xl flex-col gap-6">
+          <ScorePlaceholder
+            channelId={youtubeState.channelId}
+            contentTypeFilter={contentTypeFilter}
+          />
 
-        <ContentTypeTabs
-          value={contentTypeFilter}
-          onChange={setContentTypeFilter}
-          publicOnly={publicOnly}
-          onPublicOnlyChange={setPublicOnly}
-        />
+          <ContentTypeTabs
+            value={contentTypeFilter}
+            onChange={setContentTypeFilter}
+            publicOnly={publicOnly}
+            onPublicOnlyChange={setPublicOnly}
+          />
 
-        <ActivityFeed
-          items={displayItems}
-          youtubeFeed={youtubeState.youtubeFeed}
-          isLinked={youtubeState.isLinked}
-          linkStatus={youtubeState.linkStatus}
-          youtubeError={youtubeState.youtubeError}
-          draft={draft}
-          onStartDraft={handleStartDraft}
-          onDraftChange={handleDraftChange}
-          onCancelDraft={handleCancelDraft}
-          onSubmitDraft={handleDraftSubmit}
-          isSubmittingDraft={isSavingEntry}
-          draftError={draftError}
-          errorMessage={entriesErrorMessage}
-        />
+          <ActivityFeed
+            items={displayItems}
+            youtubeFeed={youtubeState.youtubeFeed}
+            isLinked={youtubeState.isLinked}
+            linkStatus={youtubeState.linkStatus}
+            youtubeError={youtubeState.youtubeError}
+            draft={draft}
+            onStartDraft={handleStartDraft}
+            onDraftChange={handleDraftChange}
+            onCancelDraft={handleCancelDraft}
+            onSubmitDraft={handleDraftSubmit}
+            isSubmittingDraft={isSavingEntry}
+            draftError={draftError}
+            errorMessage={entriesErrorMessage}
+          />
 
-        <div>
-          {healthStatusQuery.isLoading ? (
-            <p className="text-xs text-muted-foreground" role="status">
-              Checking API health…
-            </p>
-          ) : healthStatusQuery.isError ? (
-            <p className="text-xs text-destructive" role="status">
-              We couldn't reach the Storyloop API.
-            </p>
-          ) : healthStatusQuery.data?.status ? (
-            <p className="text-xs text-muted-foreground" role="status">
-              {healthStatusQuery.data.status}
-            </p>
-          ) : null}
-        </div>
-      </main>
+          <div>
+            {healthStatusQuery.isLoading ? (
+              <p className="text-xs text-muted-foreground" role="status">
+                Checking API health…
+              </p>
+            ) : healthStatusQuery.isError ? (
+              <p className="text-xs text-destructive" role="status">
+                We couldn't reach the Storyloop API.
+              </p>
+            ) : healthStatusQuery.data?.status ? (
+              <p className="text-xs text-muted-foreground" role="status">
+                {healthStatusQuery.data.status}
+              </p>
+            ) : null}
+          </div>
+        </main>
+        <aside className="hidden w-80 shrink-0 lg:block">
+          <div className="sticky top-6 h-[calc(100vh-3rem)] rounded-lg border bg-background p-4">
+            <h2 className="mb-4 text-lg font-semibold">Assistant</h2>
+            <ChatKitPanel />
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }

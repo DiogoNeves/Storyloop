@@ -79,6 +79,11 @@ class Settings(BaseModel):
             " and off otherwise."
         ),
     )
+    chatkit_workflow_id: str | None = Field(
+        default=None,
+        alias="CHATKIT_WORKFLOW_ID",
+        description="OpenAI ChatKit workflow ID. Defaults to a demo placeholder if not set.",
+    )
 
     @field_validator("cors_origins", mode="before")
     @classmethod
@@ -102,6 +107,14 @@ class Settings(BaseModel):
         if self.youtube_demo_mode:
             return self.demo_database_url
         return self.database_url
+
+    @property
+    def effective_chatkit_workflow_id(self) -> str:
+        """Return the ChatKit workflow ID, using a demo placeholder if not configured."""
+        if self.chatkit_workflow_id:
+            return self.chatkit_workflow_id
+        # Hardcoded demo workflow ID for local development
+        return "demo-workflow-placeholder"
 
     @classmethod
     def load(cls) -> "Settings":

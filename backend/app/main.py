@@ -17,12 +17,14 @@ from app.db import SqliteConnectionFactory, create_connection_factory
 from app.routers import api_router
 from app.scheduler import create_scheduler
 from app.services import (
+    ChatKitService,
     EntryService,
     GrowthScoreService,
     UserService,
     YoutubeOAuthService,
     YoutubeService,
 )
+from app.services.chatkit import ChatKitConfigurationError
 from app.services.youtube import YoutubeConfigurationError
 
 logger = logging.getLogger(__name__)
@@ -100,6 +102,10 @@ def build_lifespan(
             )
         except YoutubeConfigurationError:
             app.state.youtube_oauth_service = None
+        try:
+            app.state.chatkit_service = ChatKitService(active_settings)
+        except ChatKitConfigurationError:
+            app.state.chatkit_service = None
         app.state.growth_score_service = growth_score_service
 
         demo_mode_details = "disabled"
