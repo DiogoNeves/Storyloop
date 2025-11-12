@@ -25,6 +25,7 @@ Environment variables are loaded via `.env` and `python-dotenv`. Default values 
 
 - `DATABASE_URL` (`sqlite:///backend/.data/storyloop.db` by default)
 - `LOGFIRE_API_KEY`
+- `ANTHROPIC_API_KEY`
 - `OPENAI_API_KEY`
 - `YOUTUBE_API_KEY`
 - `ENV`
