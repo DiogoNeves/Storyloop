@@ -10,6 +10,7 @@ import {
 import { useLocation } from "react-router-dom";
 
 import {
+  agentChat,
   type AgentMessage,
   type AgentRole,
   type AgentStreamEvent,
@@ -162,6 +163,127 @@ export function AgentPanel() {
         setErrorMessage(null);
       }
 
+      let hasFinished = false;
+      let fallbackInvoked = false;
+      let streamHandle: AgentStreamHandle | null = null;
+
+      const finishStreaming = () => {
+        if (hasFinished) {
+          return;
+        }
+        hasFinished = true;
+        markQueueAsIdle(userMessageId);
+        isStreamingRef.current = false;
+        if (isMountedRef.current) {
+          setIsStreaming(false);
+        }
+        activeStreamRef.current = null;
+        if (streamQueueRef.current.length > 0) {
+          const nextId = streamQueueRef.current[0];
+          if (nextId) {
+            startStreamForMessage(nextId);
+          }
+        }
+      };
+
+      const completeAssistantResponse = (assistantMessage?: AgentMessage | null) => {
+        applyMessagesUpdate((prev) =>
+          prev.map((message) => {
+            if (message.id === assistantId) {
+              const nextContent =
+                typeof assistantMessage?.content === "string" &&
+                assistantMessage.content.length > 0
+                  ? assistantMessage.content
+                  : message.content;
+              return {
+                ...message,
+                content: nextContent,
+                streamState: "complete",
+                error: null,
+                remoteId: assistantMessage?.id ?? message.remoteId,
+                metadata:
+                  assistantMessage?.metadata &&
+                  Object.keys(assistantMessage.metadata).length > 0
+                    ? assistantMessage.metadata
+                    : message.metadata,
+              };
+            }
+            if (message.id === userMessageId && message.role === "user") {
+              return {
+                ...message,
+                status: "responded",
+              };
+            }
+            return message;
+          }),
+        );
+      };
+
+      const failAssistantResponse = (messageText: string) => {
+        if (isMountedRef.current) {
+          setErrorMessage(messageText);
+        }
+        applyMessagesUpdate((prev) =>
+          prev.map((message) => {
+            if (message.id === assistantId) {
+              return {
+                ...message,
+                streamState: "error",
+                error: messageText,
+              };
+            }
+            if (message.id === userMessageId && message.role === "user") {
+              return {
+                ...message,
+                status: "responded",
+              };
+            }
+            return message;
+          }),
+        );
+      };
+
+      const runFallback = async (reason?: unknown) => {
+        if (fallbackInvoked) {
+          return;
+        }
+        fallbackInvoked = true;
+        streamHandle?.abort();
+        try {
+          const response = await agentChat({
+            sessionId: sessionIdRef.current,
+            messages: payloadMessages,
+            context: {
+              routePath: location.pathname,
+            },
+          });
+          const directMessage = response.message;
+          const fallbackMessage =
+            directMessage ??
+            (Array.isArray(response.messages)
+              ? [...response.messages]
+                  .reverse()
+                  .find((candidate): candidate is AgentMessage => candidate?.role === "assistant")
+              : null);
+          completeAssistantResponse(fallbackMessage);
+          if (isMountedRef.current) {
+            setErrorMessage(null);
+          }
+        } catch (fallbackError) {
+          const messageText =
+            fallbackError instanceof Error
+              ? fallbackError.message
+              : extractErrorMessage(reason) ??
+                (typeof reason === "string" && reason.length > 0
+                  ? reason
+                  : undefined) ??
+                "We couldn't reach the Storyloop agent.";
+          failAssistantResponse(messageText);
+        } finally {
+          finishStreaming();
+        }
+      };
+
       applyMessagesUpdate((prev) =>
         prev
           .map((message) =>
@@ -196,6 +318,7 @@ export function AgentPanel() {
               ),
             );
           }
+          return;
         }
 
         const textDelta = extractTextDelta(event);
@@ -213,57 +336,18 @@ export function AgentPanel() {
           event.type === "message_stop" ||
           event.type === "response_completed"
         ) {
-          applyMessagesUpdate((prev) =>
-            prev.map((message) => {
-              if (message.id === assistantId) {
-                return {
-                  ...message,
-                  streamState: "complete",
-                };
-              }
-              if (message.id === userMessageId && message.role === "user") {
-                return {
-                  ...message,
-                  status: "responded",
-                };
-              }
-              return message;
-            }),
-          );
+          completeAssistantResponse();
         }
 
         if (event.type === "error") {
-          const extracted = extractErrorMessage(event.data);
-          const message =
-            extracted ?? "The agent encountered an unexpected error.";
-          if (isMountedRef.current) {
-            setErrorMessage(message);
+          if (fallbackInvoked) {
+            return;
           }
-          applyMessagesUpdate((prev) =>
-            prev.map((conversationMessage) => {
-              if (conversationMessage.id === assistantId) {
-                return {
-                  ...conversationMessage,
-                  streamState: "error",
-                  error: message,
-                };
-              }
-              if (
-                conversationMessage.id === userMessageId &&
-                conversationMessage.role === "user"
-              ) {
-                return {
-                  ...conversationMessage,
-                  status: "responded",
-                };
-              }
-              return conversationMessage;
-            }),
-          );
+          void runFallback(event.data);
         }
       };
 
-      const handle = streamAgentChat({
+      streamHandle = streamAgentChat({
         payload: {
           sessionId: sessionIdRef.current,
           messages: payloadMessages,
@@ -275,57 +359,34 @@ export function AgentPanel() {
       });
 
       activeStreamRef.current = {
-        handle,
+        handle: streamHandle,
         assistantId,
         userMessageId,
       };
 
-      handle.closed
+      const isAbortError = (error: unknown): boolean =>
+        (typeof DOMException !== "undefined" &&
+          error instanceof DOMException &&
+          error.name === "AbortError") ||
+        (error instanceof Error && error.name === "AbortError");
+
+      streamHandle.closed
         .catch((error) => {
           if (!isMountedRef.current) {
             return;
           }
-          const message =
-            error instanceof Error
-              ? error.message
-              : "We couldn't reach the Storyloop agent.";
-          setErrorMessage(message);
-          applyMessagesUpdate((prev) =>
-            prev.map((conversationMessage) => {
-              if (conversationMessage.id === assistantId) {
-                return {
-                  ...conversationMessage,
-                  streamState: "error",
-                  error: message,
-                };
-              }
-              if (
-                conversationMessage.id === userMessageId &&
-                conversationMessage.role === "user"
-              ) {
-                return {
-                  ...conversationMessage,
-                    status: "responded",
-                };
-              }
-              return conversationMessage;
-            }),
-          );
-        })
-        .finally(() => {
-          markQueueAsIdle(userMessageId);
-          isStreamingRef.current = false;
-          if (!isMountedRef.current) {
+          if (fallbackInvoked && isAbortError(error)) {
             return;
           }
-          setIsStreaming(false);
-          activeStreamRef.current = null;
-          if (streamQueueRef.current.length > 0) {
-            const nextId = streamQueueRef.current[0];
-            if (nextId) {
-              startStreamForMessage(nextId);
-            }
+          if (isAbortError(error)) {
+            failAssistantResponse("The agent request was cancelled.");
+            finishStreaming();
+            return;
           }
+          void runFallback(error);
+        })
+        .finally(() => {
+          finishStreaming();
         });
     },
     [applyMessagesUpdate, location.pathname, markQueueAsIdle],
