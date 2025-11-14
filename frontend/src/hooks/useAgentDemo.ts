@@ -88,18 +88,19 @@ export function useAgentDemo({ enabled = true }: UseAgentDemoOptions = {}) {
     composer: { status: "idle", error: null },
   }));
 
-  const typingDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const responseDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingTimersRef = useRef(new Set<ReturnType<typeof setTimeout>>());
+  const responseTimersRef = useRef(new Set<ReturnType<typeof setTimeout>>());
 
   const clearTimers = useCallback(() => {
-    if (typingDelayRef.current) {
-      clearTimeout(typingDelayRef.current);
-      typingDelayRef.current = null;
-    }
-    if (responseDelayRef.current) {
-      clearTimeout(responseDelayRef.current);
-      responseDelayRef.current = null;
-    }
+    typingTimersRef.current.forEach((timerId) => {
+      clearTimeout(timerId);
+    });
+    typingTimersRef.current.clear();
+
+    responseTimersRef.current.forEach((timerId) => {
+      clearTimeout(timerId);
+    });
+    responseTimersRef.current.clear();
   }, []);
 
   useEffect(() => clearTimers, [clearTimers]);
@@ -129,13 +130,15 @@ export function useAgentDemo({ enabled = true }: UseAgentDemoOptions = {}) {
       }));
 
       await new Promise<void>((resolve) => {
-        typingDelayRef.current = setTimeout(() => {
+        const typingTimer = setTimeout(() => {
+          typingTimersRef.current.delete(typingTimer);
           setState((previous) => ({
             ...previous,
             composer: { status: "responding", error: null },
           }));
 
-          responseDelayRef.current = setTimeout(() => {
+          const responseTimer = setTimeout(() => {
+            responseTimersRef.current.delete(responseTimer);
             setState((previous) => ({
               ...previous,
               messages: [
@@ -149,7 +152,9 @@ export function useAgentDemo({ enabled = true }: UseAgentDemoOptions = {}) {
             }));
             resolve();
           }, 900);
+          responseTimersRef.current.add(responseTimer);
         }, 320);
+        typingTimersRef.current.add(typingTimer);
       });
     },
     [enabled],
