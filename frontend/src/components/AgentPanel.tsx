@@ -42,7 +42,7 @@ function MessageBubble({ message }: { message: AgentMessage }) {
     >
       <div
         className={cn(
-          "group relative max-w-[88%] rounded-3xl border px-5 py-4 text-sm shadow-sm transition-transform",
+          "group relative max-w-[88%] rounded-2xl border px-5 py-4 text-sm shadow-sm transition-transform",
           isAssistant &&
             "border-primary/25 bg-gradient-to-br from-primary/70 via-primary/60 to-primary/55 text-primary-foreground",
           isUser &&
@@ -112,12 +112,17 @@ function SuggestionsList({
   );
 }
 
-export function AgentPanelView({ state, adapter, isDemo = false }: AgentPanelViewProps) {
+export function AgentPanelView({
+  state,
+  adapter,
+  isDemo = false,
+}: AgentPanelViewProps) {
   const [inputValue, setInputValue] = useState("");
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   const isComposerDisabled =
-    state.composer.status === "sending" || state.composer.status === "responding";
+    state.composer.status === "sending" ||
+    state.composer.status === "responding";
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -144,10 +149,10 @@ export function AgentPanelView({ state, adapter, isDemo = false }: AgentPanelVie
         : "Share your next move with Loopie";
 
   return (
-    <aside className="relative flex max-h-[calc(100vh-7rem)] min-h-[520px] flex-col overflow-hidden rounded-[2rem] border border-primary/15 bg-background/98 shadow-[0_24px_70px_-50px_rgba(32,0,77,0.6)]">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-primary/12 via-primary/5 to-transparent opacity-60" />
+    <aside className="bg-background/98 relative flex max-h-[calc(100vh-7rem)] min-h-[520px] flex-col overflow-hidden rounded-2xl border border-primary/15 shadow-[0_24px_70px_-50px_rgba(32,0,77,0.6)]">
+      <div className="from-primary/12 pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b via-primary/5 to-transparent opacity-60" />
       <div className="relative flex h-full flex-col">
-        <header className="flex items-start gap-4 border-b border-border/40 px-6 py-5 backdrop-blur">
+        <header className="flex items-start gap-4 border-b border-border/40 px-4 py-3 backdrop-blur">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/30 bg-primary/15 text-primary">
             <Bot className="h-6 w-6" aria-hidden="true" />
           </div>
@@ -156,20 +161,16 @@ export function AgentPanelView({ state, adapter, isDemo = false }: AgentPanelVie
               <div>
                 <h2 className="text-lg font-semibold tracking-tight">Loopie</h2>
                 <p className="text-xs text-muted-foreground">
-                  Your storytelling growth companion {isDemo ? "(demo)" : null}
+                  Your companion {isDemo ? "(demo)" : null}
                 </p>
               </div>
-              <span className="flex items-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-400/10 px-3 py-0.5 text-xs font-medium text-emerald-400">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-300" />
-                Online
-              </span>
             </div>
           </div>
         </header>
 
-        <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
-          <div className="flex flex-1 min-h-0 flex-col gap-5 overflow-hidden px-6 py-5">
-            <div className="space-y-2 flex-shrink-0">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-hidden px-6 py-5">
+            <div className="flex-shrink-0 space-y-2">
               <div className="flex items-center justify-between text-xs uppercase tracking-[0.32em] text-muted-foreground/80">
                 <span>Conversation with Loopie</span>
                 <button
@@ -181,11 +182,15 @@ export function AgentPanelView({ state, adapter, isDemo = false }: AgentPanelVie
                 </button>
               </div>
               <p className="text-xs text-muted-foreground/80">
-                Loopie keeps notes on your wins and drafts guidance when you need a boost.
+                Loopie keeps notes on your wins and drafts guidance when you
+                need a boost.
               </p>
             </div>
 
-            <div ref={scrollContainerRef} className="flex-1 min-h-0 space-y-5 overflow-y-auto pr-1">
+            <div
+              ref={scrollContainerRef}
+              className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-1"
+            >
               {state.messages.map((message) => (
                 <MessageBubble key={message.id} message={message} />
               ))}
@@ -198,13 +203,13 @@ export function AgentPanelView({ state, adapter, isDemo = false }: AgentPanelVie
             </div>
           </div>
 
-          <div className="flex-shrink-0 space-y-4 border-t border-border/40 bg-background/98 px-6 py-5">
+          <div className="bg-background/98 flex-shrink-0 space-y-4 border-t border-border/40 px-6 py-5">
             <SuggestionsList
               suggestions={state.suggestedPrompts}
               onSelect={adapter.acknowledgeSuggestion}
             />
 
-            <div className="rounded-[1.65rem] border border-border/50 bg-background/95 p-4 shadow-sm">
+            <div className="rounded-2xl border border-border/50 bg-background/95 p-4 shadow-sm">
               <label
                 htmlFor="agent-composer"
                 className="mb-3 block text-[11px] font-semibold uppercase tracking-[0.32em] text-muted-foreground/80"
@@ -258,4 +263,3 @@ export function AgentPanel() {
 
   return <AgentPanelView state={demo.state} adapter={demo.adapter} isDemo />;
 }
-
