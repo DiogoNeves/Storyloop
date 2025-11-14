@@ -16,7 +16,9 @@ dependencies = [
     "httpx>=0.28.1",
     "logfire>=4.14.2",
     "pydantic>=2.12.3",
+    "pydantic-ai>=0.0.14",
     "python-dotenv>=1.1.1",
+    "sse-starlette>=2.2.0",
     "sqlite-utils>=3.38",
     "uvicorn[standard]>=0.38.0",
 ]
