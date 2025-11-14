@@ -6,7 +6,6 @@ import {
   type AgentConversationAdapter,
   type AgentConversationState,
   type AgentMessage,
-  type AgentSuggestedPrompt,
 } from "@/lib/types/agent";
 import { cn } from "@/lib/utils";
 
@@ -58,34 +57,6 @@ function MessageBubble({ message }: { message: AgentMessage }) {
           {formattedContent}
         </div>
       </div>
-    </div>
-  );
-}
-
-function SuggestionsList({
-  suggestions,
-  onSelect,
-}: {
-  suggestions: AgentSuggestedPrompt[];
-  onSelect: (suggestion: AgentSuggestedPrompt) => void;
-}) {
-  if (suggestions.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      {suggestions.map((suggestion) => (
-        <button
-          key={suggestion.id}
-          type="button"
-          onClick={() => onSelect(suggestion)}
-          className="group inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-xs font-medium uppercase tracking-[0.22em] text-primary transition hover:border-primary/50 hover:bg-primary/20"
-        >
-          <span className="h-1.5 w-1.5 rounded-full bg-primary transition group-hover:scale-110" />
-          {suggestion.label}
-        </button>
-      ))}
     </div>
   );
 }
@@ -169,12 +140,7 @@ export function AgentPanelView({
             </div>
           </div>
 
-          <div className="bg-background/98 flex-shrink-0 space-y-4 border-t border-border/40 px-6 py-5">
-            <SuggestionsList
-              suggestions={state.suggestedPrompts}
-              onSelect={adapter.acknowledgeSuggestion}
-            />
-
+          <div className="bg-background/98 flex-shrink-0 border-t border-border/40 px-6 py-5">
             <div className="space-y-2">
               {state.composer.error ? (
                 <p className="text-xs text-destructive">
