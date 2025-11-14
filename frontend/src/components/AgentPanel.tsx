@@ -181,7 +181,7 @@ export function AgentPanelView({
                   {state.composer.error}
                 </p>
               ) : null}
-              <div className="relative flex items-end rounded-2xl border border-border/50 bg-muted/30 shadow-sm focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20">
+              <div className="relative flex select-none items-end rounded-2xl border border-border/50 bg-muted/30 shadow-sm focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20">
                 <Textarea
                   id="agent-composer"
                   placeholder="Ask Loopie for feedback, spark a new idea, or plan your next release…"
@@ -194,9 +194,9 @@ export function AgentPanelView({
                     }
                   }}
                   disabled={isComposerDisabled}
-                  className="min-h-[104px] resize-none border-0 bg-transparent px-4 py-3 pr-24 text-sm shadow-none focus-visible:ring-0"
+                  className="min-h-[104px] resize-none rounded-2xl border-0 bg-transparent px-4 py-3 pr-24 text-sm shadow-none focus-visible:outline-none focus-visible:ring-0"
                 />
-                <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                <div className="absolute bottom-3 right-3 flex select-none items-center gap-2">
                   <span className="hidden text-[10px] text-muted-foreground/70 sm:inline">
                     {state.composer.status === "responding"
                       ? "Loopie is thinking"
