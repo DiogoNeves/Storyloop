@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUp, Bot } from "lucide-react";
+import { ArrowUp, Bot, Plus } from "lucide-react";
 
 import { useAgentDemo } from "@/hooks";
 import {
@@ -112,13 +112,17 @@ export function AgentPanelView({
                 Keeps notes on your wins and provides guidance.
               </p>
             </div>
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               onClick={() => adapter.resetConversation()}
-              className="rounded-full border border-transparent px-3 py-1 text-[11px] uppercase tracking-[0.3em] text-muted-foreground transition hover:border-border/60 hover:text-foreground"
+              aria-label="Clear conversation"
+              title="Clear conversation"
+              className="text-muted-foreground transition hover:text-foreground"
             >
-              Clear
-            </button>
+              <Plus className="h-4 w-4" />
+            </Button>
           </div>
         </header>
 
