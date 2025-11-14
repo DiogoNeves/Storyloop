@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Bot } from "lucide-react";
 
 import { useAgentDemo } from "@/hooks";
 import {
@@ -41,17 +42,43 @@ function MessageBubble({ message }: { message: AgentMessage }) {
     >
       <div
         className={cn(
-          "max-w-[85%] rounded-2xl border px-4 py-3 text-sm leading-relaxed shadow-sm transition-transform",
+          "group relative max-w-[88%] rounded-3xl border px-5 py-4 text-sm shadow-sm transition-transform",
           isAssistant &&
-            "border-primary/40 bg-gradient-to-br from-primary/90 to-primary text-primary-foreground",
+            "border-primary/30 bg-gradient-to-br from-primary/95 via-primary/85 to-primary/80 text-primary-foreground",
           isUser &&
-            "border-border bg-background/80 text-foreground backdrop-blur supports-[backdrop-filter]:bg-background/60",
+            "border-border bg-background/85 text-foreground backdrop-blur supports-[backdrop-filter]:bg-background/70",
         )}
       >
-        {formattedContent}
+        <div
+          className={cn(
+            "flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.32em]",
+            isAssistant
+              ? "text-primary-foreground/80"
+              : "text-muted-foreground/70",
+          )}
+        >
+          {isAssistant ? (
+            <span className="flex h-8 w-8 items-center justify-center rounded-2xl border border-primary/40 bg-primary/20 text-primary-foreground">
+              <Bot className="h-4 w-4" aria-hidden="true" />
+            </span>
+          ) : (
+            <span className="flex h-8 w-8 items-center justify-center rounded-2xl border border-border/60 bg-muted/40 text-muted-foreground">
+              You
+            </span>
+          )}
+          {isAssistant ? "Loopie" : "You"}
+        </div>
+        <div
+          className={cn(
+            "mt-3 leading-relaxed",
+            isAssistant ? "text-primary-foreground/95" : "text-foreground/90",
+          )}
+        >
+          {formattedContent}
+        </div>
       </div>
-      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/80">
-        {isAssistant ? "Storyloop Agent" : "You"}
+      <p className="text-[11px] uppercase tracking-[0.32em] text-muted-foreground/70">
+        {isAssistant ? "Loopie" : "You"}
       </p>
     </div>
   );
@@ -75,7 +102,7 @@ function SuggestionsList({
           key={suggestion.id}
           type="button"
           onClick={() => onSelect(suggestion)}
-          className="group inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/80 px-4 py-2 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground transition hover:border-primary/60 hover:text-primary"
+          className="group inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-xs font-medium uppercase tracking-[0.22em] text-primary transition hover:border-primary/50 hover:bg-primary/20"
         >
           <span className="h-1.5 w-1.5 rounded-full bg-primary transition group-hover:scale-110" />
           {suggestion.label}
@@ -111,47 +138,50 @@ export function AgentPanelView({ state, adapter, isDemo = false }: AgentPanelVie
 
   const composerLabel =
     state.composer.status === "responding"
-      ? "Agent is thinking"
+      ? "Loopie is thinking"
       : state.composer.status === "sending"
-        ? "Sending"
-        : "Ask the agent";
+        ? "Sending to Loopie"
+        : "Share your next move with Loopie";
 
   return (
-    <aside className="relative flex h-full min-h-[520px] flex-col">
-      <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/15 via-primary/5 to-transparent blur-3xl" />
-      <div className="relative flex h-full flex-col overflow-hidden rounded-3xl border border-primary/30 bg-background/90 shadow-[0_20px_45px_-20px_rgba(12,10,60,0.45)] backdrop-blur">
-        <header className="flex items-start gap-3 border-b border-border/60 px-6 py-5">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-lg font-semibold text-primary-foreground shadow-lg">
-            SL
+    <aside className="relative flex h-full min-h-[560px] flex-col overflow-hidden rounded-[2.25rem] border border-primary/20 bg-gradient-to-b from-primary/10 via-background/95 to-background shadow-[0_30px_90px_-45px_rgba(32,0,77,0.65)]">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-primary/30 via-primary/10 to-transparent opacity-70" />
+      <div className="relative flex h-full flex-col">
+        <header className="flex items-start gap-4 border-b border-border/50 px-7 py-6 backdrop-blur">
+          <div className="flex h-14 w-14 items-center justify-center rounded-3xl border border-primary/40 bg-primary/20 text-primary">
+            <Bot className="h-7 w-7" aria-hidden="true" />
           </div>
           <div className="flex flex-1 flex-col">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-base font-semibold tracking-tight">
-                  Storyloop Agent
-                </h2>
+                <h2 className="text-lg font-semibold tracking-tight">Loopie</h2>
                 <p className="text-xs text-muted-foreground">
-                  Personalized growth guidance {isDemo ? "(demo)" : null}
+                  Your storytelling growth companion {isDemo ? "(demo)" : null}
                 </p>
               </div>
-              <span className="flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-500">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+              <span className="flex items-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-400">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-300" />
                 Online
               </span>
             </div>
           </div>
         </header>
 
-        <div className="flex flex-1 flex-col gap-6 overflow-hidden px-6 py-5">
-          <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em] text-muted-foreground/80">
-            <span>Conversation</span>
-            <button
-              type="button"
-              onClick={() => adapter.resetConversation()}
-              className="text-muted-foreground transition hover:text-foreground"
-            >
-              Reset
-            </button>
+        <div className="flex flex-1 flex-col gap-6 overflow-hidden px-7 py-6">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs uppercase tracking-[0.32em] text-muted-foreground/80">
+              <span>Conversation with Loopie</span>
+              <button
+                type="button"
+                onClick={() => adapter.resetConversation()}
+                className="rounded-full border border-transparent px-3 py-1 text-[11px] uppercase tracking-[0.3em] text-muted-foreground transition hover:border-border/60 hover:text-foreground"
+              >
+                Reset
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground/80">
+              Loopie keeps notes on your wins and drafts guidance when you need a boost.
+            </p>
           </div>
 
           <div
@@ -164,27 +194,27 @@ export function AgentPanelView({ state, adapter, isDemo = false }: AgentPanelVie
             {state.composer.status === "responding" ? (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span className="h-2 w-2 animate-ping rounded-full bg-primary" />
-                Preparing insight…
+                Loopie is preparing insight…
               </div>
             ) : null}
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             <SuggestionsList
               suggestions={state.suggestedPrompts}
               onSelect={adapter.acknowledgeSuggestion}
             />
 
-            <div className="rounded-2xl border border-border/70 bg-background/80 p-4 shadow-inner backdrop-blur">
+            <div className="rounded-3xl border border-border/60 bg-background/95 p-5 shadow-inner">
               <label
                 htmlFor="agent-composer"
-                className="mb-2 block text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground/80"
+                className="mb-3 block text-[11px] font-semibold uppercase tracking-[0.32em] text-muted-foreground/80"
               >
                 {composerLabel}
               </label>
               <Textarea
                 id="agent-composer"
-                placeholder="Draft a new hook, ask for insights, or plan your next move…"
+                placeholder="Ask Loopie for feedback, spark a new idea, or plan your next release…"
                 value={inputValue}
                 onChange={(event) => setInputValue(event.target.value)}
                 onKeyDown={(event) => {
@@ -194,26 +224,26 @@ export function AgentPanelView({ state, adapter, isDemo = false }: AgentPanelVie
                   }
                 }}
                 disabled={isComposerDisabled}
-                className="min-h-[96px] resize-none border-none bg-muted/20 px-4 py-3 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="min-h-[104px] resize-none border border-border/40 bg-muted/20 px-4 py-3 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-primary"
               />
               {state.composer.error ? (
                 <p className="mt-2 text-xs text-destructive">
                   {state.composer.error}
                 </p>
               ) : null}
-              <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+              <div className="mt-4 flex flex-col gap-3 text-xs text-muted-foreground/90 sm:flex-row sm:items-center sm:justify-between">
                 <span>
                   {state.composer.status === "responding"
-                    ? "Synthesizing a tailored suggestion"
+                    ? "Loopie is synthesizing a tailored suggestion"
                     : "Use Shift + Enter for a new line"}
                 </span>
                 <Button
                   type="button"
                   onClick={handleSubmit}
                   disabled={isComposerDisabled}
-                  className="bg-gradient-to-r from-primary via-primary/80 to-primary text-primary-foreground shadow-lg hover:from-primary/90 hover:to-primary/80"
+                  className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-primary via-primary/80 to-primary text-primary-foreground shadow-lg transition hover:from-primary/90 hover:to-primary/80 disabled:opacity-60"
                 >
-                  Send
+                  Send to Loopie
                 </Button>
               </div>
             </div>
