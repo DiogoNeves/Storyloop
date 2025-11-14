@@ -54,12 +54,14 @@ Built for creators who want control without complexity, Storyloop turns your cha
 Storyloop includes a conversational AI agent powered by PydanticAI and OpenAI. The agent is optional and will be disabled if the API key is not configured (similar to YouTube OAuth).
 
 **Current Implementation (v1):**
+
 - ✅ SSE streaming conversations with real-time token-by-token responses
 - ✅ Conversation persistence in SQLite
 - ✅ Basic system prompt for YouTube creator assistance
 - ✅ Extensible architecture ready for future enhancements
 
 **Future Enhancements:**
+
 - See [thinking/ai-agent.md](thinking/ai-agent.md) for comprehensive design vision
 - Context-aware responses using structured context from frontend
 - Data-fluent agent that queries readonly APIs for analytics insights
