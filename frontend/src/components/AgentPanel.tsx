@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { Bot } from "lucide-react";
+import { ArrowUp, Bot } from "lucide-react";
 
 import { useAgentDemo } from "@/hooks";
 import {
@@ -130,7 +130,7 @@ export function AgentPanelView({
     <aside className="bg-background/98 relative flex max-h-[calc(100vh-7rem)] min-h-[520px] flex-col overflow-hidden rounded-2xl border border-primary/15 shadow-[0_24px_70px_-50px_rgba(32,0,77,0.6)]">
       <div className="from-primary/12 pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b via-primary/5 to-transparent opacity-60" />
       <div className="relative flex h-full flex-col">
-        <header className="flex items-start gap-4 border-b border-border/40 px-4 py-3 backdrop-blur">
+        <header className="flex items-start gap-4 border-b border-border/40 px-3 py-3 backdrop-blur">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/30 bg-primary/15 text-primary">
             <Bot className="h-6 w-6" aria-hidden="true" />
           </div>
@@ -175,47 +175,49 @@ export function AgentPanelView({
               onSelect={adapter.acknowledgeSuggestion}
             />
 
-            <div className="rounded-2xl border border-border/50 bg-background/95 p-4 shadow-sm">
-              <label
-                htmlFor="agent-composer"
-                className="mb-3 block text-[11px] font-semibold uppercase tracking-[0.32em] text-muted-foreground/80"
-              >
-                {composerLabel}
-              </label>
-              <Textarea
-                id="agent-composer"
-                placeholder="Ask Loopie for feedback, spark a new idea, or plan your next release…"
-                value={inputValue}
-                onChange={(event) => setInputValue(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.shiftKey) {
-                    event.preventDefault();
-                    handleSubmit();
-                  }
-                }}
-                disabled={isComposerDisabled}
-                className="min-h-[104px] resize-none border border-border/40 bg-muted/20 px-4 py-3 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-primary"
-              />
+            <div className="space-y-2">
               {state.composer.error ? (
-                <p className="mt-2 text-xs text-destructive">
+                <p className="text-xs text-destructive">
                   {state.composer.error}
                 </p>
               ) : null}
-              <div className="mt-4 flex flex-col gap-3 text-xs text-muted-foreground/90 sm:flex-row sm:items-center sm:justify-between">
-                <span>
-                  {state.composer.status === "responding"
-                    ? "Loopie is synthesizing a tailored suggestion"
-                    : "Use Shift + Enter for a new line"}
-                </span>
-                <Button
-                  type="button"
-                  onClick={handleSubmit}
+              <div className="relative flex items-end rounded-2xl border border-border/50 bg-muted/30 shadow-sm focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20">
+                <Textarea
+                  id="agent-composer"
+                  placeholder="Ask Loopie for feedback, spark a new idea, or plan your next release…"
+                  value={inputValue}
+                  onChange={(event) => setInputValue(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.shiftKey) {
+                      event.preventDefault();
+                      handleSubmit();
+                    }
+                  }}
                   disabled={isComposerDisabled}
-                  className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-primary via-primary/80 to-primary text-primary-foreground shadow-lg transition hover:from-primary/90 hover:to-primary/80 disabled:opacity-60"
-                >
-                  Send to Loopie
-                </Button>
+                  className="min-h-[104px] resize-none border-0 bg-transparent px-4 py-3 pr-24 text-sm shadow-none focus-visible:ring-0"
+                />
+                <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                  <span className="hidden text-[10px] text-muted-foreground/70 sm:inline">
+                    {state.composer.status === "responding"
+                      ? "Loopie is thinking"
+                      : "Shift + Enter"}
+                  </span>
+                  <Button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={isComposerDisabled}
+                    className="h-9 w-9 rounded-full bg-gradient-to-r from-primary via-primary/80 to-primary p-0 text-primary-foreground shadow-lg transition hover:from-primary/90 hover:to-primary/80 disabled:opacity-60"
+                    aria-label="Send to Loopie"
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
+              <p className="text-[10px] text-muted-foreground/70">
+                {state.composer.status === "responding"
+                  ? "Loopie is synthesizing a tailored suggestion"
+                  : composerLabel}
+              </p>
             </div>
           </div>
         </div>
