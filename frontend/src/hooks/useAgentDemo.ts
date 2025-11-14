@@ -21,8 +21,7 @@ const demoIntroMessages: AgentMessage[] = [
   {
     id: "demo-user-1",
     role: "user",
-    content:
-      "Remind me what worked best from last week's experiments?",
+    content: "Remind me what worked best from last week's experiments?",
     createdAt: new Date(Date.now() - 1000 * 60 * 4).toISOString(),
   },
   {
