@@ -43,43 +43,21 @@ function MessageBubble({ message }: { message: AgentMessage }) {
       <div
         className={cn(
           "group relative max-w-[88%] rounded-2xl border px-5 py-4 text-sm shadow-sm transition-transform",
-          isAssistant &&
-            "border-primary/25 bg-gradient-to-br from-primary/70 via-primary/60 to-primary/55 text-primary-foreground",
           isUser &&
+            "border-primary/25 bg-gradient-to-br from-primary/70 via-primary/60 to-primary/55 text-primary-foreground",
+          isAssistant &&
             "border-border bg-background/85 text-foreground backdrop-blur supports-[backdrop-filter]:bg-background/70",
         )}
       >
         <div
           className={cn(
-            "flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.32em]",
-            isAssistant
-              ? "text-primary-foreground/80"
-              : "text-muted-foreground/70",
-          )}
-        >
-          {isAssistant ? (
-            <span className="flex h-8 w-8 items-center justify-center rounded-2xl border border-primary/30 bg-primary/15 text-primary-foreground">
-              <Bot className="h-4 w-4" aria-hidden="true" />
-            </span>
-          ) : (
-            <span className="flex h-8 w-8 items-center justify-center rounded-2xl border border-border/60 bg-muted/40 text-muted-foreground">
-              You
-            </span>
-          )}
-          {isAssistant ? "Loopie" : "You"}
-        </div>
-        <div
-          className={cn(
-            "mt-3 leading-relaxed",
-            isAssistant ? "text-primary-foreground/95" : "text-foreground/90",
+            "leading-relaxed",
+            isAssistant ? "text-foreground/90" : "text-primary-foreground/95",
           )}
         >
           {formattedContent}
         </div>
       </div>
-      <p className="text-[11px] uppercase tracking-[0.32em] text-muted-foreground/70">
-        {isAssistant ? "Loopie" : "You"}
-      </p>
     </div>
   );
 }
@@ -156,37 +134,25 @@ export function AgentPanelView({
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/30 bg-primary/15 text-primary">
             <Bot className="h-6 w-6" aria-hidden="true" />
           </div>
-          <div className="flex flex-1 flex-col">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold tracking-tight">Loopie</h2>
-                <p className="text-xs text-muted-foreground">
-                  Your companion {isDemo ? "(demo)" : null}
-                </p>
-              </div>
+          <div className="flex flex-1 items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">Loopie</h2>
+              <p className="text-xs text-muted-foreground/80">
+                Keeps notes on your wins and provides guidance.
+              </p>
             </div>
+            <button
+              type="button"
+              onClick={() => adapter.resetConversation()}
+              className="rounded-full border border-transparent px-3 py-1 text-[11px] uppercase tracking-[0.3em] text-muted-foreground transition hover:border-border/60 hover:text-foreground"
+            >
+              Clear
+            </button>
           </div>
         </header>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-hidden px-6 py-5">
-            <div className="flex-shrink-0 space-y-2">
-              <div className="flex items-center justify-between text-xs uppercase tracking-[0.32em] text-muted-foreground/80">
-                <span>Conversation with Loopie</span>
-                <button
-                  type="button"
-                  onClick={() => adapter.resetConversation()}
-                  className="rounded-full border border-transparent px-3 py-1 text-[11px] uppercase tracking-[0.3em] text-muted-foreground transition hover:border-border/60 hover:text-foreground"
-                >
-                  Reset
-                </button>
-              </div>
-              <p className="text-xs text-muted-foreground/80">
-                Loopie keeps notes on your wins and drafts guidance when you
-                need a boost.
-              </p>
-            </div>
-
             <div
               ref={scrollContainerRef}
               className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-1"
