@@ -12,6 +12,7 @@ import useLocalStorageState from "use-local-storage-state";
 import { ActivityFeed, type ActivityDraft } from "@/components/ActivityFeed";
 import { NavBar } from "@/components/NavBar";
 import { ScoreOverviewCard } from "@/components/ScoreOverviewCard";
+import { AgentPanel } from "@/components/AgentPanel";
 import {
   ContentTypeTabs,
   type ContentTypeFilter,
@@ -316,49 +317,57 @@ function DashboardShell() {
   return (
     <div className="min-h-screen bg-muted/20 text-foreground">
       <NavBar />
-      <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-10">
-        <ScorePlaceholder
-          channelId={youtubeState.channelId}
-          contentTypeFilter={contentTypeFilter}
-        />
+      <main className="mx-auto w-full max-w-6xl px-6 py-10">
+        <div className="flex flex-col gap-6 lg:flex-row">
+          <div className="flex flex-1 flex-col gap-6">
+            <ScorePlaceholder
+              channelId={youtubeState.channelId}
+              contentTypeFilter={contentTypeFilter}
+            />
 
-        <ContentTypeTabs
-          value={contentTypeFilter}
-          onChange={setContentTypeFilter}
-          publicOnly={publicOnly}
-          onPublicOnlyChange={setPublicOnly}
-        />
+            <ContentTypeTabs
+              value={contentTypeFilter}
+              onChange={setContentTypeFilter}
+              publicOnly={publicOnly}
+              onPublicOnlyChange={setPublicOnly}
+            />
 
-        <ActivityFeed
-          items={displayItems}
-          youtubeFeed={youtubeState.youtubeFeed}
-          isLinked={youtubeState.isLinked}
-          linkStatus={youtubeState.linkStatus}
-          youtubeError={youtubeState.youtubeError}
-          draft={draft}
-          onStartDraft={handleStartDraft}
-          onDraftChange={handleDraftChange}
-          onCancelDraft={handleCancelDraft}
-          onSubmitDraft={handleDraftSubmit}
-          isSubmittingDraft={isSavingEntry}
-          draftError={draftError}
-          errorMessage={entriesErrorMessage}
-        />
+            <ActivityFeed
+              items={displayItems}
+              youtubeFeed={youtubeState.youtubeFeed}
+              isLinked={youtubeState.isLinked}
+              linkStatus={youtubeState.linkStatus}
+              youtubeError={youtubeState.youtubeError}
+              draft={draft}
+              onStartDraft={handleStartDraft}
+              onDraftChange={handleDraftChange}
+              onCancelDraft={handleCancelDraft}
+              onSubmitDraft={handleDraftSubmit}
+              isSubmittingDraft={isSavingEntry}
+              draftError={draftError}
+              errorMessage={entriesErrorMessage}
+            />
 
-        <div>
-          {healthStatusQuery.isLoading ? (
-            <p className="text-xs text-muted-foreground" role="status">
-              Checking API health…
-            </p>
-          ) : healthStatusQuery.isError ? (
-            <p className="text-xs text-destructive" role="status">
-              We couldn't reach the Storyloop API.
-            </p>
-          ) : healthStatusQuery.data?.status ? (
-            <p className="text-xs text-muted-foreground" role="status">
-              {healthStatusQuery.data.status}
-            </p>
-          ) : null}
+            <div>
+              {healthStatusQuery.isLoading ? (
+                <p className="text-xs text-muted-foreground" role="status">
+                  Checking API health…
+                </p>
+              ) : healthStatusQuery.isError ? (
+                <p className="text-xs text-destructive" role="status">
+                  We couldn't reach the Storyloop API.
+                </p>
+              ) : healthStatusQuery.data?.status ? (
+                <p className="text-xs text-muted-foreground" role="status">
+                  {healthStatusQuery.data.status}
+                </p>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-6 lg:sticky lg:top-28 lg:h-fit lg:w-[360px] lg:self-start xl:w-[400px]">
+            <AgentPanel />
+          </div>
         </div>
       </main>
     </div>
