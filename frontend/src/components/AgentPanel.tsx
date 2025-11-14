@@ -61,11 +61,7 @@ function MessageBubble({ message }: { message: AgentMessage }) {
   );
 }
 
-export function AgentPanelView({
-  state,
-  adapter,
-  isDemo = false,
-}: AgentPanelViewProps) {
+export function AgentPanelView({ state, adapter }: AgentPanelViewProps) {
   const [inputValue, setInputValue] = useState("");
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -199,5 +195,5 @@ export function AgentPanelView({
 export function AgentPanel() {
   const demo = useAgentDemo();
 
-  return <AgentPanelView state={demo.state} adapter={demo.adapter} isDemo />;
+  return <AgentPanelView state={demo.state} adapter={demo.adapter} />;
 }
