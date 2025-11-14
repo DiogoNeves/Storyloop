@@ -144,7 +144,7 @@ export function AgentPanelView({ state, adapter, isDemo = false }: AgentPanelVie
         : "Share your next move with Loopie";
 
   return (
-    <aside className="relative flex h-full min-h-[520px] flex-col overflow-hidden rounded-[2rem] border border-primary/15 bg-background/98 shadow-[0_24px_70px_-50px_rgba(32,0,77,0.6)]">
+    <aside className="relative flex max-h-[calc(100vh-7rem)] min-h-[520px] flex-col overflow-hidden rounded-[2rem] border border-primary/15 bg-background/98 shadow-[0_24px_70px_-50px_rgba(32,0,77,0.6)]">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-primary/12 via-primary/5 to-transparent opacity-60" />
       <div className="relative flex h-full flex-col">
         <header className="flex items-start gap-4 border-b border-border/40 px-6 py-5 backdrop-blur">
@@ -167,36 +167,38 @@ export function AgentPanelView({ state, adapter, isDemo = false }: AgentPanelVie
           </div>
         </header>
 
-        <div className="flex flex-1 flex-col gap-5 overflow-hidden px-6 py-5">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs uppercase tracking-[0.32em] text-muted-foreground/80">
-              <span>Conversation with Loopie</span>
-              <button
-                type="button"
-                onClick={() => adapter.resetConversation()}
-                className="rounded-full border border-transparent px-3 py-1 text-[11px] uppercase tracking-[0.3em] text-muted-foreground transition hover:border-border/60 hover:text-foreground"
-              >
-                Reset
-              </button>
-            </div>
-            <p className="text-xs text-muted-foreground/80">
-              Loopie keeps notes on your wins and drafts guidance when you need a boost.
-            </p>
-          </div>
-
-          <div ref={scrollContainerRef} className="flex-1 space-y-5 overflow-y-auto pr-1">
-            {state.messages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
-            ))}
-            {state.composer.status === "responding" ? (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="h-2 w-2 animate-ping rounded-full bg-primary" />
-                Loopie is preparing insight…
+        <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
+          <div className="flex flex-1 min-h-0 flex-col gap-5 overflow-hidden px-6 py-5">
+            <div className="space-y-2 flex-shrink-0">
+              <div className="flex items-center justify-between text-xs uppercase tracking-[0.32em] text-muted-foreground/80">
+                <span>Conversation with Loopie</span>
+                <button
+                  type="button"
+                  onClick={() => adapter.resetConversation()}
+                  className="rounded-full border border-transparent px-3 py-1 text-[11px] uppercase tracking-[0.3em] text-muted-foreground transition hover:border-border/60 hover:text-foreground"
+                >
+                  Reset
+                </button>
               </div>
-            ) : null}
+              <p className="text-xs text-muted-foreground/80">
+                Loopie keeps notes on your wins and drafts guidance when you need a boost.
+              </p>
+            </div>
+
+            <div ref={scrollContainerRef} className="flex-1 min-h-0 space-y-5 overflow-y-auto pr-1">
+              {state.messages.map((message) => (
+                <MessageBubble key={message.id} message={message} />
+              ))}
+              {state.composer.status === "responding" ? (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="h-2 w-2 animate-ping rounded-full bg-primary" />
+                  Loopie is preparing insight…
+                </div>
+              ) : null}
+            </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="flex-shrink-0 space-y-4 border-t border-border/40 bg-background/98 px-6 py-5">
             <SuggestionsList
               suggestions={state.suggestedPrompts}
               onSelect={adapter.acknowledgeSuggestion}
