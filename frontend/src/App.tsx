@@ -315,10 +315,10 @@ function DashboardShell() {
   }, [entriesError, entriesStatus]);
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-background via-background to-muted/30 text-foreground">
+    <div className="relative min-h-screen bg-gradient-to-br from-background to-muted/12 text-foreground">
       <NavBar />
       <main className="relative w-full px-6 py-12 lg:px-10 xl:px-16">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-44 bg-gradient-to-b from-primary/15 via-transparent to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-primary/8 via-transparent to-transparent" />
         <div className="relative grid w-full gap-8 xl:grid-cols-[minmax(0,1fr)_420px] 2xl:grid-cols-[minmax(0,1fr)_460px]">
           <div className="flex min-w-0 flex-col gap-8">
             <ScorePlaceholder
