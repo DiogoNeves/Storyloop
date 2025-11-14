@@ -9,12 +9,17 @@ backend/
 │   ├── main.py            # Application entry point
 │   ├── config.py          # Settings and configuration
 │   ├── db.py              # Database connection utilities
+│   ├── db_helpers/        # Database helper modules
+│   │   ├── __init__.py
+│   │   └── conversations.py  # Conversation/turn persistence
 │   ├── scheduler.py       # Background job configuration
 │   ├── routers/           # HTTP endpoints
 │   │   ├── __init__.py
-│   │   └── health.py      # Health check endpoint
+│   │   ├── health.py      # Health check endpoint
+│   │   └── conversations.py  # Conversation streaming endpoints
 │   └── services/          # Business logic
 │       ├── __init__.py
+│       ├── agent.py       # PydanticAI agent builder
 │       ├── youtube.py     # YouTube API integration
 │       └── growth.py      # Growth score calculations
 ├── tests/                 # Test suite
@@ -46,6 +51,7 @@ Key functions:
 - `app.state.get_db` - Database connection factory
 - `app.state.youtube_service` - YouTube API service
 - `app.state.growth_score_service` - Growth score service
+- `app.state.assistant_agent` - PydanticAI agent instance
 - `app.state.scheduler` - Background job scheduler (if enabled)
 
 ### 2. Configuration (`config.py`)
@@ -57,7 +63,7 @@ Centralized settings management using Pydantic:
 - `environment` - dev/production environment
 - `database_url` - SQLite database path
 - `logfire_api_key` - Optional observability token
-- `openai_api_key` - Optional AI integration key
+- `openai_api_key` - Optional AI agent key (agent disabled if not set, similar to YouTube OAuth)
 - `youtube_api_key` - Optional YouTube API key
 - `cors_origins` - Allowed frontend origins
 - `enable_scheduler` - Override scheduler auto-detection
@@ -157,26 +163,28 @@ APScheduler configuration for recurring jobs:
 - Generate insights and recommendations
 - Store calculated metrics in database
 
-#### AgentService (Future: `services/agent.py`)
+#### Agent Service (`services/agent.py`)
 
-**Purpose:** Handle agent interactions and manage background actions for insight tracking
+**Purpose:** Build and configure PydanticAI agent for conversational interactions
 
 **Methods:**
 
-- `process_user_query()` - Handle user interactions with agent
-- `save_background_action()` - Store actions requested by agent to run in background
-- `execute_background_action()` - Run saved actions (called by scheduler)
-- `generate_insight_entry()` - Create insight entries for timeline based on tracking results
+- `build_agent()` - Creates and returns a configured PydanticAI Agent instance
 
-**Future Implementation:**
+**Implementation:**
 
-- Agent integration for user interactions
-- Users can ask agent to track specific insights
-- Agent can save actions to background job queue
-- Background jobs execute tracking actions periodically
+- Uses OpenAI's `gpt-4o-mini` model via PydanticAI
+- System prompt configured for YouTube creator assistance
+- Agent initialized at application startup and stored in `app.state.assistant_agent`
+- Returns `None` if `OPENAI_API_KEY` environment variable is not set (optional, like YouTube OAuth)
+- App starts successfully even without API key; agent endpoints return error if agent unavailable
+
+**Future Extensions:**
+
+- Context-aware responses using Storyloop analytics data
+- Background action saving for insight tracking
 - Pattern detection based on agent-configured tracking
-- Insights generated through agent interactions, not automatic parsing of journal entries
-- Journal entries remain simple and user-focused
+- Integration with readonly API surface for data queries
 
 ### 6. Routers
 
@@ -195,6 +203,37 @@ APScheduler configuration for recurring jobs:
 **Purpose:** Monitor backend availability
 
 **Integration:** Frontend uses this to show connection status badge
+
+#### Conversations Router (`routers/conversations.py`)
+
+**Endpoints:**
+
+- `POST /conversations` - Create a new conversation
+
+  - Request: `{ "title": "optional title" }`
+  - Response: `{ "id": "...", "title": "...", "created_at": "..." }`
+
+- `GET /conversations/{conversation_id}/turns` - List all turns for a conversation
+
+  - Response: `[{ "id": "...", "role": "user|assistant", "text": "...", "created_at": "..." }]`
+
+- `POST /conversations/{conversation_id}/turns/stream` - Stream assistant response (SSE)
+  - Request: `{ "text": "user message" }`
+  - Response: Server-Sent Events stream with `token` events and final `done` event
+  - Automatically cancels any in-flight generation for the same conversation
+
+**Features:**
+
+- SSE streaming for real-time token-by-token responses
+- In-flight task tracking for cancellation support
+- Logfire tracing for observability
+- SQLite persistence for conversation history
+- User and assistant turns stored separately
+
+**Database Schema:**
+
+- `conversations` table: `id`, `title`, `created_at`
+- `turns` table: `id`, `conversation_id`, `role`, `text`, `created_at`
 
 #### Channel Settings Router (Future: `routers/settings.py`)
 
@@ -253,7 +292,7 @@ Optional:
 
 ```bash
 LOGFIRE_API_KEY=your_logfire_token
-OPENAI_API_KEY=your_openai_key
+OPENAI_API_KEY=your_openai_key  # Optional: enables agent functionality
 YOUTUBE_API_KEY=your_youtube_key
 ENABLE_SCHEDULER=true  # Override auto-detection
 ```

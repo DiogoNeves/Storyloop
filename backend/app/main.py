@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, closing
 from typing import AsyncContextManager, AsyncIterator, Callable, Literal
 
 import logfire
@@ -14,6 +14,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.config import Settings, settings
 from app.db import SqliteConnectionFactory, create_connection_factory
+from app.db_helpers.conversations import init_conversation_tables
 from app.routers import api_router
 from app.scheduler import create_scheduler
 from app.services import (
@@ -22,6 +23,7 @@ from app.services import (
     UserService,
     YoutubeOAuthService,
     YoutubeService,
+    build_agent,
 )
 from app.services.youtube import YoutubeConfigurationError
 
@@ -30,7 +32,9 @@ logger = logging.getLogger(__name__)
 
 try:  # pragma: no cover - optional dependency until demo mode ships
     from app.services.youtube_demo import DemoYoutubeService
-except ImportError:  # pragma: no cover - fallback when demo service not yet available
+except (
+    ImportError
+):  # pragma: no cover - fallback when demo service not yet available
     DemoYoutubeService = None  # type: ignore[assignment]
 
 
@@ -60,6 +64,10 @@ def build_lifespan(
     entry_service = EntryService(connection_factory)
     entry_service.ensure_schema()
 
+    # Initialize conversation tables
+    with closing(connection_factory()) as connection:
+        init_conversation_tables(connection)
+
     youtube_service: YoutubeService | None = None
     demo_youtube_service = None
     if active_settings.youtube_demo_mode:
@@ -72,10 +80,16 @@ def build_lifespan(
         )
         resolved_youtube_service = demo_youtube_service
     else:
-        youtube_service = YoutubeService(api_key=active_settings.youtube_api_key)
+        youtube_service = YoutubeService(
+            api_key=active_settings.youtube_api_key
+        )
         resolved_youtube_service = youtube_service
 
     growth_score_service = GrowthScoreService()
+
+    # Initialize AI agent (optional, returns None if OPENAI_API_KEY not set)
+    assistant_agent = build_agent(active_settings)
+
     scheduler: AsyncIOScheduler | None = None
 
     if active_settings.scheduler_enabled:
@@ -101,15 +115,16 @@ def build_lifespan(
         except YoutubeConfigurationError:
             app.state.youtube_oauth_service = None
         app.state.growth_score_service = growth_score_service
+        app.state.assistant_agent = assistant_agent
 
         demo_mode_details = "disabled"
         if active_settings.youtube_demo_mode:
             scenario = active_settings.youtube_demo_scenario or "default"
             demo_mode_details = f"enabled (scenario={scenario})"
         logger.info(
-                "Using demo database: %s (demo mode prevents writes to production database)",
-                active_settings.effective_database_url,
-            )
+            "Using demo database: %s (demo mode prevents writes to production database)",
+            active_settings.effective_database_url,
+        )
         logger.info(
             "Application configured for %s environment with YouTube demo mode %s",
             active_settings.environment,
