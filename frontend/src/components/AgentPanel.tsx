@@ -119,7 +119,7 @@ export function AgentPanelView({
               onClick={() => adapter.resetConversation()}
               aria-label="Clear conversation"
               title="Clear conversation"
-              className="text-muted-foreground transition hover:text-foreground"
+              className="border border-transparent text-muted-foreground transition hover:border-border/40"
             >
               <Plus className="h-4 w-4" />
             </Button>
@@ -154,7 +154,7 @@ export function AgentPanelView({
               <div className="relative flex select-none items-end rounded-2xl border border-border/50 bg-muted/30 shadow-sm focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20">
                 <Textarea
                   id="agent-composer"
-                  placeholder="Ask Loopie for feedback, spark a new idea, or plan your next release…"
+                  placeholder="Ask about your content, growth, or next video idea…"
                   value={inputValue}
                   onChange={(event) => setInputValue(event.target.value)}
                   onKeyDown={(event) => {
