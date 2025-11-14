@@ -4,33 +4,11 @@ import {
   type AgentConversationAdapter,
   type AgentConversationState,
   type AgentMessage,
-  type AgentSuggestedPrompt,
 } from "@/lib/types/agent";
 
 interface UseAgentDemoOptions {
   enabled?: boolean;
 }
-
-const demoSuggestedPrompts: AgentSuggestedPrompt[] = [
-  {
-    id: "growth-plan",
-    label: "Weekly growth plan",
-    prompt:
-      "Give me a focused growth plan for the next 7 days based on my latest metrics.",
-  },
-  {
-    id: "video-hook",
-    label: "Improve my next hook",
-    prompt:
-      "How can I sharpen the hook for my next long-form upload to retain viewers?",
-  },
-  {
-    id: "journal-reflection",
-    label: "Journal reflection",
-    prompt:
-      "Summarize the biggest lesson from this week's experiments and how to share it with my audience.",
-  },
-];
 
 const demoIntroMessages: AgentMessage[] = [
   {
@@ -84,7 +62,6 @@ export function useAgentDemo({ enabled = true }: UseAgentDemoOptions = {}) {
   const [state, setState] = useState<AgentConversationState>(() => ({
     conversationId: crypto.randomUUID(),
     messages: demoIntroMessages,
-    suggestedPrompts: demoSuggestedPrompts,
     composer: { status: "idle", error: null },
   }));
 
@@ -146,9 +123,6 @@ export function useAgentDemo({ enabled = true }: UseAgentDemoOptions = {}) {
                 buildAssistantReply(trimmed, previous.messages),
               ],
               composer: { status: "idle", error: null },
-              suggestedPrompts: previous.suggestedPrompts.filter(
-                (suggestion) => suggestion.prompt !== trimmed,
-              ),
             }));
             resolve();
           }, 900);
@@ -168,34 +142,16 @@ export function useAgentDemo({ enabled = true }: UseAgentDemoOptions = {}) {
     setState({
       conversationId: crypto.randomUUID(),
       messages: demoIntroMessages,
-      suggestedPrompts: demoSuggestedPrompts,
       composer: { status: "idle", error: null },
     });
   }, [clearTimers, enabled]);
-
-  const acknowledgeSuggestion = useCallback(
-    (suggestion: AgentSuggestedPrompt) => {
-      if (!enabled) {
-        return;
-      }
-      setState((previous) => ({
-        ...previous,
-        suggestedPrompts: previous.suggestedPrompts.filter(
-          (item) => item.id !== suggestion.id,
-        ),
-      }));
-      void sendMessage(suggestion.prompt);
-    },
-    [enabled, sendMessage],
-  );
 
   const adapter = useMemo<AgentConversationAdapter>(
     () => ({
       sendMessage,
       resetConversation,
-      acknowledgeSuggestion,
     }),
-    [acknowledgeSuggestion, resetConversation, sendMessage],
+    [resetConversation, sendMessage],
   );
 
   return useMemo(
