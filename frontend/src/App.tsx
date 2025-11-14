@@ -315,12 +315,12 @@ function DashboardShell() {
   }, [entriesError, entriesStatus]);
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-background to-muted/12 text-foreground">
+    <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-br from-background to-muted/12 text-foreground">
       <NavBar />
-      <main className="relative w-full px-6 py-12 lg:px-10 xl:px-16">
+      <main className="relative flex min-h-0 flex-1 overflow-hidden">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-primary/8 via-transparent to-transparent" />
-        <div className="relative grid w-full gap-8 xl:grid-cols-[minmax(0,1fr)_420px] 2xl:grid-cols-[minmax(0,1fr)_460px]">
-          <div className="flex min-w-0 flex-col gap-8">
+        <div className="relative grid h-full min-h-0 w-full grid-cols-3 gap-6 px-6 py-12 lg:px-10 xl:px-16">
+          <div className="col-span-2 flex h-full min-h-0 min-w-0 flex-col gap-8 overflow-y-auto scrollbar-hide">
             <ScorePlaceholder
               channelId={youtubeState.channelId}
               contentTypeFilter={contentTypeFilter}
@@ -365,8 +365,7 @@ function DashboardShell() {
               ) : null}
             </div>
           </div>
-
-          <div className="flex flex-col gap-6 xl:sticky xl:top-24 xl:self-start">
+          <div className="col-span-1 flex h-full min-h-0">
             <AgentPanel />
           </div>
         </div>

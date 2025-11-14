@@ -94,7 +94,7 @@ export function AgentPanelView({ state, adapter }: AgentPanelViewProps) {
         : "Share your next move with Loopie";
 
   return (
-    <aside className="bg-background/98 relative flex max-h-[calc(100vh-7rem)] min-h-[520px] flex-col overflow-hidden rounded-2xl border border-primary/15 shadow-[0_24px_70px_-50px_rgba(32,0,77,0.6)]">
+    <aside className="bg-background/98 relative flex h-full flex-col overflow-hidden rounded-2xl border border-primary/15 shadow-[0_24px_70px_-50px_rgba(32,0,77,0.6)]">
       <div className="from-primary/12 pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b via-primary/5 to-transparent opacity-60" />
       <div className="relative flex h-full flex-col">
         <header className="flex items-start gap-4 border-b border-border/40 px-3 py-3 backdrop-blur">
@@ -126,7 +126,7 @@ export function AgentPanelView({ state, adapter }: AgentPanelViewProps) {
           <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-hidden px-6 py-5">
             <div
               ref={scrollContainerRef}
-              className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-1"
+              className="scrollbar-hide min-h-0 flex-1 space-y-5 overflow-y-auto pr-1"
             >
               {state.messages.map((message) => (
                 <MessageBubble key={message.id} message={message} />
