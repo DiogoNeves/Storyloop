@@ -104,8 +104,12 @@ async def test_stream_turn_without_agent(
     transport = ASGITransport(app=app)
 
     # Create conversation
-    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
-        create_response = await client.post("/conversations", json={"title": "Test"})
+    async with AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
+        create_response = await client.post(
+            "/conversations", json={"title": "Test"}
+        )
         conversation_id = create_response.json()["id"]
 
         # Stream turn
@@ -134,6 +138,7 @@ async def test_stream_turn_with_mocked_agent(
     memory_connection_factory: SqliteConnectionFactory,
 ) -> None:
     """Test streaming with a mocked agent."""
+
     # Create a mock agent that simulates streaming
     async def mock_stream_text():
         """Async generator that yields tokens."""
@@ -153,12 +158,18 @@ async def test_stream_turn_with_mocked_agent(
     mock_agent = MagicMock()
     mock_agent.run_stream = mock_run_stream
 
-    app = _create_test_app(memory_connection_factory, assistant_agent=mock_agent)
+    app = _create_test_app(
+        memory_connection_factory, assistant_agent=mock_agent
+    )
     transport = ASGITransport(app=app)
 
-    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+    async with AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
         # Create conversation
-        create_response = await client.post("/conversations", json={"title": "Test"})
+        create_response = await client.post(
+            "/conversations", json={"title": "Test"}
+        )
         conversation_id = create_response.json()["id"]
 
         # Stream turn
@@ -180,7 +191,9 @@ async def test_stream_turn_with_mocked_agent(
             assert any("done" in event for event in events)
 
         # Verify turns were saved
-        turns_response = await client.get(f"/conversations/{conversation_id}/turns")
+        turns_response = await client.get(
+            f"/conversations/{conversation_id}/turns"
+        )
         turns = turns_response.json()
         assert len(turns) == 2  # user + assistant
         assert turns[0]["role"] == "user"
@@ -195,11 +208,15 @@ async def test_stream_turn_nonexistent_conversation(
 ) -> None:
     """Test streaming for a conversation that doesn't exist."""
     mock_agent = MagicMock()
-    app = _create_test_app(memory_connection_factory, assistant_agent=mock_agent)
+    app = _create_test_app(
+        memory_connection_factory, assistant_agent=mock_agent
+    )
     transport = ASGITransport(app=app)
 
     fake_id = str(uuid4())
-    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+    async with AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
         response = await client.post(
             f"/conversations/{fake_id}/turns/stream",
             json={"text": "Hello"},
@@ -214,11 +231,14 @@ async def test_stream_cancellation(
     memory_connection_factory: SqliteConnectionFactory,
 ) -> None:
     """Test that a new stream cancels the previous one."""
+
     # Create a mock agent that simulates slow streaming
     async def slow_stream():
         for token in ["Token", " ", "1", " ", "2", " ", "3"]:
             yield token
-            await asyncio.sleep(0.01)  # Simulate slow generation (shorter for tests)
+            await asyncio.sleep(
+                0.01
+            )  # Simulate slow generation (shorter for tests)
 
     mock_result = MagicMock()
     mock_result.stream_text = slow_stream
@@ -233,12 +253,18 @@ async def test_stream_cancellation(
     mock_agent = MagicMock()
     mock_agent.run_stream = mock_run_stream
 
-    app = _create_test_app(memory_connection_factory, assistant_agent=mock_agent)
+    app = _create_test_app(
+        memory_connection_factory, assistant_agent=mock_agent
+    )
     transport = ASGITransport(app=app)
 
-    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+    async with AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
         # Create conversation
-        create_response = await client.post("/conversations", json={"title": "Test"})
+        create_response = await client.post(
+            "/conversations", json={"title": "Test"}
+        )
         conversation_id = create_response.json()["id"]
 
         # Start first stream (will be cancelled)
@@ -264,7 +290,9 @@ async def test_stream_cancellation(
                 assert any("done" in event for event in events)
 
         # Verify both user turns were saved
-        turns_response = await client.get(f"/conversations/{conversation_id}/turns")
+        turns_response = await client.get(
+            f"/conversations/{conversation_id}/turns"
+        )
         turns = turns_response.json()
         user_turns = [t for t in turns if t["role"] == "user"]
         assert len(user_turns) == 2
@@ -277,6 +305,7 @@ async def test_stream_error_handling(
     memory_connection_factory: SqliteConnectionFactory,
 ) -> None:
     """Test error handling when agent generation fails."""
+
     # Create a mock agent that raises an exception
     async def failing_stream():
         raise Exception("Generation failed")
@@ -295,12 +324,18 @@ async def test_stream_error_handling(
     mock_agent = MagicMock()
     mock_agent.run_stream = mock_run_stream
 
-    app = _create_test_app(memory_connection_factory, assistant_agent=mock_agent)
+    app = _create_test_app(
+        memory_connection_factory, assistant_agent=mock_agent
+    )
     transport = ASGITransport(app=app)
 
-    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+    async with AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
         # Create conversation
-        create_response = await client.post("/conversations", json={"title": "Test"})
+        create_response = await client.post(
+            "/conversations", json={"title": "Test"}
+        )
         conversation_id = create_response.json()["id"]
 
         # Stream turn
@@ -319,5 +354,7 @@ async def test_stream_error_handling(
 
             # Should have error event
             assert any("error" in event for event in events)
-            assert any("Generation failed" in event or "failed" in event.lower() for event in events)
-
+            assert any(
+                "Generation failed" in event or "failed" in event.lower()
+                for event in events
+            )
