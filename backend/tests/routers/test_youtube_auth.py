@@ -204,6 +204,29 @@ async def test_status_reports_link_state() -> None:
     assert payload["linked"] is True
     assert payload["refreshNeeded"] is True
     assert payload["channel"]["id"] == "UC123"
+    assert payload["statusMessage"] is None
+
+
+@pytest.mark.asyncio
+async def test_status_includes_unlink_reason() -> None:
+    app, _, _ = create_test_app()
+
+    async with app.router.lifespan_context(app):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://testserver"
+        ) as client:
+            user_service: UserService = app.state.user_service
+            user_service.upsert_credentials(
+                None,
+                None,
+                error_message="Stored credentials are no longer valid.",
+            )
+            response = await client.get("/youtube/auth/status")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["linked"] is False
+    assert payload["statusMessage"] == "Stored credentials are no longer valid."
 
 
 @pytest.mark.asyncio
