@@ -18,3 +18,5 @@ export const apiClient = axios.create({
   },
 });
 
+export const API_BASE_URL = baseURL;
+

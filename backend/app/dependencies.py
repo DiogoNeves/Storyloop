@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+
+import sqlite3
+
 from fastapi import HTTPException, Request
 
 from app.services import (
@@ -85,3 +89,16 @@ def get_youtube_oauth_service_optional(
 def get_youtube_demo_mode(request: Request) -> bool:
     """Extract YouTube demo mode status from application state."""
     return getattr(request.app.state, "youtube_demo_mode", False)
+
+
+def get_db(request: Request) -> Iterator[sqlite3.Connection]:
+    """Extract SQLite connection factory from application state and yield a connection.
+
+    The connection is automatically closed after the request completes.
+    """
+    get_db_factory = request.app.state.get_db
+    connection = get_db_factory()
+    try:
+        yield connection
+    finally:
+        connection.close()
