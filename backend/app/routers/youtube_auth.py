@@ -205,11 +205,21 @@ def youtube_auth_status(
 
     # If OAuth is not configured, return not linked
     if oauth_service is None:
-        return {"linked": False, "channel": None, "refreshNeeded": False}
+        return {
+            "linked": False,
+            "channel": None,
+            "refreshNeeded": False,
+            "statusMessage": None,
+        }
 
     record = user_service.get_active_user()
     if record is None:
-        return {"linked": False, "channel": None, "refreshNeeded": False}
+        return {
+            "linked": False,
+            "channel": None,
+            "refreshNeeded": False,
+            "statusMessage": None,
+        }
 
     linked = bool(record.credentials_json)
     refresh_needed = False
@@ -239,6 +249,7 @@ def youtube_auth_status(
         "linked": linked,
         "channel": channel,
         "refreshNeeded": refresh_needed,
+        "statusMessage": record.credentials_error,
     }
 
 
