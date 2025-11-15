@@ -378,9 +378,8 @@ class DemoYoutubeService(YoutubeService):
                 "Demo mode requires user_service and oauth_service to be provided"
             )
 
-        # Always use authenticated method in demo mode
-        # fetch_authenticated_channel_videos is synchronous, so we call it directly
-        return self.fetch_authenticated_channel_videos(
+        # Always use authenticated method in demo mode, mirroring production behavior
+        return await self.fetch_authenticated_channel_videos(
             user_service,
             oauth_service,
             channel_id=channel,
