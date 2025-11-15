@@ -216,7 +216,9 @@ async def stream_turn(
                         }
                     )
                 finally:
-                    inflight.pop(conversation_id, None)
+                    # Only remove the task if it still matches the current entry.
+                    if inflight.get(conversation_id) is task:
+                        inflight.pop(conversation_id, None)
 
             # Create task and track it for cancellation
             task = asyncio.create_task(run_assistant())
