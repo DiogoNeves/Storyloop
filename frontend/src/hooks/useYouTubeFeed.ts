@@ -55,6 +55,9 @@ export function useYouTubeFeed(
   });
 
   // Fetch filtered videos - refetches when videoType changes
+  const filteredVideosEnabled =
+    Boolean(channelId) && videoType !== null && videoType !== undefined;
+
   const filteredVideosQuery = useQuery<YoutubeVideoResponse[]>({
     queryKey: youtubeQueries.channelVideos(channelId ?? "unlinked", videoType)
       .queryKey,
@@ -65,7 +68,7 @@ export function useYouTubeFeed(
       const feed = await youtubeApi.fetchChannelVideos(channelId, videoType);
       return feed.videos;
     },
-    enabled: Boolean(channelId),
+    enabled: filteredVideosEnabled,
   });
 
   // Combine cached channel info with filtered videos
@@ -122,7 +125,7 @@ export function useYouTubeFeed(
     isLoading:
       linkStatusQuery.isLoading ||
       fullFeedQuery.isLoading ||
-      (videoType !== null && filteredVideosQuery.isLoading),
+      (filteredVideosEnabled && filteredVideosQuery.isLoading),
     isLinked: Boolean(linkStatusQuery.data?.linked),
     linkStatus: linkStatusQuery.data ?? null,
     channelId,
