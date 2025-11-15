@@ -1,6 +1,6 @@
 export function NavBar() {
   return (
-    <header className="border-b bg-background">
+    <header className="sticky top-0 z-50 border-b bg-background">
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
         <div className="flex items-center gap-2 text-lg font-semibold tracking-tight">
           <span className="rounded-md bg-primary px-2 py-1 text-primary-foreground">
