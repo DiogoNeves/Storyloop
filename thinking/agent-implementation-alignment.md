@@ -13,6 +13,8 @@ This document explains how the current v1 implementation (`pydantic-agent` branc
 - ✅ Proper async/await patterns with non-blocking database operations
 - ✅ Resource management (connections properly closed)
 - ✅ Comprehensive test suite (9 tests, all passing)
+- ✅ **Frontend integration complete** - AgentPanel component with SSE streaming
+- ✅ **Demo mode support** - Toggle between real and fake responses via env var
 
 **API Endpoints:**
 - `POST /conversations` - Create conversations
@@ -21,17 +23,20 @@ This document explains how the current v1 implementation (`pydantic-agent` branc
 
 ## Alignment with Agent Branch Vision
 
-### 1. Always Accessible ✅
+### 1. Always Accessible ✅ **IMPLEMENTED**
 **Vision:** Agent lives alongside the product experience, single click away.
 
-**v1 Foundation:**
-- SSE streaming endpoint ready for frontend integration
-- Conversation persistence enables conversation history across sessions
-- Extensible API can support persistent entry points
+**v1 Implementation:**
+- ✅ SSE streaming endpoint integrated with frontend
+- ✅ Conversation persistence enables conversation history across sessions
+- ✅ `AgentPanel.tsx` component with full UI (chat interface, message bubbles, composer)
+- ✅ Demo mode toggle via `VITE_AGENT_DEMO_MODE` env var
+- ✅ `useAgentConversation` hook for real streaming
+- ✅ `useAgentDemo` hook for offline development
 
 **Next Steps:**
-- Frontend component (`AgentChat.tsx`) to integrate with existing endpoints
-- Floating button or sidebar UI
+- Position agent as floating button or sidebar (currently standalone component)
+- Add keyboard shortcuts for quick access
 
 ### 2. Context-Aware 🔄 (Ready for Extension)
 **Vision:** Agent receives structured context capsule from frontend (current page, selected items, filters).
@@ -123,21 +128,27 @@ Current tables support conversation context:
 - Optional initialization pattern supports graceful degradation
 
 ### Frontend Integration Points
-- API endpoints ready for TanStack Query integration
-- SSE streaming compatible with EventSource API
-- Conversation history supports optimistic UI patterns
+- ✅ API endpoints integrated with TanStack Query
+- ✅ SSE streaming using fetch API (POST with streaming)
+- ✅ Conversation history with optimistic UI patterns
+- ✅ Real-time token streaming with message composition
+- ✅ Error handling and graceful degradation
 
 ## Migration Path
 
-**Phase 1 (Current):** ✅ Complete
+**Phase 1:** ✅ **COMPLETE**
 - Basic streaming conversations
 - Conversation persistence
 - Foundation infrastructure
+- **Frontend integration (AgentPanel component)**
+- **SSE streaming with real-time token updates**
+- **Demo mode support**
 
 **Phase 2 (Next):**
 - Add context capsule to `TurnInput`
 - Enhance system prompt with context awareness
-- Frontend integration with context gathering
+- Frontend context gathering (current page, selected items, filters)
+- Integrate agent into main app layout (floating button/sidebar)
 
 **Phase 3 (Future):**
 - Add PydanticAI tools for API queries

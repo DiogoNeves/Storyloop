@@ -4,6 +4,8 @@
 > - ✅ SSE streaming conversations with PydanticAI
 > - ✅ Conversation persistence in SQLite
 > - ✅ Basic system prompt for YouTube creator assistance
+> - ✅ **Frontend integration complete** - AgentPanel with real-time streaming
+> - ✅ **Demo mode support** - Development mode without backend
 > - 🔄 Future: Context awareness, data fluency, insight tracking (see sections below)
 
 ## Overview
@@ -125,19 +127,40 @@ When an insight lands, the agent explains what changed, why it matters, and how 
 
 ### Frontend Touchpoints
 
-**Current Implementation:** API endpoints ready for frontend integration
+**Current Implementation:** ✅ **COMPLETE**
 
+**API Endpoints:**
 - ✅ `POST /conversations` - Create conversations
 - ✅ `GET /conversations/{id}/turns` - Retrieve conversation history
 - ✅ `POST /conversations/{id}/turns/stream` - SSE streaming endpoint
 
-**Future Module:** `frontend/src/components/AgentChat.tsx`
+**Frontend Components:**
+- ✅ `frontend/src/components/AgentPanel.tsx` - Main UI component
+  - Chat interface with message bubbles
+  - Real-time streaming indicator
+  - Composer with send functionality
+  - Clear conversation button
+- ✅ `frontend/src/hooks/useAgentConversation.ts` - Real agent hook
+  - SSE streaming integration
+  - Conversation creation and management
+  - Real-time token updates
+  - Error handling
+- ✅ `frontend/src/hooks/useAgentDemo.ts` - Demo mode hook
+  - Fake responses for development
+  - No backend required
+- ✅ `frontend/src/api/conversations.ts` - API client layer
+  - Type-safe conversation operations
+  - SSE streaming using fetch API
+  - TanStack Query integration
 
-- Hosts the persistent interface and conversation state
+**Environment Configuration:**
+- ✅ `VITE_AGENT_DEMO_MODE` - Toggle demo vs real mode (defaults to real)
+
+**Future Enhancements:**
 - Gathers context from route metadata, selected entities, and filter state
-- Manages optimistic UI for chat, suggested sparks, and tracking confirmations
-- Coordinates with TanStack Query for agent endpoints and caching
+- Manages suggested sparks and tracking confirmations
 - Sends structured context capsule with each message (see Context Awareness section)
+- Floating button or sidebar positioning
 
 ### LLM Integration Pattern
 

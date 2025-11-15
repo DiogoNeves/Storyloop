@@ -8,11 +8,13 @@ frontend/
 │   ├── api/              # API client and queries
 │   │   ├── client.ts     # Axios instance
 │   │   ├── health.ts     # Health check queries
-│   │   └── entries.ts    # Entry queries (future)
+│   │   ├── entries.ts    # Entry queries
+│   │   └── conversations.ts  # Agent conversation API (SSE streaming)
 │   ├── components/       # React components
 │   │   ├── ActivityFeed.tsx      # Main journal feed
 │   │   ├── NavBar.tsx            # Navigation header
 │   │   ├── NewEntryDialog.tsx    # Entry creation form
+│   │   ├── AgentPanel.tsx        # AI agent chat interface
 │   │   └── ui/                   # shadcn components
 │   │       ├── badge.tsx
 │   │       ├── button.tsx
@@ -21,7 +23,16 @@ frontend/
 │   │       ├── input.tsx
 │   │       ├── label.tsx
 │   │       └── textarea.tsx
+│   ├── hooks/            # Custom React hooks
+│   │   ├── useAgentConversation.ts  # Real agent with SSE streaming
+│   │   ├── useAgentDemo.ts          # Demo mode (fake responses)
+│   │   ├── useEntryEditing.ts       # Entry management
+│   │   ├── useYouTubeFeed.ts        # YouTube data
+│   │   └── index.ts                 # Hook exports
 │   ├── lib/              # Utilities
+│   │   ├── types/        # TypeScript types
+│   │   │   ├── agent.ts  # Agent conversation types
+│   │   │   └── entries.ts # Entry types
 │   │   └── utils.ts      # cn() helper
 │   ├── App.tsx           # Main application
 │   ├── main.tsx          # React entry point
@@ -125,20 +136,43 @@ frontend/
 - JSON content type
 - Environment variable support
 
-### Query Definitions (`api/health.ts`)
+### Query Definitions
 
 **Pattern:** Using `@lukemorales/query-key-factory`
 
 **Structure:**
 
 ```typescript
+// Health checks
 healthQueries.status() - Returns query config for health check
+
+// Conversations (Agent)
+conversationsQueries.turns(conversationId) - Returns conversation history
 ```
 
 **Query Options (from App.tsx):**
 
 - `retry: 0` - Don't retry failed requests
 - `staleTime: 60_000` - Consider data fresh for 1 minute
+
+### Conversations API (`api/conversations.ts`)
+
+**SSE Streaming Implementation:**
+
+- `createConversation()` - Create new conversation
+- `fetchConversationTurns()` - Get conversation history
+- `streamTurn()` - Stream assistant response via SSE
+  - Uses fetch API (not EventSource) for POST with streaming
+  - Real-time token-by-token updates
+  - Handles `token`, `done`, and `error` events
+  - Abort signal support for cancellation
+
+**Types:**
+
+- `ConversationOut` - Conversation metadata
+- `TurnOut` - Message in conversation
+- `TurnInput` - User message input
+- `SSEEvent` - Streaming event types
 
 ### Usage Pattern
 
@@ -151,6 +185,18 @@ Handles:
 - Loading state (`status === "pending"`)
 - Error state (`status === "error"`)
 - Success state (`status === "success"`)
+
+**Agent Streaming:**
+
+```typescript
+const cleanup = streamTurn({
+  conversationId,
+  text: "user message",
+  onToken: (token) => console.log(token),
+  onDone: (turnId, fullText) => console.log("Complete"),
+  onError: (message) => console.error(message),
+});
+```
 
 ## UI Components (shadcn/ui)
 
@@ -316,13 +362,19 @@ npm run preview
 
 ```bash
 VITE_API_BASE_URL=http://localhost:8000
+VITE_AGENT_DEMO_MODE=false  # Set to "true" for fake responses (no backend needed)
 ```
 
 **Access:**
 
 ```typescript
 import.meta.env.VITE_API_BASE_URL;
+import.meta.env.VITE_AGENT_DEMO_MODE;
 ```
+
+**Agent Mode:**
+- `VITE_AGENT_DEMO_MODE=false` (default) - Uses real backend with SSE streaming
+- `VITE_AGENT_DEMO_MODE=true` - Uses fake responses for development without backend
 
 ## TypeScript Configuration
 
@@ -359,6 +411,41 @@ import.meta.env.VITE_API_BASE_URL;
 - If no channel exists, show channel selection dialog/modal
 - Channel ID/identifier used for YouTube API syncs
 
+## Agent Integration ✅
+
+**Current Implementation:**
+
+The AI agent ("Loopie") is fully integrated with real-time streaming capabilities:
+
+**Components:**
+- `AgentPanel.tsx` - Main chat interface with message bubbles, composer, and streaming indicators
+- `useAgentConversation.ts` - Hook for real agent with SSE streaming
+- `useAgentDemo.ts` - Hook for demo mode (fake responses)
+- `conversations.ts` - API layer with SSE streaming support
+
+**Features:**
+- Real-time token-by-token streaming
+- Conversation persistence across sessions
+- Demo mode for development without backend
+- Error handling and graceful degradation
+- Clean conversation reset
+- Optimistic UI updates
+
+**Usage:**
+```typescript
+// In your app
+import { AgentPanel } from "@/components/AgentPanel";
+
+// Renders full agent interface
+<AgentPanel />
+```
+
+**Configuration:**
+- Set `VITE_AGENT_DEMO_MODE=true` for demo mode
+- Defaults to real mode (requires backend with OPENAI_API_KEY)
+
+**Design:** [Agent/Chatbot Design](../design/with-chatbot.png)
+
 ## Future Enhancements
 
 **Planned:**
@@ -371,11 +458,12 @@ import.meta.env.VITE_API_BASE_URL;
 - Rich text editor for journal entries
 - Image attachments
 - Entry categories and tags
-- Agent integration for insight tracking
-  - Users can interact with agent to request insight tracking
-  - Agent can save background actions
-  - Insights generated through agent interactions
-  - **Design:** [Agent/Chatbot Design](../design/with-chatbot.png) (Future)
+- **Agent enhancements:**
+  - Context awareness (current page, selected items, filters)
+  - Data fluency (query growth metrics, entries, YouTube data)
+  - Proactive insights and tracking
+  - Suggested action chips
+  - Floating button or sidebar positioning
 - Video detail pages (per-video view with deeper insights and related notes)
   - Most insights will be AI-inferred through agent interactions
   - Users can add notes, but insights are primarily agent-generated

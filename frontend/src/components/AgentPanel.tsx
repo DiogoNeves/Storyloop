@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUp, Bot, Plus } from "lucide-react";
 
-import { useAgentDemo } from "@/hooks";
+import { useAgentConversation, useAgentDemo } from "@/hooks";
 import {
   type AgentConversationAdapter,
   type AgentConversationState,
@@ -193,7 +193,12 @@ export function AgentPanelView({ state, adapter }: AgentPanelViewProps) {
 }
 
 export function AgentPanel() {
-  const demo = useAgentDemo();
+  const isDemoMode = import.meta.env.VITE_AGENT_DEMO_MODE === "true";
 
-  return <AgentPanelView state={demo.state} adapter={demo.adapter} />;
+  const demo = useAgentDemo({ enabled: isDemoMode });
+  const real = useAgentConversation();
+
+  const { state, adapter } = isDemoMode ? demo : real;
+
+  return <AgentPanelView state={state} adapter={adapter} />;
 }
