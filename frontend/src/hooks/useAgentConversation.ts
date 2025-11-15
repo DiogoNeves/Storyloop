@@ -190,6 +190,79 @@ export function useAgentConversation({
         return;
       }
 
+      const streamingMessageId = crypto.randomUUID();
+      const streamingMessageCreatedAt = new Date().toISOString();
+
+      const upsertAssistantMessage = (
+        content: string,
+        overrides?: Partial<AgentMessage>,
+        composerOverride?: AgentConversationState["composer"],
+      ) => {
+        setState((previous) => {
+          if (previous.conversationId !== conversationId) {
+            return previous;
+          }
+
+          const existingIndex = previous.messages.findIndex(
+            (message) => message.id === streamingMessageId,
+          );
+
+          const baseMessage: AgentMessage =
+            existingIndex === -1
+              ? {
+                  id: streamingMessageId,
+                  role: "assistant",
+                  content: "",
+                  createdAt: streamingMessageCreatedAt,
+                }
+              : previous.messages[existingIndex];
+
+          const updatedMessage: AgentMessage = {
+            ...baseMessage,
+            ...overrides,
+            content,
+          };
+
+          const messages =
+            existingIndex === -1
+              ? [...previous.messages, updatedMessage]
+              : previous.messages.map((message, index) =>
+                  index === existingIndex ? updatedMessage : message,
+                );
+
+          if (composerOverride) {
+            return {
+              ...previous,
+              messages,
+              composer: composerOverride,
+            };
+          }
+
+          return {
+            ...previous,
+            messages,
+          };
+        });
+      };
+
+      const removeAssistantMessage = () => {
+        setState((previous) => {
+          if (previous.conversationId !== conversationId) {
+            return previous;
+          }
+          const messages = previous.messages.filter(
+            (message) => message.id !== streamingMessageId,
+          );
+          if (messages.length === previous.messages.length) {
+            return previous;
+          }
+          return {
+            ...previous,
+            messages,
+          };
+        });
+      };
+
       const userMessage: AgentMessage = {
         id: crypto.randomUUID(),
         role: "user",
@@ -224,6 +297,7 @@ export function useAgentConversation({
             },
             onToken: (token) => {
               accumulatedText += token;
+              upsertAssistantMessage(accumulatedText);
             },
             onDone: ({ turnId, text }) => {
               const finalText = text ?? accumulatedText;
@@ -237,17 +311,17 @@ export function useAgentConversation({
                 }));
                 return;
               }
-              const assistantMessage: AgentMessage = {
-                id: turnId ?? crypto.randomUUID(),
-                role: "assistant",
-                content: finalText,
-                createdAt: new Date().toISOString(),
+              const overrides: Partial<AgentMessage> = {
+                createdAt: streamingMessageCreatedAt,
               };
-              setState((previous) => ({
-                conversationId,
-                messages: [...previous.messages, assistantMessage],
-                composer: { status: "idle", error: null },
-              }));
+              if (turnId) {
+                overrides.id = turnId;
+              }
+              upsertAssistantMessage(
+                finalText,
+                overrides,
+                { status: "idle", error: null },
+              );
             },
             onError: (message) => {
               setState((previous) => ({
@@ -257,6 +331,9 @@ export function useAgentConversation({
                   error: message ?? "Loopie ran into an error.",
                 },
               }));
+              if (!accumulatedText) {
+                removeAssistantMessage();
+              }
             },
           },
         });
