@@ -156,7 +156,7 @@ Settings are managed through `backend/app/config.py` using Pydantic:
 **Current Implementation (v1):**
 
 - Users interact with an AI agent via SSE streaming conversations
-- Agent is powered by PydanticAI with OpenAI's gpt-4o-mini model
+- Agent is powered by PydanticAI with OpenAI's gpt-5-nano model
 - Agent is optional: requires `OPENAI_API_KEY` environment variable (app starts successfully without it)
 - Conversations are persisted in SQLite with `conversations` and `turns` tables
 - Streaming responses enable real-time token-by-token generation
