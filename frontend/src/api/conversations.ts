@@ -209,6 +209,8 @@ export async function streamConversationTurn(
   let buffer = "";
   let shouldStop = false;
 
+  const boundaryPattern = /\r?\n\r?\n/;
+
   try {
     while (!shouldStop) {
       const { value, done } = await reader.read();
@@ -217,15 +219,22 @@ export async function streamConversationTurn(
       }
       buffer += decoder.decode(value, { stream: true });
 
-      let boundary = buffer.indexOf("\n\n");
-      while (boundary !== -1) {
-        const rawEvent = buffer.slice(0, boundary);
-        buffer = buffer.slice(boundary + 2);
+      let match = buffer.match(boundaryPattern);
+      while (match) {
+        const boundaryIndex = match.index ?? -1;
+        if (boundaryIndex === -1) {
+          break;
+        }
+
+        const rawEvent = buffer.slice(0, boundaryIndex);
+        buffer = buffer.slice(boundaryIndex + match[0].length);
+
         const parsed = parseSseEvent(rawEvent);
         if (parsed) {
           shouldStop = handleParsedEvent(parsed, callbacks) || shouldStop;
         }
-        boundary = buffer.indexOf("\n\n");
+
+        match = buffer.match(boundaryPattern);
       }
     }
 
