@@ -75,7 +75,13 @@ export function AgentPanelView({ state, adapter, isDemo }: AgentPanelViewProps) 
     if (!container) {
       return;
     }
-    container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+
+    if (typeof container.scrollTo === "function") {
+      container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+      return;
+    }
+
+    container.scrollTop = container.scrollHeight;
   }, [state.messages, state.composer.status]);
 
   const handleSubmit = () => {
