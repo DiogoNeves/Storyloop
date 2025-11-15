@@ -19,6 +19,7 @@ def test_upsert_credentials_persists_payload(
     assert record is not None
     assert record.credentials_json == "{\"token\": \"abc\"}"
     assert record.credentials_updated_at is not None
+    assert record.credentials_error is None
 
     later = now + timedelta(minutes=5)
     service.upsert_credentials("{\"token\": \"updated\"}", later)
@@ -26,6 +27,15 @@ def test_upsert_credentials_persists_payload(
     refreshed = service.get_active_user()
     assert refreshed is not None
     assert refreshed.credentials_json == "{\"token\": \"updated\"}"
+    assert refreshed.credentials_error is None
+
+    service.upsert_credentials(
+        None, None, error_message="Stored credentials are invalid"
+    )
+    cleared = service.get_active_user()
+    assert cleared is not None
+    assert cleared.credentials_json is None
+    assert cleared.credentials_error == "Stored credentials are invalid"
 
 
 def test_update_channel_info_overwrites_existing_values(

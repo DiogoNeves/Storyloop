@@ -43,6 +43,7 @@ export interface YoutubeLinkStatusResponse {
   linked: boolean;
   refreshNeeded: boolean;
   channel: YoutubeChannelLink | null;
+  statusMessage: string | null;
 }
 
 export interface YoutubeCompleteLinkRequest {

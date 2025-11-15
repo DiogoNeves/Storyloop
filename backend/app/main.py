@@ -80,6 +80,13 @@ def build_lifespan(
         )
         resolved_youtube_service = demo_youtube_service
     else:
+        if not active_settings.youtube_api_key:
+            message = (
+                "YouTube API key is required when demo mode is disabled. "
+                "Set YOUTUBE_API_KEY or enable YOUTUBE_DEMO_MODE."
+            )
+            logger.error(message)
+            raise RuntimeError(message)
         youtube_service = YoutubeService(
             api_key=active_settings.youtube_api_key
         )
@@ -117,12 +124,24 @@ def build_lifespan(
         app.state.growth_score_service = growth_score_service
         app.state.assistant_agent = assistant_agent
 
+        demo_mode_enabled = active_settings.youtube_demo_mode
         demo_mode_details = "disabled"
-        if active_settings.youtube_demo_mode:
+        if demo_mode_enabled:
             scenario = active_settings.youtube_demo_scenario or "default"
             demo_mode_details = f"enabled (scenario={scenario})"
-        logger.info(
-            "Using demo database: %s (demo mode prevents writes to production database)",
+
+        if demo_mode_enabled:
+            db_log_level = logging.WARNING
+            db_message = (
+                "Using demo database: %s (demo mode prevents writes to production database)"
+            )
+        else:
+            db_log_level = logging.INFO
+            db_message = "Connected to primary database at %s"
+
+        logger.log(
+            db_log_level,
+            db_message,
             active_settings.effective_database_url,
         )
         logger.info(

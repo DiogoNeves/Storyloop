@@ -28,6 +28,7 @@ class UserRecord:
     # automatically refreshed when expired.
     credentials_json: str | None
     credentials_updated_at: datetime | None
+    credentials_error: str | None
     oauth_state: str | None
     oauth_state_created_at: datetime | None
 
@@ -49,6 +50,7 @@ def _row_to_record(row: Row) -> UserRecord:
         channel_updated_at=_parse_timestamp(row["channel_updated_at"]),
         credentials_json=row["credentials_json"],
         credentials_updated_at=_parse_timestamp(row["credentials_updated_at"]),
+        credentials_error=row["credentials_error"],
         oauth_state=row["oauth_state"],
         oauth_state_created_at=_parse_timestamp(row["oauth_state_created_at"]),
     )
@@ -75,11 +77,20 @@ class UserService:
                     channel_updated_at TEXT,
                     credentials_json TEXT,
                     credentials_updated_at TEXT,
+                    credentials_error TEXT,
                     oauth_state TEXT,
                     oauth_state_created_at TEXT
                 )
                 """
             )
+            existing_columns = {
+                (row["name"] if isinstance(row, Row) else row[1])
+                for row in connection.execute("PRAGMA table_info(users)")
+            }
+            if "credentials_error" not in existing_columns:
+                connection.execute(
+                    "ALTER TABLE users ADD COLUMN credentials_error TEXT"
+                )
             connection.commit()
 
     def get_active_user(self) -> UserRecord | None:
@@ -98,6 +109,8 @@ class UserService:
         self,
         credentials_json: str | None,
         refreshed_at: datetime | None,
+        *,
+        error_message: str | None = None,
     ) -> None:
         """Persist OAuth credentials for the active user."""
 
@@ -105,13 +118,24 @@ class UserService:
         with closing(self._connection_factory()) as connection:
             connection.execute(
                 """
-                INSERT INTO users (id, credentials_json, credentials_updated_at)
-                VALUES (?, ?, ?)
+                INSERT INTO users (
+                    id,
+                    credentials_json,
+                    credentials_updated_at,
+                    credentials_error
+                )
+                VALUES (?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     credentials_json=excluded.credentials_json,
-                    credentials_updated_at=excluded.credentials_updated_at
+                    credentials_updated_at=excluded.credentials_updated_at,
+                    credentials_error=excluded.credentials_error
                 """,
-                (_DEFAULT_USER_ID, credentials_json, timestamp_value),
+                (
+                    _DEFAULT_USER_ID,
+                    credentials_json,
+                    timestamp_value,
+                    error_message,
+                ),
             )
             connection.commit()
 
