@@ -1,7 +1,9 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowUp, Bot, Plus } from "lucide-react";
 
-import { useAgentDemo } from "@/hooks";
+import { healthQueries } from "@/api/health";
+import { useAgentConversation, useAgentDemo } from "@/hooks";
 import {
   type AgentConversationAdapter,
   type AgentConversationState,
@@ -61,7 +63,7 @@ function MessageBubble({ message }: { message: AgentMessage }) {
   );
 }
 
-export function AgentPanelView({ state, adapter }: AgentPanelViewProps) {
+export function AgentPanelView({ state, adapter, isDemo }: AgentPanelViewProps) {
   const [inputValue, setInputValue] = useState("");
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -108,17 +110,24 @@ export function AgentPanelView({ state, adapter }: AgentPanelViewProps) {
                 Keeps notes on your wins and provides guidance.
               </p>
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => adapter.resetConversation()}
-              aria-label="Clear conversation"
-              title="Clear conversation"
-              className="border border-transparent text-muted-foreground transition hover:border-border/40"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              {isDemo ? (
+                <span className="rounded-full border border-border/60 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Demo
+                </span>
+              ) : null}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => adapter.resetConversation()}
+                aria-label="Clear conversation"
+                title="Clear conversation"
+                className="border border-transparent text-muted-foreground transition hover:border-border/40"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </header>
 
@@ -193,7 +202,19 @@ export function AgentPanelView({ state, adapter }: AgentPanelViewProps) {
 }
 
 export function AgentPanel() {
-  const demo = useAgentDemo();
+  const healthQuery = useQuery(healthQueries.status());
+  const demoEnabled = healthQuery.data?.youtubeDemoMode === true;
 
-  return <AgentPanelView state={demo.state} adapter={demo.adapter} />;
+  const demo = useAgentDemo({ enabled: demoEnabled });
+  const conversation = useAgentConversation({ enabled: !demoEnabled });
+
+  const active = demoEnabled ? demo : conversation;
+
+  return (
+    <AgentPanelView
+      state={active.state}
+      adapter={active.adapter}
+      isDemo={demoEnabled}
+    />
+  );
 }
