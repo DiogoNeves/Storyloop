@@ -514,7 +514,67 @@ Return Error Response
 Frontend handles error
 ```
 
-### Agent-Based Insight Tracking Flow
+### Agent Conversation Flow (SSE Streaming)
+
+```
+User sends message to agent
+    │
+    │ POST /conversations/{id}/turns/stream
+    │ Body: { "text": "How can I improve retention?" }
+    │
+    ▼
+FastAPI Backend (conversations.py)
+    │
+    │ 1. Validate conversation exists
+    │ 2. Insert user turn into database
+    │ 3. Cancel any in-flight generation for this conversation
+    │
+    ▼
+EventSourceResponse (SSE stream)
+    │
+    │ Opens Logfire trace for observability
+    │ Creates async task for generation
+    │
+    ▼
+PydanticAI Agent (app.state.assistant_agent)
+    │
+    │ async with agent.run_stream(user_text) as result:
+    │     async for token in result.stream_text():
+    │         yield SSE event: { "event": "token", "data": {"token": "..."} }
+    │
+    ▼
+SSE Events Streamed to Client
+    │
+    │ event: token
+    │ data: {"token": "To"}
+    │
+    │ event: token
+    │ data: {"token": " improve"}
+    │
+    │ ... (continues token by token)
+    │
+    ▼
+Generation Complete
+    │
+    │ Insert assistant turn into database
+    │ Yield final event: { "event": "done", "data": {"turn_id": "...", "text": "..."} }
+    │
+    ▼
+Client Receives Complete Response
+    │
+    │ Frontend updates UI with full assistant message
+    │ Conversation history persisted for context
+```
+
+**Key Features:**
+
+- Real-time streaming: Token-by-token responses via Server-Sent Events
+- Conversation persistence: All turns stored in SQLite for context reconstruction
+- Cancellation support: New messages automatically cancel in-flight generations
+- Observability: Logfire traces capture generation timing and errors
+- Simple API: REST endpoints for conversation management, SSE for streaming
+
+### Agent-Based Insight Tracking Flow (Future)
 
 ```
 User interacts with Agent
@@ -562,7 +622,7 @@ Timeline updated
     │ User sees pattern from agent tracking
 ```
 
-**Key Features:**
+**Future Features:**
 
 - Agent-driven: User explicitly requests tracking through agent interaction
 - Background actions: Agent can save actions to run automatically

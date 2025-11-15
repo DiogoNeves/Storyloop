@@ -1,8 +1,14 @@
 # Storyloop AI Agent Design
 
+> **Implementation Status:** This document describes the comprehensive design vision for the Storyloop AI agent. The current implementation (v1) provides the foundational infrastructure:
+> - ✅ SSE streaming conversations with PydanticAI
+> - ✅ Conversation persistence in SQLite
+> - ✅ Basic system prompt for YouTube creator assistance
+> - 🔄 Future: Context awareness, data fluency, insight tracking (see sections below)
+
 ## Overview
 
-The Storyloop AI agent is a creative partner for YouTube storytellers. It combines the creator’s intent, the current screen state, and Storyloop’s historical analytics to surface guidance that feels bespoke rather than generic. The experience should balance inspiration and rigor so every interaction offers a clear next step, an insight worth sharing, or a confidence boost grounded in data.
+The Storyloop AI agent is a creative partner for YouTube storytellers. It combines the creator's intent, the current screen state, and Storyloop's historical analytics to surface guidance that feels bespoke rather than generic. The experience should balance inspiration and rigor so every interaction offers a clear next step, an insight worth sharing, or a confidence boost grounded in data.
 
 ## Experience Pillars
 
@@ -101,22 +107,37 @@ When an insight lands, the agent explains what changed, why it matters, and how 
 
 ### Agent Service Layer
 
-_Future module: `backend/app/services/agent.py`_
+**Current Implementation:** `backend/app/services/agent.py`
 
-- Ingests chat requests with bundled context.
-- Orchestrates readonly API queries and knowledge retrieval.
-- Uses an LLM (primary: GPT-4/Claude; fallback: GPT-3.5) with a structured system prompt.
-- Emits responses with natural language, suggested actions, and logged data access.
-- Schedules background checks for active tracking commitments.
+- ✅ `build_agent()` - Creates and configures PydanticAI agent with OpenAI's gpt-4o-mini model
+- ✅ Basic system prompt for YouTube creator assistance
+- ✅ Optional initialization (returns None if OPENAI_API_KEY not set)
+- ✅ Stored in `app.state.assistant_agent` for dependency injection
+
+**Future Enhancements:**
+
+- Ingests chat requests with bundled context (structured context capsule from frontend)
+- Orchestrates readonly API queries (`/api/growth/*`, `/api/entries/*`, `/api/youtube/*`)
+- Knowledge retrieval and specialist libraries
+- Emits responses with natural language, suggested actions, and logged data access
+- Schedules background checks for active tracking commitments
+- Context-aware responses using frontend-provided context capsule
 
 ### Frontend Touchpoints
 
-_Future module: `frontend/src/components/AgentChat.tsx`_
+**Current Implementation:** API endpoints ready for frontend integration
 
-- Hosts the persistent interface and conversation state.
-- Gathers context from route metadata, selected entities, and filter state.
-- Manages optimistic UI for chat, suggested sparks, and tracking confirmations.
-- Coordinates with TanStack Query for agent endpoints and caching.
+- ✅ `POST /conversations` - Create conversations
+- ✅ `GET /conversations/{id}/turns` - Retrieve conversation history
+- ✅ `POST /conversations/{id}/turns/stream` - SSE streaming endpoint
+
+**Future Module:** `frontend/src/components/AgentChat.tsx`
+
+- Hosts the persistent interface and conversation state
+- Gathers context from route metadata, selected entities, and filter state
+- Manages optimistic UI for chat, suggested sparks, and tracking confirmations
+- Coordinates with TanStack Query for agent endpoints and caching
+- Sends structured context capsule with each message (see Context Awareness section)
 
 ### LLM Integration Pattern
 

@@ -49,6 +49,38 @@ Built for new creators who want guidance without giving up control, Storyloop tu
 
 6. Visit `http://127.0.0.1:5173` to confirm the UI renders and reports backend health status.
 
+## AI Agent Setup
+
+Storyloop includes a conversational AI agent powered by PydanticAI and OpenAI. The agent is optional and will be disabled if the API key is not configured (similar to YouTube OAuth).
+
+**Current Implementation (v1):**
+
+- ✅ SSE streaming conversations with real-time token-by-token responses
+- ✅ Conversation persistence in SQLite
+- ✅ Basic system prompt for YouTube creator assistance
+- ✅ Extensible architecture ready for future enhancements
+
+**Future Enhancements:**
+
+- See [thinking/ai-agent.md](thinking/ai-agent.md) for comprehensive design vision
+- Context-aware responses using structured context from frontend
+- Data-fluent agent that queries readonly APIs for analytics insights
+- Insight tracking with background monitoring and pattern detection
+
+**Environment Variable:**
+
+- `OPENAI_API_KEY` – Your OpenAI API key (optional, agent disabled if not set)
+
+When configured, the agent is initialized at application startup and provides streaming conversational responses via Server-Sent Events (SSE). Conversations are persisted in SQLite with separate `conversations` and `turns` tables. If the API key is not set, the app will start successfully but agent endpoints will return an error message indicating the agent is unavailable.
+
+**API Endpoints:**
+
+- `POST /conversations` – Create a new conversation
+- `GET /conversations/{id}/turns` – List all turns for a conversation
+- `POST /conversations/{id}/turns/stream` – Stream assistant response (SSE, returns error if agent unavailable)
+
+See [thinking/backend-structure.md](thinking/backend-structure.md#conversations-router-routersconversationspy) for detailed API documentation.
+
 ## YouTube OAuth setup
 
 Storyloop now supports authenticating against the YouTube Data API via OAuth. Configure the following environment variables (see
@@ -103,4 +135,18 @@ Storyloop/
 
 ## Next steps
 
-The PLAN outlines the roadmap toward ingesting YouTube data, calculating the Storyloop Growth Score, and integrating a journaling workflow. See [thinking/insights.md](thinking/insights.md) for the full scoring and insights logic. With this boilerplate in place you can begin implementing those features immediately.
+The PLAN outlines the roadmap toward ingesting YouTube data, calculating the Storyloop Growth Score, and integrating a journaling workflow. See [thinking/insights.md](thinking/insights.md) for the full scoring and insights logic.
+
+**Current Features:**
+
+- ✅ AI agent with SSE streaming conversations
+- ✅ Conversation persistence in SQLite
+- ✅ YouTube OAuth integration
+- ✅ Growth score calculation framework
+
+**Future Enhancements:**
+
+- Enhanced agent capabilities for insight tracking
+- Context-aware agent responses using Storyloop analytics
+- Video detail pages with deeper insights
+- Background action scheduling for pattern detection
