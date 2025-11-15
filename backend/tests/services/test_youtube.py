@@ -1,6 +1,7 @@
 import httpx
 import pytest
 
+from app.services.users import UserRecord
 from app.services.youtube import (
     YoutubeAPIRequestError,
     YoutubeChannelNotFound,
@@ -201,6 +202,65 @@ async def test_fetch_channel_videos_skips_playlist_when_max_results_is_zero():
 
     assert feed.channel_id == "UC999"
     assert feed.videos == []
+
+
+def test_build_authenticated_client_clears_credentials_on_refresh_failure():
+    record = UserRecord(
+        id="active",
+        channel_id=None,
+        channel_title=None,
+        channel_url=None,
+        channel_thumbnail_url=None,
+        channel_updated_at=None,
+        credentials_json="{}",
+        credentials_updated_at=None,
+        credentials_error=None,
+        oauth_state=None,
+        oauth_state_created_at=None,
+    )
+
+    class DummyUserService:
+        def __init__(self) -> None:
+            self.upsert_calls: list[
+                tuple[str | None, object | None, str | None]
+            ] = []
+
+        def get_active_user(self) -> UserRecord:
+            return record
+
+        def upsert_credentials(
+            self,
+            credentials_json: str | None,
+            refreshed_at: object | None,
+            *,
+            error_message: str | None = None,
+        ) -> None:
+            self.upsert_calls.append(
+                (credentials_json, refreshed_at, error_message)
+            )
+
+    class DummyCredentials:
+        expired = True
+        refresh_token = "token"
+
+    class DummyOAuthService:
+        def deserialize_credentials(self, _: str) -> DummyCredentials:
+            return DummyCredentials()
+
+        def refresh_credentials(self, __: DummyCredentials) -> None:
+            raise YoutubeConfigurationError("invalid credentials")
+
+        def serialize_credentials(self, __: DummyCredentials) -> str:
+            return "{}"
+
+    service = YoutubeService(api_key="test-key")
+    user_service = DummyUserService()
+    oauth_service = DummyOAuthService()
+
+    with pytest.raises(YoutubeConfigurationError):
+        service.build_authenticated_client(user_service, oauth_service)
+
+    assert user_service.upsert_calls == [(None, None, "invalid credentials")]
 
 
 @pytest.mark.asyncio

@@ -15,6 +15,7 @@ import json
 from dataclasses import dataclass
 from typing import Any, Sequence
 
+from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
@@ -101,4 +102,10 @@ class YoutubeOAuthService:
         """Refresh credentials in-place when they are expired."""
 
         if credentials.expired and credentials.refresh_token:
-            credentials.refresh(Request())
+            try:
+                credentials.refresh(Request())
+            except RefreshError as exc:
+                raise YoutubeConfigurationError(
+                    "Stored YouTube credentials are no longer valid."
+                    " Please reconnect your YouTube account."
+                ) from exc

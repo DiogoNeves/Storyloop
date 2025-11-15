@@ -275,6 +275,7 @@ class DemoUserService(UserService):
             channel_updated_at=datetime.now(tz=UTC),
             credentials_json=demo_credentials,
             credentials_updated_at=datetime.now(tz=UTC),
+            credentials_error=None,
             oauth_state=None,
             oauth_state_created_at=None,
         )
@@ -287,9 +288,13 @@ class DemoUserService(UserService):
         self,
         credentials_json: str | None,
         refreshed_at: datetime | None,
+        *,
+        error_message: str | None = None,
     ) -> None:
         return self._real_service.upsert_credentials(
-            credentials_json, refreshed_at
+            credentials_json,
+            refreshed_at,
+            error_message=error_message,
         )
 
     def update_channel_info(
