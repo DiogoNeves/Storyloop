@@ -12,6 +12,7 @@ import useLocalStorageState from "use-local-storage-state";
 import { ActivityFeed, type ActivityDraft } from "@/components/ActivityFeed";
 import { NavBar } from "@/components/NavBar";
 import { ScoreOverviewCard } from "@/components/ScoreOverviewCard";
+import { AgentPanel } from "@/components/AgentPanel";
 import {
   ContentTypeTabs,
   type ContentTypeFilter,
@@ -314,51 +315,59 @@ function DashboardShell() {
   }, [entriesError, entriesStatus]);
 
   return (
-    <div className="min-h-screen bg-muted/20 text-foreground">
+    <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-br from-background to-muted/12 text-foreground">
       <NavBar />
-      <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-10">
-        <ScorePlaceholder
-          channelId={youtubeState.channelId}
-          contentTypeFilter={contentTypeFilter}
-        />
+      <main className="relative flex min-h-0 flex-1 overflow-hidden">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-primary/8 via-transparent to-transparent" />
+        <div className="relative grid h-full min-h-0 w-full grid-cols-3 gap-6 px-6 py-12 lg:px-10 xl:px-16">
+          <div className="col-span-2 flex h-full min-h-0 min-w-0 flex-col gap-8 overflow-y-auto scrollbar-hide">
+            <ScorePlaceholder
+              channelId={youtubeState.channelId}
+              contentTypeFilter={contentTypeFilter}
+            />
 
-        <ContentTypeTabs
-          value={contentTypeFilter}
-          onChange={setContentTypeFilter}
-          publicOnly={publicOnly}
-          onPublicOnlyChange={setPublicOnly}
-        />
+            <ContentTypeTabs
+              value={contentTypeFilter}
+              onChange={setContentTypeFilter}
+              publicOnly={publicOnly}
+              onPublicOnlyChange={setPublicOnly}
+            />
 
-        <ActivityFeed
-          items={displayItems}
-          youtubeFeed={youtubeState.youtubeFeed}
-          isLinked={youtubeState.isLinked}
-          linkStatus={youtubeState.linkStatus}
-          youtubeError={youtubeState.youtubeError}
-          draft={draft}
-          onStartDraft={handleStartDraft}
-          onDraftChange={handleDraftChange}
-          onCancelDraft={handleCancelDraft}
-          onSubmitDraft={handleDraftSubmit}
-          isSubmittingDraft={isSavingEntry}
-          draftError={draftError}
-          errorMessage={entriesErrorMessage}
-        />
+            <ActivityFeed
+              items={displayItems}
+              youtubeFeed={youtubeState.youtubeFeed}
+              isLinked={youtubeState.isLinked}
+              linkStatus={youtubeState.linkStatus}
+              youtubeError={youtubeState.youtubeError}
+              draft={draft}
+              onStartDraft={handleStartDraft}
+              onDraftChange={handleDraftChange}
+              onCancelDraft={handleCancelDraft}
+              onSubmitDraft={handleDraftSubmit}
+              isSubmittingDraft={isSavingEntry}
+              draftError={draftError}
+              errorMessage={entriesErrorMessage}
+            />
 
-        <div>
-          {healthStatusQuery.isLoading ? (
-            <p className="text-xs text-muted-foreground" role="status">
-              Checking API health…
-            </p>
-          ) : healthStatusQuery.isError ? (
-            <p className="text-xs text-destructive" role="status">
-              We couldn't reach the Storyloop API.
-            </p>
-          ) : healthStatusQuery.data?.status ? (
-            <p className="text-xs text-muted-foreground" role="status">
-              {healthStatusQuery.data.status}
-            </p>
-          ) : null}
+            <div>
+              {healthStatusQuery.isLoading ? (
+                <p className="text-xs text-muted-foreground" role="status">
+                  Checking API health…
+                </p>
+              ) : healthStatusQuery.isError ? (
+                <p className="text-xs text-destructive" role="status">
+                  We couldn't reach the Storyloop API.
+                </p>
+              ) : healthStatusQuery.data?.status ? (
+                <p className="text-xs text-muted-foreground" role="status">
+                  {healthStatusQuery.data.status}
+                </p>
+              ) : null}
+            </div>
+          </div>
+          <div className="col-span-1 flex h-full min-h-0">
+            <AgentPanel />
+          </div>
         </div>
       </main>
     </div>

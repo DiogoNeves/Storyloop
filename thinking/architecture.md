@@ -13,6 +13,8 @@ Storyloop is a creator analytics journal that combines a FastAPI backend with a 
 - **APScheduler** - Background job scheduling for recurring tasks
 - **Logfire** - Observability and logging
 - **Pydantic** - Settings and data validation
+- **PydanticAI** - AI agent framework for conversational interactions
+- **SSE-Starlette** - Server-Sent Events for streaming responses
 - **Uvicorn** - ASGI server
 
 **Frontend:**
@@ -96,7 +98,7 @@ Storyloop is a creator analytics journal that combines a FastAPI backend with a 
 
 - `YoutubeService` - Handles YouTube API integration and metric syncing
 - `GrowthScoreService` - Calculates and maintains growth score metrics. See [thinking/insights.md](insights.md) for the full scoring and insights logic.
-- `AgentService` (Future) - Handles agent interactions and manages background actions for insight tracking
+- `build_agent()` - Creates and configures PydanticAI agent for conversational interactions
 - Database abstraction through `SqliteConnectionFactory`
 
 **Frontend Modules:**
@@ -151,20 +153,34 @@ Settings are managed through `backend/app/config.py` using Pydantic:
 
 **Agent Integration:**
 
-- Users interact with an AI agent to ask questions and request insight tracking
-- Agent can save actions to run in the background
-- Background jobs execute tracking actions periodically
-- Insights are generated through agent interactions, not automatic parsing of journal entries
+**Current Implementation (v1):**
+
+- Users interact with an AI agent via SSE streaming conversations
+- Agent is powered by PydanticAI with OpenAI's gpt-4o-mini model
+- Agent is optional: requires `OPENAI_API_KEY` environment variable (app starts successfully without it)
+- Conversations are persisted in SQLite with `conversations` and `turns` tables
+- Streaming responses enable real-time token-by-token generation
+- Agent endpoints return error message if agent unavailable (similar to YouTube OAuth handling)
+- Basic system prompt configured for YouTube creator assistance
+- Insights will be generated through agent interactions, not automatic parsing of journal entries
 - Journal entries remain simple and user-focused
-- See [AI Agent Design](ai-agent.md) for comprehensive design details
+
+**Future Enhancements:**
+
+- See [AI Agent Design](ai-agent.md) for comprehensive design details and future capabilities
+- Context-aware responses using structured context from frontend (current page, selected items, filters)
+- Data-fluent agent that queries readonly APIs (`/api/growth/*`, `/api/entries/*`, `/api/youtube/*`)
+- Insight tracking with background monitoring and automated pattern detection
+- Suggested action chips and conversation patterns for exploratory queries
+- **Design:** [Agent/Chatbot Design](../design/with-chatbot.png)
 
 ### Future Extensions
 
-- Agent integration for user interactions and insight tracking
-  - **Design:** [Agent/Chatbot Design](../design/with-chatbot.png) (Future)
+- Enhanced agent capabilities for insight tracking
+  - **Design:** [Agent/Chatbot Design](../design/with-chatbot.png)
   - **Detailed Design:** [AI Agent Design](ai-agent.md)
 - Agent can save background actions to monitor patterns over time
-- OpenAI integration for AI-powered agent interactions
+- Context-aware agent responses using Storyloop's analytics data
 - Video detail pages (per-video view with deeper insights and related notes)
   - **Design:** [Video Detail Design](../design/video-detail.png) (Future)
 - Additional content platform integrations
