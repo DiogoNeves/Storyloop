@@ -90,6 +90,7 @@ describe("LinkYouTubeAccountCard", () => {
         linked: false,
         refreshNeeded: false,
         channel: null,
+        statusMessage: null,
       });
 
     renderWithClient(<LinkYouTubeAccountCard />);
@@ -112,6 +113,7 @@ describe("LinkYouTubeAccountCard", () => {
       linked: false,
       refreshNeeded: false,
       channel: null,
+      statusMessage: null,
     });
     startLinkMock.mockResolvedValue({
       authorizationUrl: "https://example.com/auth",
@@ -140,6 +142,7 @@ describe("LinkYouTubeAccountCard", () => {
       linked: false,
       refreshNeeded: false,
       channel: null,
+      statusMessage: null,
     });
     startLinkMock.mockRejectedValue(new Error("start failed"));
 
@@ -163,6 +166,7 @@ describe("LinkYouTubeAccountCard", () => {
         thumbnailUrl: "https://img.youtube.com/123.jpg",
         updatedAt: "2024-01-01T00:00:00Z",
       },
+      statusMessage: null,
     });
 
     renderWithClient(<LinkYouTubeAccountCard />);
@@ -180,5 +184,19 @@ describe("LinkYouTubeAccountCard", () => {
       screen.queryByRole("button", { name: /link channel/i }),
     ).not.toBeInTheDocument();
   });
-});
 
+  it("surfaces unlink reasons when provided", async () => {
+    linkStatusMock.mockResolvedValue({
+      linked: false,
+      refreshNeeded: false,
+      channel: null,
+      statusMessage: "Stored YouTube credentials expired. Please relink.",
+    });
+
+    renderWithClient(<LinkYouTubeAccountCard />);
+
+    expect(
+      await screen.findByText(/Stored YouTube credentials expired/i),
+    ).toBeInTheDocument();
+  });
+});
