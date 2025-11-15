@@ -71,10 +71,16 @@ export function useAgentConversation() {
 
   const sendMessage = useCallback(
     async (input: string) => {
+      console.log("[useAgentConversation] sendMessage called with:", input);
+      console.log("[useAgentConversation] conversationId:", state.conversationId);
+
       const trimmed = input.trim();
       if (!trimmed || !state.conversationId) {
+        console.log("[useAgentConversation] Aborting - empty input or no conversationId");
         return;
       }
+
+      console.log("[useAgentConversation] Calling streamTurn...");
 
       // Cancel any existing stream
       streamCleanupRef.current?.();

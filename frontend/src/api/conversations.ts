@@ -112,6 +112,9 @@ export function streamTurn({
 
   void (async () => {
     try {
+      console.log("[streamTurn] Starting stream to:", url);
+      console.log("[streamTurn] Request body:", { text });
+
       const response = await fetch(url, {
         method: "POST",
         headers: {
@@ -121,6 +124,8 @@ export function streamTurn({
         body: JSON.stringify({ text }),
         signal: abortController.signal,
       });
+
+      console.log("[streamTurn] Response status:", response.status);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -156,11 +161,14 @@ export function streamTurn({
               const data = JSON.parse(dataStr);
 
               if (data.token !== undefined) {
+                console.log("[streamTurn] Token received:", data.token);
                 onToken?.(data.token as string);
               } else if (data.turn_id !== undefined && data.text !== undefined) {
+                console.log("[streamTurn] Done event received");
                 onDone?.(data.turn_id as string, data.text as string);
                 cleanup();
               } else if (data.message !== undefined) {
+                console.log("[streamTurn] Error event received:", data.message);
                 onError?.(data.message as string);
                 cleanup();
               }
@@ -172,9 +180,11 @@ export function streamTurn({
       }
     } catch (error) {
       if (!isClosed && error instanceof Error && error.name !== "AbortError") {
+        console.error("[streamTurn] Error:", error);
         onError?.(error.message);
       }
     } finally {
+      console.log("[streamTurn] Cleanup called");
       cleanup();
     }
   })();

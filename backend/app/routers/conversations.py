@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from contextlib import suppress
 from uuid import uuid4
 
@@ -131,9 +132,9 @@ async def stream_turn(
             if assistant_agent is None:
                 yield {
                     "event": "error",
-                    "data": {
+                    "data": json.dumps({
                         "message": "Agent not available. Please configure OPENAI_API_KEY."
-                    },
+                    }),
                 }
                 return
 
@@ -147,17 +148,23 @@ async def stream_turn(
                 try:
                     # Stream from PydanticAI agent
                     # run_stream() returns an async context manager
+                    previous_length = 0
                     async with assistant_agent.run_stream(body.text) as result:
                         # Iterate over the streamed text tokens
-                        async for token in result.stream_text():
-                            if token:
-                                assistant_text_parts.append(token)
-                                await event_queue.put(
-                                    {
-                                        "event": "token",
-                                        "data": {"token": token},
-                                    }
-                                )
+                        # stream_text() yields the full text so far, not deltas
+                        async for full_text in result.stream_text():
+                            if full_text:
+                                # Extract only the new delta since last yield
+                                delta = full_text[previous_length:]
+                                if delta:
+                                    assistant_text_parts.append(delta)
+                                    previous_length = len(full_text)
+                                    await event_queue.put(
+                                        {
+                                            "event": "token",
+                                            "data": json.dumps({"token": delta}),
+                                        }
+                                    )
 
                     # Generation completed - insert assistant turn
                     # Run in thread to avoid blocking event loop
@@ -176,10 +183,10 @@ async def stream_turn(
                     await event_queue.put(
                         {
                             "event": "done",
-                            "data": {
+                            "data": json.dumps({
                                 "turn_id": assistant_turn_id,
                                 "text": assistant_text,
-                            },
+                            }),
                         }
                     )
                 except asyncio.CancelledError:
@@ -200,7 +207,7 @@ async def stream_turn(
                     await event_queue.put(
                         {
                             "event": "error",
-                            "data": {"message": "Generation failed"},
+                            "data": json.dumps({"message": "Generation failed"}),
                         }
                     )
                 finally:
