@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from contextlib import suppress
 from uuid import uuid4
 
@@ -131,37 +132,68 @@ async def stream_turn(
             if assistant_agent is None:
                 yield {
                     "event": "error",
-                    "data": {
-                        "message": "Agent not available. Please configure OPENAI_API_KEY."
-                    },
+                    "id": "1",
+                    "data": json.dumps(
+                        {
+                            "message": "Agent not available. Please configure OPENAI_API_KEY."
+                        }
+                    ),
                 }
                 return
 
-            assistant_text_parts: list[str] = []
             assistant_turn_id: str | None = None
             event_queue: asyncio.Queue[dict | None] = asyncio.Queue()
+            event_id_counter = 0
 
             async def run_assistant():
                 """Run assistant generation and put events in queue."""
-                nonlocal assistant_turn_id
+                nonlocal assistant_turn_id, event_id_counter
+                previous_text = ""
                 try:
                     # Stream from PydanticAI agent
                     # run_stream() returns an async context manager
+                    # Note: stream_text() returns accumulated text, not deltas
                     async with assistant_agent.run_stream(body.text) as result:
                         # Iterate over the streamed text tokens
-                        async for token in result.stream_text():
-                            if token:
-                                assistant_text_parts.append(token)
-                                await event_queue.put(
-                                    {
-                                        "event": "token",
-                                        "data": {"token": token},
-                                    }
-                                )
+                        async for accumulated_text in result.stream_text():
+                            if accumulated_text:
+                                # Compute delta by comparing with previous text
+                                if accumulated_text.startswith(previous_text):
+                                    delta = accumulated_text[
+                                        len(previous_text) :
+                                    ]
+                                    if delta:
+                                        event_id_counter += 1
+                                        await event_queue.put(
+                                            {
+                                                "event": "token",
+                                                "id": str(event_id_counter),
+                                                "data": json.dumps(
+                                                    {"token": delta}
+                                                ),
+                                            }
+                                        )
+                                    previous_text = accumulated_text
+                                else:
+                                    # Fallback: if text doesn't start with previous,
+                                    # send the whole thing (shouldn't happen normally)
+                                    delta = accumulated_text
+                                    if delta:
+                                        event_id_counter += 1
+                                        await event_queue.put(
+                                            {
+                                                "event": "token",
+                                                "id": str(event_id_counter),
+                                                "data": json.dumps(
+                                                    {"token": delta}
+                                                ),
+                                            }
+                                        )
+                                    previous_text = accumulated_text
 
                     # Generation completed - insert assistant turn
                     # Run in thread to avoid blocking event loop
-                    assistant_text = "".join(assistant_text_parts)
+                    assistant_text = previous_text
                     assistant_turn_id = await asyncio.to_thread(
                         insert_turn,
                         db,
@@ -173,13 +205,17 @@ async def stream_turn(
                         trace.set_attribute(
                             "assistant_turn_id", assistant_turn_id
                         )
+                    event_id_counter += 1
                     await event_queue.put(
                         {
                             "event": "done",
-                            "data": {
-                                "turn_id": assistant_turn_id,
-                                "text": assistant_text,
-                            },
+                            "id": str(event_id_counter),
+                            "data": json.dumps(
+                                {
+                                    "turn_id": assistant_turn_id,
+                                    "text": assistant_text,
+                                }
+                            ),
                         }
                     )
                 except asyncio.CancelledError:
@@ -197,10 +233,14 @@ async def stream_turn(
                         user_turn_id=user_turn_id,
                         error=str(exc),
                     )
+                    event_id_counter += 1
                     await event_queue.put(
                         {
                             "event": "error",
-                            "data": {"message": "Generation failed"},
+                            "id": str(event_id_counter),
+                            "data": json.dumps(
+                                {"message": "Generation failed"}
+                            ),
                         }
                     )
                 finally:

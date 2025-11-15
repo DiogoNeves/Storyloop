@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUp, Bot, Plus } from "lucide-react";
 
-import { useAgentDemo } from "@/hooks";
+import { useAgent } from "@/hooks";
 import {
   type AgentConversationAdapter,
   type AgentConversationState,
@@ -193,7 +193,7 @@ export function AgentPanelView({ state, adapter }: AgentPanelViewProps) {
 }
 
 export function AgentPanel() {
-  const demo = useAgentDemo();
+  const agent = useAgent();
 
-  return <AgentPanelView state={demo.state} adapter={demo.adapter} />;
+  return <AgentPanelView state={agent.state} adapter={agent.adapter} />;
 }
