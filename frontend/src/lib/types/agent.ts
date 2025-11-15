@@ -14,12 +14,6 @@ export interface AgentMessageAnnotation {
   description?: string;
 }
 
-export interface AgentSuggestedPrompt {
-  id: string;
-  label: string;
-  prompt: string;
-}
-
 export interface AgentComposerState {
   status: "idle" | "sending" | "responding";
   error?: string | null;
@@ -28,12 +22,10 @@ export interface AgentComposerState {
 export interface AgentConversationState {
   conversationId: string;
   messages: AgentMessage[];
-  suggestedPrompts: AgentSuggestedPrompt[];
   composer: AgentComposerState;
 }
 
 export interface AgentConversationAdapter {
   sendMessage: (input: string) => Promise<void>;
   resetConversation: () => void;
-  acknowledgeSuggestion: (suggestion: AgentSuggestedPrompt) => void;
 }
