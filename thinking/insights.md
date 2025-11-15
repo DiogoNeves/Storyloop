@@ -2,7 +2,7 @@
 
 ## Overview
 
-Storyloop centers on a single, interpretable metric that lets creators—especially those just getting started—track the progress of their craft across every upload. The current implementation focuses on the CTR-free Expected Satisfied Watch Time per Impression (eSWTPI), tuned for long-term comparability and resilient to algorithm-driven cycles. Expected Satisfied Watch Time per Impression reflects how much valuable viewing time each upload generates for every opportunity to be discovered.
+Storyloop centers on a single, interpretable metric that lets creators—especially those navigating the climb from zero to their first 100k subscribers or views—track the progress of their craft across every upload. The current implementation focuses on the CTR-free Expected Satisfied Watch Time per Impression (eSWTPI), tuned for long-term comparability and resilient to algorithm-driven cycles. Expected Satisfied Watch Time per Impression reflects how much valuable viewing time each upload generates for every opportunity to be discovered, while the surrounding insights translate the signal into guidance about what to try next.
 
 ## Why CTR Isn’t Included
 
@@ -127,7 +127,7 @@ total_score = w1 * discovery + w2 * retention + w3 * loyalty
 
 ## Score Breakdown & UI Behaviour
 
-Display the overall eSWTPI score (0–100) with a trend indicator. Beneath the headline score, show three chips or bars for Discovery, Retention, and Loyalty. Allow real-time recalculation when users adjust weights and pair each component with a concise tooltip.
+Display the overall eSWTPI score (0–100) with a trend indicator. Beneath the headline score, show three chips or bars for Discovery, Retention, and Loyalty. Allow real-time recalculation when users adjust weights and pair each component with a concise tooltip that recommends an actionable next step, so the metric always feeds direction.
 
 ### Progress & Time-Series Tracking
 

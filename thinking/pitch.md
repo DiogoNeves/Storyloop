@@ -2,15 +2,15 @@
 
 ## Problem
 
-New YouTube creators feel lost and directionless. They want to know what to do next, but dashboards dump raw metrics instead of showing a path that leads to results.
+New YouTube creators feel lost and directionless, especially when they’re trying to grow from zero traction to their first 100k subscribers or views. They want to know what to do next, but dashboards dump raw metrics instead of showing a path that leads to results.
 
 ## Opportunity
 
-Offer a creative companion that transforms early-channel noise into clear, user-driven next steps so beginners can build repeatable wins without relying on generic “best practices.”
+Offer a creative companion that transforms early-channel noise into clear, user-driven next steps so beginners can build repeatable wins without relying on generic “best practices.” Give creators direction they can trust while still celebrating the metrics that prove their experiments are working.
 
 ## Solution
 
-Storyloop combines a FastAPI backend, React frontend, and automated YouTube sync to deliver user-driven direction: natural language goals turn into guided experiments, weekly metric refreshes show what actually moved the needle, and journal-linked insights tie creative decisions to measurable outcomes. See [thinking/insights.md](insights.md) for the full scoring and insights logic.
+Storyloop combines a FastAPI backend, React frontend, and automated YouTube sync to deliver user-driven direction: natural language goals turn into guided experiments, weekly metric refreshes show what actually moved the needle, and journal-linked insights tie creative decisions to measurable outcomes on the road to 100k. See [thinking/insights.md](insights.md) for the full scoring and insights logic.
 
 ## Product Experience
 
