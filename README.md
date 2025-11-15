@@ -1,12 +1,12 @@
 # Storyloop
 
-Storyloop is a creator analytics journal built for people taking their first real swing at YouTube. When you’re new, every dashboard screams for attention but none of them tell you what to actually do next.
+Storyloop is a creator guidance journal built for people taking their first real swing at YouTube. When you’re trying to go from zero to your first 100k subscribers or views, every dashboard screams for attention but none of them tell you what to actually do next.
 
-Most analytics platforms flood you with charts and numbers, or push you toward generic “best practices.” Storyloop flips that around. It starts with your user-driven goals — “I want to land my first 1,000 subscribers by tightening my intros” — and quietly tracks how your creative experiments perform.
+Most analytics platforms flood you with charts and numbers, or push you toward generic “best practices.” Storyloop flips that around. It starts with your user-driven goals — “I want to unlock my first 1,000 subscribers by tightening my intros” — and quietly tracks how your creative experiments perform.
 
 Over time, it connects those goals and hypotheses to real outcomes so you can see direction and momentum instead of staring at static graphs.
 
-Built for new creators who want guidance without giving up control, Storyloop turns your channel’s data into a personal growth story. It’s not just analytics — it’s the roadmap that keeps you focused on what to make next.
+Built for new creators who want guidance without giving up control, Storyloop turns your channel’s data into a personal growth story. It’s not just analytics — it’s a direction-driven roadmap that keeps you focused on what to make next.
 
 ## Prerequisites
 
