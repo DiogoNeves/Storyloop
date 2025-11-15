@@ -9,7 +9,7 @@ graph TB
         Query[TanStack Query]
         API_Client[Axios Client]
     end
-    
+
     subgraph "Backend Server"
         FastAPI[FastAPI App]
         Router[Routers]
@@ -17,21 +17,21 @@ graph TB
         DB_Factory[DB Factory]
         Scheduler[APScheduler]
     end
-    
+
     subgraph "Background Jobs"
         YT_Job[YouTube Sync<br/>Sunday 3am]
         GS_Job[Growth Score<br/>Daily 1am]
     end
-    
+
     subgraph "External Services"
         YT_API[YouTube API]
         Logfire[Logfire]
     end
-    
+
     subgraph "Storage"
         SQLite[(SQLite Database)]
     end
-    
+
     UI --> Query
     Query --> API_Client
     API_Client -->|HTTP REST| FastAPI
@@ -39,16 +39,16 @@ graph TB
     Router --> Service
     Service --> DB_Factory
     DB_Factory --> SQLite
-    
+
     FastAPI --> Scheduler
     Scheduler --> YT_Job
     Scheduler --> GS_Job
     YT_Job --> Service
     GS_Job --> Service
-    
+
     Service -.->|Future| YT_API
     FastAPI -.->|Optional| Logfire
-    
+
     style UI fill:#61dafb
     style FastAPI fill:#009485
     style SQLite fill:#003B57
@@ -66,7 +66,7 @@ sequenceDiagram
     participant B as FastAPI Backend
     participant S as Service Layer
     participant D as SQLite DB
-    
+
     U->>UI: Interact with app
     UI->>Q: useQuery(...)
     Q->>A: Check cache / Fetch
@@ -89,12 +89,12 @@ sequenceDiagram
     participant YT as YouTubeService
     participant GS as GrowthScoreService
     participant DB as SQLite DB
-    
+
     Note over APS: Cron trigger (Sun 3am)
     APS->>YT: sync_latest_metrics()
     YT->>DB: Store metrics
     DB-->>YT: Confirm
-    
+
     Note over APS: Cron trigger (Daily 1am)
     APS->>GS: recalculate_growth_score()
     GS->>DB: Store scores
@@ -112,18 +112,18 @@ flowchart LR
         B[Component State]
         C[API Queries]
     end
-    
+
     subgraph "Network Layer"
         D[CORS Middleware]
         E[HTTP Protocol]
     end
-    
+
     subgraph "Backend Layer"
         F[Router]
         G[Services]
         H[Database]
     end
-    
+
     A --> B
     B --> C
     C --> D
@@ -131,7 +131,7 @@ flowchart LR
     E --> F
     F --> G
     G --> H
-    
+
     H -.->|Background Jobs| G
     G -.->|Updates| F
     F -.->|Push Events| E
@@ -210,11 +210,16 @@ FastAPI Application
 │   │   └── YouTube API integration
 │   ├── GrowthScoreService
 │   │   └── Score calculations
-│   └── AgentService (Future)
-│       └── Agent interactions and background action management
+│   └── Agent Service (agent.py)
+│       └── PydanticAI agent builder
+│
+├── Database Helpers (db_helpers/)
+│   └── conversations.py
+│       └── Conversation/turn persistence
 │
 └── Routers
-    └── Health endpoint
+    ├── Health endpoint
+    └── Conversations endpoint (SSE streaming)
 ```
 
 ## User Experience Flow
@@ -285,4 +290,3 @@ FastAPI Application
 │ Uvicorn          │ pytest                   │
 └─────────────────────────────────────────────┘
 ```
-
