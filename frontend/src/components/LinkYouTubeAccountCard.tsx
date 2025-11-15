@@ -37,6 +37,14 @@ export function LinkYouTubeAccountCard() {
   }, [startLinkMutation]);
 
   const isLinked = statusQuery.data?.linked ?? false;
+  const statusMessage = (() => {
+    const message = statusQuery.data?.statusMessage;
+    if (!message) {
+      return null;
+    }
+    const trimmed = message.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  })();
   const cardClassName = isLinked
     ? undefined
     : "border-dashed border-primary/40 bg-primary/5";
@@ -87,6 +95,14 @@ export function LinkYouTubeAccountCard() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 p-4 pt-2">
+          {statusMessage ? (
+            <p
+              className="rounded-md bg-muted px-3 py-2 text-sm text-foreground"
+              role="status"
+            >
+              {statusMessage}
+            </p>
+          ) : null}
           <Button
             type="button"
             onClick={handleLinkClick}
@@ -163,4 +179,3 @@ export function LinkYouTubeAccountCard() {
     </Card>
   );
 }
-

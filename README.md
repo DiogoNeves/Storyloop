@@ -93,8 +93,9 @@ Storyloop now supports authenticating against the YouTube Data API via OAuth. Co
 
 The backend creates a `users` table on startup to store the active creator's channel metadata and OAuth credentials. Columns
 include the primary key (`id`), serialized credential JSON (`credentials_json` and `credentials_updated_at`), saved channel
-details (`channel_id`, `channel_title`, `channel_url`, `channel_thumbnail_url`, `channel_updated_at`), and the most recent
-OAuth state token (`oauth_state`, `oauth_state_created_at`).
+details (`channel_id`, `channel_title`, `channel_url`, `channel_thumbnail_url`, `channel_updated_at`), the most recent
+OAuth state token (`oauth_state`, `oauth_state_created_at`), and any credential error that requires relinking
+(`credentials_error`).
 
 ### Demo Mode
 

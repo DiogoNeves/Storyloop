@@ -40,17 +40,9 @@ export async function fetchGrowthScore(
 }
 
 export const growthQueries = createQueryKeys("growth", {
-  score: (
-    channelId?: string | null,
-    videoType?: "short" | "video" | "live" | null,
-  ) => ({
-    queryKey: [
-      "growth",
-      "score",
-      channelId ?? "unlinked",
-      videoType ?? "all",
-    ],
-    queryFn: () => fetchGrowthScore(channelId, videoType),
+  score: (channelId?: string | null) => ({
+    queryKey: ["growth", "score", channelId ?? "unlinked"],
+    queryFn: () => fetchGrowthScore(channelId, null),
   }),
 });
 
