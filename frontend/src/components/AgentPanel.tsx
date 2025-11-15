@@ -140,7 +140,7 @@ export function AgentPanelView({ state, adapter, isDemo }: AgentPanelViewProps) 
                 <MessageBubble key={message.id} message={message} />
               ))}
               {state.composer.status === "responding" ? (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2 pl-1 text-xs text-muted-foreground">
                   <span className="h-2 w-2 animate-ping rounded-full bg-primary" />
                   Loopie is preparing insight…
                 </div>
