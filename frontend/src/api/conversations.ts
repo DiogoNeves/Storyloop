@@ -209,7 +209,12 @@ export async function streamConversationTurn(
   let buffer = "";
   let shouldStop = false;
 
-  const boundaryPattern = /\r?\n\r?\n/;
+  const boundaryPattern = /\r?\n\r?\n/g;
+
+  const findBoundary = (input: string) => {
+    boundaryPattern.lastIndex = 0;
+    return boundaryPattern.exec(input);
+  };
 
   try {
     while (!shouldStop) {
@@ -219,7 +224,7 @@ export async function streamConversationTurn(
       }
       buffer += decoder.decode(value, { stream: true });
 
-      let match = buffer.match(boundaryPattern);
+      let match = findBoundary(buffer);
       while (match) {
         const boundaryIndex = match.index ?? -1;
         if (boundaryIndex === -1) {
@@ -234,7 +239,7 @@ export async function streamConversationTurn(
           shouldStop = handleParsedEvent(parsed, callbacks) || shouldStop;
         }
 
-        match = buffer.match(boundaryPattern);
+        match = findBoundary(buffer);
       }
     }
 
