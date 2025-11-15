@@ -185,7 +185,16 @@ function DashboardShell() {
         return true;
       });
 
-      baseItems.push(...filteredVideoItems);
+      const seenIds = new Set(baseItems.map((item) => item.id));
+      const uniqueVideoItems = filteredVideoItems.filter((item) => {
+        if (seenIds.has(item.id)) {
+          return false;
+        }
+        seenIds.add(item.id);
+        return true;
+      });
+
+      baseItems.push(...uniqueVideoItems);
     }
 
     // Sort by date (newest first) and limit to 50
