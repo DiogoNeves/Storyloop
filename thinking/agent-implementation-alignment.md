@@ -7,7 +7,7 @@ This document explains how the current v1 implementation (`pydantic-agent` branc
 **What's Built:**
 - ✅ SSE streaming conversations with real-time token-by-token responses
 - ✅ Conversation persistence in SQLite (`conversations` and `turns` tables)
-- ✅ Basic PydanticAI agent with OpenAI's gpt-4o-mini model
+- ✅ Basic PydanticAI agent with OpenAI's gpt-5-nano model
 - ✅ System prompt configured for YouTube creator assistance
 - ✅ Optional initialization (graceful degradation without API key)
 - ✅ Proper async/await patterns with non-blocking database operations
@@ -159,4 +159,3 @@ The v1 implementation provides a **solid, extensible foundation** that aligns wi
 ✅ **Production Ready:** Proper error handling, resource management, tests
 
 The agent branch vision can be incrementally built on top of this foundation without requiring architectural changes.
-
