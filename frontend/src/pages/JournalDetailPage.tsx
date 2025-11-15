@@ -29,53 +29,67 @@ export function JournalDetailPage() {
     enabled: Boolean(journalId),
   });
 
-  const entry = entryQuery.data;
+  const currentEntry: Entry | null = entryQuery.data ?? null;
 
   // Set up editing state
   const editingState = useEntryEditing();
-  const isEditing = entry && editingState.editingEntryId === entry.id;
-  const activityItem = entry ? entryToActivityItem(entry) : null;
+  const {
+    editingEntryId,
+    editingDraft,
+    editingError,
+    deletingEntryId,
+    isUpdating,
+    isDeleting,
+    startEdit,
+    handleEditDraftChange,
+    cancelEdit,
+    submitEdit,
+    deleteEntry,
+  } = editingState;
+
+  const isEditing = currentEntry?.id === editingEntryId;
+  const activityItem = currentEntry ? entryToActivityItem(currentEntry) : null;
   const deletionInitiatedRef = useRef(false);
 
   // Track when deletion is initiated
   useEffect(() => {
     if (
-      editingState.deletingEntryId &&
+      deletingEntryId &&
       journalId &&
-      editingState.deletingEntryId === journalId
+      deletingEntryId === journalId
     ) {
       deletionInitiatedRef.current = true;
     }
-  }, [editingState.deletingEntryId, journalId]);
+  }, [deletingEntryId, journalId]);
 
   // Redirect to home page if entry is deleted
   useEffect(() => {
     if (
       deletionInitiatedRef.current &&
       journalId &&
-      !editingState.isDeleting(journalId) &&
-      (!entry || entryQuery.isError)
+      !isDeleting(journalId) &&
+      (!currentEntry || entryQuery.isError)
     ) {
       // Entry was successfully deleted, navigate away
       deletionInitiatedRef.current = false;
-      navigate("/");
+      void navigate("/");
     }
   }, [
-    deletionInitiatedRef,
-    editingState.isDeleting,
-    entry,
+    currentEntry,
     entryQuery.isError,
     journalId,
     navigate,
+    isDeleting,
   ]);
 
+  const entryDate: string | null = currentEntry?.date ?? null;
   const journalDate = useMemo(() => {
-    if (!entry?.date) {
+    if (!entryDate) {
       return null;
     }
-    const parsed = new Date(entry.date);
+    const parsed = new Date(entryDate);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }, [entry?.date]);
+  }, [entryDate]);
 
   const formattedDate = journalDate
     ? journalDate.toLocaleString(undefined, {
@@ -84,7 +98,9 @@ export function JournalDetailPage() {
       })
     : null;
 
-  const summaryText = entry?.summary?.trim() ?? "";
+  const summarySource: string | null = currentEntry?.summary ?? null;
+  const summaryText =
+    typeof summarySource === "string" ? summarySource.trim() : "";
 
   // Read filter state from localStorage (same as ActivityFeed)
   const [contentTypeFilter] = useLocalStorageState<ContentTypeFilter>(
@@ -237,28 +253,28 @@ export function JournalDetailPage() {
                 ? entryQuery.error.message
                 : String(entryQuery.error)}
             </p>
-          ) : !entry ? (
+          ) : !currentEntry ? (
             <p className="text-sm text-muted-foreground">
               We couldn't find this journal entry.
             </p>
-          ) : isEditing && editingState.editingDraft ? (
+          ) : isEditing && editingDraft ? (
             <div className="space-y-6">
               <ActivityDraftCard
-                draft={editingState.editingDraft}
-                onChange={editingState.handleEditDraftChange}
-                onCancel={editingState.cancelEdit}
+                draft={editingDraft}
+                onChange={handleEditDraftChange}
+                onCancel={cancelEdit}
                 onSubmit={() => {
-                  void editingState.submitEdit();
+                  void submitEdit();
                 }}
-                isSubmitting={editingState.isUpdating}
-                errorMessage={editingState.editingError}
+                isSubmitting={isUpdating}
+                errorMessage={editingError}
                 submitLabel="Save changes"
-                category={entry.category}
-                idPrefix={`edit-entry-${entry.id}`}
+                category={currentEntry.category}
+                idPrefix={`edit-entry-${currentEntry.id}`}
                 onDelete={() => {
-                  void editingState.deleteEntry(entry.id);
+                  void deleteEntry(currentEntry.id);
                 }}
-                isDeleting={editingState.isDeleting(entry.id)}
+                isDeleting={isDeleting(currentEntry.id)}
               />
 
               <div className="h-px w-full bg-border" aria-hidden="true" />
@@ -281,7 +297,7 @@ export function JournalDetailPage() {
               <div className="space-y-4">
                 <div className="flex items-start justify-between gap-4">
                   <h1 className="text-2xl font-semibold text-foreground">
-                    {entry.title}
+                    {currentEntry.title}
                   </h1>
                   {activityItem && (
                     <Button
@@ -289,7 +305,7 @@ export function JournalDetailPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        editingState.startEdit(activityItem);
+                        startEdit(activityItem);
                       }}
                     >
                       Edit entry
