@@ -28,7 +28,7 @@ Maintainable code is obvious and less error prone. Someone with little understan
 - TypeScript/React: follow the ESLint + Prettier defaults; name components with `PascalCase`, hooks/utilities with `camelCase`, and prefer function components.
 - Keep environment variables in `.env`; reference them via `backend/config.py` instead of hard-coding.
 - Order exported components/functions before private helpers in each file. Place private helpers after the public code that uses them, keeping helpers close to their last usage.
-- Frontend UI: favor shadcn components under `frontend/src/components/ui/`. Run `pnpm dlx shadcn@latest add <component>` to install new primitives as features call for them (e.g., `input`, `label`, `textarea`, `dialog`). Keep shared tokens in `src/index.css`; adjust palette in the theme file if shadcn defaults change.
+- Frontend UI: favor shadcn components under `frontend/src/components/ui/`. Run `pnpm dlx shadcn@latest add <component>` to install new primitives as features call for them (e.g., `input`, `label`, `textarea`, `dialog`). Keep shared tokens in `src/index.css`; adjust palette in the theme file if shadcn defaults change. Use [Lucide](https://lucide.dev) for iconography to match the design system; import icons from `lucide-react` in code and reference the Lucide Figma library for mockups.
 
 ## Testing Guidelines
 
