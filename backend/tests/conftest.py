@@ -2,12 +2,19 @@
 
 from __future__ import annotations
 
+import os
 import sqlite3
 import uuid
 from collections.abc import Callable, Generator
 from typing import TYPE_CHECKING
 
 import pytest
+
+# Ensure the default application settings have a usable YouTube API key when
+# backend.app.main imports create the global FastAPI instance during test
+# collection. Individual tests can override this by constructing Settings
+# objects explicitly.
+os.environ.setdefault("YOUTUBE_API_KEY", "test-key")
 
 if TYPE_CHECKING:
     from app.db import SqliteConnectionFactory

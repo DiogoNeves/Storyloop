@@ -13,7 +13,9 @@ from app.main import create_app
 
 @pytest.mark.asyncio
 async def test_growth_score_endpoint_returns_expected_payload() -> None:
-    settings = Settings(database_url="sqlite:///:memory:")
+    settings = Settings(
+        database_url="sqlite:///:memory:", youtube_api_key="test-key"
+    )
     app = create_app(settings)
     transport = ASGITransport(app=app)
 

@@ -80,6 +80,13 @@ def build_lifespan(
         )
         resolved_youtube_service = demo_youtube_service
     else:
+        if not active_settings.youtube_api_key:
+            message = (
+                "YouTube API key is required when demo mode is disabled. "
+                "Set YOUTUBE_API_KEY or enable YOUTUBE_DEMO_MODE."
+            )
+            logger.error(message)
+            raise RuntimeError(message)
         youtube_service = YoutubeService(
             api_key=active_settings.youtube_api_key
         )
