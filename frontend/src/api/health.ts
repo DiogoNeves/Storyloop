@@ -4,6 +4,8 @@ import { apiClient } from "@/api/client";
 
 export interface HealthResponse {
   status: string;
+  youtubeDemoMode?: boolean;
+  agentAvailable?: boolean;
 }
 
 export const healthQueries = createQueryKeys("health", {

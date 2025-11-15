@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from contextlib import suppress
 from uuid import uuid4
 
@@ -131,19 +132,22 @@ async def stream_turn(
             if assistant_agent is None:
                 yield {
                     "event": "error",
-                    "data": {
-                        "message": "Agent not available. Please configure OPENAI_API_KEY."
-                    },
+                    "id": "1",
+                    "data": json.dumps(
+                        {
+                            "message": "Agent not available. Please configure OPENAI_API_KEY.",
+                        }
+                    ),
                 }
                 return
 
-            assistant_text_parts: list[str] = []
+            assistant_text = ""
             assistant_turn_id: str | None = None
             event_queue: asyncio.Queue[dict | None] = asyncio.Queue()
 
             async def run_assistant():
                 """Run assistant generation and put events in queue."""
-                nonlocal assistant_turn_id
+                nonlocal assistant_text, assistant_turn_id
                 try:
                     # Stream from PydanticAI agent
                     # run_stream() returns an async context manager
@@ -151,17 +155,23 @@ async def stream_turn(
                         # Iterate over the streamed text tokens
                         async for token in result.stream_text():
                             if token:
-                                assistant_text_parts.append(token)
+                                if token.startswith(assistant_text):
+                                    delta = token[len(assistant_text) :]
+                                    assistant_text = token
+                                else:
+                                    delta = token
+                                    assistant_text += token
+                                if not delta:
+                                    continue
                                 await event_queue.put(
                                     {
                                         "event": "token",
-                                        "data": {"token": token},
+                                        "data": json.dumps({"token": delta}),
                                     }
                                 )
 
                     # Generation completed - insert assistant turn
                     # Run in thread to avoid blocking event loop
-                    assistant_text = "".join(assistant_text_parts)
                     assistant_turn_id = await asyncio.to_thread(
                         insert_turn,
                         db,
@@ -176,10 +186,12 @@ async def stream_turn(
                     await event_queue.put(
                         {
                             "event": "done",
-                            "data": {
-                                "turn_id": assistant_turn_id,
-                                "text": assistant_text,
-                            },
+                            "data": json.dumps(
+                                {
+                                    "turn_id": assistant_turn_id,
+                                    "text": assistant_text,
+                                }
+                            ),
                         }
                     )
                 except asyncio.CancelledError:
@@ -200,7 +212,7 @@ async def stream_turn(
                     await event_queue.put(
                         {
                             "event": "error",
-                            "data": {"message": "Generation failed"},
+                            "data": json.dumps({"message": "Generation failed"}),
                         }
                     )
                 finally:
@@ -212,11 +224,13 @@ async def stream_turn(
 
             try:
                 # Yield events from queue
+                event_counter = 0
                 while True:
                     event_data = await event_queue.get()
                     if event_data is None:  # Cancellation signal
                         break
-                    yield event_data
+                    event_counter += 1
+                    yield {**event_data, "id": str(event_counter)}
                     # Break after done or error event
                     if event_data.get("event") in ("done", "error"):
                         break
