@@ -6,7 +6,6 @@ import {
   youtubeQueries,
   type YoutubeFeedResponse,
   type YoutubeLinkStatusResponse,
-  type YoutubeVideoResponse,
 } from "@/api/youtube";
 
 type YoutubeChannelInfo = Omit<YoutubeFeedResponse, "videos">;
@@ -42,6 +41,11 @@ export function useYouTubeFeed(
 
   // Fetch full feed once (for channel info) - cached forever
   // Use a distinct query key to avoid collisions
+  const filteredVideosEnabled =
+    Boolean(channelId) && videoType !== null && videoType !== undefined;
+
+  const fullFeedQueryEnabled = Boolean(channelId) && !filteredVideosEnabled;
+
   const fullFeedQuery = useQuery<YoutubeFeedResponse>({
     queryKey: ["youtube", "channels", channelId ?? "unlinked", "feed"],
     queryFn: async () => {
@@ -50,48 +54,49 @@ export function useYouTubeFeed(
       }
       return youtubeApi.fetchChannelVideos(channelId, null);
     },
-    enabled: Boolean(channelId),
+    enabled: fullFeedQueryEnabled,
     staleTime: Infinity, // Channel info doesn't change, cache forever
   });
 
-  // Fetch filtered videos - refetches when videoType changes
-  const filteredVideosQuery = useQuery<YoutubeVideoResponse[]>({
+  // Fetch filtered feed when a filter is applied
+  const filteredFeedQuery = useQuery<YoutubeFeedResponse>({
     queryKey: youtubeQueries.channelVideos(channelId ?? "unlinked", videoType)
       .queryKey,
     queryFn: async () => {
       if (!channelId) {
         throw new Error("No linked channel available");
       }
-      const feed = await youtubeApi.fetchChannelVideos(channelId, videoType);
-      return feed.videos;
+      return youtubeApi.fetchChannelVideos(channelId, videoType);
     },
-    enabled: Boolean(channelId),
+    enabled: filteredVideosEnabled,
   });
 
   // Combine cached channel info with filtered videos
   const youtubeFeed = useMemo<YoutubeFeedResponse | null>(() => {
-    if (!fullFeedQuery.data) {
+    const sourceFeed = filteredFeedQuery.data ?? fullFeedQuery.data;
+    if (!sourceFeed) {
       return null;
     }
 
-    // Extract channel info from cached full feed
+    // Extract channel info from whichever feed resolved first
     const channelInfo: YoutubeChannelInfo = {
-      channelId: fullFeedQuery.data.channelId,
-      channelTitle: fullFeedQuery.data.channelTitle,
-      channelDescription: fullFeedQuery.data.channelDescription,
-      channelUrl: fullFeedQuery.data.channelUrl,
-      channelThumbnailUrl: fullFeedQuery.data.channelThumbnailUrl,
+      channelId: sourceFeed.channelId,
+      channelTitle: sourceFeed.channelTitle,
+      channelDescription: sourceFeed.channelDescription,
+      channelUrl: sourceFeed.channelUrl,
+      channelThumbnailUrl: sourceFeed.channelThumbnailUrl,
     };
 
-    // Use filtered videos if available, otherwise use videos from full feed
-    const videos = filteredVideosQuery.data ?? fullFeedQuery.data.videos;
+    // Use filtered videos if available; otherwise fall back to the cached feed
+    const videos =
+      filteredFeedQuery.data?.videos ?? fullFeedQuery.data?.videos ?? [];
     const videosArray = Array.isArray(videos) ? videos : [];
 
     return {
       ...channelInfo,
       videos: videosArray,
     };
-  }, [fullFeedQuery.data, filteredVideosQuery.data]);
+  }, [filteredFeedQuery.data, fullFeedQuery.data]);
 
   const youtubeError = useMemo(() => {
     if (fullFeedQuery.isError) {
@@ -101,8 +106,8 @@ export function useYouTubeFeed(
       }
       return "We couldn't load channel information.";
     }
-    if (filteredVideosQuery.isError) {
-      const error = filteredVideosQuery.error;
+    if (filteredFeedQuery.isError) {
+      const error = filteredFeedQuery.error;
       if (error instanceof Error && error.message) {
         return error.message;
       }
@@ -112,8 +117,8 @@ export function useYouTubeFeed(
   }, [
     fullFeedQuery.error,
     fullFeedQuery.isError,
-    filteredVideosQuery.error,
-    filteredVideosQuery.isError,
+    filteredFeedQuery.error,
+    filteredFeedQuery.isError,
   ]);
 
   return {
@@ -121,8 +126,8 @@ export function useYouTubeFeed(
     youtubeError,
     isLoading:
       linkStatusQuery.isLoading ||
-      fullFeedQuery.isLoading ||
-      (videoType !== null && filteredVideosQuery.isLoading),
+      (fullFeedQueryEnabled && fullFeedQuery.isLoading) ||
+      (filteredVideosEnabled && filteredFeedQuery.isLoading),
     isLinked: Boolean(linkStatusQuery.data?.linked),
     linkStatus: linkStatusQuery.data ?? null,
     channelId,
