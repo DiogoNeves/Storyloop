@@ -2,15 +2,15 @@
 
 ## Problem
 
-Content creators drown in scattered analytics dashboards and struggle to connect storytelling choices to audience response, leaving growth up to guesswork.
+New YouTube creators feel lost and directionless. They want to know what to do next, but dashboards dump raw metrics instead of showing a path that leads to results.
 
 ## Opportunity
 
-Offer a creative companion that translates raw metrics into narrative insights so creators can systematically refine their craft and replicate success.
+Offer a creative companion that transforms early-channel noise into clear, user-driven next steps so beginners can build repeatable wins without relying on generic “best practices.”
 
 ## Solution
 
-Storyloop combines a FastAPI backend, React frontend, and automated YouTube sync to deliver a daily Growth Score, weekly metric refreshes, and journal-linked insights that tie creative decisions to measurable outcomes. See [thinking/insights.md](insights.md) for the full scoring and insights logic.
+Storyloop combines a FastAPI backend, React frontend, and automated YouTube sync to deliver user-driven direction: natural language goals turn into guided experiments, weekly metric refreshes show what actually moved the needle, and journal-linked insights tie creative decisions to measurable outcomes. See [thinking/insights.md](insights.md) for the full scoring and insights logic.
 
 ## Product Experience
 
@@ -40,4 +40,4 @@ Expand into multi-platform analytics, add AI-powered guidance, introduce shared 
 
 ## Goal
 
-Storyloop aims to be a creator’s analytics journal and growth coach, automatically syncing performance data, calculating a focused Growth Score, and pairing metrics with journaled experiments so storytellers can understand what resonates, repeat wins, and chart a deliberate path to audience growth.
+Storyloop aims to be a new creator’s analytics journal and growth coach, automatically syncing performance data, calculating a focused Growth Score, and pairing metrics with journaled experiments so storytellers can discover what works, repeat it, and build momentum with confidence.

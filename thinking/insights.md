@@ -2,7 +2,7 @@
 
 ## Overview
 
-Storyloop centers on a single, interpretable metric that lets creators track the progress of their craft across every upload. The current implementation focuses on the CTR-free Expected Satisfied Watch Time per Impression (eSWTPI), tuned for long-term comparability and resilient to algorithm-driven cycles. Expected Satisfied Watch Time per Impression reflects how much valuable viewing time each upload generates for every opportunity to be discovered.
+Storyloop centers on a single, interpretable metric that lets creators—especially those just getting started—track the progress of their craft across every upload. The current implementation focuses on the CTR-free Expected Satisfied Watch Time per Impression (eSWTPI), tuned for long-term comparability and resilient to algorithm-driven cycles. Expected Satisfied Watch Time per Impression reflects how much valuable viewing time each upload generates for every opportunity to be discovered.
 
 ## Why CTR Isn’t Included
 
