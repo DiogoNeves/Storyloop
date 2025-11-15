@@ -25,7 +25,7 @@ def build_agent(active_settings: Settings) -> Agent[str, str] | None:
 
     # Ensure the API key is set in environment for PydanticAI to use
     os.environ["OPENAI_API_KEY"] = active_settings.openai_api_key
-    model = OpenAIModel("gpt-4o-mini")
+    model = OpenAIModel("gpt-5-nano")
 
     system_prompt = """You are a helpful creative partner for YouTube content creators using Storyloop.
 You help creators understand their analytics, track patterns, and make data-driven decisions about their content.
