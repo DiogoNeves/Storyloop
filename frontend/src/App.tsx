@@ -42,16 +42,11 @@ const queryClient = new QueryClient({
 
 function ScorePlaceholder({
   channelId,
-  contentTypeFilter,
 }: {
   channelId: string | null;
-  contentTypeFilter: ContentTypeFilter;
 }) {
   const growthScoreQuery = useQuery({
-    ...growthQueries.score(
-      channelId ?? null,
-      contentTypeFilter === "all" ? null : contentTypeFilter,
-    ),
+    ...growthQueries.score(channelId ?? null),
   });
 
   const errorMessage = growthScoreQuery.isError
@@ -332,7 +327,6 @@ function DashboardShell() {
           <div className="col-span-2 flex h-full min-h-0 min-w-0 flex-col gap-8 overflow-y-auto scrollbar-hide">
             <ScorePlaceholder
               channelId={youtubeState.channelId}
-              contentTypeFilter={contentTypeFilter}
             />
 
             <ContentTypeTabs

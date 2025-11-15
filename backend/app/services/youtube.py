@@ -1003,7 +1003,16 @@ class YoutubeService:
                 raise YoutubeConfigurationError(
                     "Stored credentials are expired and cannot be refreshed"
                 )
-            oauth_service.refresh_credentials(credentials)
+            try:
+                oauth_service.refresh_credentials(credentials)
+            except YoutubeConfigurationError as exc:
+                # Clear invalid credentials so the UI can prompt for re-linking.
+                user_service.upsert_credentials(
+                    None,
+                    None,
+                    error_message=str(exc),
+                )
+                raise
             user_service.upsert_credentials(
                 oauth_service.serialize_credentials(credentials),
                 datetime.now(tz=UTC),
