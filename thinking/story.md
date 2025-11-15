@@ -2,23 +2,23 @@
 
 ## A Creator's Journey
 
-Imagine the morning after a big upload. You sit down with coffee, open the analytics dashboard, and get blasted with more graphs than guidance. The problem isn't a lack of data—it's too much data and too little meaning. Someone else's growth playbook is stitched into every chart, and your own experiments get buried.
+Imagine being a new creator staring at your first few uploads. You sit down with coffee, open the analytics dashboard, and get blasted with more graphs than guidance. The problem isn't a lack of data—it's too much data and too little direction. Someone else's growth playbook is stitched into every chart, and the things you tried disappear in the noise.
 
-Storyloop was born out of that frustration. I wanted a way to stay curious about my channel without drowning in dashboards—a place where my intent, my hypotheses, and my results lived in the same loop.
+Storyloop was born out of that frustration. I wanted a way to stay curious about my channel without drowning in dashboards—a place where my intent, my hypotheses, and my results lived in the same loop. I needed a guide that met me where I was instead of handing me a generic checklist.
 
 ## How Storyloop Keeps You Oriented
 
 ### Start with Intent
 
-Every new experiment starts with a natural-language goal: *"I want to improve retention with stronger openings"* or *"Test tighter pacing on tutorial intros."* Storyloop stores those goals as journal entries—simple notes capturing your creative decisions and reflections. The journal stays focused on what you did and why, without trying to automatically parse your intent. Instead of reverse-engineering someone else's trends, you get feedback on the risks you're actually taking.
+Every new experiment starts with a natural-language goal: *"I want my next upload to earn 100 more returning viewers"* or *"Test tighter pacing on tutorial intros."* Storyloop stores those goals as journal entries—simple notes capturing your creative decisions and reflections. The journal stays focused on what you did and why, without trying to automatically parse your intent. Instead of reverse-engineering someone else's trends, you get feedback on the risks you're actually taking.
 
 ### The Weekly Rhythm
 
-Each week, Storyloop syncs your channel data while you sleep, recalculates your Growth Score, and surfaces the shifts that matter. See [thinking/insights.md](insights.md) for the full scoring and insights logic behind that number. On Monday morning you might see, *"Videos with tighter pacing improved retention by 14%."* It's a quick pulse check that respects your creative cadence, not a firehose demanding daily refreshes.
+Each week, Storyloop syncs your channel data while you sleep, recalculates your Growth Score, and surfaces the shifts that matter. See [thinking/insights.md](insights.md) for the full scoring and insights logic behind that number. On Monday morning you might see, *"Videos with tighter pacing improved retention by 14%."* It's the kind of direction that helps you decide the very next move, not a firehose demanding daily refreshes.
 
 ### Connecting Notes to Outcomes
 
-When the new numbers land, Storyloop links them to the journal entries that inspired them. The idea you scribbled down—*"Shorter intros with a direct hook"*—now sits beside the results that prove whether it worked. For deeper insights, you can interact with an AI agent—ask it questions, request it to track specific metrics, or have it analyze patterns across your content. The agent can save actions to run in the background, automatically generating insights and adding them to your timeline as patterns emerge. Wins become repeatable patterns, not lucky guesses, and even the misses teach you what to try next.
+When the new numbers land, Storyloop links them to the journal entries that inspired them. The idea you scribbled down—*"Shorter intros with a direct hook"*—now sits beside the results that prove whether it worked. For deeper insights, you can interact with an AI agent—ask it questions, request it to track specific metrics, or have it analyze patterns across your content. The agent can save actions to run in the background, automatically generating insights and adding them to your timeline as patterns emerge. Wins become repeatable patterns, not lucky guesses, and even the misses point you toward what to try next.
 
 ## Living With Storyloop
 
