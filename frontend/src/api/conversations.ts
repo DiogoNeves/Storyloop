@@ -43,7 +43,12 @@ function isAxiosError(error: unknown): error is AxiosError {
 export async function createConversation(
   title?: string | null,
 ): Promise<Conversation> {
-  const payload = title ? { title } : undefined;
+  const payload =
+    typeof title === "undefined"
+      ? {}
+      : {
+          title,
+        };
   const { data } = await apiClient.post<ConversationRecord>("/conversations", payload);
   return {
     id: data.id,
