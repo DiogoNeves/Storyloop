@@ -1,0 +1,3 @@
+{
+  "setup-worktree": ["cd frontend && npm install", "cd backend && uv sync"]
+}
