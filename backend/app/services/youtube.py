@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
 
 from collections.abc import AsyncIterator
 
+import anyio
 import httpx
 from googleapiclient.discovery import build
 
@@ -829,7 +830,7 @@ class YoutubeService:
         """Log a placeholder sync until real metrics synchronization is wired in."""
         logger.info("Pretending to sync latest YouTube metrics.")
 
-    def fetch_authenticated_channel_videos(
+    async def fetch_authenticated_channel_videos(
         self,
         user_service: "UserService",
         oauth_service: "YoutubeOAuthService",
@@ -837,6 +838,25 @@ class YoutubeService:
         *,
         max_results: int = 50,
         video_type: str | None = None,
+    ) -> YoutubeFeed:
+        """Run the authenticated channel fetch on a worker thread."""
+
+        return await anyio.to_thread.run_sync(
+            self._fetch_authenticated_channel_videos_sync,
+            user_service,
+            oauth_service,
+            channel_id,
+            max_results,
+            video_type,
+        )
+
+    def _fetch_authenticated_channel_videos_sync(
+        self,
+        user_service: "UserService",
+        oauth_service: "YoutubeOAuthService",
+        channel_id: str | None,
+        max_results: int,
+        video_type: str | None,
     ) -> YoutubeFeed:
         """Return recent uploads for the authenticated user's channel.
 
@@ -1066,7 +1086,7 @@ class YoutubeService:
         ):
             # Try authenticated method first
             try:
-                return self.fetch_authenticated_channel_videos(
+                return await self.fetch_authenticated_channel_videos(
                     user_service,
                     oauth_service,
                     channel_id=channel,
