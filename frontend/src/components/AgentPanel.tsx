@@ -43,11 +43,10 @@ function MessageBubble({ message }: { message: AgentMessage }) {
     >
       <div
         className={cn(
-          "group relative max-w-[88%] rounded-2xl border px-5 py-4 text-sm shadow-sm transition-transform",
-          isUser &&
-            "border-primary/25 bg-gradient-to-br from-primary/70 via-primary/60 to-primary/55 text-primary-foreground",
-          isAssistant &&
-            "border-border bg-background/85 text-foreground backdrop-blur supports-[backdrop-filter]:bg-background/70",
+          "group relative text-sm transition-transform",
+          isUser
+            ? "max-w-[88%] rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/70 via-primary/60 to-primary/55 px-5 py-4 text-primary-foreground shadow-sm"
+            : "w-full rounded-2xl bg-transparent px-4 py-2 text-foreground/90",
         )}
       >
         <div
