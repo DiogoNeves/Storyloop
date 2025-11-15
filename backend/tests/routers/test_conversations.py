@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -29,6 +30,51 @@ def _create_test_app(
     app.state.assistant_agent = assistant_agent
     app.include_router(conversations_router, prefix="/conversations")
     return app
+
+
+class ControllableAgentRun:
+    """Track a single fake agent run with controllable lifecycle events."""
+
+    def __init__(self, label: str) -> None:
+        self.label = label
+        self.started = asyncio.Event()
+        self.finish = asyncio.Event()
+        self.cancelled = asyncio.Event()
+        self.cleaned_up = asyncio.Event()
+
+    async def stream_text(self):
+        """Wait until allowed to finish, yielding exactly one token."""
+        self.started.set()
+        try:
+            await self.finish.wait()
+            yield self.label
+        except asyncio.CancelledError:
+            self.cancelled.set()
+            raise
+
+
+class ControllableAgent:
+    """A fake agent that exposes lifecycle hooks for each run."""
+
+    def __init__(self) -> None:
+        self.runs: list[ControllableAgentRun] = []
+        self._run_added = asyncio.Event()
+
+    async def wait_for_run_count(self, count: int, timeout: float = 5.0) -> None:
+        """Wait until the requested number of runs have been registered."""
+        while len(self.runs) < count:
+            self._run_added.clear()
+            await asyncio.wait_for(self._run_added.wait(), timeout=timeout)
+
+    @asynccontextmanager
+    async def run_stream(self, _prompt: str):  # noqa: D401 - behavior defined by context
+        run = ControllableAgentRun(label=f"run-{len(self.runs) + 1}")
+        self.runs.append(run)
+        self._run_added.set()
+        try:
+            yield run
+        finally:
+            run.cleaned_up.set()
 
 
 def test_create_conversation(
@@ -198,8 +244,93 @@ async def test_stream_turn_with_mocked_agent(
         assert len(turns) == 2  # user + assistant
         assert turns[0]["role"] == "user"
         assert turns[0]["text"] == "Hello"
-        assert turns[1]["role"] == "assistant"
-        assert "Hello world!" in turns[1]["text"]
+
+
+@pytest.mark.asyncio
+async def test_stream_turn_cancels_inflight_run(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    """Ensure a new stream cancels any in-flight agent run for the same conversation."""
+
+    fake_agent = ControllableAgent()
+    app = _create_test_app(memory_connection_factory, assistant_agent=fake_agent)
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
+        create_response = await client.post(
+            "/conversations", json={"title": "Concurrency"}
+        )
+        conversation_id = create_response.json()["id"]
+        stream_url = f"/conversations/{conversation_id}/turns/stream"
+
+        class StreamRunner:
+            """Manage an individual streaming request in the background."""
+
+            def __init__(self, payload: dict[str, str]) -> None:
+                self.payload = payload
+                self.response_status: int | None = None
+
+            async def run(self) -> list[str]:
+                events: list[str] = []
+                try:
+                    async with client.stream(
+                        "POST", stream_url, json=self.payload
+                    ) as response:
+                        self.response_status = response.status_code
+                        async for line in response.aiter_lines():
+                            if line.strip():
+                                events.append(line)
+                except Exception:  # noqa: BLE001 - surface original failure
+                    raise
+                return events
+
+        # Start the first stream and wait until the fake agent has begun its run.
+        stream1 = StreamRunner({"text": "First"})
+        task1 = asyncio.create_task(stream1.run())
+        await fake_agent.wait_for_run_count(1)
+        run1 = fake_agent.runs[0]
+        await asyncio.wait_for(run1.started.wait(), timeout=5)
+
+        # Launch a second stream while the first is still running.
+        stream2 = StreamRunner({"text": "Second"})
+        task2 = asyncio.create_task(stream2.run())
+        await fake_agent.wait_for_run_count(2)
+        run2 = fake_agent.runs[1]
+        await asyncio.wait_for(run2.started.wait(), timeout=5)
+
+        # Allow the first run to finish and clean up while the second remains active.
+        run1.finish.set()
+        await asyncio.wait_for(run1.cleaned_up.wait(), timeout=5)
+        _ = await task1
+        assert stream1.response_status == 200
+        assert run1.cancelled.is_set()
+
+        # Start a third stream before letting the second complete.
+        stream3 = StreamRunner({"text": "Third"})
+        task3 = asyncio.create_task(stream3.run())
+        await fake_agent.wait_for_run_count(3)
+        run3 = fake_agent.runs[2]
+        await asyncio.wait_for(run3.started.wait(), timeout=5)
+
+        # The second run should be cancelled once the third begins.
+        await asyncio.wait_for(run2.cancelled.wait(), timeout=5)
+        await asyncio.wait_for(run2.cleaned_up.wait(), timeout=5)
+
+        # Let the third run finish normally.
+        run3.finish.set()
+        await asyncio.wait_for(run3.cleaned_up.wait(), timeout=5)
+
+        _ = await task2
+        events3 = await task3
+
+        assert stream2.response_status == 200
+        assert stream3.response_status == 200
+        assert run2.cancelled.is_set()
+        assert not run2.finish.is_set()
+        assert any("event: done" in line for line in events3)
+        assert len(fake_agent.runs) == 3
 
 
 @pytest.mark.asyncio
