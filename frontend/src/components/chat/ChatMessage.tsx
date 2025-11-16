@@ -17,9 +17,9 @@ function ChatMessageComponent({ message }: ChatMessageProps) {
     return {
       alignment: isUser ? "items-end" : "items-start",
       bubble: isUser
-        ? "max-w-[88%] rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/70 via-primary/60 to-primary/55 px-5 py-4 text-primary-foreground shadow-sm"
-        : "w-full rounded-2xl bg-transparent px-4 py-2 text-foreground/90",
-      text: isAssistant ? "text-foreground/90" : "text-primary-foreground/95",
+        ? "max-w-[88%] rounded-2xl bg-primary/70 px-3 py-2"
+        : "w-full rounded-2xl bg-transparent px-4 py-2",
+      text: isAssistant ? "text-foreground/90" : "text-primary-foreground/90",
     };
   }, [message.role]);
 
