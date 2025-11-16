@@ -48,7 +48,8 @@ import {
   AgentConversationProvider,
   useAgentConversationContext,
 } from "@/context/AgentConversationContext";
-import { SettingsProvider, useSettings } from "@/context/SettingsContext";
+import { SettingsProvider } from "@/context/SettingsContext";
+import { useSettings } from "@/context/useSettings";
 
 const queryClient = new QueryClient({
   defaultOptions: {
