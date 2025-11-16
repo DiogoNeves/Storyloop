@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Bot } from "lucide-react";
 
 import { type ActivityItem } from "@/lib/types/entries";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +10,7 @@ export const categoryBadgeClass: Record<ActivityItem["category"], string> = {
   content: "bg-accent text-accent-foreground",
   insight: "",
   journal: "bg-primary/10 text-primary",
+  conversation: "bg-primary/10 text-primary",
 };
 
 interface ActivityFeedItemProps {
@@ -16,6 +18,9 @@ interface ActivityFeedItemProps {
   onEdit?: () => void;
   onDelete?: () => void;
   isDeleting?: boolean;
+  onConversationClick?: (conversationId: string) => Promise<void>;
+  onConversationDelete?: () => void;
+  isConversationDeleting?: boolean;
 }
 
 export function ActivityFeedItem({
@@ -23,6 +28,9 @@ export function ActivityFeedItem({
   onEdit,
   onDelete,
   isDeleting,
+  onConversationClick,
+  onConversationDelete,
+  isConversationDeleting,
 }: ActivityFeedItemProps) {
   const formattedDate = new Date(item.date).toLocaleDateString(undefined, {
     month: "short",
@@ -38,7 +46,22 @@ export function ActivityFeedItem({
       ? `/videos/${item.videoId}`
       : item.category === "journal"
         ? `/journals/${item.id}`
-        : null;
+        : item.category === "conversation"
+          ? `/conversations/${item.id}`
+          : null;
+
+  const handleDetailClick = () => {
+    if (item.category === "conversation" && onConversationClick) {
+      void onConversationClick(item.id).catch(() => {
+        return undefined;
+      });
+    }
+  };
+  const handleConversationDelete = () => {
+    if (item.category === "conversation" && onConversationDelete) {
+      onConversationDelete();
+    }
+  };
 
   return (
     <Card className="group">
@@ -49,7 +72,14 @@ export function ActivityFeedItem({
               variant="secondary"
               className={categoryBadgeClass[item.category]}
             >
-              {item.category}
+              {item.category === "conversation" ? (
+                <>
+                  <Bot className="h-4 w-4" aria-hidden="true" />
+                  <span className="sr-only">Conversation</span>
+                </>
+              ) : (
+                item.category
+              )}
             </Badge>
             {item.videoType ? (
               <span className="text-xs text-muted-foreground">
@@ -69,14 +99,15 @@ export function ActivityFeedItem({
         <div className="flex gap-4">
           <div className="flex flex-1 flex-col gap-2 pr-20">
             <h3 className="text-sm font-semibold text-foreground">
-              {detailPath ? (
-                <Link
-                  to={detailPath}
-                  className="text-primary underline-offset-2 hover:underline"
-                >
-                  {item.title}
-                </Link>
-              ) : item.linkUrl ? (
+            {detailPath ? (
+              <Link
+                to={detailPath}
+                className="text-primary underline-offset-2 hover:underline"
+                onClick={handleDetailClick}
+              >
+                {item.title}
+              </Link>
+            ) : item.linkUrl ? (
                 <a
                   href={item.linkUrl}
                   target="_blank"
@@ -155,7 +186,7 @@ export function ActivityFeedItem({
             )
           ) : null}
         </div>
-        {onEdit || onDelete ? (
+        {onEdit || onDelete || (item.category === "conversation" && onConversationDelete) ? (
           <div className="absolute bottom-2 right-4 hidden items-center gap-2 group-hover:flex">
             {onEdit ? (
               <button
@@ -178,6 +209,16 @@ export function ActivityFeedItem({
                 disabled={isDeleting}
               >
                 {isDeleting ? "Deleting…" : "Delete"}
+              </button>
+            ) : null}
+            {item.category === "conversation" && onConversationDelete ? (
+              <button
+                type="button"
+                className="text-xs text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
+                onClick={handleConversationDelete}
+                disabled={isConversationDeleting}
+              >
+                {isConversationDeleting ? "Deleting…" : "Delete"}
               </button>
             ) : null}
           </div>

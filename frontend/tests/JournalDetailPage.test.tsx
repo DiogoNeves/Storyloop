@@ -12,26 +12,23 @@ const useYouTubeFeedMock = vi.fn<
   (videoType?: "short" | "video" | "live" | null) =>
     ReturnType<typeof useYouTubeFeedHook>
 >();
-const byIdMock = vi.fn<(id: string) => Entry>();
+const apiGetMock = vi.hoisted(() => vi.fn());
+
+vi.mock("@/components/AgentPanel", () => ({
+  AgentPanel: () => <div data-testid="agent-panel" />,
+}));
+
+vi.mock("@/api/client", () => ({
+  apiClient: {
+    get: apiGetMock,
+  },
+  API_BASE_URL: "http://localhost:8000",
+}));
 
 vi.mock("@/hooks/useYouTubeFeed", () => ({
   useYouTubeFeed: (videoType?: "short" | "video" | "live" | null) =>
     useYouTubeFeedMock(videoType),
 }));
-
-vi.mock("@/api/entries", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/api/entries")>();
-  return {
-    ...actual,
-    entriesQueries: {
-      ...actual.entriesQueries,
-      byId: (id: string) => ({
-        queryKey: ["entries", id],
-        queryFn: () => Promise.resolve(byIdMock(id)),
-      }),
-    },
-  };
-});
 
 const sampleEntry: Entry = {
   id: "entry-1",
@@ -65,7 +62,8 @@ function renderPage(ui: ReactElement) {
 
 describe("JournalDetailPage", () => {
   beforeEach(() => {
-    byIdMock.mockReturnValue(sampleEntry);
+    apiGetMock.mockReset();
+    apiGetMock.mockResolvedValue({ data: sampleEntry });
     useYouTubeFeedMock.mockReset();
     localStorage.clear();
   });
