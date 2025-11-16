@@ -28,7 +28,9 @@ function ScoreHeadline({
   const scoreDisplay = hasScore ? currentScore.toFixed(1) : "—";
 
   return (
-    <div className="flex h-full flex-col justify-between rounded-2xl border border-border/70 bg-gradient-to-br from-primary/10 via-background to-background p-6 shadow-inner">
+    <div
+      className="flex h-full flex-col justify-between rounded-2xl border border-border/70 bg-background p-6 shadow-inner [background-image:linear-gradient(135deg,rgba(255,0,0,0.08),rgba(255,0,0,0.02)_45%,rgba(255,255,255,0)_90%)]"
+    >
       <div>
         <h2 className="text-sm font-semibold text-foreground">Storyloop Score</h2>
         <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
