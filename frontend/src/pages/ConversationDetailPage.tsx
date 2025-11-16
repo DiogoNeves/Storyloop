@@ -45,6 +45,12 @@ export function ConversationDetailPage() {
         return undefined;
       });
     }
+
+    return () => {
+      void setActiveConversation(null).catch(() => {
+        return undefined;
+      });
+    };
   }, [conversationId, setActiveConversation]);
 
   const turnsQuery = useQuery({
