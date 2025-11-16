@@ -101,7 +101,7 @@ export function AgentPanelView({ state, adapter, isDemo }: AgentPanelViewProps) 
         : "Share your next move with Loopie";
 
   return (
-    <aside className="bg-background/98 relative flex h-full flex-col overflow-hidden rounded-2xl border border-primary/15 shadow-[0_24px_70px_-50px_rgba(32,0,77,0.6)]">
+    <aside className="bg-background/98 relative flex h-full w-full flex-1 flex-col overflow-hidden rounded-2xl border border-primary/15 shadow-[0_24px_70px_-50px_rgba(32,0,77,0.6)]">
       <div className="from-primary/12 pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b via-primary/5 to-transparent opacity-60" />
       <div className="relative flex h-full flex-col">
         <header className="flex items-start gap-4 border-b border-border/40 px-3 py-3 backdrop-blur">
