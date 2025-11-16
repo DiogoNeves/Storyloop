@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
-  createConversation,
   isNotFoundError,
   listConversationTurns,
   streamConversationTurn,
@@ -68,6 +67,7 @@ export function useAgentConversation({
   const conversationIdRef = useRef<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const initializeTokenRef = useRef(0);
+  const conversationIdPersistedRef = useRef(false);
 
   const abortActiveStream = useCallback(() => {
     if (abortControllerRef.current) {
@@ -77,7 +77,13 @@ export function useAgentConversation({
   }, []);
 
   const initializeConversation = useCallback(
-    async ({ forceNew = false }: { forceNew?: boolean } = {}) => {
+    async ({
+      forceNew = false,
+      conversationId: targetConversationId,
+    }: {
+      forceNew?: boolean;
+      conversationId?: string | null;
+    } = {}) => {
       if (!enabled) {
         return;
       }
@@ -87,6 +93,7 @@ export function useAgentConversation({
 
       abortActiveStream();
       conversationIdRef.current = null;
+       conversationIdPersistedRef.current = false;
 
       setState({
         conversationId: "",
@@ -95,15 +102,38 @@ export function useAgentConversation({
       });
 
       try {
+        if (forceNew) {
+          writeStoredConversationId(null);
+        }
+
         let conversationId: string | null = null;
         let existingTurns: ConversationTurn[] = [];
 
-        if (!forceNew) {
+        const loadConversation = async (id: string) => {
+          const turns = await listConversationTurns(id);
+          existingTurns = turns;
+          conversationId = id;
+          conversationIdPersistedRef.current = true;
+          writeStoredConversationId(id);
+        };
+
+        if (!forceNew && targetConversationId) {
+          try {
+            await loadConversation(targetConversationId);
+          } catch (error) {
+            if (isNotFoundError(error)) {
+              writeStoredConversationId(null);
+            } else {
+              throw error;
+            }
+          }
+        }
+
+        if (!forceNew && !conversationId) {
           const storedId = readStoredConversationId();
           if (storedId) {
             try {
-              existingTurns = await listConversationTurns(storedId);
-              conversationId = storedId;
+              await loadConversation(storedId);
             } catch (error) {
               if (isNotFoundError(error)) {
                 writeStoredConversationId(null);
@@ -112,15 +142,6 @@ export function useAgentConversation({
               }
             }
           }
-        } else {
-          writeStoredConversationId(null);
-        }
-
-        if (!conversationId) {
-          const newConversation = await createConversation();
-          conversationId = newConversation.id;
-          existingTurns = [];
-          writeStoredConversationId(conversationId);
         }
 
         if (initializeTokenRef.current !== initializeToken) {
@@ -128,9 +149,10 @@ export function useAgentConversation({
         }
 
         conversationIdRef.current = conversationId;
+        conversationIdPersistedRef.current = conversationId !== null;
 
         setState({
-          conversationId,
+          conversationId: conversationId ?? "",
           messages: existingTurns.map(mapTurnToMessage),
           composer: { status: "idle", error: null },
         });
@@ -178,16 +200,15 @@ export function useAgentConversation({
         return;
       }
 
-      const conversationId = conversationIdRef.current;
+      let conversationId = conversationIdRef.current;
       if (!conversationId) {
+        conversationId = crypto.randomUUID();
+        conversationIdRef.current = conversationId;
+        conversationIdPersistedRef.current = false;
         setState((previous) => ({
           ...previous,
-          composer: {
-            status: "idle",
-            error: "Loopie is still getting ready. Try again in a moment.",
-          },
+          conversationId,
         }));
-        return;
       }
 
       const streamingMessageId = crypto.randomUUID();
@@ -322,6 +343,10 @@ export function useAgentConversation({
                 overrides,
                 { status: "idle", error: null },
               );
+              if (!conversationIdPersistedRef.current) {
+                conversationIdPersistedRef.current = true;
+                writeStoredConversationId(conversationId);
+              }
             },
             onError: (message) => {
               setState((previous) => ({
@@ -378,6 +403,20 @@ export function useAgentConversation({
     void initializeConversation({ forceNew: true });
   }, [enabled, initializeConversation]);
 
+  const setActiveConversation = useCallback(
+    async (conversationId?: string | null) => {
+      if (!enabled) {
+        return;
+      }
+      if (!conversationId) {
+        await initializeConversation({ forceNew: true });
+        return;
+      }
+      await initializeConversation({ conversationId });
+    },
+    [enabled, initializeConversation],
+  );
+
   const adapter = useMemo<AgentConversationAdapter>(() => ({
     sendMessage,
     resetConversation,
@@ -387,7 +426,8 @@ export function useAgentConversation({
     () => ({
       state,
       adapter,
+      setActiveConversation,
     }),
-    [adapter, state],
+    [adapter, state, setActiveConversation],
   );
 }
