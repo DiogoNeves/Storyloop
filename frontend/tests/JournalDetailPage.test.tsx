@@ -5,9 +5,13 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { type Entry } from "@/api/entries";
+import type { useYouTubeFeed as useYouTubeFeedHook } from "@/hooks/useYouTubeFeed";
 import { JournalDetailPage } from "@/pages/JournalDetailPage";
 
-const useYouTubeFeedMock = vi.fn();
+const useYouTubeFeedMock = vi.fn<
+  (videoType?: "short" | "video" | "live" | null) =>
+    ReturnType<typeof useYouTubeFeedHook>
+>();
 const byIdMock = vi.fn<(id: string) => Entry>();
 
 vi.mock("@/hooks/useYouTubeFeed", () => ({
