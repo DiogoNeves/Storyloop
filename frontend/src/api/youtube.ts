@@ -55,6 +55,10 @@ export interface YoutubeCompleteLinkResponse {
   success: boolean;
 }
 
+export interface YoutubeUnlinkResponse {
+  success: boolean;
+}
+
 export async function fetchChannelVideos(
   channel: string,
   videoType?: "short" | "video" | "live" | null,
@@ -102,6 +106,13 @@ export async function completeLink(
   return response.data;
 }
 
+export async function unlinkAccount(): Promise<YoutubeUnlinkResponse> {
+  const response = await apiClient.post<YoutubeUnlinkResponse>(
+    "/youtube/auth/unlink",
+  );
+  return response.data;
+}
+
 export const youtubeQueries = createQueryKeys("youtube", {
   authStatus: () => ({
     queryKey: ["youtube", "auth", "status"],
@@ -126,4 +137,5 @@ export const youtubeApi = {
   startLink,
   linkStatus,
   completeLink,
+  unlinkAccount,
 };

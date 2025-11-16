@@ -230,6 +230,40 @@ async def test_status_includes_unlink_reason() -> None:
 
 
 @pytest.mark.asyncio
+async def test_unlink_clears_channel_and_credentials() -> None:
+    app, _, _ = create_test_app()
+
+    async with app.router.lifespan_context(app):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://testserver"
+        ) as client:
+            user_service: UserService = app.state.user_service
+            now = datetime.now(tz=UTC)
+            user_service.upsert_credentials("{\"token\": \"abc\"}", now)
+            user_service.update_channel_info(
+                channel_id="UC123",
+                channel_title="Storyloop",
+                channel_url="https://www.youtube.com/channel/UC123",
+                thumbnail_url="https://img.youtube.com/123.jpg",
+                updated_at=now,
+            )
+
+            response = await client.post("/youtube/auth/unlink")
+
+            record = user_service.get_active_user()
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["success"] is True
+    assert record is not None
+    assert record.credentials_json is None
+    assert record.channel_id is None
+    assert record.channel_title is None
+    assert record.channel_url is None
+    assert record.channel_thumbnail_url is None
+
+
+@pytest.mark.asyncio
 async def test_complete_post_exchanges_code_and_updates_user() -> None:
     app, fake_oauth, fake_youtube = create_test_app()
     async with app.router.lifespan_context(app):
