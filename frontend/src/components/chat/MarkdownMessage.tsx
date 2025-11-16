@@ -9,18 +9,13 @@ import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import { cn } from "@/lib/utils";
+import { getToneColors, resolveTone, type ChatTone } from "./toneStyles";
 
 interface MarkdownMessageProps {
   content: string;
   className?: string;
-  tone?: "default" | "user";
+  tone?: ChatTone;
 }
-
-const getTextColorClasses = (tone: MarkdownMessageProps["tone"]) =>
-  tone === "user" ? "text-primary-foreground/95" : "text-foreground/90";
-
-const getHeadingColor = (tone: MarkdownMessageProps["tone"]) =>
-  tone === "user" ? "text-primary-foreground" : "text-foreground";
 
 const normalizeClassName = (value: unknown) =>
   typeof value === "string" ? value : undefined;
@@ -30,11 +25,8 @@ type MarkdownCodeProps = HTMLAttributes<HTMLElement> & {
   node?: unknown;
 };
 
-const createMarkdownComponents = (
-  tone: MarkdownMessageProps["tone"] = "default",
-) => {
-  const textColor = getTextColorClasses(tone);
-  const headingColor = getHeadingColor(tone);
+const createMarkdownComponents = (tone: ChatTone) => {
+  const { heading, text: textColor } = getToneColors(tone);
 
   // Base markdown component mapping. Extend this map with custom components
   // (e.g., callouts or rich link previews) to evolve the chat rendering
@@ -44,7 +36,7 @@ const createMarkdownComponents = (
       <h1
         className={cn(
           "mt-6 text-xl font-semibold tracking-tight first:mt-0",
-          headingColor,
+          heading,
           normalizeClassName(className),
         )}
         {...props}
@@ -54,7 +46,7 @@ const createMarkdownComponents = (
       <h2
         className={cn(
           "mt-5 text-lg font-semibold tracking-tight first:mt-0",
-          headingColor,
+          heading,
           normalizeClassName(className),
         )}
         {...props}
@@ -64,7 +56,7 @@ const createMarkdownComponents = (
       <h3
         className={cn(
           "mt-4 text-base font-semibold tracking-tight first:mt-0",
-          headingColor,
+          heading,
           normalizeClassName(className),
         )}
         {...props}
@@ -233,12 +225,13 @@ const createMarkdownComponents = (
 export function MarkdownMessage({
   content,
   className,
-  tone = "default",
+  tone = "assistant",
 }: MarkdownMessageProps) {
-  const textColor = getTextColorClasses(tone);
+  const resolvedTone = resolveTone(tone);
+  const { text: textColor } = getToneColors(resolvedTone);
   const markdownComponents = useMemo(
-    () => createMarkdownComponents(tone),
-    [tone],
+    () => createMarkdownComponents(resolvedTone),
+    [resolvedTone],
   );
 
   return (

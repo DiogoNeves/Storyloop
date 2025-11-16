@@ -1,35 +1,26 @@
-import { memo, useMemo } from "react";
+import { memo } from "react";
 
 import { type AgentMessage } from "@/lib/types/agent";
 import { cn } from "@/lib/utils";
 
 import { MarkdownMessage } from "./MarkdownMessage";
+import { getToneLayout, resolveTone } from "./toneStyles";
 
 interface ChatMessageProps {
   message: AgentMessage;
 }
 
 function ChatMessageComponent({ message }: ChatMessageProps) {
-  const roleVariant = useMemo(() => {
-    const isAssistant = message.role === "assistant";
-    const isUser = message.role === "user";
-
-    return {
-      alignment: isUser ? "items-end" : "items-start",
-      bubble: isUser
-        ? "max-w-[88%] rounded-2xl bg-primary/70 px-3 py-2"
-        : "w-full rounded-2xl bg-transparent px-4 py-2",
-      text: isAssistant ? "text-foreground/90" : "text-primary-foreground/90",
-    };
-  }, [message.role]);
+  const tone = resolveTone(message.role);
+  const toneLayout = getToneLayout(tone);
 
   return (
-    <div className={cn("flex w-full flex-col gap-2", roleVariant.alignment)}>
-      <div className={cn("group relative text-sm transition-transform", roleVariant.bubble)}>
+    <div className={cn("flex w-full flex-col gap-2", toneLayout.alignment)}>
+      <div className={cn("group relative text-sm transition-transform", toneLayout.bubble)}>
         <MarkdownMessage
           content={message.content}
-          className={cn("leading-relaxed", roleVariant.text)}
-          tone={message.role === "user" ? "user" : "default"}
+          className="leading-relaxed"
+          tone={tone}
         />
       </div>
     </div>
