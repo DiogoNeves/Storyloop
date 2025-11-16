@@ -895,7 +895,10 @@ class YoutubeService:
                 return
             try:
                 feed = anyio.run(
-                    self.fetch_channel_videos, channel_identifier, 25, None
+                    self.fetch_channel_videos,
+                    channel_identifier,
+                    max_results=25,
+                    video_type=None,
                 )
             except YoutubeError as exc:
                 logger.warning("API key based YouTube sync failed: %s", exc)
