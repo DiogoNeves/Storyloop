@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import anyio
 from fastapi import FastAPI
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.models.openai import OpenAIChatModel
 
@@ -20,6 +20,8 @@ from app.services.agent_tools import (
 
 class LoopieDeps(BaseModel):
     """Dependencies available to the Loopie agent during a run."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     user_id: str
     journal_repo: JournalRepository
