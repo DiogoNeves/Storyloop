@@ -1,12 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
+import { useState } from "react";
 
 import { fetchVideoDetail, type YoutubeVideoDetailResponse } from "@/api/youtube";
 import { NavBar } from "@/components/NavBar";
 import { AgentPanel } from "@/components/AgentPanel";
+import { SettingsDialog } from "@/components/SettingsDialog";
 
 export function VideoDetailPage() {
   const { videoId } = useParams<{ videoId: string }>();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const videoDetailQueryKey = [
     "youtube",
@@ -44,96 +47,102 @@ export function VideoDetailPage() {
   const descriptionText = video?.description ? String(video.description).trim() : "";
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-br from-background to-muted/12 text-foreground">
-      <NavBar />
-      <main className="relative flex min-h-0 flex-1 overflow-hidden">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-primary/8 via-transparent to-transparent" />
-        <div className="relative grid h-full min-h-0 w-full grid-cols-3 gap-6 px-6 py-12 lg:px-10 xl:px-16">
-          <div className="col-span-2 flex h-full min-h-0 flex-col gap-6 overflow-y-auto scrollbar-hide">
-            <Link
-              to="/"
-              className="text-sm font-medium text-primary underline-offset-2 hover:underline"
-            >
-              ← Back to activity feed
-            </Link>
-            <section className="space-y-6 rounded-lg border border-border bg-background p-6 shadow-sm">
-              {!videoId ? (
-                <p className="text-sm text-muted-foreground">
-                  We couldn’t determine which video to display.
-                </p>
-              ) : videoDetailQuery.isLoading ? (
-                <p className="text-sm text-muted-foreground">Loading video details…</p>
-              ) : videoDetailQuery.isError ? (
-                <p className="text-sm text-destructive">
-                  {videoDetailQuery.error instanceof Error
-                    ? videoDetailQuery.error.message
-                    : String(videoDetailQuery.error)}
-                </p>
-              ) : !video ? (
-                <p className="text-sm text-muted-foreground">
-                  We couldn’t find details for this video.
-                </p>
-              ) : (
-                <div className="space-y-6">
-                  <div className="space-y-4">
-                    <h1 className="text-2xl font-semibold text-foreground">
-                      {String(video.title)}
-                    </h1>
-                    <div className="flex flex-col gap-2 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
-                      <span>{publishedDate ?? "Publish date unavailable"}</span>
-                      <a
-                        href={String(video.url)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline"
-                      >
-                        Watch on YouTube
-                      </a>
+    <>
+      <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-br from-background to-muted/12 text-foreground">
+        <NavBar onOpenSettings={() => setIsSettingsOpen(true)} />
+        <main className="relative flex min-h-0 flex-1 overflow-hidden">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-primary/8 via-transparent to-transparent" />
+          <div className="relative grid h-full min-h-0 w-full grid-cols-3 gap-6 px-6 py-12 lg:px-10 xl:px-16">
+            <div className="col-span-2 flex h-full min-h-0 flex-col gap-6 overflow-y-auto scrollbar-hide">
+              <Link
+                to="/"
+                className="text-sm font-medium text-primary underline-offset-2 hover:underline"
+              >
+                ← Back to activity feed
+              </Link>
+              <section className="space-y-6 rounded-lg border border-border bg-background p-6 shadow-sm">
+                {!videoId ? (
+                  <p className="text-sm text-muted-foreground">
+                    We couldn’t determine which video to display.
+                  </p>
+                ) : videoDetailQuery.isLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading video details…</p>
+                ) : videoDetailQuery.isError ? (
+                  <p className="text-sm text-destructive">
+                    {videoDetailQuery.error instanceof Error
+                      ? videoDetailQuery.error.message
+                      : String(videoDetailQuery.error)}
+                  </p>
+                ) : !video ? (
+                  <p className="text-sm text-muted-foreground">
+                    We couldn’t find details for this video.
+                  </p>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="space-y-4">
+                      <h1 className="text-2xl font-semibold text-foreground">
+                        {String(video.title)}
+                      </h1>
+                      <div className="flex flex-col gap-2 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
+                        <span>{publishedDate ?? "Publish date unavailable"}</span>
+                        <a
+                          href={String(video.url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline"
+                        >
+                          Watch on YouTube
+                        </a>
+                      </div>
+                      <div className="aspect-video w-full overflow-hidden rounded-md border border-border bg-black">
+                        <iframe
+                          title={String(video.title)}
+                          src={`https://www.youtube.com/embed/${videoId}`}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          className="h-full w-full"
+                        />
+                      </div>
                     </div>
-                    <div className="aspect-video w-full overflow-hidden rounded-md border border-border bg-black">
-                      <iframe
-                        title={String(video.title)}
-                        src={`https://www.youtube.com/embed/${videoId}`}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        className="h-full w-full"
-                      />
-                    </div>
-                  </div>
 
-                  <div className="space-y-4">
-                    <section>
-                      <h2 className="text-lg font-semibold text-foreground">Description</h2>
-                      <p className="whitespace-pre-line text-sm text-muted-foreground">
-                        {descriptionText && descriptionText.length > 0
-                          ? descriptionText
-                          : "No description available."}
-                      </p>
-                    </section>
-
-                    <section>
-                      <h2 className="text-lg font-semibold text-foreground">Transcript</h2>
-                      {transcriptText && transcriptText.length > 0 ? (
+                    <div className="space-y-4">
+                      <section>
+                        <h2 className="text-lg font-semibold text-foreground">Description</h2>
                         <p className="whitespace-pre-line text-sm text-muted-foreground">
-                          {transcriptText}
+                          {descriptionText && descriptionText.length > 0
+                            ? descriptionText
+                            : "No description available."}
                         </p>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">
-                          Transcript not available yet.
-                        </p>
-                      )}
-                    </section>
+                      </section>
+
+                      <section>
+                        <h2 className="text-lg font-semibold text-foreground">Transcript</h2>
+                        {transcriptText && transcriptText.length > 0 ? (
+                          <p className="whitespace-pre-line text-sm text-muted-foreground">
+                            {transcriptText}
+                          </p>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            Transcript not available yet.
+                          </p>
+                        )}
+                      </section>
+                    </div>
                   </div>
-                </div>
-              )}
-            </section>
+                )}
+              </section>
+            </div>
+            <div className="col-span-1 flex h-full min-h-0">
+              <AgentPanel />
+            </div>
           </div>
-          <div className="col-span-1 flex h-full min-h-0">
-            <AgentPanel />
-          </div>
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
+      <SettingsDialog
+        open={isSettingsOpen}
+        onOpenChange={setIsSettingsOpen}
+      />
+    </>
   );
 }
 
