@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Bot } from "lucide-react";
 
 import { type ActivityItem } from "@/lib/types/entries";
 import { Badge } from "@/components/ui/badge";
@@ -71,7 +72,14 @@ export function ActivityFeedItem({
               variant="secondary"
               className={categoryBadgeClass[item.category]}
             >
-              {item.category}
+              {item.category === "conversation" ? (
+                <>
+                  <Bot className="h-4 w-4" aria-hidden="true" />
+                  <span className="sr-only">Conversation</span>
+                </>
+              ) : (
+                item.category
+              )}
             </Badge>
             {item.videoType ? (
               <span className="text-xs text-muted-foreground">
