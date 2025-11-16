@@ -28,6 +28,12 @@ export function InsightsPage() {
     ...growthQueries.score(youtubeState.channelId ?? null),
   });
 
+  const scoreErrorMessage = growthScoreQuery.isError
+    ? growthScoreQuery.error instanceof Error
+      ? growthScoreQuery.error.message
+      : "We couldn't calculate your growth score."
+    : null;
+
   const componentSummaries = useMemo<ScoreComponentSummary[]>(() => {
     if (!growthScoreQuery.data) {
       return [];
@@ -68,6 +74,11 @@ export function InsightsPage() {
               Momentum across discovery, retention, loyalty
             </p>
           </div>
+          {scoreErrorMessage ? (
+            <p className="text-sm text-destructive" role="status">
+              {scoreErrorMessage}
+            </p>
+          ) : null}
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
@@ -95,13 +106,17 @@ export function InsightsPage() {
       </section>
 
       <section className="relative overflow-hidden rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
-          <div className="rounded-lg bg-background/70 px-4 py-2 backdrop-blur-sm">
+        <div
+          className="absolute inset-0 z-10 flex items-center justify-center bg-background/20 backdrop-blur-sm"
+          role="status"
+          aria-label="Key insights coming soon"
+        >
+          <div className="rounded-lg bg-background/80 px-4 py-2 shadow-sm">
             <p className="text-xl font-semibold text-muted-foreground">Coming Soon</p>
           </div>
         </div>
 
-        <div className="space-y-4 opacity-30">
+        <div className="space-y-4 opacity-30" aria-hidden="true">
           <div className="space-y-2">
             <h2 className="text-base font-semibold text-foreground">Key Insights</h2>
             <p className="text-sm text-muted-foreground">
