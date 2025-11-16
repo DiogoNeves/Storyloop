@@ -3,6 +3,7 @@ import pytest
 
 from app.services.users import UserRecord
 from app.services.youtube import (
+    YoutubeFeed,
     YoutubeAPIRequestError,
     YoutubeChannelNotFound,
     YoutubeConfigurationError,
@@ -202,6 +203,155 @@ async def test_fetch_channel_videos_skips_playlist_when_max_results_is_zero():
 
     assert feed.channel_id == "UC999"
     assert feed.videos == []
+
+
+@pytest.mark.asyncio
+async def test_fetch_channel_feed_uses_authenticated_when_credentials_exist():
+    record = UserRecord(
+        id="active",
+        channel_id=None,
+        channel_title=None,
+        channel_url=None,
+        channel_thumbnail_url=None,
+        channel_updated_at=None,
+        credentials_json="{}",
+        credentials_updated_at=None,
+        credentials_error=None,
+        oauth_state=None,
+        oauth_state_created_at=None,
+    )
+
+    class DummyUserService:
+        def __init__(self) -> None:
+            self.get_active_user_calls = 0
+
+        def get_active_user(self) -> UserRecord:
+            self.get_active_user_calls += 1
+            return record
+
+    class DummyOAuthService:
+        pass
+
+    sentinel_feed = YoutubeFeed(
+        channel_id="UC-auth",
+        channel_title="Auth Channel",
+        channel_description=None,
+        channel_url="https://youtube.com/channel/UC-auth",
+        channel_thumbnail_url=None,
+        videos=[],
+    )
+
+    class RecordingYoutubeService(YoutubeService):
+        def __init__(self, *args, **kwargs) -> None:
+            super().__init__(*args, **kwargs)
+            self.calls: list[tuple[object, object, str, int, str | None]] = []
+
+        async def fetch_authenticated_channel_videos(
+            self,
+            user_service: object,
+            oauth_service: object,
+            *,
+            channel_id: str,
+            max_results: int = 50,
+            video_type: str | None = None,
+        ) -> YoutubeFeed:
+            self.calls.append(
+                (user_service, oauth_service, channel_id, max_results, video_type)
+            )
+            return sentinel_feed
+
+    service = RecordingYoutubeService(api_key="test-key")
+    user_service = DummyUserService()
+    oauth_service = DummyOAuthService()
+
+    feed = await service.fetch_channel_feed(
+        "@storyloop",
+        user_service=user_service,
+        oauth_service=oauth_service,
+        video_type="video",
+        max_results=7,
+    )
+
+    assert feed is sentinel_feed
+    assert service.calls == [
+        (user_service, oauth_service, "@storyloop", 7, "video"),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_fetch_channel_feed_falls_back_when_authentication_fails():
+    record = UserRecord(
+        id="active",
+        channel_id=None,
+        channel_title=None,
+        channel_url=None,
+        channel_thumbnail_url=None,
+        channel_updated_at=None,
+        credentials_json="{}",
+        credentials_updated_at=None,
+        credentials_error=None,
+        oauth_state=None,
+        oauth_state_created_at=None,
+    )
+
+    class DummyUserService:
+        def get_active_user(self) -> UserRecord:
+            return record
+
+    class DummyOAuthService:
+        pass
+
+    fallback_feed = YoutubeFeed(
+        channel_id="UC-fallback",
+        channel_title="Fallback Channel",
+        channel_description=None,
+        channel_url="https://youtube.com/channel/UC-fallback",
+        channel_thumbnail_url=None,
+        videos=[],
+    )
+
+    class FallbackYoutubeService(YoutubeService):
+        def __init__(self, *args, **kwargs) -> None:
+            super().__init__(*args, **kwargs)
+            self.auth_calls = 0
+            self.fallback_calls = 0
+            self.fallback_args: tuple[str, int, str | None] | None = None
+
+        async def fetch_authenticated_channel_videos(
+            self,
+            user_service: object,
+            oauth_service: object,
+            *,
+            channel_id: str,
+            max_results: int = 50,
+            video_type: str | None = None,
+        ) -> YoutubeFeed:
+            self.auth_calls += 1
+            raise YoutubeConfigurationError("bad credentials")
+
+        async def fetch_channel_videos(
+            self, channel: str, *, max_results: int = 50, video_type: str | None = None
+        ) -> YoutubeFeed:
+            self.fallback_calls += 1
+            self.fallback_args = (channel, max_results, video_type)
+            return fallback_feed
+
+    service = FallbackYoutubeService(api_key="test-key")
+    user_service = DummyUserService()
+    oauth_service = DummyOAuthService()
+
+    feed = await service.fetch_channel_feed(
+        "@storyloop",
+        user_service=user_service,
+        oauth_service=oauth_service,
+        video_type="short",
+        max_results=3,
+    )
+
+    assert feed is fallback_feed
+    assert service.auth_calls == 1
+    assert service.fallback_calls == 1
+    assert service.fallback_args == ("@storyloop", 3, "short")
 
 
 def test_build_authenticated_client_clears_credentials_on_refresh_failure():
