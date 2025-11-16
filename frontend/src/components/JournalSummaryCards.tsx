@@ -70,9 +70,21 @@ export function JournalSummaryCards({
         </SummaryCard>
 
         <SummaryCard title="Key Insight" to="/insights">
-          <div className="flex flex-1 flex-col justify-between gap-1">
-            <div className="text-2xl font-semibold text-foreground">92% held vs 78% median</div>
-            <p className="text-sm text-muted-foreground">Top retention clip this period</p>
+          <div className="relative flex flex-1 flex-col justify-between gap-1">
+            <div
+              className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/70 backdrop-blur-sm"
+              role="status"
+              aria-label="Key insights coming soon"
+            >
+              <span className="rounded-md bg-background/80 px-3 py-1 text-sm font-semibold text-muted-foreground">
+                Coming Soon
+              </span>
+            </div>
+
+            <div className="space-y-1 opacity-30" aria-hidden="true">
+              <div className="text-2xl font-semibold text-foreground">92% held vs 78% median</div>
+              <p className="text-sm text-muted-foreground">Top retention clip this period</p>
+            </div>
           </div>
         </SummaryCard>
 
