@@ -84,7 +84,7 @@ export function InsightsPage() {
                   {Math.round(component.weight * 100)}% weight
                 </span>
               </div>
-              <p className={cn("mt-3 text-3xl font-semibold", !component.score && "text-muted-foreground")}> 
+              <p className={cn("mt-3 text-3xl font-semibold", !component.score && "text-muted-foreground")}>
                 {typeof component.score === "number" && Number.isFinite(component.score)
                   ? component.score.toFixed(1)
                   : "—"}
@@ -94,24 +94,33 @@ export function InsightsPage() {
         </div>
       </section>
 
-      <section className="space-y-4 rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
-        <div className="space-y-2">
-          <h2 className="text-base font-semibold text-foreground">Key Insights</h2>
-          <p className="text-sm text-muted-foreground">
-            Top retention clip this period
-          </p>
+      <section className="relative overflow-hidden rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+          <div className="rounded-lg bg-background/70 px-4 py-2 backdrop-blur-sm">
+            <p className="text-xl font-semibold text-muted-foreground">Coming Soon</p>
+          </div>
         </div>
-        <div className="space-y-3 text-sm text-muted-foreground">
-          <p className="text-lg font-semibold text-foreground">92% held vs 78% median</p>
-          <p>
-            This segment maintains exceptional viewer retention, holding 92% of viewers compared
-            to your channel's 78% median. The strong narrative hook and visual pacing in this clip
-            create compelling momentum that keeps audiences engaged.
-          </p>
-          <p>
-            Use this as a benchmark for upcoming edits: mirror the pacing and framing choices, and
-            test similar intro beats in upcoming uploads to validate the lift.
-          </p>
+
+        <div className="space-y-4 opacity-30">
+          <div className="space-y-2">
+            <h2 className="text-base font-semibold text-foreground">Key Insights</h2>
+            <p className="text-sm text-muted-foreground">
+              Key moment in your top retention clip
+            </p>
+          </div>
+
+          <div className="space-y-3 text-sm text-muted-foreground">
+            <p className="text-lg font-semibold text-foreground">92% held vs 78% median</p>
+            <p>
+              Viewers stay locked in during this moment, with 92% of the audience held compared
+              to your channel's 78% median. The pacing and framing keep eyes on the screen right
+              through the retention spike.
+            </p>
+            <p>
+              Treat this clip as your benchmark: reuse the intro rhythm and edit cadence in upcoming
+              uploads to validate the lift and make the key moment repeatable.
+            </p>
+          </div>
         </div>
       </section>
     </div>
