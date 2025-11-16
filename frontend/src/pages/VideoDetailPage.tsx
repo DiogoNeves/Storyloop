@@ -1,19 +1,33 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 
-import { youtubeQueries, type YoutubeVideoDetailResponse } from "@/api/youtube";
+import { fetchVideoDetail, type YoutubeVideoDetailResponse } from "@/api/youtube";
 import { NavBar } from "@/components/NavBar";
 
 export function VideoDetailPage() {
   const { videoId } = useParams<{ videoId: string }>();
 
-  const videoDetailQuery = useQuery<YoutubeVideoDetailResponse, Error>({
-    queryKey: videoId
-      ? youtubeQueries.videoDetail(videoId).queryKey
-      : ["youtube", "videos", "detail", "missing"],
-    queryFn: videoId
-      ? youtubeQueries.videoDetail(videoId).queryFn
-      : () => Promise.reject(new Error("Video ID is required")),
+  const videoDetailQueryKey = [
+    "youtube",
+    "videos",
+    videoId ?? "missing",
+    "detail",
+  ] as const;
+
+  const videoDetailQuery = useQuery<
+    YoutubeVideoDetailResponse,
+    Error,
+    YoutubeVideoDetailResponse,
+    typeof videoDetailQueryKey
+  >({
+    queryKey: videoDetailQueryKey,
+    queryFn: (context) => {
+      const [, , id] = context.queryKey;
+      if (!videoId) {
+        return Promise.reject(new Error("Video ID is required"));
+      }
+      return fetchVideoDetail(id);
+    },
     enabled: Boolean(videoId),
   });
 
