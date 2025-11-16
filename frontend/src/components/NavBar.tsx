@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 export function NavBar() {
   return (
     <header className="sticky top-0 z-50 border-b bg-background">
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
+      <div className="mx-auto flex h-16 w-full items-center justify-between px-6 lg:px-10 xl:px-16">
         <div className="flex items-center gap-2 text-lg font-semibold tracking-tight">
           <span className="rounded-md bg-primary px-2 py-1 text-primary-foreground">
             Storyloop
@@ -37,10 +37,10 @@ export function NavBar() {
           >
             Insights
           </NavLink>
-          <a href="#" className="rounded-md px-3 py-1.5 transition hover:text-foreground">
-            Library
-          </a>
-          <a href="#" className="rounded-md px-3 py-1.5 transition hover:text-foreground">
+          <a
+            href="#"
+            className="rounded-md px-3 py-1.5 transition hover:text-foreground"
+          >
             Settings
           </a>
         </nav>
