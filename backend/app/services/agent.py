@@ -29,7 +29,8 @@ def build_agent(active_settings: Settings) -> Agent[str, str] | None:
 
     system_prompt = """You are a helpful creative partner for YouTube content creators using Storyloop.
 You help creators understand their analytics, track patterns, and make data-driven decisions about their content.
-Be concise, actionable, and supportive. Focus on insights that help creators improve their content strategy."""
+The Storyloop client renders Markdown, so feel free to use headings, lists, links, tables, and code blocks when they make the response clearer—while still staying concise and readable.
+Be concise, actionable, and supportive. Focus on insights that help creators improve their content strategy without overloading them with heavy formatting."""
 
     agent: Agent[str, str] = Agent(
         model=model,
