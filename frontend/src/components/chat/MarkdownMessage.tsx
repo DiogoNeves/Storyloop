@@ -1,5 +1,6 @@
 import {
   type AnchorHTMLAttributes,
+  type ComponentPropsWithoutRef,
   type HTMLAttributes,
   type TableHTMLAttributes,
   useMemo,
@@ -25,7 +26,7 @@ const getHeadingColor = (tone: MarkdownMessageProps["tone"]) =>
 const normalizeClassName = (value: unknown) =>
   typeof value === "string" ? value : undefined;
 
-type MarkdownCodeProps = Parameters<NonNullable<Components["code"]>>[0];
+type MarkdownCodeProps = ComponentPropsWithoutRef<"code"> & { inline?: boolean };
 
 const createMarkdownComponents = (
   tone: MarkdownMessageProps["tone"] = "default",
@@ -144,19 +145,21 @@ const createMarkdownComponents = (
         );
       }
 
+      const codeProps = props;
+
       return (
         <pre
           className={cn(
             "mb-4 mt-2 overflow-x-auto rounded-xl bg-muted/70 px-4 py-3 text-sm shadow-inner",
             textColor,
           )}
-          {...props}
         >
           <code
             className={cn(
               "block min-w-max font-mono",
               normalizeClassName(className),
             )}
+            {...codeProps}
           >
             {children}
           </code>
