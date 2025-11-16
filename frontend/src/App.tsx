@@ -6,12 +6,11 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import useLocalStorageState from "use-local-storage-state";
 
 import { ActivityFeed, type ActivityDraft } from "@/components/ActivityFeed";
 import { NavBar } from "@/components/NavBar";
-import { ScoreOverviewCard } from "@/components/ScoreOverviewCard";
 import { AgentPanel } from "@/components/AgentPanel";
 import {
   ContentTypeTabs,
@@ -30,6 +29,8 @@ import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
 import { YoutubeAuthCallback } from "@/pages/YoutubeAuthCallback";
 import { VideoDetailPage } from "@/pages/VideoDetailPage";
 import { JournalDetailPage } from "@/pages/JournalDetailPage";
+import { InsightsPage } from "@/pages/InsightsPage";
+import { JournalSummaryCards } from "@/components/JournalSummaryCards";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -40,31 +41,26 @@ const queryClient = new QueryClient({
   },
 });
 
-function ScorePlaceholder({
-  channelId,
-}: {
-  channelId: string | null;
-}) {
-  const growthScoreQuery = useQuery({
-    ...growthQueries.score(channelId ?? null),
-  });
-
-  const errorMessage = growthScoreQuery.isError
-    ? growthScoreQuery.error instanceof Error
-      ? growthScoreQuery.error.message
-      : "We couldn't calculate your growth score."
-    : null;
-
+function AppLayout() {
   return (
-    <ScoreOverviewCard
-      score={growthScoreQuery.data ?? null}
-      isLoading={growthScoreQuery.isPending}
-      error={errorMessage}
-    />
+    <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-br from-background to-muted/12 text-foreground">
+      <NavBar />
+      <main className="relative flex min-h-0 flex-1 overflow-hidden">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-primary/8 via-transparent to-transparent" />
+        <div className="relative grid h-full min-h-0 w-full grid-cols-3 gap-6 px-6 py-12 lg:px-10 xl:px-16">
+          <div className="col-span-2 flex h-full min-h-0 min-w-0 flex-col gap-8 overflow-y-auto scrollbar-hide">
+            <Outlet />
+          </div>
+          <div className="col-span-1 flex h-full min-h-0">
+            <AgentPanel />
+          </div>
+        </div>
+      </main>
+    </div>
   );
 }
 
-function DashboardShell() {
+function JournalPage() {
   const queryClient = useQueryClient();
 
   // Content type filter state - persisted in local storage
@@ -137,6 +133,16 @@ function DashboardShell() {
   const youtubeState = useYouTubeFeed(videoTypeFilter);
 
   const healthStatusQuery = useQuery(healthQueries.status());
+
+  const growthScoreQuery = useQuery({
+    ...growthQueries.score(youtubeState.channelId ?? null),
+  });
+
+  const scoreErrorMessage = growthScoreQuery.isError
+    ? growthScoreQuery.error instanceof Error
+      ? growthScoreQuery.error.message
+      : "We couldn't calculate your growth score."
+    : null;
 
   // Combine stored entries with YouTube videos, filter by content type, and limit to 50
   const activityItems = useMemo<ActivityItem[]>(() => {
@@ -319,61 +325,52 @@ function DashboardShell() {
   }, [entriesError, entriesStatus]);
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-br from-background to-muted/12 text-foreground">
-      <NavBar />
-      <main className="relative flex min-h-0 flex-1 overflow-hidden">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-primary/8 via-transparent to-transparent" />
-        <div className="relative grid h-full min-h-0 w-full grid-cols-3 gap-6 px-6 py-12 lg:px-10 xl:px-16">
-          <div className="col-span-2 flex h-full min-h-0 min-w-0 flex-col gap-8 overflow-y-auto scrollbar-hide">
-            <ScorePlaceholder
-              channelId={youtubeState.channelId}
-            />
+    <>
+      <JournalSummaryCards
+        score={growthScoreQuery.data ?? null}
+        isLoading={growthScoreQuery.isPending}
+        error={scoreErrorMessage}
+      />
 
-            <ContentTypeTabs
-              value={contentTypeFilter}
-              onChange={setContentTypeFilter}
-              publicOnly={publicOnly}
-              onPublicOnlyChange={setPublicOnly}
-            />
+      <ContentTypeTabs
+        value={contentTypeFilter}
+        onChange={setContentTypeFilter}
+        publicOnly={publicOnly}
+        onPublicOnlyChange={setPublicOnly}
+      />
 
-            <ActivityFeed
-              items={displayItems}
-              youtubeFeed={youtubeState.youtubeFeed}
-              isLinked={youtubeState.isLinked}
-              linkStatus={youtubeState.linkStatus}
-              youtubeError={youtubeState.youtubeError}
-              draft={draft}
-              onStartDraft={handleStartDraft}
-              onDraftChange={handleDraftChange}
-              onCancelDraft={handleCancelDraft}
-              onSubmitDraft={handleDraftSubmit}
-              isSubmittingDraft={isSavingEntry}
-              draftError={draftError}
-              errorMessage={entriesErrorMessage}
-            />
+      <ActivityFeed
+        items={displayItems}
+        youtubeFeed={youtubeState.youtubeFeed}
+        isLinked={youtubeState.isLinked}
+        linkStatus={youtubeState.linkStatus}
+        youtubeError={youtubeState.youtubeError}
+        draft={draft}
+        onStartDraft={handleStartDraft}
+        onDraftChange={handleDraftChange}
+        onCancelDraft={handleCancelDraft}
+        onSubmitDraft={handleDraftSubmit}
+        isSubmittingDraft={isSavingEntry}
+        draftError={draftError}
+        errorMessage={entriesErrorMessage}
+      />
 
-            <div>
-              {healthStatusQuery.isLoading ? (
-                <p className="text-xs text-muted-foreground" role="status">
-                  Checking API health…
-                </p>
-              ) : healthStatusQuery.isError ? (
-                <p className="text-xs text-destructive" role="status">
-                  We couldn't reach the Storyloop API.
-                </p>
-              ) : healthStatusQuery.data?.status ? (
-                <p className="text-xs text-muted-foreground" role="status">
-                  {healthStatusQuery.data.status}
-                </p>
-              ) : null}
-            </div>
-          </div>
-          <div className="col-span-1 flex h-full min-h-0">
-            <AgentPanel />
-          </div>
-        </div>
-      </main>
-    </div>
+      <div>
+        {healthStatusQuery.isLoading ? (
+          <p className="text-xs text-muted-foreground" role="status">
+            Checking API health…
+          </p>
+        ) : healthStatusQuery.isError ? (
+          <p className="text-xs text-destructive" role="status">
+            We couldn't reach the Storyloop API.
+          </p>
+        ) : healthStatusQuery.data?.status ? (
+          <p className="text-xs text-muted-foreground" role="status">
+            {healthStatusQuery.data.status}
+          </p>
+        ) : null}
+      </div>
+    </>
   );
 }
 
@@ -382,7 +379,11 @@ export function App() {
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
         <Routes>
-          <Route path="/" element={<DashboardShell />} />
+          <Route element={<AppLayout />}>
+            <Route path="/" element={<JournalPage />} />
+            <Route path="/journal" element={<JournalPage />} />
+            <Route path="/insights" element={<InsightsPage />} />
+          </Route>
           <Route path="/videos/:videoId" element={<VideoDetailPage />} />
           <Route path="/journals/:journalId" element={<JournalDetailPage />} />
           <Route path="/auth/callback" element={<YoutubeAuthCallback />} />
