@@ -272,7 +272,7 @@ make test-frontend -- --watch  # Watch mode
 **Start Dev Server:**
 
 ```bash
-npm run dev
+pnpm run dev
 # or
 python scripts/dev.py  # Starts both frontend and backend
 ```
@@ -294,7 +294,7 @@ make lint-frontend
 **Production Build:**
 
 ```bash
-npm run build
+pnpm run build
 ```
 
 **Output:**
@@ -307,7 +307,7 @@ npm run build
 **Preview:**
 
 ```bash
-npm run preview
+pnpm run preview
 ```
 
 ## Environment Variables

@@ -5,10 +5,10 @@ Vite + React + TypeScript scaffold styled with Tailwind CSS and Shadcn UI tokens
 ## Scripts
 
 ```bash
-npm run dev        # start the Vite dev server
-npm run build      # type-check and build for production
-npm run test -- --run  # execute Vitest in run-once mode
-npm run lint       # ESLint flat config with type-aware rules
+pnpm run dev        # start the Vite dev server
+pnpm run build      # type-check and build for production
+pnpm run test -- --run  # execute Vitest in run-once mode
+pnpm run lint       # ESLint flat config with type-aware rules
 ```
 
 ## Key directories

@@ -12,7 +12,7 @@ Built for new creators who want guidance without giving up control, Storyloop tu
 
 - Python 3.11 (managed via [`uv`](https://docs.astral.sh/uv/))
 - Node.js 18+
-- npm 9+
+- pnpm 10+
 
 ## Quick start
 
@@ -36,7 +36,7 @@ Built for new creators who want guidance without giving up control, Storyloop tu
 
    ```bash
    cd ../frontend
-   npm install
+   pnpm install
    ```
 
 5. Launch both servers from the repository root:
@@ -126,7 +126,7 @@ Storyloop/
 
 - The frontend uses shadcn UI tokens defined in `frontend/src/index.css` inside an `@layer base` block.
 - To change the palette, pick new HSL values from the shadcn Colors catalog and replace the `--primary`, `--accent`, `--secondary`, and related variables. See [shadcn Colors](https://ui.shadcn.com/colors) for ready-to-use values.
-- After editing, run `npm run lint` and reload the Vite dev server to confirm the updated theme renders as expected.
+- After editing, run `pnpm run lint` and reload the Vite dev server to confirm the updated theme renders as expected.
 
 ## Testing & quality gates
 

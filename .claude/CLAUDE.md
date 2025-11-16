@@ -4,7 +4,7 @@
 
 - Backend: Python 3.11, FastAPI, APScheduler, SQLite, pytest
 - Frontend: React 18, Vite, TypeScript, Tailwind CSS, shadcn/ui, Vitest
-- Package managers: uv (Python), npm (Node)
+- Package managers: uv (Python), pnpm (Node)
 - Icons: Lucide React
 
 ## Project Structure
