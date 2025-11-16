@@ -8,7 +8,7 @@ import { type Entry } from "@/api/entries";
 import { JournalDetailPage } from "@/pages/JournalDetailPage";
 
 const useYouTubeFeedMock = vi.fn();
-const byIdMock = vi.fn<Entry, [string]>();
+const byIdMock = vi.fn<(id: string) => Entry>();
 
 vi.mock("@/hooks/useYouTubeFeed", () => ({
   useYouTubeFeed: (videoType?: "short" | "video" | "live" | null) =>
