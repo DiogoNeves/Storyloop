@@ -96,7 +96,7 @@ export function ConversationDetailPage() {
   ]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-6 overflow-y-auto scrollbar-hide">
+    <div className="scrollbar-hide flex h-full min-h-0 flex-col gap-6 overflow-y-auto">
       <Link
         to="/"
         className="text-sm font-medium text-primary underline-offset-2 hover:underline"
@@ -106,9 +106,6 @@ export function ConversationDetailPage() {
       <section className="space-y-6 rounded-lg border border-border bg-background p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-sm uppercase tracking-wide text-muted-foreground">
-              Loopie conversations
-            </p>
             <h1 className="text-2xl font-semibold tracking-tight">
               {conversationId
                 ? "Conversation detail"
