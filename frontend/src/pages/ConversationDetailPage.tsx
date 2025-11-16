@@ -30,6 +30,8 @@ export function ConversationDetailPage() {
     [],
   );
 
+  const conversationsQuery = useQuery(conversationListQuery);
+
   const deleteMutation = useMutation({
     mutationFn: deleteConversation,
     onSuccess: async () => {
@@ -103,6 +105,21 @@ export function ConversationDetailPage() {
     setActiveConversation,
   ]);
 
+  const conversationTitle = useMemo(() => {
+    if (!conversationsQuery.data || !conversationId) {
+      return null;
+    }
+
+    const conversation = conversationsQuery.data.find(
+      (item) => item.id === conversationId,
+    );
+
+    return conversation?.title ?? null;
+  }, [conversationId, conversationsQuery.data]);
+
+  const resolvedConversationTitle =
+    conversationTitle?.trim() || "Conversation detail";
+
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-br from-background to-muted/12 text-foreground">
       <NavBar />
@@ -118,13 +135,13 @@ export function ConversationDetailPage() {
             </Link>
             <section className="space-y-6 rounded-lg border border-border bg-background p-6 shadow-sm">
               <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm uppercase tracking-wide text-muted-foreground">
                     Loopie conversations
                   </p>
-                  <h1 className="text-2xl font-semibold tracking-tight">
+                  <h1 className="truncate text-2xl font-semibold tracking-tight">
                     {conversationId
-                      ? "Conversation detail"
+                      ? resolvedConversationTitle
                       : "Conversation not found"}
                   </h1>
                 </div>

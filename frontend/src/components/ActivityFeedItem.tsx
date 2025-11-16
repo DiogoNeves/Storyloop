@@ -97,27 +97,27 @@ export function ActivityFeedItem({
           </div>
         </div>
         <div className="flex gap-4">
-          <div className="flex flex-1 flex-col gap-2 pr-20">
+          <div className="flex min-w-0 flex-1 flex-col gap-2 pr-20">
             <h3 className="text-sm font-semibold text-foreground">
-            {detailPath ? (
-              <Link
-                to={detailPath}
-                className="text-primary underline-offset-2 hover:underline"
-                onClick={handleDetailClick}
-              >
-                {item.title}
-              </Link>
-            ) : item.linkUrl ? (
+              {detailPath ? (
+                <Link
+                  to={detailPath}
+                  className="block truncate text-primary underline-offset-2 hover:underline"
+                  onClick={handleDetailClick}
+                >
+                  {item.title}
+                </Link>
+              ) : item.linkUrl ? (
                 <a
                   href={item.linkUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-primary underline-offset-2 hover:underline"
+                  className="block truncate text-primary underline-offset-2 hover:underline"
                 >
                   {item.title}
                 </a>
               ) : (
-                item.title
+                <span className="block truncate">{item.title}</span>
               )}
             </h3>
             {summary.length > 0 ? (
