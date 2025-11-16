@@ -165,7 +165,8 @@ export function AgentPanelView({ state, adapter, isDemo }: AgentPanelViewProps) 
 
 export function AgentPanel() {
   const healthQuery = useQuery(healthQueries.status());
-  const demoEnabled = healthQuery.data?.youtubeDemoMode === true;
+  const demoEnabled =
+    healthQuery.data?.youtubeDemoMode === true || healthQuery.isError;
 
   const demo = useAgentDemo({ enabled: demoEnabled });
   const conversation = useAgentConversation({ enabled: !demoEnabled });
