@@ -16,6 +16,7 @@ import {
   ContentTypeTabs,
   type ContentTypeFilter,
 } from "@/components/ContentTypeTabs";
+import { SettingsDialog } from "@/components/SettingsDialog";
 import {
   entriesMutations,
   entriesQueries,
@@ -31,6 +32,7 @@ import { VideoDetailPage } from "@/pages/VideoDetailPage";
 import { JournalDetailPage } from "@/pages/JournalDetailPage";
 import { InsightsPage } from "@/pages/InsightsPage";
 import { JournalSummaryCards } from "@/components/JournalSummaryCards";
+import { SettingsProvider, useSettings } from "@/context/SettingsContext";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -42,9 +44,11 @@ const queryClient = new QueryClient({
 });
 
 function AppLayout() {
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-br from-background to-muted/12 text-foreground">
-      <NavBar />
+      <NavBar onOpenSettings={() => setIsSettingsOpen(true)} />
       <main className="relative flex min-h-0 flex-1 overflow-hidden">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-primary/8 via-transparent to-transparent" />
         <div className="relative grid h-full min-h-0 w-full grid-cols-3 gap-6 px-6 py-12 lg:px-10 xl:px-16">
@@ -56,6 +60,7 @@ function AppLayout() {
           </div>
         </div>
       </main>
+      <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
     </div>
   );
 }
@@ -69,13 +74,7 @@ function JournalPage() {
       defaultValue: "all",
     });
 
-  // Public only filter state - persisted in local storage
-  const [publicOnly, setPublicOnly] = useLocalStorageState<boolean>(
-    "publicOnlyFilter",
-    {
-      defaultValue: true,
-    },
-  );
+  const { publicOnly, setPublicOnly } = useSettings();
 
   // Determine videoType filter for API calls: null if "all", otherwise the type
   const videoTypeFilter = useMemo<"short" | "video" | "live" | null>(() => {
@@ -335,8 +334,6 @@ function JournalPage() {
       <ContentTypeTabs
         value={contentTypeFilter}
         onChange={setContentTypeFilter}
-        publicOnly={publicOnly}
-        onPublicOnlyChange={setPublicOnly}
       />
 
       <ActivityFeed
@@ -378,16 +375,18 @@ export function App() {
   return (
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
-        <Routes>
-          <Route element={<AppLayout />}>
-            <Route path="/" element={<JournalPage />} />
-            <Route path="/journal" element={<JournalPage />} />
-            <Route path="/insights" element={<InsightsPage />} />
-          </Route>
-          <Route path="/videos/:videoId" element={<VideoDetailPage />} />
-          <Route path="/journals/:journalId" element={<JournalDetailPage />} />
-          <Route path="/auth/callback" element={<YoutubeAuthCallback />} />
-        </Routes>
+        <SettingsProvider>
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route path="/" element={<JournalPage />} />
+              <Route path="/journal" element={<JournalPage />} />
+              <Route path="/insights" element={<InsightsPage />} />
+            </Route>
+            <Route path="/videos/:videoId" element={<VideoDetailPage />} />
+            <Route path="/journals/:journalId" element={<JournalDetailPage />} />
+            <Route path="/auth/callback" element={<YoutubeAuthCallback />} />
+          </Routes>
+        </SettingsProvider>
       </QueryClientProvider>
     </BrowserRouter>
   );

@@ -180,6 +180,31 @@ class UserService:
             )
             connection.commit()
 
+    def clear_channel_info(self) -> None:
+        """Remove stored YouTube channel metadata for the active user."""
+
+        with closing(self._connection_factory()) as connection:
+            connection.execute(
+                """
+                INSERT INTO users (
+                    id,
+                    channel_id,
+                    channel_title,
+                    channel_url,
+                    channel_thumbnail_url,
+                    channel_updated_at
+                ) VALUES (?, NULL, NULL, NULL, NULL, NULL)
+                ON CONFLICT(id) DO UPDATE SET
+                    channel_id=NULL,
+                    channel_title=NULL,
+                    channel_url=NULL,
+                    channel_thumbnail_url=NULL,
+                    channel_updated_at=NULL
+                """,
+                (_DEFAULT_USER_ID,),
+            )
+            connection.commit()
+
     def save_oauth_state(self, state: str, created_at: datetime) -> None:
         """Persist the most recent OAuth state token for CSRF protection."""
 
