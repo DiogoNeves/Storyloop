@@ -139,7 +139,10 @@ export function ConversationDetailPage() {
                   <p className="text-sm uppercase tracking-wide text-muted-foreground">
                     Loopie conversations
                   </p>
-                  <h1 className="truncate text-2xl font-semibold tracking-tight">
+                  <h1
+                    className="max-w-3xl truncate text-2xl font-semibold tracking-tight"
+                    title={resolvedConversationTitle}
+                  >
                     {conversationId
                       ? resolvedConversationTitle
                       : "Conversation not found"}

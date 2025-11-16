@@ -102,6 +102,7 @@ export function ActivityFeedItem({
               {detailPath ? (
                 <Link
                   to={detailPath}
+                  title={item.title}
                   className="block truncate text-primary underline-offset-2 hover:underline"
                   onClick={handleDetailClick}
                 >
@@ -112,12 +113,15 @@ export function ActivityFeedItem({
                   href={item.linkUrl}
                   target="_blank"
                   rel="noopener noreferrer"
+                  title={item.title}
                   className="block truncate text-primary underline-offset-2 hover:underline"
                 >
                   {item.title}
                 </a>
               ) : (
-                <span className="block truncate">{item.title}</span>
+                <span className="block truncate" title={item.title}>
+                  {item.title}
+                </span>
               )}
             </h3>
             {summary.length > 0 ? (
