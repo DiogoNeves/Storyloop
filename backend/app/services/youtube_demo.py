@@ -401,6 +401,14 @@ class DemoYoutubeService(YoutubeService):
             video_type=video_type,
         )
 
+    def sync_latest_metrics(self) -> None:
+        """Skip metrics sync to keep demo mode fully offline."""
+
+        logger.info(
+            "Skipping YouTube metrics sync in demo mode; using fixture data only."
+        )
+        return None
+
 
 __all__ = [
     "DemoYoutubeService",
