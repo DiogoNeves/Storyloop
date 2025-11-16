@@ -20,6 +20,7 @@ from app.db_helpers.conversations import (
     list_turns,
 )
 from app.dependencies import get_db
+from app.services.agent import build_loopie_deps
 
 router = APIRouter()
 
@@ -144,6 +145,7 @@ async def stream_turn(
             assistant_text = ""
             assistant_turn_id: str | None = None
             event_queue: asyncio.Queue[dict | None] = asyncio.Queue()
+            deps = await build_loopie_deps(request.app)
 
             async def run_assistant():
                 """Run assistant generation and put events in queue."""
@@ -151,7 +153,9 @@ async def stream_turn(
                 try:
                     # Stream from PydanticAI agent
                     # run_stream() returns an async context manager
-                    async with assistant_agent.run_stream(body.text) as result:
+                    async with assistant_agent.run_stream(
+                        body.text, deps=deps
+                    ) as result:
                         # Iterate over the streamed text tokens
                         async for token in result.stream_text():
                             if token:
