@@ -253,6 +253,19 @@ def youtube_auth_status(
     }
 
 
+@router.post("/unlink")
+def unlink_youtube_account(
+    user_service: UserService = Depends(get_user_service),
+) -> dict[str, bool]:
+    """Remove stored YouTube credentials and channel information."""
+
+    user_service.upsert_credentials(None, None)
+    user_service.clear_channel_info()
+    user_service.clear_oauth_state()
+
+    return {"success": True}
+
+
 def _extract_channel_payload(payload: dict[str, Any]) -> dict[str, Any] | None:
     """Pull the relevant fields from a channels.list response."""
 
