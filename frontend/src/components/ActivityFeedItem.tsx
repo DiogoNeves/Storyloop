@@ -9,7 +9,7 @@ export const categoryBadgeClass: Record<ActivityItem["category"], string> = {
   content: "bg-accent text-accent-foreground",
   insight: "",
   journal: "bg-primary/10 text-primary",
-  conversation: "bg-amber-100 text-amber-900",
+  conversation: "bg-primary/10 text-primary",
 };
 
 interface ActivityFeedItemProps {
