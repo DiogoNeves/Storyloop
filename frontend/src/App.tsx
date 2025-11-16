@@ -483,15 +483,15 @@ export function App() {
               <Route index element={<JournalPage />} />
               <Route path="journal" element={<JournalPage />} />
               <Route path="insights" element={<InsightsPage />} />
-              <Route
-                path="conversations/:conversationId"
-                element={<ConversationDetailPage />}
-              />
             </Route>
             <Route path="/videos/:videoId" element={<VideoDetailPage />} />
             <Route
               path="/journals/:journalId"
               element={<JournalDetailPage />}
+            />
+            <Route
+              path="/conversations/:conversationId"
+              element={<ConversationDetailPage />}
             />
             <Route path="/auth/callback" element={<YoutubeAuthCallback />} />
           </Routes>
