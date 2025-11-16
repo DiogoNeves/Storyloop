@@ -1,3 +1,5 @@
+import { NavLink } from "react-router-dom";
+
 export function NavBar() {
   return (
     <header className="sticky top-0 z-50 border-b bg-background">
@@ -11,15 +13,28 @@ export function NavBar() {
           </span>
         </div>
         <nav className="flex items-center gap-4 text-sm text-muted-foreground">
-          <a href="#" className="hover:text-foreground">
-            Dashboard
-          </a>
-          <a href="#" className="hover:text-foreground">
-            Library
-          </a>
-          <a href="#" className="hover:text-foreground">
-            Settings
-          </a>
+          <NavLink
+            to="/"
+            className={({ isActive }) =>
+              `font-medium transition-colors hover:text-foreground ${
+                isActive ? "text-foreground" : "text-muted-foreground"
+              }`
+            }
+          >
+            Journal
+          </NavLink>
+          <NavLink
+            to="/insights"
+            className={({ isActive }) =>
+              `font-medium transition-colors hover:text-foreground ${
+                isActive ? "text-foreground" : "text-muted-foreground"
+              }`
+            }
+          >
+            Insights
+          </NavLink>
+          <span className="hover:text-foreground">Library</span>
+          <span className="hover:text-foreground">Settings</span>
         </nav>
       </div>
     </header>

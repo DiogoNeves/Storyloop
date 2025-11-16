@@ -11,7 +11,6 @@ import useLocalStorageState from "use-local-storage-state";
 
 import { ActivityFeed, type ActivityDraft } from "@/components/ActivityFeed";
 import { NavBar } from "@/components/NavBar";
-import { ScoreOverviewCard } from "@/components/ScoreOverviewCard";
 import { AgentPanel } from "@/components/AgentPanel";
 import {
   ContentTypeTabs,
@@ -30,6 +29,8 @@ import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
 import { YoutubeAuthCallback } from "@/pages/YoutubeAuthCallback";
 import { VideoDetailPage } from "@/pages/VideoDetailPage";
 import { JournalDetailPage } from "@/pages/JournalDetailPage";
+import { InsightsSummaryCards } from "@/components/InsightsSummaryCards";
+import { InsightsPage } from "@/pages/InsightsPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,30 +40,6 @@ const queryClient = new QueryClient({
     },
   },
 });
-
-function ScorePlaceholder({
-  channelId,
-}: {
-  channelId: string | null;
-}) {
-  const growthScoreQuery = useQuery({
-    ...growthQueries.score(channelId ?? null),
-  });
-
-  const errorMessage = growthScoreQuery.isError
-    ? growthScoreQuery.error instanceof Error
-      ? growthScoreQuery.error.message
-      : "We couldn't calculate your growth score."
-    : null;
-
-  return (
-    <ScoreOverviewCard
-      score={growthScoreQuery.data ?? null}
-      isLoading={growthScoreQuery.isPending}
-      error={errorMessage}
-    />
-  );
-}
 
 function DashboardShell() {
   const queryClient = useQueryClient();
@@ -135,6 +112,16 @@ function DashboardShell() {
 
   // Fetch YouTube videos with filter
   const youtubeState = useYouTubeFeed(videoTypeFilter);
+
+  const growthScoreQuery = useQuery({
+    ...growthQueries.score(youtubeState.channelId ?? null),
+  });
+
+  const growthScoreError = growthScoreQuery.isError
+    ? growthScoreQuery.error instanceof Error
+      ? growthScoreQuery.error.message
+      : "We couldn't calculate your growth score."
+    : null;
 
   const healthStatusQuery = useQuery(healthQueries.status());
 
@@ -325,8 +312,10 @@ function DashboardShell() {
         <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-primary/8 via-transparent to-transparent" />
         <div className="relative grid h-full min-h-0 w-full grid-cols-3 gap-6 px-6 py-12 lg:px-10 xl:px-16">
           <div className="col-span-2 flex h-full min-h-0 min-w-0 flex-col gap-8 overflow-y-auto scrollbar-hide">
-            <ScorePlaceholder
-              channelId={youtubeState.channelId}
+            <InsightsSummaryCards
+              score={growthScoreQuery.data?.totalScore ?? null}
+              isLoading={growthScoreQuery.isPending}
+              error={growthScoreError}
             />
 
             <ContentTypeTabs
@@ -385,6 +374,7 @@ export function App() {
           <Route path="/" element={<DashboardShell />} />
           <Route path="/videos/:videoId" element={<VideoDetailPage />} />
           <Route path="/journals/:journalId" element={<JournalDetailPage />} />
+          <Route path="/insights" element={<InsightsPage />} />
           <Route path="/auth/callback" element={<YoutubeAuthCallback />} />
         </Routes>
       </QueryClientProvider>

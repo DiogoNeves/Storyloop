@@ -16,19 +16,26 @@ interface ScoreHeadlineProps {
   currentScore: number | null;
   isLoading: boolean;
   components: ScoreComponentSummary[];
+  className?: string;
 }
 
-function ScoreHeadline({
+export function ScoreHeadline({
   currentScore,
   isLoading,
   components,
+  className,
 }: ScoreHeadlineProps) {
   const hasScore = typeof currentScore === "number" && Number.isFinite(currentScore);
 
   const scoreDisplay = hasScore ? currentScore.toFixed(1) : "—";
 
   return (
-    <div className="flex h-full flex-col justify-between rounded-2xl border border-border/70 bg-gradient-to-br from-primary/10 via-background to-background p-6 shadow-inner">
+    <div
+      className={cn(
+        "flex h-full flex-col justify-between rounded-2xl border border-border/70 bg-gradient-to-br from-primary/10 via-background to-background p-6 shadow-inner",
+        className,
+      )}
+    >
       <div>
         <h2 className="text-sm font-semibold text-foreground">Storyloop Score</h2>
         <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -45,7 +52,7 @@ function ScoreHeadline({
           </span>
         </div>
         <p className="mt-2 text-sm text-muted-foreground">
-          Momentum across discovery, retention quality, and loyalty.
+          Momentum across discovery, retention, loyalty.
         </p>
         {components.length > 0 ? (
           <dl className="mt-5 grid gap-2 text-sm text-muted-foreground">
@@ -66,13 +73,13 @@ function ScoreHeadline({
   );
 }
 
-interface ScoreOverviewCardProps {
+export interface ScoreOverviewCardProps {
   score?: GrowthScoreResponse | null;
   isLoading?: boolean;
   error?: string | null;
 }
 
-function buildComponentSummaries(
+export function buildComponentSummaries(
   score: GrowthScoreResponse | null | undefined,
 ): ScoreComponentSummary[] {
   if (!score) {
@@ -108,24 +115,20 @@ export function ScoreOverviewCard({
   const showError = Boolean(error);
 
   return (
-    <>
+    <div className="space-y-4">
       {showError ? (
-        <p className="mb-4 text-sm text-destructive" role="status">
+        <p className="text-sm text-destructive" role="status">
           {error}
         </p>
       ) : null}
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-1">
-          <ScoreHeadline
-            currentScore={currentScore}
-            isLoading={isLoading}
-            components={components}
-          />
-        </div>
-        <div className="lg:col-span-2">
-          <InsightsCard />
-        </div>
+      <div className="space-y-6">
+        <ScoreHeadline
+          currentScore={currentScore}
+          isLoading={isLoading}
+          components={components}
+        />
+        <InsightsCard />
       </div>
-    </>
+    </div>
   );
 }
