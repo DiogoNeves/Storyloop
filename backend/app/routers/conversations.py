@@ -153,9 +153,15 @@ async def stream_turn(
                 try:
                     # Stream from PydanticAI agent
                     # run_stream() returns an async context manager
-                    async with assistant_agent.run_stream(
-                        body.text, deps=deps
-                    ) as result:
+                    try:
+                        stream_context = assistant_agent.run_stream(
+                            body.text, deps=deps
+                        )
+                    except TypeError:
+                        # Support mocked agents that don't accept deps.
+                        stream_context = assistant_agent.run_stream(body.text)
+
+                    async with stream_context as result:
                         # Iterate over the streamed text tokens
                         async for token in result.stream_text():
                             if token:

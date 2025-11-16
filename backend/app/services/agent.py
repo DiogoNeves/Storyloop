@@ -10,6 +10,10 @@ from pydantic_ai.models.openai import OpenAIChatModel
 
 from app.config import Settings
 from app.services.agent_tools import (
+    BaseJournalRepository,
+    BaseYouTubeRepository,
+    EmptyJournalRepository,
+    EmptyYouTubeRepository,
     JournalEntry,
     JournalRepository,
     VideoDetails,
@@ -24,16 +28,16 @@ class LoopieDeps(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     user_id: str
-    journal_repo: JournalRepository
-    youtube_repo: YouTubeRepository
+    journal_repo: BaseJournalRepository
+    youtube_repo: BaseYouTubeRepository
 
 
 async def build_loopie_deps(app: FastAPI) -> LoopieDeps:
     """Create Loopie dependency bundle from FastAPI application state."""
 
-    entry_service = app.state.entry_service
-    youtube_service = app.state.active_youtube_service
-    user_service = app.state.user_service
+    entry_service = getattr(app.state, "entry_service", None)
+    youtube_service = getattr(app.state, "active_youtube_service", None)
+    user_service = getattr(app.state, "user_service", None)
     oauth_service = getattr(app.state, "youtube_oauth_service", None)
 
     user_id = "anonymous"
@@ -42,12 +46,24 @@ async def build_loopie_deps(app: FastAPI) -> LoopieDeps:
         if active_user is not None:
             user_id = active_user.id
 
+    journal_repo: BaseJournalRepository
+    if entry_service is None:
+        journal_repo = EmptyJournalRepository()
+    else:
+        journal_repo = JournalRepository(entry_service)
+
+    youtube_repo: BaseYouTubeRepository
+    if youtube_service is None or user_service is None:
+        youtube_repo = EmptyYouTubeRepository()
+    else:
+        youtube_repo = YouTubeRepository(
+            youtube_service, user_service, oauth_service
+        )
+
     return LoopieDeps(
         user_id=user_id,
-        journal_repo=JournalRepository(entry_service),
-        youtube_repo=YouTubeRepository(
-            youtube_service, user_service, oauth_service
-        ),
+        journal_repo=journal_repo,
+        youtube_repo=youtube_repo,
     )
 
 

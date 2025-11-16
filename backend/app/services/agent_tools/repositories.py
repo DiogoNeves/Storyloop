@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Protocol, runtime_checkable
 
 import anyio
 
@@ -60,6 +60,25 @@ class JournalRepository:
             ]
 
         return await anyio.to_thread.run_sync(_fetch)
+
+
+@runtime_checkable
+class BaseJournalRepository(Protocol):
+    """Interface for journal repositories consumed by the agent."""
+
+    async def load_entries(
+        self, *, user_id: str, limit: int, before: str | None
+    ) -> list[JournalEntry]:
+        """Return journal entries ordered by recency."""
+
+
+class EmptyJournalRepository:
+    """Fallback repository returning no journal entries."""
+
+    async def load_entries(
+        self, *, user_id: str, limit: int, before: str | None
+    ) -> list[JournalEntry]:
+        return []
 
 
 class YouTubeRepository:
@@ -149,3 +168,34 @@ class YouTubeRepository:
                 " grounded in the retrieved video data."
             ),
         )
+
+
+@runtime_checkable
+class BaseYouTubeRepository(Protocol):
+    """Interface for YouTube repositories consumed by the agent."""
+
+    async def list_recent_videos(
+        self, *, limit: int = 5, include_shorts: bool = False
+    ) -> list[VideoDetails]:
+        """Return recent videos for the active channel."""
+
+    async def get_video(self, video_id: str) -> VideoDetails:
+        """Return detailed metadata for a single video."""
+
+    async def get_video_metrics(self, video_id: str) -> VideoMetrics:
+        """Return metrics for a specific video."""
+
+
+class EmptyYouTubeRepository:
+    """Fallback repository returning empty YouTube data."""
+
+    async def list_recent_videos(
+        self, *, limit: int = 5, include_shorts: bool = False
+    ) -> list[VideoDetails]:
+        return []
+
+    async def get_video(self, video_id: str) -> VideoDetails:
+        raise RuntimeError("YouTube service not configured")
+
+    async def get_video_metrics(self, video_id: str) -> VideoMetrics:
+        raise RuntimeError("YouTube service not configured")
