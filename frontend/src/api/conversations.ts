@@ -1,3 +1,4 @@
+import { createQueryKeys } from "@lukemorales/query-key-factory";
 import axios, { AxiosError } from "axios";
 
 import { API_BASE_URL, apiClient } from "@/api/client";
@@ -7,6 +8,12 @@ interface ConversationRecord {
   id: string;
   title: string | null;
   created_at: string;
+}
+
+interface ConversationSummaryRecord extends ConversationRecord {
+  last_turn_at: string | null;
+  last_turn_text: string | null;
+  turn_count: number;
 }
 
 interface TurnRecord {
@@ -20,6 +27,9 @@ export interface Conversation {
   id: string;
   title: string | null;
   createdAt: string;
+  lastTurnAt?: string | null;
+  lastTurnText?: string | null;
+  turnCount?: number;
 }
 
 export interface ConversationTurn {
@@ -55,6 +65,30 @@ export async function createConversation(
     title: data.title,
     createdAt: data.created_at,
   };
+}
+
+export const conversationQueries = createQueryKeys("conversations", {
+  /** Fetch all logged conversations with the latest activity timestamp. */
+  list: () => ({
+    queryKey: ["conversations"],
+    queryFn: async (): Promise<Conversation[]> => {
+      const { data } = await apiClient.get<ConversationSummaryRecord[]>(
+        "/conversations",
+      );
+      return data.map((record) => ({
+        id: record.id,
+        title: record.title,
+        createdAt: record.created_at,
+        lastTurnAt: record.last_turn_at,
+        lastTurnText: record.last_turn_text,
+        turnCount: record.turn_count,
+      }));
+    },
+  }),
+});
+
+export async function deleteConversation(conversationId: string): Promise<void> {
+  await apiClient.delete(`/conversations/${conversationId}`);
 }
 
 export async function listConversationTurns(

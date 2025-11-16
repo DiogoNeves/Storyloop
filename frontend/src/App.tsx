@@ -6,7 +6,13 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
-import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Outlet,
+  useNavigate,
+} from "react-router-dom";
 import useLocalStorageState from "use-local-storage-state";
 
 import { ActivityFeed, type ActivityDraft } from "@/components/ActivityFeed";
@@ -22,6 +28,10 @@ import {
   type CreateEntryInput,
   type Entry,
 } from "@/api/entries";
+import {
+  conversationQueries,
+  deleteConversation,
+} from "@/api/conversations";
 import { growthQueries } from "@/api/growth";
 import { healthQueries } from "@/api/health";
 import { type ActivityItem, entryToActivityItem } from "@/lib/types/entries";
@@ -30,7 +40,12 @@ import { YoutubeAuthCallback } from "@/pages/YoutubeAuthCallback";
 import { VideoDetailPage } from "@/pages/VideoDetailPage";
 import { JournalDetailPage } from "@/pages/JournalDetailPage";
 import { InsightsPage } from "@/pages/InsightsPage";
+import { ConversationDetailPage } from "@/pages/ConversationDetailPage";
 import { JournalSummaryCards } from "@/components/JournalSummaryCards";
+import {
+  AgentConversationProvider,
+  useAgentConversationContext,
+} from "@/context/AgentConversationContext";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -62,6 +77,9 @@ function AppLayout() {
 
 function JournalPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { setActiveConversation, state: agentConversationState } =
+    useAgentConversationContext();
 
   // Content type filter state - persisted in local storage
   const [contentTypeFilter, setContentTypeFilter] =
@@ -121,6 +139,76 @@ function JournalPage() {
     status: entriesStatus,
     error: entriesError,
   } = useQuery(entriesListQuery);
+  const conversationListQuery = useMemo(
+    () => conversationQueries.list(),
+    [],
+  );
+  const conversationsQuery = useQuery(conversationListQuery);
+  const conversationActivityItems = useMemo<ActivityItem[]>(() => {
+    if (!conversationsQuery.data) {
+      return [];
+    }
+    return conversationsQuery.data
+      .filter((conversation) => (conversation.turnCount ?? 0) > 0)
+      .map((conversation) => {
+        const trimmedSummary = conversation.lastTurnText?.trim();
+        return {
+          id: conversation.id,
+          title: conversation.title ?? "Loopie conversation",
+          summary:
+            trimmedSummary && trimmedSummary.length > 0
+              ? trimmedSummary
+              : "Jump into this Loopie conversation to keep building.",
+          date: conversation.lastTurnAt ?? conversation.createdAt,
+          category: "conversation" as const,
+        };
+      });
+  }, [conversationsQuery.data]);
+  const handleConversationClick = useCallback(
+    async (conversationId: string) => {
+      await setActiveConversation(conversationId);
+      void navigate(`/conversations/${conversationId}`);
+    },
+    [navigate, setActiveConversation],
+  );
+
+  const handleConversationDelete = useCallback(
+    async (conversationId: string) => {
+      setConversationDeleteError(null);
+      setDeletingConversationIds((previous) => {
+        const next = new Set(previous);
+        next.add(conversationId);
+        return next;
+      });
+      try {
+        await deleteConversation(conversationId);
+        await queryClient.invalidateQueries({
+          queryKey: conversationListQuery.queryKey,
+        });
+        if (agentConversationState.conversationId === conversationId) {
+          await setActiveConversation(null);
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "We couldn't delete that conversation. Try again.";
+        setConversationDeleteError(message);
+      } finally {
+        setDeletingConversationIds((previous) => {
+          const next = new Set(previous);
+          next.delete(conversationId);
+          return next;
+        });
+      }
+    },
+    [
+      agentConversationState.conversationId,
+      conversationListQuery.queryKey,
+      queryClient,
+      setActiveConversation,
+    ],
+  );
 
   const storedActivityItems = useMemo<ActivityItem[]>(() => {
     if (!storedEntries) {
@@ -144,9 +232,9 @@ function JournalPage() {
       : "We couldn't calculate your growth score."
     : null;
 
-  // Combine stored entries with YouTube videos, filter by content type, and limit to 50
+  // Build the activity list from conversations, entries, and YouTube videos
   const activityItems = useMemo<ActivityItem[]>(() => {
-    const baseItems = [...storedActivityItems];
+    const baseItems = [...conversationActivityItems, ...storedActivityItems];
 
     // Add YouTube videos if available
     if (youtubeState.youtubeFeed?.videos) {
@@ -205,20 +293,25 @@ function JournalPage() {
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 50);
   }, [
+    conversationActivityItems,
     storedActivityItems,
     youtubeState.youtubeFeed,
     contentTypeFilter,
     publicOnly,
   ]);
-
-  // Fallback to seed items if no stored entries and no YouTube feed
+  const hasActivity =
+    conversationActivityItems.length > 0 ||
+    storedActivityItems.length > 0 ||
+    Boolean(youtubeState.youtubeFeed);
   const displayItems =
-    storedActivityItems.length > 0 || youtubeState.youtubeFeed
+    hasActivity
       ? activityItems
       : seedItems;
 
   const [draft, setDraft] = useState<ActivityDraft | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
+  const [conversationDeleteError, setConversationDeleteError] = useState<string | null>(null);
+  const [deletingConversationIds, setDeletingConversationIds] = useState<Set<string>>(new Set());
 
   const { mutateAsync: saveEntry, isPending: isSavingEntry } = useMutation({
     ...entriesMutations.create(),
@@ -353,6 +446,10 @@ function JournalPage() {
         isSubmittingDraft={isSavingEntry}
         draftError={draftError}
         errorMessage={entriesErrorMessage}
+        conversationErrorMessage={conversationDeleteError}
+        onConversationClick={handleConversationClick}
+        onConversationDelete={handleConversationDelete}
+        deletingConversationIds={deletingConversationIds}
       />
 
       <div>
@@ -378,16 +475,25 @@ export function App() {
   return (
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
-        <Routes>
-          <Route element={<AppLayout />}>
-            <Route path="/" element={<JournalPage />} />
-            <Route path="/journal" element={<JournalPage />} />
-            <Route path="/insights" element={<InsightsPage />} />
-          </Route>
-          <Route path="/videos/:videoId" element={<VideoDetailPage />} />
-          <Route path="/journals/:journalId" element={<JournalDetailPage />} />
-          <Route path="/auth/callback" element={<YoutubeAuthCallback />} />
-        </Routes>
+        <AgentConversationProvider>
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route path="/" element={<JournalPage />} />
+              <Route path="/journal" element={<JournalPage />} />
+              <Route path="/insights" element={<InsightsPage />} />
+              <Route
+                path="/conversations/:conversationId"
+                element={<ConversationDetailPage />}
+              />
+            </Route>
+            <Route path="/videos/:videoId" element={<VideoDetailPage />} />
+            <Route path="/journals/:journalId" element={<JournalDetailPage />} />
+            <Route
+              path="/auth/callback"
+              element={<YoutubeAuthCallback />}
+            />
+          </Routes>
+        </AgentConversationProvider>
       </QueryClientProvider>
     </BrowserRouter>
   );
