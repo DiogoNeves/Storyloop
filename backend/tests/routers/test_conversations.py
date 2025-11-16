@@ -13,7 +13,10 @@ from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
 
 from app.db import SqliteConnectionFactory
-from app.db_helpers.conversations import init_conversation_tables
+from app.db_helpers.conversations import (
+    init_conversation_tables,
+    insert_turn,
+)
 from app.routers.conversations import router as conversations_router
 
 
@@ -109,6 +112,61 @@ def test_create_conversation_without_title(
     assert "created_at" in body
 
 
+def test_list_conversations_empty(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    """Listing conversations before creating any returns an empty list."""
+    app = _create_test_app(memory_connection_factory)
+    client = TestClient(app)
+
+    response = client.get("/conversations")
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_list_conversations_excludes_empty_records(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    """Conversations without turns should not appear in summaries."""
+    app = _create_test_app(memory_connection_factory)
+    client = TestClient(app)
+
+    # Create conversation without turns
+    client.post("/conversations", json={"title": "Empty"})
+
+    response = client.get("/conversations")
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_list_conversations_includes_recent_turn(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    """Conversation summaries include the latest turn metadata."""
+    app = _create_test_app(memory_connection_factory)
+    client = TestClient(app)
+
+    create_response = client.post("/conversations", json={"title": "Summary"})
+    conversation_id = create_response.json()["id"]
+
+    with memory_connection_factory() as connection:
+        insert_turn(connection, conversation_id, "user", "Hello")
+        insert_turn(connection, conversation_id, "assistant", "Final reply")
+
+    response = client.get("/conversations")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    summary = body[0]
+    assert summary["id"] == conversation_id
+    assert summary["title"] == "Summary"
+    assert summary["last_turn_text"] == "Final reply"
+    assert summary["last_turn_at"] is not None
+    assert summary["turn_count"] == 2
+
+
 def test_get_turns_for_nonexistent_conversation(
     memory_connection_factory: SqliteConnectionFactory,
 ) -> None:
@@ -139,6 +197,37 @@ def test_get_turns_empty_conversation(
 
     assert response.status_code == 200
     assert response.json() == []
+
+
+def test_delete_conversation(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    """Deleting a conversation removes it and its turns."""
+    app = _create_test_app(memory_connection_factory)
+    client = TestClient(app)
+
+    create_response = client.post("/conversations", json={"title": "Delete me"})
+    conversation_id = create_response.json()["id"]
+
+    with memory_connection_factory() as connection:
+        insert_turn(connection, conversation_id, "user", "Hello")
+
+    delete_response = client.delete(f"/conversations/{conversation_id}")
+    assert delete_response.status_code == 204
+
+    turns_response = client.get(f"/conversations/{conversation_id}/turns")
+    assert turns_response.status_code == 404
+
+
+def test_delete_conversation_missing(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    """Deleting a missing conversation returns 404."""
+    app = _create_test_app(memory_connection_factory)
+    client = TestClient(app)
+
+    response = client.delete(f"/conversations/{uuid4()}")
+    assert response.status_code == 404
 
 
 @pytest.mark.asyncio
@@ -177,6 +266,41 @@ async def test_stream_turn_without_agent(
             # Should have error event
             assert any("error" in event for event in events)
             assert any("Agent not available" in event for event in events)
+
+
+@pytest.mark.asyncio
+async def test_stream_turn_creates_conversation_when_missing(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    """Streaming without a pre-created conversation should create it."""
+    app = _create_test_app(memory_connection_factory, assistant_agent=None)
+    transport = ASGITransport(app=app)
+    new_conversation_id = str(uuid4())
+
+    async with AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
+        async with client.stream(
+            "POST",
+            f"/conversations/{new_conversation_id}/turns/stream",
+            json={"text": "Hello"},
+        ) as response:
+            assert response.status_code == 200
+            # Drain events to completion
+            async for _ in response.aiter_lines():
+                pass
+
+    with memory_connection_factory() as connection:
+        cursor = connection.execute(
+            "SELECT COUNT(*) FROM conversations WHERE id = ?",
+            (new_conversation_id,),
+        )
+        assert cursor.fetchone()[0] == 1
+        turns_cursor = connection.execute(
+            "SELECT COUNT(*) FROM turns WHERE conversation_id = ?",
+            (new_conversation_id,),
+        )
+        assert turns_cursor.fetchone()[0] == 1
 
 
 @pytest.mark.asyncio
@@ -331,30 +455,6 @@ async def test_stream_turn_cancels_inflight_run(
         assert not run2.finish.is_set()
         assert any("event: done" in line for line in events3)
         assert len(fake_agent.runs) == 3
-
-
-@pytest.mark.asyncio
-async def test_stream_turn_nonexistent_conversation(
-    memory_connection_factory: SqliteConnectionFactory,
-) -> None:
-    """Test streaming for a conversation that doesn't exist."""
-    mock_agent = MagicMock()
-    app = _create_test_app(
-        memory_connection_factory, assistant_agent=mock_agent
-    )
-    transport = ASGITransport(app=app)
-
-    fake_id = str(uuid4())
-    async with AsyncClient(
-        transport=transport, base_url="http://testserver"
-    ) as client:
-        response = await client.post(
-            f"/conversations/{fake_id}/turns/stream",
-            json={"text": "Hello"},
-        )
-
-        assert response.status_code == 404
-        assert "not found" in response.json()["detail"].lower()
 
 
 @pytest.mark.asyncio

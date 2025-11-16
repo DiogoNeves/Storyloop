@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { ArrowUp, Bot, Plus } from "lucide-react";
 
-import { healthQueries } from "@/api/health";
-import { useAgentConversation, useAgentDemo } from "@/hooks";
+import { useAgentConversationContext } from "@/context/AgentConversationContext";
 import {
   type AgentConversationAdapter,
   type AgentConversationState,
@@ -164,20 +162,8 @@ export function AgentPanelView({ state, adapter, isDemo }: AgentPanelViewProps) 
 }
 
 export function AgentPanel() {
-  const healthQuery = useQuery(healthQueries.status());
-  const demoEnabled =
-    healthQuery.data?.youtubeDemoMode === true || healthQuery.isError;
-
-  const demo = useAgentDemo({ enabled: demoEnabled });
-  const conversation = useAgentConversation({ enabled: !demoEnabled });
-
-  const active = demoEnabled ? demo : conversation;
-
+  const { state, adapter, isDemo } = useAgentConversationContext();
   return (
-    <AgentPanelView
-      state={active.state}
-      adapter={active.adapter}
-      isDemo={demoEnabled}
-    />
+    <AgentPanelView state={state} adapter={adapter} isDemo={isDemo} />
   );
 }

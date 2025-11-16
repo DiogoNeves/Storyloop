@@ -143,7 +143,9 @@ describe("App", () => {
     ).toBeInTheDocument();
 
     await waitFor(() => expect(screen.getByText("68.3")).toBeInTheDocument());
-    expect(screen.getByText(/Discovery · 40%/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Momentum across discovery, retention, loyalty/i),
+    ).toBeInTheDocument();
 
     await waitFor(() =>
       expect(screen.getByText(/Storyloop API ready/i)).toBeInTheDocument(),
