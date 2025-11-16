@@ -31,7 +31,7 @@ export interface ActivityItem {
   title: string;
   summary: string;
   date: string;
-  category: "content" | "insight" | "journal";
+  category: "content" | "insight" | "journal" | "conversation";
   linkUrl?: string;
   thumbnailUrl?: string;
   videoId?: string;
