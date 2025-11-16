@@ -29,6 +29,7 @@ function ChatMessageComponent({ message }: ChatMessageProps) {
         <MarkdownMessage
           content={message.content}
           className={cn("leading-relaxed", roleVariant.text)}
+          tone={message.role === "user" ? "user" : "default"}
         />
       </div>
     </div>
