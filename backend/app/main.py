@@ -64,6 +64,12 @@ def build_lifespan(
     entry_service = EntryService(connection_factory)
     entry_service.ensure_schema()
 
+    youtube_oauth_service: YoutubeOAuthService | None = None
+    try:
+        youtube_oauth_service = YoutubeOAuthService(active_settings)
+    except YoutubeConfigurationError:
+        youtube_oauth_service = None
+
     # Initialize conversation tables
     with closing(connection_factory()) as connection:
         init_conversation_tables(connection)
@@ -76,7 +82,10 @@ def build_lifespan(
                 "YouTube demo mode requested but DemoYoutubeService is unavailable."
             )
         demo_youtube_service = DemoYoutubeService(
-            scenario=active_settings.youtube_demo_scenario
+            scenario=active_settings.youtube_demo_scenario,
+            connection_factory=connection_factory,
+            user_service=user_service,
+            oauth_service=youtube_oauth_service,
         )
         resolved_youtube_service = demo_youtube_service
     else:
@@ -88,7 +97,10 @@ def build_lifespan(
             logger.error(message)
             raise RuntimeError(message)
         youtube_service = YoutubeService(
-            api_key=active_settings.youtube_api_key
+            api_key=active_settings.youtube_api_key,
+            connection_factory=connection_factory,
+            user_service=user_service,
+            oauth_service=youtube_oauth_service,
         )
         resolved_youtube_service = youtube_service
 
@@ -115,12 +127,7 @@ def build_lifespan(
         app.state.youtube_demo_service = demo_youtube_service
         app.state.active_youtube_service = resolved_youtube_service
         app.state.youtube_demo_mode = active_settings.youtube_demo_mode
-        try:
-            app.state.youtube_oauth_service = YoutubeOAuthService(
-                active_settings
-            )
-        except YoutubeConfigurationError:
-            app.state.youtube_oauth_service = None
+        app.state.youtube_oauth_service = youtube_oauth_service
         app.state.growth_score_service = growth_score_service
         app.state.assistant_agent = assistant_agent
 

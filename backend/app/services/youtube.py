@@ -3,17 +3,20 @@
 from __future__ import annotations
 
 import logging
-from contextlib import asynccontextmanager
+import sqlite3
+from contextlib import asynccontextmanager, closing
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
+from typing import TYPE_CHECKING, Any, Literal, Protocol, Sequence, cast
 
 from collections.abc import AsyncIterator
 
 import anyio
 import httpx
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
+from app.db import SqliteConnectionFactory
 from app.services.youtube_identifier import build_lookup_candidates
 from app.utils.datetime import parse_datetime, parse_duration_seconds
 
@@ -309,10 +312,16 @@ class YoutubeService:
         api_key: str | None,
         transport: httpx.AsyncBaseTransport | None = None,
         client: httpx.AsyncClient | None = None,
+        connection_factory: SqliteConnectionFactory | None = None,
+        user_service: "UserService | None" = None,
+        oauth_service: "YoutubeOAuthService | None" = None,
     ) -> None:
         self.api_key = api_key
         self._transport = transport
         self._client = client
+        self._connection_factory = connection_factory
+        self._user_service = user_service
+        self._oauth_service = oauth_service
         if self._client is not None and transport is not None:
             logger.debug(
                 "YoutubeService initialised with both custom client and transport; "
@@ -827,8 +836,241 @@ class YoutubeService:
         return data
 
     def sync_latest_metrics(self) -> None:
-        """Log a placeholder sync until real metrics synchronization is wired in."""
-        logger.info("Pretending to sync latest YouTube metrics.")
+        """Fetch recent metrics and persist them for the tracked channel.
+
+        Uses stored OAuth credentials when available, falling back to API-key
+        requests. Metrics are normalized and upserted into the local SQLite
+        database. Rate limit errors are logged and end the sync early.
+        """
+
+        if self._connection_factory is None:
+            logger.warning(
+                "Skipping YouTube metrics sync because no database connection "
+                "factory is configured."
+            )
+            return
+
+        if self._user_service is None:
+            logger.info(
+                "Cannot sync YouTube metrics because no user service is available."
+            )
+            return
+
+        record = self._user_service.get_active_user()
+        if record is None or not record.channel_id:
+            logger.info("No linked YouTube channel; skipping metrics sync.")
+            return
+
+        channel_identifier = record.channel_id
+        videos: list[YoutubeVideo] = []
+        use_authenticated_client = False
+        authenticated_client: YoutubeApiClient | None = None
+
+        if self._oauth_service is not None and record.credentials_json:
+            try:
+                authenticated_client = self.build_authenticated_client(
+                    self._user_service, self._oauth_service
+                )
+                feed = self._fetch_authenticated_channel_videos_sync(
+                    self._user_service,
+                    self._oauth_service,
+                    channel_id=channel_identifier,
+                    max_results=25,
+                    video_type=None,
+                )
+                videos = feed.videos
+                channel_identifier = feed.channel_id
+                use_authenticated_client = True
+            except YoutubeError as exc:
+                logger.warning(
+                    "Authenticated YouTube sync failed; falling back to API key: %s",
+                    exc,
+                )
+
+        if not videos:
+            if not self.api_key:
+                logger.info(
+                    "Unable to sync YouTube metrics: no API key or OAuth credentials."
+                )
+                return
+            try:
+                feed = anyio.run(
+                    self.fetch_channel_videos, channel_identifier, 25, None
+                )
+            except YoutubeError as exc:
+                logger.warning("API key based YouTube sync failed: %s", exc)
+                return
+            videos = feed.videos
+            channel_identifier = feed.channel_id
+
+        if not videos:
+            logger.info("No videos found for channel %s; skipping metrics sync.", channel_identifier)
+            return
+
+        video_ids = [video.id for video in videos]
+        fetched_at = datetime.now(tz=UTC).isoformat()
+
+        try:
+            if use_authenticated_client and authenticated_client is not None:
+                stats_map = self._fetch_video_statistics_authenticated(
+                    authenticated_client, video_ids
+                )
+            else:
+                stats_map = anyio.run(
+                    self._fetch_video_statistics_api_key, video_ids
+                )
+        except YoutubeAPIRequestError as exc:
+            logger.warning("YouTube metrics sync aborted: %s", exc)
+            return
+        except HttpError as exc:  # pragma: no cover - network errors
+            status = getattr(exc.resp, "status", None)
+            if status in {403, 429}:
+                logger.warning(
+                    "YouTube API rate limit hit while syncing metrics (status %s).",
+                    status,
+                )
+                return
+            message = f"Failed to fetch metrics from YouTube API: {exc}".rstrip()
+            raise YoutubeAPIRequestError(message) from exc
+
+        metrics: list[tuple[str, str, str, int, int, int, str]] = []
+        for video in videos:
+            stats = stats_map.get(video.id, {})
+            metrics.append(
+                (
+                    video.id,
+                    video.title,
+                    video.published_at.isoformat(),
+                    self._normalize_stat_count(stats.get("viewCount")),
+                    self._normalize_stat_count(stats.get("likeCount")),
+                    self._normalize_stat_count(stats.get("commentCount")),
+                    fetched_at,
+                )
+            )
+
+        self._persist_metrics(metrics)
+        logger.info(
+            "Synced %d YouTube metrics records for channel %s.",
+            len(metrics),
+            channel_identifier,
+        )
+
+    @staticmethod
+    def _normalize_stat_count(value: Any) -> int:
+        """Convert API statistic values to integers, defaulting to zero."""
+
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return 0
+
+    def _persist_metrics(
+        self, metrics: list[tuple[str, str, str, int, int, int, str]]
+    ) -> None:
+        """Upsert metric rows into the ``youtube_metrics`` table."""
+
+        if not metrics:
+            return
+
+        with closing(self._connection_factory()) as connection:
+            self._ensure_metrics_schema(connection)
+            connection.executemany(
+                """
+                INSERT INTO youtube_metrics (
+                    video_id,
+                    title,
+                    published_at,
+                    view_count,
+                    like_count,
+                    comment_count,
+                    fetched_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(video_id) DO UPDATE SET
+                    title=excluded.title,
+                    published_at=excluded.published_at,
+                    view_count=excluded.view_count,
+                    like_count=excluded.like_count,
+                    comment_count=excluded.comment_count,
+                    fetched_at=excluded.fetched_at
+                """,
+                metrics,
+            )
+            connection.commit()
+
+    def _ensure_metrics_schema(self, connection: sqlite3.Connection) -> None:
+        """Create the ``youtube_metrics`` table if it does not exist."""
+
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS youtube_metrics (
+                video_id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                published_at TEXT NOT NULL,
+                view_count INTEGER NOT NULL,
+                like_count INTEGER,
+                comment_count INTEGER,
+                fetched_at TEXT NOT NULL
+            )
+            """
+        )
+
+    async def _fetch_video_statistics_api_key(
+        self, video_ids: Sequence[str]
+    ) -> dict[str, dict[str, Any]]:
+        """Retrieve video statistics using API key authentication."""
+
+        if not self.api_key:
+            raise YoutubeConfigurationError("YouTube API key not configured")
+        if not video_ids:
+            return {}
+
+        async with self.client_session() as client:
+            params = {
+                "part": "statistics,snippet",
+                "id": ",".join(video_ids),
+                "key": self.api_key,
+            }
+            payload = await self._request_json(client, "videos", params)
+        return self._parse_statistics_response(payload)
+
+    def _fetch_video_statistics_authenticated(
+        self, client: YoutubeApiClient, video_ids: Sequence[str]
+    ) -> dict[str, dict[str, Any]]:
+        """Retrieve video statistics using OAuth-authenticated client."""
+
+        if not video_ids:
+            return {}
+        response = client.videos().list(
+            part="statistics,snippet", id=",".join(video_ids)
+        ).execute()
+        return self._parse_statistics_response(response)
+
+    def _parse_statistics_response(
+        self, payload: dict[str, Any]
+    ) -> dict[str, dict[str, Any]]:
+        """Normalize a videos.list response to a mapping keyed by video ID."""
+
+        stats_map: dict[str, dict[str, Any]] = {}
+        items = payload.get("items", [])
+        if not isinstance(items, list):
+            return stats_map
+
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            video_id = item.get("id")
+            if not isinstance(video_id, str):
+                continue
+            statistics = item.get("statistics")
+            snippet = item.get("snippet") if isinstance(item.get("snippet"), dict) else {}
+            stats_map[video_id] = {
+                "viewCount": statistics.get("viewCount") if isinstance(statistics, dict) else 0,
+                "likeCount": statistics.get("likeCount") if isinstance(statistics, dict) else 0,
+                "commentCount": statistics.get("commentCount") if isinstance(statistics, dict) else 0,
+                "title": snippet.get("title") if isinstance(snippet, dict) else None,
+                "publishedAt": snippet.get("publishedAt") if isinstance(snippet, dict) else None,
+            }
+        return stats_map
 
     async def fetch_authenticated_channel_videos(
         self,

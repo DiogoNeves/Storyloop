@@ -24,6 +24,7 @@ import httpx
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 
+from app.db import SqliteConnectionFactory
 from app.services.youtube import (
     YoutubeAPIRequestError,
     YoutubeApiClient,
@@ -331,9 +332,17 @@ class DemoYoutubeService(YoutubeService):
         api_key: str | None = "demo",
         transport: httpx.AsyncBaseTransport | None = None,
         client: httpx.AsyncClient | None = None,
+        connection_factory: SqliteConnectionFactory | None = None,
+        user_service: "UserService | None" = None,
+        oauth_service: "YoutubeOAuthService | None" = None,
     ) -> None:
         super().__init__(
-            api_key=api_key or "demo", transport=transport, client=client
+            api_key=api_key or "demo",
+            transport=transport,
+            client=client,
+            connection_factory=connection_factory,
+            user_service=user_service,
+            oauth_service=oauth_service,
         )
         selected_scenario = scenario or os.getenv(
             "YOUTUBE_DEMO_SCENARIO", "baseline"
