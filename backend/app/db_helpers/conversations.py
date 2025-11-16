@@ -57,6 +57,56 @@ def conversation_exists(
     return cursor.fetchone() is not None
 
 
+def list_conversation_summaries(
+    connection: sqlite3.Connection,
+) -> list[dict[str, str | None | int]]:
+    """Return conversations with their most recent activity."""
+    cursor = connection.execute(
+        """
+        SELECT
+            conversations.id,
+            conversations.title,
+            conversations.created_at,
+            (
+                SELECT created_at
+                FROM turns
+                WHERE turns.conversation_id = conversations.id
+                ORDER BY created_at DESC
+                LIMIT 1
+            ) AS last_turn_at,
+            (
+                SELECT text
+                FROM turns
+                WHERE turns.conversation_id = conversations.id
+                ORDER BY created_at DESC
+                LIMIT 1
+            ) AS last_turn_text,
+            (
+                SELECT COUNT(*)
+                FROM turns
+                WHERE turns.conversation_id = conversations.id
+            ) AS turn_count
+        FROM conversations
+        WHERE EXISTS (
+            SELECT 1 FROM turns WHERE turns.conversation_id = conversations.id
+        )
+        ORDER BY COALESCE(last_turn_at, conversations.created_at) DESC
+        """
+    )
+    rows = cursor.fetchall()
+    return [
+        {
+            "id": row[0],
+            "title": row[1],
+            "created_at": row[2],
+            "last_turn_at": row[3],
+            "last_turn_text": row[4],
+            "turn_count": row[5],
+        }
+        for row in rows
+    ]
+
+
 def insert_turn(
     connection: sqlite3.Connection,
     conversation_id: str,
@@ -100,3 +150,22 @@ def list_turns(
         }
         for row in rows
     ]
+
+
+def delete_conversation(
+    connection: sqlite3.Connection, conversation_id: str
+) -> bool:
+    """Delete a conversation and its turns. Returns True if a record was removed."""
+    cursor = connection.execute(
+        "SELECT 1 FROM conversations WHERE id = ?", (conversation_id,)
+    )
+    if cursor.fetchone() is None:
+        return False
+    connection.execute(
+        "DELETE FROM turns WHERE conversation_id = ?", (conversation_id,)
+    )
+    connection.execute(
+        "DELETE FROM conversations WHERE id = ?", (conversation_id,)
+    )
+    connection.commit()
+    return True

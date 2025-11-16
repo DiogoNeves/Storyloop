@@ -1,0 +1,168 @@
+import { useEffect, useMemo, useState, useCallback } from "react";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { Link, useNavigate, useParams } from "react-router-dom";
+
+import {
+  conversationQueries,
+  deleteConversation,
+  listConversationTurns,
+  type ConversationTurn,
+} from "@/api/conversations";
+import { useAgentConversationContext } from "@/context/AgentConversationContext";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ChatMessage } from "@/components/chat/ChatMessage";
+
+export function ConversationDetailPage() {
+  const { conversationId } = useParams<{ conversationId: string }>();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { setActiveConversation } = useAgentConversationContext();
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const conversationListQuery = useMemo(
+    () => conversationQueries.list(),
+    [],
+  );
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteConversation,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: conversationListQuery.queryKey,
+      });
+    },
+  });
+
+  useEffect(() => {
+    if (conversationId) {
+      void setActiveConversation(conversationId).catch(() => {
+        return undefined;
+      });
+    }
+  }, [conversationId, setActiveConversation]);
+
+  const turnsQuery = useQuery({
+    queryKey: ["conversations", conversationId ?? "missing", "turns"],
+    queryFn: () => {
+      if (!conversationId) {
+        return Promise.reject(new Error("Conversation ID is required"));
+      }
+      return listConversationTurns(conversationId);
+    },
+    enabled: Boolean(conversationId),
+  });
+
+  const messages = useMemo(() => {
+    if (!turnsQuery.data) {
+      return [];
+    }
+    return turnsQuery.data.map((turn: ConversationTurn) => ({
+      id: turn.id,
+      role: turn.role,
+      content: turn.text,
+      createdAt: turn.createdAt,
+    }));
+  }, [turnsQuery.data]);
+
+  const handleDeleteConversation = useCallback(async () => {
+    if (!conversationId || deleteMutation.isPending) {
+      return;
+    }
+    setDeleteError(null);
+    try {
+      await deleteMutation.mutateAsync(conversationId);
+      await queryClient.invalidateQueries({
+        queryKey: ["conversations", conversationId, "turns"],
+      });
+      await setActiveConversation(null);
+      void navigate("/");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "We couldn't delete this conversation. Try again.";
+      setDeleteError(message);
+    }
+  }, [
+    conversationId,
+    deleteMutation,
+    navigate,
+    queryClient,
+    setActiveConversation,
+  ]);
+
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-6 overflow-y-auto scrollbar-hide">
+      <Link
+        to="/"
+        className="text-sm font-medium text-primary underline-offset-2 hover:underline"
+      >
+        ← Back to activity feed
+      </Link>
+      <section className="space-y-6 rounded-lg border border-border bg-background p-6 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-sm uppercase tracking-wide text-muted-foreground">
+              Loopie conversations
+            </p>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              {conversationId
+                ? "Conversation detail"
+                : "Conversation not found"}
+            </h1>
+          </div>
+          {conversationId ? (
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                void handleDeleteConversation();
+              }}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? "Deleting…" : "Delete conversation"}
+            </Button>
+          ) : null}
+        </div>
+
+        {deleteError ? (
+          <p className="text-sm text-destructive" role="status">
+            {deleteError}
+          </p>
+        ) : null}
+
+        <Card className="flex flex-1 flex-col">
+          <CardContent className="space-y-4">
+            {turnsQuery.isLoading ? (
+              <p className="text-sm text-muted-foreground">
+                Loading conversation…
+              </p>
+            ) : turnsQuery.isError ? (
+              <p className="text-sm text-destructive">
+                {turnsQuery.error instanceof Error
+                  ? turnsQuery.error.message
+                  : "We couldn't load that conversation."}
+              </p>
+            ) : messages.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No turns yet. Start chatting with Loopie to capture this
+                conversation.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-5">
+                {messages.map((message) => (
+                  <ChatMessage key={message.id} message={message} />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+    </div>
+  );
+}

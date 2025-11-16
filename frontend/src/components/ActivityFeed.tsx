@@ -36,6 +36,10 @@ interface ActivityFeedProps {
   isSubmittingDraft?: boolean;
   draftError?: string | null;
   errorMessage?: string | null;
+  conversationErrorMessage?: string | null;
+  onConversationClick?: (conversationId: string) => Promise<void>;
+  onConversationDelete?: (conversationId: string) => Promise<void>;
+  deletingConversationIds?: Set<string>;
 }
 
 export function ActivityFeed({
@@ -52,6 +56,10 @@ export function ActivityFeed({
   isSubmittingDraft,
   draftError,
   errorMessage,
+  conversationErrorMessage,
+  onConversationClick,
+  onConversationDelete,
+  deletingConversationIds,
 }: ActivityFeedProps) {
   const editingState = useEntryEditing();
   const [thumbnailError, setThumbnailError] = useState(false);
@@ -129,6 +137,11 @@ export function ActivityFeed({
             {errorMessage}
           </p>
         ) : null}
+        {conversationErrorMessage ? (
+          <p className="text-sm text-destructive" role="status">
+            {conversationErrorMessage}
+          </p>
+        ) : null}
         {!isLinked ? <LinkYouTubeAccountCard /> : null}
         {youtubeError ? (
           <p className="text-sm text-destructive" role="status">
@@ -153,7 +166,13 @@ export function ActivityFeed({
             editingState.editingEntryId === item.id &&
             editingState.editingDraft;
           const isEditable =
-            item.category !== "content" && !item.id.startsWith("youtube:");
+            item.category !== "content" &&
+            item.category !== "conversation" &&
+            !item.id.startsWith("youtube:");
+          const isConversation = item.category === "conversation";
+          const isConversationDeleting =
+            Boolean(isConversation && deletingConversationIds?.has(item.id));
+
           if (isEditing && editingState.editingDraft) {
             return (
               <ActivityDraftCard
@@ -185,6 +204,15 @@ export function ActivityFeed({
             <ActivityFeedItem
               key={item.id}
               item={item}
+              onConversationClick={onConversationClick}
+              onConversationDelete={
+                isConversation && onConversationDelete
+                  ? () => {
+                      void onConversationDelete(item.id);
+                    }
+                  : undefined
+              }
+              isConversationDeleting={isConversationDeleting}
               onEdit={
                 isEditable
                   ? () => {

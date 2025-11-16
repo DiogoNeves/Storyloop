@@ -15,8 +15,10 @@ from sse_starlette.sse import EventSourceResponse
 
 from app.db_helpers.conversations import (
     conversation_exists,
+    delete_conversation,
     insert_conversation,
     insert_turn,
+    list_conversation_summaries,
     list_turns,
 )
 from app.dependencies import get_db
@@ -41,6 +43,14 @@ class ConversationOut(BaseModel):
     created_at: str
 
 
+class ConversationListOut(ConversationOut):
+    """Response model for a conversation summary."""
+
+    last_turn_at: str | None
+    last_turn_text: str | None
+    turn_count: int
+
+
 class TurnOut(BaseModel):
     """Response model for a turn."""
 
@@ -54,6 +64,29 @@ class TurnInput(BaseModel):
     """Request model for a turn input."""
 
     text: str
+
+
+@router.get("", response_model=list[ConversationListOut])
+def list_conversations(
+    db: sqlite3.Connection = Depends(get_db),
+) -> list[ConversationListOut]:
+    """List conversations with their most recent activity."""
+    summaries = list_conversation_summaries(db)
+    return [ConversationListOut(**summary) for summary in summaries]
+
+
+@router.delete("/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_conversation(
+    conversation_id: str,
+    db: sqlite3.Connection = Depends(get_db),
+) -> None:
+    """Delete a conversation and its turns."""
+    deleted = delete_conversation(db, conversation_id)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found",
+        )
 
 
 @router.post("", response_model=ConversationOut)
@@ -94,9 +127,8 @@ async def stream_turn(
     # Check conversation exists (run in thread to avoid blocking event loop)
     exists = await asyncio.to_thread(conversation_exists, db, conversation_id)
     if not exists:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Conversation not found",
+        await asyncio.to_thread(
+            insert_conversation, db, conversation_id, None
         )
 
     # Insert user turn immediately (run in thread to avoid blocking event loop)
