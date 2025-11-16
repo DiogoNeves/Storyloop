@@ -5,7 +5,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
 
-type WrapperProps = { children: ReactNode };
+interface WrapperProps {
+  children: ReactNode;
+}
 
 const linkStatusMock = vi.fn();
 const fetchChannelVideosMock = vi.fn();

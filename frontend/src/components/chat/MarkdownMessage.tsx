@@ -140,6 +140,7 @@ const createMarkdownComponents = (tone: ChatTone) => {
       }
 
       const { node, ...rest } = props;
+      void node;
 
       return (
         <pre
