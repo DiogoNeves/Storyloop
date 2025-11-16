@@ -28,42 +28,41 @@ function ScoreHeadline({
   const scoreDisplay = hasScore ? currentScore.toFixed(1) : "—";
 
   return (
-    <div
-      className="flex h-full flex-col justify-between rounded-2xl border border-border/70 bg-background p-6 shadow-inner [background-image:linear-gradient(135deg,rgba(255,0,0,0.08),rgba(255,0,0,0.02)_45%,rgba(255,255,255,0)_90%)]"
-    >
-      <div>
-        <h2 className="text-sm font-semibold text-foreground">Storyloop Score</h2>
-        <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Current score
-        </p>
-        <div className="mt-4 flex items-baseline gap-4">
-          <span
-            className={cn(
-              "text-5xl font-semibold leading-none tracking-tight",
-              isLoading ? "text-muted-foreground/80" : "text-foreground",
-            )}
-          >
-            {scoreDisplay}
-          </span>
-        </div>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Momentum across discovery, retention quality, and loyalty.
-        </p>
-        {components.length > 0 ? (
-          <dl className="mt-5 grid gap-2 text-sm text-muted-foreground">
-            {components.map((component) => (
-              <div key={component.id} className="flex items-center justify-between">
-                <dt>{component.label}</dt>
-                <dd className="font-medium text-foreground">
-                  {typeof component.score === "number"
-                    ? `${component.score.toFixed(1)} pts`
-                    : "—"}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        ) : null}
+    <div className="flex h-full flex-col justify-between rounded-2xl border border-border/70 bg-background p-6 shadow-inner">
+      <h2 className="text-sm font-semibold text-foreground">Storyloop Score</h2>
+      <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        Current score
+      </p>
+      <div className="mt-4 flex items-baseline gap-4">
+        <span
+          className={cn(
+            "text-5xl font-semibold leading-none tracking-tight",
+            isLoading ? "text-muted-foreground/80" : "text-foreground",
+          )}
+        >
+          {scoreDisplay}
+        </span>
       </div>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Momentum across discovery, retention quality, and loyalty.
+      </p>
+      {components.length > 0 ? (
+        <dl className="mt-5 grid gap-2 text-sm text-muted-foreground">
+          {components.map((component) => (
+            <div
+              key={component.id}
+              className="flex items-center justify-between"
+            >
+              <dt>{component.label}</dt>
+              <dd className="font-medium text-foreground">
+                {typeof component.score === "number"
+                  ? `${component.score.toFixed(1)} pts`
+                  : "—"}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
     </div>
   );
 }
