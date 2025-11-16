@@ -25,7 +25,10 @@ const getHeadingColor = (tone: MarkdownMessageProps["tone"]) =>
 const normalizeClassName = (value: unknown) =>
   typeof value === "string" ? value : undefined;
 
-type MarkdownCodeProps = Parameters<NonNullable<Components["code"]>>[0];
+type MarkdownCodeProps = HTMLAttributes<HTMLElement> & {
+  inline?: boolean;
+  node?: unknown;
+};
 
 const createMarkdownComponents = (
   tone: MarkdownMessageProps["tone"] = "default",
@@ -144,19 +147,21 @@ const createMarkdownComponents = (
         );
       }
 
+      const { node, ...rest } = props;
+
       return (
         <pre
           className={cn(
             "mb-4 mt-2 overflow-x-auto rounded-xl bg-muted/70 px-4 py-3 text-sm shadow-inner",
             textColor,
           )}
-          {...props}
         >
           <code
             className={cn(
               "block min-w-max font-mono",
               normalizeClassName(className),
             )}
+            {...rest}
           >
             {children}
           </code>
