@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 
 import type { GrowthScoreComponent } from "@/api/growth";
 import { growthQueries } from "@/api/growth";
@@ -65,6 +66,13 @@ export function InsightsPage() {
 
   return (
     <div className="flex flex-col gap-10">
+      <Link
+        to="/"
+        className="text-sm font-medium text-primary underline-offset-2 hover:underline"
+      >
+        ← Back to activity feed
+      </Link>
+
       <section className="space-y-4 rounded-2xl border border-border/70 bg-card p-6 shadow-sm">
         <div className="space-y-3">
           <h1 className="text-lg font-semibold text-foreground">Storyloop Score</h1>
