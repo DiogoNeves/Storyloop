@@ -148,6 +148,7 @@ const createMarkdownComponents = (
       }
 
       const { node, ...rest } = props;
+      void node;
 
       return (
         <pre
