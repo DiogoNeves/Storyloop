@@ -11,6 +11,7 @@ import {
   Routes,
   Route,
   Outlet,
+  useLocation,
   useNavigate,
 } from "react-router-dom";
 import useLocalStorageState from "use-local-storage-state";
@@ -57,6 +58,7 @@ const queryClient = new QueryClient({
 });
 
 function AppLayout() {
+  const location = useLocation();
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-br from-background to-muted/12 text-foreground">
       <NavBar />
@@ -64,7 +66,7 @@ function AppLayout() {
         <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-primary/8 via-transparent to-transparent" />
         <div className="relative grid h-full min-h-0 w-full grid-cols-3 gap-6 px-6 py-12 lg:px-10 xl:px-16">
           <div className="col-span-2 flex h-full min-h-0 min-w-0 flex-col gap-8 overflow-y-auto pb-16 scrollbar-hide">
-            <Outlet />
+            <Outlet key={location.pathname} />
           </div>
           <div className="col-span-1 flex h-full min-h-0">
             <AgentPanel />
