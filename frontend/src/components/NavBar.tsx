@@ -1,3 +1,7 @@
+import { NavLink } from "react-router-dom";
+
+import { cn } from "@/lib/utils";
+
 export function NavBar() {
   return (
     <header className="sticky top-0 z-50 border-b bg-background">
@@ -10,14 +14,33 @@ export function NavBar() {
             Content journal
           </span>
         </div>
-        <nav className="flex items-center gap-4 text-sm text-muted-foreground">
-          <a href="#" className="hover:text-foreground">
-            Dashboard
-          </a>
-          <a href="#" className="hover:text-foreground">
+        <nav className="flex items-center gap-2 text-sm text-muted-foreground">
+          <NavLink
+            to="/"
+            className={({ isActive }) =>
+              cn(
+                "rounded-md px-3 py-1.5 transition hover:text-foreground",
+                isActive ? "bg-muted text-foreground" : undefined,
+              )
+            }
+          >
+            Journal
+          </NavLink>
+          <NavLink
+            to="/insights"
+            className={({ isActive }) =>
+              cn(
+                "rounded-md px-3 py-1.5 transition hover:text-foreground",
+                isActive ? "bg-muted text-foreground" : undefined,
+              )
+            }
+          >
+            Insights
+          </NavLink>
+          <a href="#" className="rounded-md px-3 py-1.5 transition hover:text-foreground">
             Library
           </a>
-          <a href="#" className="hover:text-foreground">
+          <a href="#" className="rounded-md px-3 py-1.5 transition hover:text-foreground">
             Settings
           </a>
         </nav>
