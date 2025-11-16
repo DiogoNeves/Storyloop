@@ -11,6 +11,11 @@ pnpm run test -- --run  # execute Vitest in run-once mode
 pnpm run lint       # ESLint flat config with type-aware rules
 ```
 
+## Setup tips
+
+- Run `pnpm install` after pulling to ensure TypeScript can resolve optional markdown dependencies used by the chat renderer.
+- For demo-mode screenshots, run the FastAPI backend with `YOUTUBE_DEMO_MODE=1` so the Loopie panel and YouTube fixtures load without extra credentials.
+
 ## Key directories
 
 - `src/components/` – shared UI components (`NavBar`, `ActivityFeed`).
