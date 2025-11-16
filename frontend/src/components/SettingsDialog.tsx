@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { NotebookPen, UserRound } from "lucide-react";
 
 import { youtubeApi, youtubeQueries } from "@/api/youtube";
-import { useSettings } from "@/context/SettingsContext";
+import { useSettings } from "@/context/useSettings";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
