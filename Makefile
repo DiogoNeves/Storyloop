@@ -17,7 +17,7 @@ test-backend:
 	cd backend && uv run pytest
 
 test-frontend:
-	cd frontend && npm run test -- --run
+	cd frontend && pnpm run test -- --run
 
 lint-frontend:
-	cd frontend && npm run lint
+	cd frontend && pnpm run lint

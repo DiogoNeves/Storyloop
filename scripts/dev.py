@@ -39,7 +39,7 @@ async def main() -> int:
         "8000",
     ]
     frontend_cmd = [
-        "npm",
+        "pnpm",
         "run",
         "dev",
         "--",

@@ -16,7 +16,7 @@ const demoIntroMessages: AgentMessage[] = [
     role: "assistant",
     // Extend these demo messages with more Markdown patterns as the renderer grows.
     content:
-      "# Channel Growth Overview\n\nHere is a quick snapshot of your recent experiments. Hop into the docs for more: [Storyloop Docs](https://example.com/docs).\n\n## Highlights\n\n- Improved retention on the last three uploads\n- Thumbnail click-through rose after the purple accent test\n- More consistent Sunday release schedule\n\nHere is a table of key metrics:\n\n| Video | CTR | Avg View Duration | Notes |\n| --- | --- | --- | --- |\n| Launch Recap | 7.8% | 4:21 | Strong intro hook |\n| Devlog #3 | 5.2% | 3:17 | Drop at 1:10 mark |\n| Storyloop Teaser | 9.1% | 5:02 | Excellent retention |\n\nInline code looks like `npm run dev`, and longer snippets render below.",
+      "# Channel Growth Overview\n\nHere is a quick snapshot of your recent experiments. Hop into the docs for more: [Storyloop Docs](https://example.com/docs).\n\n## Highlights\n\n- Improved retention on the last three uploads\n- Thumbnail click-through rose after the purple accent test\n- More consistent Sunday release schedule\n\nHere is a table of key metrics:\n\n| Video | CTR | Avg View Duration | Notes |\n| --- | --- | --- | --- |\n| Launch Recap | 7.8% | 4:21 | Strong intro hook |\n| Devlog #3 | 5.2% | 3:17 | Drop at 1:10 mark |\n| Storyloop Teaser | 9.1% | 5:02 | Excellent retention |\n\nInline code looks like `pnpm run dev`, and longer snippets render below.",
     createdAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
   },
   {
