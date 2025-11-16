@@ -165,4 +165,59 @@ describe("useYouTubeFeed", () => {
       expect(result.current.youtubeError).toBe("boom");
     });
   });
+
+  it("reuses cached results when rerendered with the same filter", async () => {
+    linkStatusMock.mockResolvedValue({
+      linked: true,
+      refreshNeeded: false,
+      channel: {
+        id: "UC123",
+        title: "Storyloop",
+        url: "https://www.youtube.com/channel/UC123",
+        thumbnailUrl: null,
+        updatedAt: "2024-01-01T00:00:00Z",
+      },
+      statusMessage: null,
+    });
+
+    const feed = {
+      channelId: "UC123",
+      channelTitle: "Storyloop",
+      channelDescription: "Description",
+      channelUrl: "https://www.youtube.com/channel/UC123",
+      channelThumbnailUrl: null,
+      videos: [
+        {
+          id: "v1",
+          title: "Only video",
+          description: "",
+          publishedAt: "2024-03-01T00:00:00Z",
+          url: "https://youtube.com/watch?v=v1",
+          thumbnailUrl: null,
+          videoType: "video" as const,
+          privacyStatus: "public" as const,
+        },
+      ],
+    };
+
+    fetchChannelVideosMock.mockResolvedValue(feed);
+
+    const { result, rerender } = renderHook(() => useYouTubeFeed("video"), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.youtubeFeed?.videos[0]?.id).toBe("v1");
+    });
+
+    expect(fetchChannelVideosMock).toHaveBeenCalledTimes(1);
+
+    rerender();
+
+    await waitFor(() => {
+      expect(result.current.youtubeFeed?.videos[0]?.id).toBe("v1");
+    });
+
+    expect(fetchChannelVideosMock).toHaveBeenCalledTimes(1);
+  });
 });
