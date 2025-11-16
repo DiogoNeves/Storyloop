@@ -6,7 +6,7 @@ import anyio
 from fastapi import FastAPI
 from pydantic import BaseModel
 from pydantic_ai import Agent, RunContext
-from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.models.openai import OpenAIChatModel
 
 from app.config import Settings
 from app.services.agent_tools import (
@@ -66,7 +66,7 @@ def build_agent(active_settings: Settings) -> Agent[LoopieDeps, str] | None:
 
     # Ensure the API key is set in environment for PydanticAI to use
     os.environ["OPENAI_API_KEY"] = active_settings.openai_api_key
-    model = OpenAIModel("gpt-5-nano")
+    model = OpenAIChatModel("gpt-5-nano")
 
     system_prompt = """You are Loopie, the slightly loopy (yet extremely useful) creative partner for YouTube creators on Storyloop.
 Lean into playful, curious energy while keeping advice crisp, practical, and unblocking.
