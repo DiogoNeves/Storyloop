@@ -15,11 +15,13 @@ function SummaryCard({
   children,
   to,
   variant = "solid",
+  className,
 }: {
   title: string;
   children: ReactNode;
   to: string;
   variant?: "solid" | "muted";
+  className?: string;
 }) {
   return (
     <Link
@@ -29,7 +31,8 @@ function SummaryCard({
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         variant === "solid"
           ? "border-border/70 bg-card hover:-translate-y-0.5 hover:shadow-md"
-          : "border-dashed border-border/70 bg-muted/40 hover:border-border hover:-translate-y-0.5",
+          : "border-dashed border-border/70 bg-muted/40 hover:-translate-y-0.5 hover:border-border",
+        className,
       )}
     >
       <div className="flex h-full flex-col gap-2">
@@ -46,9 +49,10 @@ export function JournalSummaryCards({
   error,
 }: JournalSummaryCardsProps) {
   const hasScore = typeof score?.totalScore === "number";
-  const scoreDisplay = hasScore && Number.isFinite(score?.totalScore)
-    ? score?.totalScore.toFixed(1)
-    : "—";
+  const scoreDisplay =
+    hasScore && Number.isFinite(score?.totalScore)
+      ? score?.totalScore.toFixed(1)
+      : "—";
 
   return (
     <div className="space-y-3">
@@ -58,10 +62,18 @@ export function JournalSummaryCards({
         </p>
       ) : null}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <SummaryCard title="Storyloop Score" to="/insights">
+        <SummaryCard
+          title="Storyloop Score"
+          to="/insights"
+          className="bg-gradient-to-br from-primary/10 via-primary/5 to-background"
+        >
           <div className="flex flex-1 flex-col justify-between gap-1">
             <div className="text-4xl font-semibold text-foreground">
-              {isLoading ? <span className="text-muted-foreground">—</span> : scoreDisplay}
+              {isLoading ? (
+                <span className="text-muted-foreground">—</span>
+              ) : (
+                scoreDisplay
+              )}
             </div>
             <p className="text-sm text-muted-foreground">
               Momentum across discovery, retention, loyalty
@@ -82,8 +94,12 @@ export function JournalSummaryCards({
             </div>
 
             <div className="space-y-1 opacity-30" aria-hidden="true">
-              <div className="text-2xl font-semibold text-foreground">92% held vs 78% median</div>
-              <p className="text-sm text-muted-foreground">Top retention clip this period</p>
+              <div className="text-2xl font-semibold text-foreground">
+                92% held vs 78% median
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Top retention clip this period
+              </p>
             </div>
           </div>
         </SummaryCard>
@@ -97,4 +113,3 @@ export function JournalSummaryCards({
     </div>
   );
 }
-
