@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import useLocalStorageState from "use-local-storage-state";
 
-import { entriesQueries, type Entry } from "@/api/entries";
+import { type Entry } from "@/api/entries";
+import { apiClient } from "@/api/client";
 import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
 import { useEntryEditing } from "@/hooks/useEntryEditing";
 import { entryToActivityItem } from "@/lib/types/entries";
@@ -19,13 +20,19 @@ export function JournalDetailPage() {
   const { journalId } = useParams<{ journalId: string }>();
   const navigate = useNavigate();
 
-  const entryQuery = useQuery<Entry, Error>({
-    queryKey: journalId
-      ? entriesQueries.byId(journalId).queryKey
-      : ["entries", "missing", "detail"],
-    queryFn: journalId
-      ? entriesQueries.byId(journalId).queryFn
-      : () => Promise.reject(new Error("Journal ID is required")),
+  const entryQueryKey = ["entries", journalId ?? "missing"] as const;
+
+  const entryQuery = useQuery<Entry, Error, Entry, typeof entryQueryKey>({
+    queryKey: entryQueryKey,
+    queryFn: (context) => {
+      const [, id] = context.queryKey;
+      if (!journalId) {
+        return Promise.reject(new Error("Journal ID is required"));
+      }
+      return apiClient
+        .get<Entry>(`/entries/${id}`, { signal: context.signal })
+        .then((response) => response.data);
+    },
     enabled: Boolean(journalId),
   });
 

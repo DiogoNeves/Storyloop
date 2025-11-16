@@ -11,8 +11,12 @@ const Dialog = DialogPrimitive.Root;
 
 const DialogTrigger = DialogPrimitive.Trigger;
 
-const DialogPortal = ({ className, ...props }: DialogPortalProps) => (
-  <DialogPrimitive.Portal className={cn(className)} {...props} />
+const DialogPortal = ({ className, children, ...props }: DialogPortalProps) => (
+  <DialogPrimitive.Portal {...props}>
+    <div className={cn("fixed inset-0 z-50 flex items-center justify-center", className)}>
+      {children}
+    </div>
+  </DialogPrimitive.Portal>
 );
 DialogPortal.displayName = DialogPrimitive.Portal.displayName;
 
