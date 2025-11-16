@@ -30,26 +30,37 @@ export function AgentConversationProvider({
     healthQuery.data?.youtubeDemoMode === true || healthQuery.isError;
 
   const demo = useAgentDemo({ enabled: isDemoMode });
-  const conversation = useAgentConversation({ enabled: !isDemoMode });
+  const {
+    state: conversationState,
+    adapter: conversationAdapter,
+    setActiveConversation: baseSetActiveConversation,
+  } = useAgentConversation({ enabled: !isDemoMode });
 
   const setActiveConversation = useCallback(
     async (conversationId?: string | null) => {
       if (isDemoMode) {
         return;
       }
-      await conversation.setActiveConversation(conversationId ?? null);
+      await baseSetActiveConversation(conversationId ?? null);
     },
-    [conversation, isDemoMode],
+    [baseSetActiveConversation, isDemoMode],
   );
 
   const value = useMemo(
     () => ({
-      state: isDemoMode ? demo.state : conversation.state,
-      adapter: isDemoMode ? demo.adapter : conversation.adapter,
+      state: isDemoMode ? demo.state : conversationState,
+      adapter: isDemoMode ? demo.adapter : conversationAdapter,
       setActiveConversation,
       isDemo: isDemoMode,
     }),
-    [conversation.adapter, conversation.state, demo.adapter, demo.state, isDemoMode, setActiveConversation],
+    [
+      conversationAdapter,
+      conversationState,
+      demo.adapter,
+      demo.state,
+      isDemoMode,
+      setActiveConversation,
+    ],
   );
 
   return (

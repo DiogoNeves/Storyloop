@@ -2,7 +2,11 @@ import { NavLink } from "react-router-dom";
 
 import { cn } from "@/lib/utils";
 
-export function NavBar() {
+interface NavBarProps {
+  onOpenSettings: () => void;
+}
+
+export function NavBar({ onOpenSettings }: NavBarProps) {
   return (
     <header className="sticky top-0 z-50 border-b bg-background">
       <div className="mx-auto flex h-16 w-full items-center justify-between px-6 lg:px-10 xl:px-16">
@@ -37,12 +41,13 @@ export function NavBar() {
           >
             Insights
           </NavLink>
-          <a
-            href="#"
-            className="rounded-md px-3 py-1.5 transition hover:text-foreground"
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className="rounded-md px-3 py-1.5 text-left transition hover:text-foreground"
           >
             Settings
-          </a>
+          </button>
         </nav>
       </div>
     </header>

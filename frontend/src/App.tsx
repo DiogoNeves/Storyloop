@@ -23,6 +23,7 @@ import {
   ContentTypeTabs,
   type ContentTypeFilter,
 } from "@/components/ContentTypeTabs";
+import { SettingsDialog } from "@/components/SettingsDialog";
 import {
   entriesMutations,
   entriesQueries,
@@ -47,6 +48,7 @@ import {
   AgentConversationProvider,
   useAgentConversationContext,
 } from "@/context/AgentConversationContext";
+import { SettingsProvider, useSettings } from "@/context/SettingsContext";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -59,13 +61,15 @@ const queryClient = new QueryClient({
 
 function AppLayout() {
   const location = useLocation();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-br from-background to-muted/12 text-foreground">
-      <NavBar />
+    <div className="to-muted/12 flex h-screen flex-col overflow-hidden bg-gradient-to-br from-background text-foreground">
+      <NavBar onOpenSettings={() => setIsSettingsOpen(true)} />
       <main className="relative flex min-h-0 flex-1 overflow-hidden">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-primary/8 via-transparent to-transparent" />
+        <div className="from-primary/8 pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b via-transparent to-transparent" />
         <div className="relative grid h-full min-h-0 w-full grid-cols-3 gap-6 px-6 py-12 lg:px-10 xl:px-16">
-          <div className="col-span-2 flex h-full min-h-0 min-w-0 flex-col gap-8 overflow-y-auto pb-16 scrollbar-hide">
+          <div className="scrollbar-hide col-span-2 flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-y-auto pb-16">
             <Outlet key={location.pathname} />
           </div>
           <div className="col-span-1 flex h-full min-h-0">
@@ -73,6 +77,7 @@ function AppLayout() {
           </div>
         </div>
       </main>
+      <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
     </div>
   );
 }
@@ -89,13 +94,8 @@ function JournalPage() {
       defaultValue: "all",
     });
 
-  // Public only filter state - persisted in local storage
-  const [publicOnly, setPublicOnly] = useLocalStorageState<boolean>(
-    "publicOnlyFilter",
-    {
-      defaultValue: true,
-    },
-  );
+  const { publicOnly, setPublicOnly } = useSettings();
+  void setPublicOnly;
 
   // Determine videoType filter for API calls: null if "all", otherwise the type
   const videoTypeFilter = useMemo<"short" | "video" | "live" | null>(() => {
@@ -430,8 +430,6 @@ function JournalPage() {
       <ContentTypeTabs
         value={contentTypeFilter}
         onChange={setContentTypeFilter}
-        publicOnly={publicOnly}
-        onPublicOnlyChange={setPublicOnly}
       />
 
       <ActivityFeed
@@ -477,25 +475,27 @@ export function App() {
   return (
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
-        <AgentConversationProvider>
-          <Routes>
-            <Route path="/" element={<AppLayout />}>
-              <Route index element={<JournalPage />} />
-              <Route path="journal" element={<JournalPage />} />
-              <Route path="insights" element={<InsightsPage />} />
-            </Route>
-            <Route path="/videos/:videoId" element={<VideoDetailPage />} />
-            <Route
-              path="/journals/:journalId"
-              element={<JournalDetailPage />}
-            />
-            <Route
-              path="/conversations/:conversationId"
-              element={<ConversationDetailPage />}
-            />
-            <Route path="/auth/callback" element={<YoutubeAuthCallback />} />
-          </Routes>
-        </AgentConversationProvider>
+        <SettingsProvider>
+          <AgentConversationProvider>
+            <Routes>
+              <Route path="/" element={<AppLayout />}>
+                <Route index element={<JournalPage />} />
+                <Route path="journal" element={<JournalPage />} />
+                <Route path="insights" element={<InsightsPage />} />
+              </Route>
+              <Route path="/videos/:videoId" element={<VideoDetailPage />} />
+              <Route
+                path="/journals/:journalId"
+                element={<JournalDetailPage />}
+              />
+              <Route
+                path="/conversations/:conversationId"
+                element={<ConversationDetailPage />}
+              />
+              <Route path="/auth/callback" element={<YoutubeAuthCallback />} />
+            </Routes>
+          </AgentConversationProvider>
+        </SettingsProvider>
       </QueryClientProvider>
     </BrowserRouter>
   );
