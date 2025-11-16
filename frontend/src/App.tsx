@@ -94,7 +94,7 @@ function JournalPage() {
       defaultValue: "all",
     });
 
-  const { publicOnly, setPublicOnly } = useSettings();
+  const { publicOnly } = useSettings();
 
   // Determine videoType filter for API calls: null if "all", otherwise the type
   const videoTypeFilter = useMemo<"short" | "video" | "live" | null>(() => {
