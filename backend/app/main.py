@@ -92,7 +92,7 @@ def build_lifespan(
         )
         resolved_youtube_service = youtube_service
 
-    growth_score_service = GrowthScoreService()
+    growth_score_service = GrowthScoreService(connection_factory)
 
     # Initialize AI agent (optional, returns None if OPENAI_API_KEY not set)
     assistant_agent = build_agent(active_settings)

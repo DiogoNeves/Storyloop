@@ -2,7 +2,7 @@
 
 from app.services.agent import build_agent
 from app.services.entries import EntryRecord, EntryService
-from app.services.growth import GrowthScoreService
+from app.services.growth import GrowthScoreService, VideoMetricsRecord
 from app.services.youtube import YoutubeService
 from app.services.youtube_demo import (
     DemoUserService,
@@ -18,6 +18,7 @@ __all__ = [
     "EntryRecord",
     "EntryService",
     "GrowthScoreService",
+    "VideoMetricsRecord",
     "UserRecord",
     "UserService",
     "DemoYoutubeService",

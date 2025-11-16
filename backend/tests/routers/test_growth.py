@@ -8,7 +8,10 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.config import Settings
+from app.db import create_connection_factory
 from app.main import create_app
+from app.services.growth import GrowthScoreService
+from tests.utils.growth import seed_video_metrics
 
 
 @pytest.mark.asyncio
@@ -19,8 +22,19 @@ async def test_growth_score_endpoint_returns_expected_payload() -> None:
     app = create_app(settings)
     transport = ASGITransport(app=app)
 
+    connection_factory = create_connection_factory(settings.effective_database_url)
+    app.state.get_db = connection_factory
+    growth_service: GrowthScoreService = getattr(
+        app.state, "growth_score_service", GrowthScoreService(connection_factory)
+    )
+    app.state.growth_score_service = growth_service
+    channel_id, video_type = seed_video_metrics(growth_service)
+
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
-        response = await client.get("/growth/score")
+        response = await client.get(
+            "/growth/score",
+            params={"channelId": channel_id, "videoType": video_type},
+        )
 
     assert response.status_code == 200
 

@@ -47,7 +47,7 @@ def get_growth_score_service(request: Request) -> GrowthScoreService:
     """Extract GrowthScoreService from application state."""
     service = getattr(request.app.state, "growth_score_service", None)
     if service is None:
-        service = GrowthScoreService()
+        service = GrowthScoreService(request.app.state.get_db)
         request.app.state.growth_score_service = service
     return service
 
