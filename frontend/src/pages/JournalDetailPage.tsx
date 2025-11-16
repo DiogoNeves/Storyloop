@@ -11,6 +11,7 @@ import { entryToActivityItem } from "@/lib/types/entries";
 import { NavBar } from "@/components/NavBar";
 import { VideoLinkCard } from "@/components/VideoLinkCard";
 import { ActivityDraftCard } from "@/components/ActivityDraftCard";
+import { AgentPanel } from "@/components/AgentPanel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { YoutubeVideoResponse } from "@/api/youtube";
@@ -238,114 +239,122 @@ export function JournalDetailPage() {
   };
 
   return (
-    <div className="min-h-screen bg-muted/20 text-foreground">
+    <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-br from-background to-muted/12 text-foreground">
       <NavBar />
-      <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-10">
-        <Link
-          to="/"
-          className="text-sm font-medium text-primary underline-offset-2 hover:underline"
-        >
-          ← Back to activity feed
-        </Link>
-        <section className="space-y-6 rounded-lg border border-border bg-background p-6 shadow-sm">
-          {!journalId ? (
-            <p className="text-sm text-muted-foreground">
-              We couldn’t determine which journal entry to display.
-            </p>
-          ) : entryQuery.isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading journal entry…</p>
-          ) : entryQuery.isError ? (
-            <p className="text-sm text-destructive">
-              {entryQuery.error instanceof Error
-                ? entryQuery.error.message
-                : String(entryQuery.error)}
-            </p>
-          ) : !currentEntry ? (
-            <p className="text-sm text-muted-foreground">
-              We couldn't find this journal entry.
-            </p>
-          ) : isEditing && editingDraft ? (
-            <div className="space-y-6">
-              <ActivityDraftCard
-                draft={editingDraft}
-                onChange={handleEditDraftChange}
-                onCancel={cancelEdit}
-                onSubmit={() => {
-                  void submitEdit();
-                }}
-                isSubmitting={isUpdating}
-                errorMessage={editingError}
-                submitLabel="Save changes"
-                category={currentEntry.category}
-                idPrefix={`edit-entry-${currentEntry.id}`}
-                onDelete={() => {
-                  void deleteEntry(currentEntry.id);
-                }}
-                isDeleting={isDeleting(currentEntry.id)}
-              />
-
-              <div className="h-px w-full bg-border" aria-hidden="true" />
-
-              <div className="grid gap-4 md:grid-cols-2">
-                {renderVideoCard(
-                  "Published before this journal",
-                  adjacentVideos.previous,
-                  "No earlier video yet—this journal leads the way!",
-                )}
-                {renderVideoCard(
-                  "Published after this journal",
-                  adjacentVideos.next,
-                  "Looking forward to your next video!",
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              <div className="space-y-4">
-                <div className="flex items-start justify-between gap-4">
-                  <h1 className="text-2xl font-semibold text-foreground">
-                    {currentEntry.title}
-                  </h1>
-                  {activityItem && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        startEdit(activityItem);
-                      }}
-                    >
-                      Edit entry
-                    </Button>
-                  )}
-                </div>
-                <div className="flex flex-col gap-2 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
-                  <span>{formattedDate ?? "Entry date unavailable"}</span>
-                </div>
-                <p className="whitespace-pre-line text-sm text-muted-foreground">
-                  {summaryText.length > 0
-                    ? summaryText
-                    : "No notes saved for this journal entry."}
+      <main className="relative flex min-h-0 flex-1 overflow-hidden">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-primary/8 via-transparent to-transparent" />
+        <div className="relative grid h-full min-h-0 w-full grid-cols-3 gap-6 px-6 py-12 lg:px-10 xl:px-16">
+          <div className="col-span-2 flex h-full min-h-0 flex-col gap-6 overflow-y-auto scrollbar-hide">
+            <Link
+              to="/"
+              className="text-sm font-medium text-primary underline-offset-2 hover:underline"
+            >
+              ← Back to activity feed
+            </Link>
+            <section className="space-y-6 rounded-lg border border-border bg-background p-6 shadow-sm">
+              {!journalId ? (
+                <p className="text-sm text-muted-foreground">
+                  We couldn’t determine which journal entry to display.
                 </p>
-              </div>
+              ) : entryQuery.isLoading ? (
+                <p className="text-sm text-muted-foreground">Loading journal entry…</p>
+              ) : entryQuery.isError ? (
+                <p className="text-sm text-destructive">
+                  {entryQuery.error instanceof Error
+                    ? entryQuery.error.message
+                    : String(entryQuery.error)}
+                </p>
+              ) : !currentEntry ? (
+                <p className="text-sm text-muted-foreground">
+                  We couldn't find this journal entry.
+                </p>
+              ) : isEditing && editingDraft ? (
+                <div className="space-y-6">
+                  <ActivityDraftCard
+                    draft={editingDraft}
+                    onChange={handleEditDraftChange}
+                    onCancel={cancelEdit}
+                    onSubmit={() => {
+                      void submitEdit();
+                    }}
+                    isSubmitting={isUpdating}
+                    errorMessage={editingError}
+                    submitLabel="Save changes"
+                    category={currentEntry.category}
+                    idPrefix={`edit-entry-${currentEntry.id}`}
+                    onDelete={() => {
+                      void deleteEntry(currentEntry.id);
+                    }}
+                    isDeleting={isDeleting(currentEntry.id)}
+                  />
 
-              <div className="h-px w-full bg-border" aria-hidden="true" />
+                  <div className="h-px w-full bg-border" aria-hidden="true" />
 
-              <div className="grid gap-4 md:grid-cols-2">
-                {renderVideoCard(
-                  "Published before this journal",
-                  adjacentVideos.previous,
-                  "No earlier video yet—this journal leads the way!",
-                )}
-                {renderVideoCard(
-                  "Published after this journal",
-                  adjacentVideos.next,
-                  "Looking forward to your next video!",
-                )}
-              </div>
-            </div>
-          )}
-        </section>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {renderVideoCard(
+                      "Published before this journal",
+                      adjacentVideos.previous,
+                      "No earlier video yet—this journal leads the way!",
+                    )}
+                    {renderVideoCard(
+                      "Published after this journal",
+                      adjacentVideos.next,
+                      "Looking forward to your next video!",
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="space-y-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <h1 className="text-2xl font-semibold text-foreground">
+                        {currentEntry.title}
+                      </h1>
+                      {activityItem && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            startEdit(activityItem);
+                          }}
+                        >
+                          Edit entry
+                        </Button>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
+                      <span>{formattedDate ?? "Entry date unavailable"}</span>
+                    </div>
+                    <p className="whitespace-pre-line text-sm text-muted-foreground">
+                      {summaryText.length > 0
+                        ? summaryText
+                        : "No notes saved for this journal entry."}
+                    </p>
+                  </div>
+
+                  <div className="h-px w-full bg-border" aria-hidden="true" />
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {renderVideoCard(
+                      "Published before this journal",
+                      adjacentVideos.previous,
+                      "No earlier video yet—this journal leads the way!",
+                    )}
+                    {renderVideoCard(
+                      "Published after this journal",
+                      adjacentVideos.next,
+                      "Looking forward to your next video!",
+                    )}
+                  </div>
+                </div>
+              )}
+            </section>
+          </div>
+          <div className="col-span-1 flex h-full min-h-0">
+            <AgentPanel />
+          </div>
+        </div>
       </main>
     </div>
   );
