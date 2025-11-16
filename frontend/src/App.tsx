@@ -479,21 +479,21 @@ export function App() {
       <QueryClientProvider client={queryClient}>
         <AgentConversationProvider>
           <Routes>
-            <Route element={<AppLayout />}>
-              <Route path="/" element={<JournalPage />} />
-              <Route path="/journal" element={<JournalPage />} />
-              <Route path="/insights" element={<InsightsPage />} />
+            <Route path="/" element={<AppLayout />}>
+              <Route index element={<JournalPage />} />
+              <Route path="journal" element={<JournalPage />} />
+              <Route path="insights" element={<InsightsPage />} />
               <Route
-                path="/conversations/:conversationId"
+                path="conversations/:conversationId"
                 element={<ConversationDetailPage />}
               />
             </Route>
             <Route path="/videos/:videoId" element={<VideoDetailPage />} />
-            <Route path="/journals/:journalId" element={<JournalDetailPage />} />
             <Route
-              path="/auth/callback"
-              element={<YoutubeAuthCallback />}
+              path="/journals/:journalId"
+              element={<JournalDetailPage />}
             />
+            <Route path="/auth/callback" element={<YoutubeAuthCallback />} />
           </Routes>
         </AgentConversationProvider>
       </QueryClientProvider>
