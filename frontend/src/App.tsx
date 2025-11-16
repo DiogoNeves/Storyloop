@@ -430,8 +430,6 @@ function JournalPage() {
       <ContentTypeTabs
         value={contentTypeFilter}
         onChange={setContentTypeFilter}
-        publicOnly={publicOnly}
-        onPublicOnlyChange={setPublicOnly}
       />
 
       <ActivityFeed
