@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
 import {
   type AnchorHTMLAttributes,
   type HTMLAttributes,
@@ -8,7 +6,6 @@ import {
 } from "react";
 
 import ReactMarkdown, { type Components } from "react-markdown";
-import { type CodeProps } from "react-markdown/lib/ast-to-react";
 import remarkGfm from "remark-gfm";
 
 import { cn } from "@/lib/utils";
@@ -27,6 +24,8 @@ const getHeadingColor = (tone: MarkdownMessageProps["tone"]) =>
 
 const normalizeClassName = (value: unknown) =>
   typeof value === "string" ? value : undefined;
+
+type MarkdownCodeProps = Parameters<NonNullable<Components["code"]>>[0];
 
 const createMarkdownComponents = (
   tone: MarkdownMessageProps["tone"] = "default",
@@ -129,7 +128,7 @@ const createMarkdownComponents = (
         {...props}
       />
     ),
-    code: ({ inline, className, children, ...props }: CodeProps) => {
+    code: ({ inline, className, children, ...props }: MarkdownCodeProps) => {
       if (inline) {
         return (
           <code
