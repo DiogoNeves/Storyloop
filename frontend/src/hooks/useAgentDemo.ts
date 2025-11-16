@@ -14,21 +14,22 @@ const demoIntroMessages: AgentMessage[] = [
   {
     id: "demo-assistant-1",
     role: "assistant",
+    // Extend these demo messages with more Markdown patterns as the renderer grows.
     content:
-      "Hey there! I studied your latest uploads and performance notes. Ask me for a growth plan, a script punch-up, or a reflection. I'm in demo mode, but the flow matches the real agent we'll plug in soon.",
+      "# Channel Growth Overview\n\nHere is a quick snapshot of your recent experiments. Hop into the docs for more: [Storyloop Docs](https://example.com/docs).\n\n## Highlights\n\n- Improved retention on the last three uploads\n- Thumbnail click-through rose after the purple accent test\n- More consistent Sunday release schedule\n\nHere is a table of key metrics:\n\n| Video | CTR | Avg View Duration | Notes |\n| --- | --- | --- | --- |\n| Launch Recap | 7.8% | 4:21 | Strong intro hook |\n| Devlog #3 | 5.2% | 3:17 | Drop at 1:10 mark |\n| Storyloop Teaser | 9.1% | 5:02 | Excellent retention |\n\nInline code looks like `npm run dev`, and longer snippets render below.",
     createdAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
   },
   {
     id: "demo-user-1",
     role: "user",
-    content: "Remind me what worked best from last week's experiments?",
+    content: "Which parts of that format should I double down on next?",
     createdAt: new Date(Date.now() - 1000 * 60 * 4).toISOString(),
   },
   {
     id: "demo-assistant-2",
     role: "assistant",
     content:
-      "Doubling down on the teaser beat at 00:21 raised average view duration to 64%. Viewers also replayed the visual punchline, so keeping that pacing shift is a win.",
+      "Great question! I pulled together the moments worth repeating.\n\n> Keep the cold open under 6 seconds and include a visual surprise; that's where replay spikes show up.\n\n1. Script a **three-beat hook**: tease, promise, reveal.\n2. Re-use the overlay that called out `00:21`—it drove the first retention jump.\n3. Close with a single CTA that links to the playlist.\n\nHere is a small snippet you can paste into your editor:\n\n```md\n## Hook ideas\n- Tease the reveal in the first 3 seconds\n- Mention the subscriber milestone as a fast brag\n- Ask a question that sets up the reveal\n```\n",
     createdAt: new Date(Date.now() - 1000 * 60 * 4).toISOString(),
   },
 ];

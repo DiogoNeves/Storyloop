@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowUp, Bot, Plus } from "lucide-react";
 
@@ -7,12 +7,11 @@ import { useAgentConversation, useAgentDemo } from "@/hooks";
 import {
   type AgentConversationAdapter,
   type AgentConversationState,
-  type AgentMessage,
 } from "@/lib/types/agent";
-import { cn } from "@/lib/utils";
 
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
+import { ChatMessage } from "./chat/ChatMessage";
 
 interface AgentPanelViewProps {
   state: AgentConversationState;
@@ -20,51 +19,12 @@ interface AgentPanelViewProps {
   isDemo?: boolean;
 }
 
-function MessageBubble({ message }: { message: AgentMessage }) {
-  const isAssistant = message.role === "assistant";
-  const isUser = message.role === "user";
-
-  const formattedContent = useMemo(() => {
-    const lines = message.content.split("\n");
-    return lines.map((line, index) => (
-      <Fragment key={`${message.id}-${index}`}>
-        {line}
-        {index < lines.length - 1 ? <br /> : null}
-      </Fragment>
-    ));
-  }, [message.content, message.id]);
-
-  return (
-    <div
-      className={cn(
-        "flex w-full flex-col gap-2",
-        isUser ? "items-end" : "items-start",
-      )}
-    >
-      <div
-        className={cn(
-          "group relative text-sm transition-transform",
-          isUser
-            ? "max-w-[88%] rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/70 via-primary/60 to-primary/55 px-5 py-4 text-primary-foreground shadow-sm"
-            : "w-full rounded-2xl bg-transparent px-4 py-2 text-foreground/90",
-        )}
-      >
-        <div
-          className={cn(
-            "leading-relaxed",
-            isAssistant ? "text-foreground/90" : "text-primary-foreground/95",
-          )}
-        >
-          {formattedContent}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export function AgentPanelView({ state, adapter, isDemo }: AgentPanelViewProps) {
   const [inputValue, setInputValue] = useState("");
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const previousMessageCountRef = useRef(state.messages.length);
+  const previousComposerStatusRef = useRef(state.composer.status);
+  const previousConversationIdRef = useRef(state.conversationId);
 
   const isComposerDisabled =
     state.composer.status === "sending" ||
@@ -72,7 +32,28 @@ export function AgentPanelView({ state, adapter, isDemo }: AgentPanelViewProps) 
 
   useEffect(() => {
     const container = scrollContainerRef.current;
-    if (!container) {
+    const messageCount = state.messages.length;
+    const composerStatus = state.composer.status;
+
+    const conversationChanged =
+      previousConversationIdRef.current !== state.conversationId;
+
+    if (conversationChanged) {
+      previousConversationIdRef.current = state.conversationId;
+      previousMessageCountRef.current = messageCount;
+      previousComposerStatusRef.current = composerStatus;
+      return;
+    }
+
+    const shouldScroll =
+      messageCount > previousMessageCountRef.current ||
+      (composerStatus === "responding" &&
+        previousComposerStatusRef.current !== composerStatus);
+
+    previousMessageCountRef.current = messageCount;
+    previousComposerStatusRef.current = composerStatus;
+
+    if (!container || !shouldScroll) {
       return;
     }
 
@@ -82,16 +63,16 @@ export function AgentPanelView({ state, adapter, isDemo }: AgentPanelViewProps) 
     }
 
     container.scrollTop = container.scrollHeight;
-  }, [state.messages, state.composer.status]);
+  }, [state.conversationId, state.messages, state.composer.status]);
 
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(() => {
     const trimmed = inputValue.trim();
     if (!trimmed) {
       return;
     }
     void adapter.sendMessage(trimmed);
     setInputValue("");
-  };
+  }, [adapter, inputValue]);
 
   const composerLabel =
     state.composer.status === "responding"
@@ -143,7 +124,7 @@ export function AgentPanelView({ state, adapter, isDemo }: AgentPanelViewProps) 
               className="scrollbar-hide min-h-0 flex-1 space-y-5 overflow-y-auto pr-1"
             >
               {state.messages.map((message) => (
-                <MessageBubble key={message.id} message={message} />
+                <ChatMessage key={message.id} message={message} />
               ))}
               {state.composer.status === "responding" ? (
                 <div className="flex items-center gap-2 pl-1 text-xs text-muted-foreground">
@@ -208,7 +189,8 @@ export function AgentPanelView({ state, adapter, isDemo }: AgentPanelViewProps) 
 
 export function AgentPanel() {
   const healthQuery = useQuery(healthQueries.status());
-  const demoEnabled = healthQuery.data?.youtubeDemoMode === true;
+  const demoEnabled =
+    healthQuery.data?.youtubeDemoMode === true || healthQuery.isError;
 
   const demo = useAgentDemo({ enabled: demoEnabled });
   const conversation = useAgentConversation({ enabled: !demoEnabled });
