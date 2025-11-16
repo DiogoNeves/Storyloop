@@ -25,6 +25,7 @@ from app.services import (
     YoutubeService,
     build_agent,
 )
+from app.services.growth_demo import seed_demo_growth_metrics
 from app.services.youtube import YoutubeConfigurationError
 
 logger = logging.getLogger(__name__)
@@ -93,6 +94,8 @@ def build_lifespan(
         resolved_youtube_service = youtube_service
 
     growth_score_service = GrowthScoreService(connection_factory)
+    if active_settings.youtube_demo_mode:
+        seed_demo_growth_metrics(growth_score_service)
 
     # Initialize AI agent (optional, returns None if OPENAI_API_KEY not set)
     assistant_agent = build_agent(active_settings)
