@@ -110,6 +110,7 @@ export interface ConversationStreamCallbacks {
   onToken?: (token: string) => void;
   onDone?: (payload: { turnId?: string; text?: string }) => void;
   onError?: (message: string) => void;
+  onToolCall?: (message: string) => void;
 }
 
 export interface StreamTurnOptions {
@@ -198,6 +199,16 @@ function handleParsedEvent(
           : "Loopie encountered a problem generating a response.";
       onError?.(resolvedMessage);
       return true;
+    }
+    case "tool_call": {
+      const message =
+        typeof parsed.data === "object" && parsed.data !== null
+          ? (parsed.data as Record<string, unknown>).message
+          : undefined;
+      if (typeof message === "string") {
+        callbacks?.onToolCall?.(message);
+      }
+      return false;
     }
     default:
       return false;
