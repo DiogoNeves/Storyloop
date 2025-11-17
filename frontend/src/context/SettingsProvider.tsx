@@ -1,12 +1,10 @@
-import { createContext, useMemo } from "react";
+import { useMemo } from "react";
 import useLocalStorageState from "use-local-storage-state";
 
-export interface SettingsContextValue {
-  publicOnly: boolean;
-  setPublicOnly: (value: boolean) => void;
-}
-
-export const SettingsContext = createContext<SettingsContextValue | null>(null);
+import {
+  SettingsContext,
+  type SettingsContextValue,
+} from "./SettingsContext";
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [publicOnly, setPublicOnly] = useLocalStorageState<boolean>(
