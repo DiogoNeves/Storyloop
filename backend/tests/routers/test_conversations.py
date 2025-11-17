@@ -269,10 +269,10 @@ async def test_stream_turn_without_agent(
 
 
 @pytest.mark.asyncio
-async def test_stream_turn_creates_conversation_when_missing(
+async def test_stream_turn_requires_existing_conversation(
     memory_connection_factory: SqliteConnectionFactory,
 ) -> None:
-    """Streaming without a pre-created conversation should create it."""
+    """Streaming without a pre-created conversation should fail."""
     app = _create_test_app(memory_connection_factory, assistant_agent=None)
     transport = ASGITransport(app=app)
     new_conversation_id = str(uuid4())
@@ -285,22 +285,16 @@ async def test_stream_turn_creates_conversation_when_missing(
             f"/conversations/{new_conversation_id}/turns/stream",
             json={"text": "Hello"},
         ) as response:
-            assert response.status_code == 200
-            # Drain events to completion
-            async for _ in response.aiter_lines():
-                pass
+            assert response.status_code == 404
+            body = await response.aread()
+            assert b"Conversation not found" in body
 
     with memory_connection_factory() as connection:
         cursor = connection.execute(
             "SELECT COUNT(*) FROM conversations WHERE id = ?",
             (new_conversation_id,),
         )
-        assert cursor.fetchone()[0] == 1
-        turns_cursor = connection.execute(
-            "SELECT COUNT(*) FROM turns WHERE conversation_id = ?",
-            (new_conversation_id,),
-        )
-        assert turns_cursor.fetchone()[0] == 1
+        assert cursor.fetchone()[0] == 0
 
 
 @pytest.mark.asyncio

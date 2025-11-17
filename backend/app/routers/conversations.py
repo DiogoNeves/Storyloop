@@ -127,8 +127,9 @@ async def stream_turn(
     # Check conversation exists (run in thread to avoid blocking event loop)
     exists = await asyncio.to_thread(conversation_exists, db, conversation_id)
     if not exists:
-        await asyncio.to_thread(
-            insert_conversation, db, conversation_id, None
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found",
         )
 
     # Insert user turn immediately (run in thread to avoid blocking event loop)
