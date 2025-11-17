@@ -4,7 +4,33 @@ from __future__ import annotations
 
 import sqlite3
 from datetime import datetime
+from typing import TypedDict
 from uuid import uuid4
+
+
+class ConversationRow(TypedDict):
+    """Typed dict for conversations table rows."""
+
+    id: str
+    title: str | None
+    created_at: str
+
+
+class ConversationSummaryRow(ConversationRow):
+    """Typed dict for list_conversation_summaries rows."""
+
+    last_turn_at: str | None
+    last_turn_text: str | None
+    turn_count: int
+
+
+class TurnRow(TypedDict):
+    """Typed dict for turns table rows."""
+
+    id: str
+    role: str
+    text: str
+    created_at: str
 
 
 def init_conversation_tables(connection: sqlite3.Connection) -> None:
@@ -35,7 +61,7 @@ def init_conversation_tables(connection: sqlite3.Connection) -> None:
 
 def insert_conversation(
     connection: sqlite3.Connection, id: str, title: str | None
-) -> dict[str, str | None]:
+) -> ConversationRow:
     """Insert a conversation and return its data."""
     created_at = datetime.utcnow().isoformat()
     connection.execute(
@@ -59,7 +85,7 @@ def conversation_exists(
 
 def list_conversation_summaries(
     connection: sqlite3.Connection,
-) -> list[dict[str, str | None | int]]:
+) -> list[ConversationSummaryRow]:
     """Return conversations with their most recent activity."""
     cursor = connection.execute(
         """
@@ -129,7 +155,7 @@ def insert_turn(
 
 def list_turns(
     connection: sqlite3.Connection, conversation_id: str
-) -> list[dict[str, str]]:
+) -> list[TurnRow]:
     """Return ordered list of turns for a conversation."""
     cursor = connection.execute(
         """

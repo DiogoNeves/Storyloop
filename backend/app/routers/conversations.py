@@ -98,8 +98,7 @@ def create_conversation(
     """Create a new conversation."""
     conversation_id = str(uuid4())
     result = insert_conversation(db, conversation_id, body.title)
-    # result dict matches ConversationOut: id and created_at are always str, title can be None
-    return ConversationOut(**result)  # type: ignore[arg-type]
+    return ConversationOut(**result)
 
 
 @router.get("/{conversation_id}/turns", response_model=list[TurnOut])

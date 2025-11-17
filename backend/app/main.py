@@ -41,17 +41,12 @@ except (
 def configure_logfire(active_settings: Settings) -> None:
     """Initialize Logfire observability."""
     send_to_logfire_value: Literal["if-token-present"] = "if-token-present"
-    if active_settings.logfire_api_key:
-        logfire.configure(
-            service_name="storyloop-backend",
-            send_to_logfire=send_to_logfire_value,
-            token=active_settings.logfire_api_key,
-        )
-    else:
-        logfire.configure(
-            service_name="storyloop-backend",
-            send_to_logfire=send_to_logfire_value,
-        )
+    logfire.configure(
+        service_name="storyloop-backend",
+        send_to_logfire=send_to_logfire_value,
+        token=active_settings.logfire_api_key,
+    )
+    logfire.instrument_pydantic_ai()
 
 
 def build_lifespan(
