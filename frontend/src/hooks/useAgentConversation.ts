@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
+  createConversation,
   isNotFoundError,
   listConversationTurns,
   streamConversationTurn,
@@ -202,13 +203,27 @@ export function useAgentConversation({
 
       let conversationId = conversationIdRef.current;
       if (!conversationId) {
-        conversationId = crypto.randomUUID();
-        conversationIdRef.current = conversationId;
-        conversationIdPersistedRef.current = false;
-        setState((previous) => ({
-          ...previous,
-          conversationId,
-        }));
+        try {
+          const conversation = await createConversation();
+          conversationId = conversation.id;
+          conversationIdRef.current = conversationId;
+          conversationIdPersistedRef.current = true;
+          writeStoredConversationId(conversationId);
+          setState((previous) => ({
+            ...previous,
+            conversationId,
+          }));
+        } catch (error) {
+          const message =
+            error instanceof Error
+              ? error.message
+              : "We couldn't start a new conversation.";
+          setState((previous) => ({
+            ...previous,
+            composer: { status: "idle", error: message },
+          }));
+          return;
+        }
       }
 
       const streamingMessageId = crypto.randomUUID();
