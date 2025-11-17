@@ -177,7 +177,15 @@ async def stream_turn(
             assistant_text = ""
             assistant_turn_id: str | None = None
             event_queue: asyncio.Queue[dict | None] = asyncio.Queue()
-            deps = await build_loopie_deps(request.app)
+
+            async def notify_tool_call(message: str) -> None:
+                await event_queue.put(
+                    {"event": "tool_call", "data": json.dumps({"message": message})}
+                )
+
+            deps = await build_loopie_deps(
+                request.app, tool_call_notifier=notify_tool_call
+            )
 
             async def run_assistant():
                 """Run assistant generation and put events in queue."""

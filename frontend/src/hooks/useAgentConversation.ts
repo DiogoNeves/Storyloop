@@ -20,6 +20,7 @@ const INITIAL_STATE: AgentConversationState = {
   conversationId: "",
   messages: [],
   composer: { status: "idle", error: null },
+  toolSignals: [],
 };
 
 const STORAGE_KEY = "storyloop.loopieConversationId";
@@ -99,6 +100,7 @@ export function useAgentConversation({
         conversationId: "",
         messages: [],
         composer: { status: "idle", error: null },
+        toolSignals: [],
       });
 
       try {
@@ -155,6 +157,7 @@ export function useAgentConversation({
           conversationId: conversationId ?? "",
           messages: existingTurns.map(mapTurnToMessage),
           composer: { status: "idle", error: null },
+          toolSignals: [],
         });
       } catch (error) {
         if (initializeTokenRef.current !== initializeToken) {
@@ -168,6 +171,7 @@ export function useAgentConversation({
           conversationId: "",
           messages: [],
           composer: { status: "idle", error: message },
+          toolSignals: [],
         });
       }
     },
@@ -284,6 +288,42 @@ export function useAgentConversation({
         });
       };
 
+      const clearToolSignals = () => {
+        setState((previous) => {
+          if (previous.conversationId !== conversationId) {
+            return previous;
+          }
+
+          if (previous.toolSignals.length === 0) {
+            return previous;
+          }
+
+          return {
+            ...previous,
+            toolSignals: [],
+          };
+        });
+      };
+
+      const addToolSignal = (message: string) => {
+        const toolSignal = {
+          id: crypto.randomUUID(),
+          message,
+          receivedAt: new Date().toISOString(),
+        } as const;
+
+        setState((previous) => {
+          if (previous.conversationId !== conversationId) {
+            return previous;
+          }
+
+          return {
+            ...previous,
+            toolSignals: [...previous.toolSignals, toolSignal],
+          };
+        });
+      };
+
       const userMessage: AgentMessage = {
         id: crypto.randomUUID(),
         role: "user",
@@ -294,6 +334,7 @@ export function useAgentConversation({
       setState((previous) => ({
         conversationId,
         messages: [...previous.messages, userMessage],
+        toolSignals: [],
         composer: { status: "sending", error: null },
       }));
 
@@ -303,6 +344,7 @@ export function useAgentConversation({
       abortControllerRef.current = controller;
 
       let accumulatedText = "";
+      let hasStreamedToken = false;
 
       try {
         await streamConversationTurn({
@@ -317,10 +359,15 @@ export function useAgentConversation({
               }));
             },
             onToken: (token) => {
+              if (!hasStreamedToken) {
+                hasStreamedToken = true;
+                clearToolSignals();
+              }
               accumulatedText += token;
               upsertAssistantMessage(accumulatedText);
             },
             onDone: ({ turnId, text }) => {
+              clearToolSignals();
               const finalText = text ?? accumulatedText;
               if (!finalText) {
                 setState((previous) => ({
@@ -349,6 +396,7 @@ export function useAgentConversation({
               }
             },
             onError: (message) => {
+              clearToolSignals();
               setState((previous) => ({
                 ...previous,
                 composer: {
@@ -360,6 +408,7 @@ export function useAgentConversation({
                 removeAssistantMessage();
               }
             },
+            onToolCall: addToolSignal,
           },
         });
       } catch (error) {

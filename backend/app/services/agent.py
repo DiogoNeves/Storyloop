@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Awaitable, Callable
+
 import anyio
 from fastapi import FastAPI
 from pydantic import BaseModel, ConfigDict
@@ -30,9 +32,12 @@ class LoopieDeps(BaseModel):
     user_id: str
     journal_repo: BaseJournalRepository
     youtube_repo: BaseYouTubeRepository
+    tool_call_notifier: Callable[[str], Awaitable[None]] | None = None
 
 
-async def build_loopie_deps(app: FastAPI) -> LoopieDeps:
+async def build_loopie_deps(
+    app: FastAPI, *, tool_call_notifier: Callable[[str], Awaitable[None]] | None = None
+) -> LoopieDeps:
     """Create Loopie dependency bundle from FastAPI application state."""
 
     entry_service = getattr(app.state, "entry_service", None)
@@ -64,6 +69,7 @@ async def build_loopie_deps(app: FastAPI) -> LoopieDeps:
         user_id=user_id,
         journal_repo=journal_repo,
         youtube_repo=youtube_repo,
+        tool_call_notifier=tool_call_notifier,
     )
 
 
@@ -132,6 +138,9 @@ Your mission: help creators grow their channels and unlock creativity without ge
             before_iso: only return entries strictly before this timestamp
         """
 
+        if ctx.deps.tool_call_notifier:
+            await ctx.deps.tool_call_notifier("👀 your latest journal entries")
+
         return await ctx.deps.journal_repo.load_entries(
             user_id=ctx.deps.user_id, limit=limit, before=before_iso
         )
@@ -147,6 +156,9 @@ Your mission: help creators grow their channels and unlock creativity without ge
         Use this to ground any ideas, rewrites, or comparisons in real uploads.
         Exclude Shorts unless the user explicitly requests them.
         """
+
+        if ctx.deps.tool_call_notifier:
+            await ctx.deps.tool_call_notifier("📺 your latest uploads")
 
         return await ctx.deps.youtube_repo.list_recent_videos(
             limit=limit, include_shorts=include_shorts
@@ -167,6 +179,9 @@ Your mission: help creators grow their channels and unlock creativity without ge
         This tool prevents hallucinating video metadata.
         """
 
+        if ctx.deps.tool_call_notifier:
+            await ctx.deps.tool_call_notifier("🧾 details for a specific video")
+
         return await ctx.deps.youtube_repo.get_video(video_id)
 
     @assistant_agent.tool
@@ -177,6 +192,9 @@ Your mission: help creators grow their channels and unlock creativity without ge
 
         Call this before making quantitative claims about performance.
         """
+
+        if ctx.deps.tool_call_notifier:
+            await ctx.deps.tool_call_notifier("📈 metrics for a specific video")
 
         return await ctx.deps.youtube_repo.get_video_metrics(video_id)
 
