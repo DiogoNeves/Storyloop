@@ -123,6 +123,18 @@ When an insight lands, the agent explains what changed, why it matters, and how 
 - Schedules background checks for active tracking commitments
 - Context-aware responses using frontend-provided context capsule
 
+### Agent Tools & Dependencies
+
+- Tooling lives under `backend/app/services/agent_tools/` to keep the PydanticAI agent lean.
+- `JournalRepository` and `YouTubeRepository` reuse the same services as FastAPI routes so the tools and HTTP endpoints stay in sync.
+- Registered tools:
+  - `load_journal_entries` (recent journal tone/context)
+  - `list_recent_videos` (latest long-form uploads, optional shorts)
+  - `get_video_details` (single video metadata)
+  - `get_video_metrics` (structured placeholder until metrics sync ships)
+- The agent builds `LoopieDeps` (user id + repositories) per request via `build_loopie_deps(app)` and passes them through `run_stream`.
+- System prompt reminds Loopie to infer tone from chat + journals, favor tools over guesses, and note that persistent memory is coming later.
+
 ### Frontend Touchpoints
 
 **Current Implementation:** API endpoints ready for frontend integration
