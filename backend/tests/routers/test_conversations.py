@@ -247,6 +247,58 @@ async def test_stream_turn_with_mocked_agent(
 
 
 @pytest.mark.asyncio
+async def test_stream_turn_emits_tool_events(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    """Emit SSE tool events when the agent calls helper tools."""
+
+    async def mock_stream_text():
+        yield "Hello"
+
+    mock_result = MagicMock()
+    mock_result.stream_text = mock_stream_text
+
+    @asynccontextmanager
+    async def mock_run_stream(*args, **kwargs):
+        deps = kwargs.get("deps")
+        if deps and getattr(deps, "tool_observer", None):
+            await deps.tool_observer("load_journal_entries")
+        yield mock_result
+
+    mock_agent = MagicMock()
+    mock_agent.run_stream = mock_run_stream
+
+    app = _create_test_app(
+        memory_connection_factory, assistant_agent=mock_agent
+    )
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
+        create_response = await client.post(
+            "/conversations", json={"title": "Tool events"}
+        )
+        conversation_id = create_response.json()["id"]
+
+        async with client.stream(
+            "POST",
+            f"/conversations/{conversation_id}/turns/stream",
+            json={"text": "Hello"},
+        ) as response:
+            assert response.status_code == 200
+
+            events = []
+            async for line in response.aiter_lines():
+                if line.strip():
+                    events.append(line)
+
+        assert any("event: tool" in event for event in events)
+        assert any("load_journal_entries" in event for event in events)
+        assert any("event: done" in event for event in events)
+
+
+@pytest.mark.asyncio
 async def test_stream_turn_cancels_inflight_run(
     memory_connection_factory: SqliteConnectionFactory,
 ) -> None:

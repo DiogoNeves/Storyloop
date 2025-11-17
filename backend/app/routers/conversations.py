@@ -145,7 +145,18 @@ async def stream_turn(
             assistant_text = ""
             assistant_turn_id: str | None = None
             event_queue: asyncio.Queue[dict | None] = asyncio.Queue()
-            deps = await build_loopie_deps(request.app)
+
+            async def notify_tool(tool_name: str) -> None:
+                """Emit SSE events when the agent calls a tool."""
+
+                await event_queue.put(
+                    {
+                        "event": "tool",
+                        "data": json.dumps({"tool": tool_name}),
+                    }
+                )
+
+            deps = await build_loopie_deps(request.app, tool_observer=notify_tool)
 
             async def run_assistant():
                 """Run assistant generation and put events in queue."""

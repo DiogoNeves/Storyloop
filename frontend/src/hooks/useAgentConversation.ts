@@ -20,6 +20,7 @@ interface UseAgentConversationOptions {
 const INITIAL_STATE: AgentConversationState = {
   conversationId: "",
   messages: [],
+  toolSignals: [],
   composer: { status: "idle", error: null },
 };
 
@@ -58,6 +59,17 @@ function writeStoredConversationId(conversationId: string | null): void {
   } catch {
     // Ignore storage errors (e.g., Safari private mode)
   }
+}
+
+const TOOL_SIGNAL_LABELS: Record<string, string> = {
+  load_journal_entries: "👀 Checking your latest journal entries",
+  list_recent_videos: "📺 Reviewing your recent uploads",
+  get_video_details: "🧭 Pulling video details",
+  get_video_metrics: "📊 Analyzing video metrics",
+};
+
+function describeToolSignal(toolName: string): string {
+  return TOOL_SIGNAL_LABELS[toolName] ?? `Loopie is calling ${toolName}`;
 }
 
 export function useAgentConversation({
@@ -132,6 +144,7 @@ export function useAgentConversation({
         setState({
           conversationId,
           messages: existingTurns.map(mapTurnToMessage),
+          toolSignals: [],
           composer: { status: "idle", error: null },
         });
       } catch (error) {
@@ -145,6 +158,7 @@ export function useAgentConversation({
         setState({
           conversationId: "",
           messages: [],
+          toolSignals: [],
           composer: { status: "idle", error: message },
         });
       }
@@ -186,6 +200,7 @@ export function useAgentConversation({
             status: "idle",
             error: "Loopie is still getting ready. Try again in a moment.",
           },
+          toolSignals: [],
         }));
         return;
       }
@@ -197,6 +212,7 @@ export function useAgentConversation({
         content: string,
         overrides?: Partial<AgentMessage>,
         composerOverride?: AgentConversationState["composer"],
+        clearToolSignals = false,
       ) => {
         setState((previous) => {
           if (previous.conversationId !== conversationId) {
@@ -230,18 +246,20 @@ export function useAgentConversation({
                   index === existingIndex ? updatedMessage : message,
                 );
 
-          if (composerOverride) {
-            return {
-              ...previous,
-              messages,
-              composer: composerOverride,
-            };
-          }
-
-          return {
+          const updatedState: AgentConversationState = {
             ...previous,
             messages,
           };
+
+          if (composerOverride) {
+            updatedState.composer = composerOverride;
+          }
+
+          if (clearToolSignals) {
+            updatedState.toolSignals = [];
+          }
+
+          return updatedState;
         });
       };
 
@@ -273,6 +291,7 @@ export function useAgentConversation({
       setState((previous) => ({
         conversationId,
         messages: [...previous.messages, userMessage],
+        toolSignals: [],
         composer: { status: "sending", error: null },
       }));
 
@@ -282,6 +301,7 @@ export function useAgentConversation({
       abortControllerRef.current = controller;
 
       let accumulatedText = "";
+      let clearedToolSignals = false;
 
       try {
         await streamConversationTurn({
@@ -295,9 +315,32 @@ export function useAgentConversation({
                 composer: { status: "responding", error: null },
               }));
             },
+            onTool: (toolName) => {
+              const label = describeToolSignal(toolName);
+              setState((previous) => {
+                if (previous.conversationId !== conversationId) {
+                  return previous;
+                }
+
+                const signal = { id: crypto.randomUUID(), label };
+
+                return {
+                  ...previous,
+                  toolSignals: [...previous.toolSignals, signal],
+                  composer: { status: "responding", error: null },
+                };
+              });
+            },
             onToken: (token) => {
               accumulatedText += token;
-              upsertAssistantMessage(accumulatedText);
+              const shouldClearSignals = !clearedToolSignals;
+              clearedToolSignals = true;
+              upsertAssistantMessage(
+                accumulatedText,
+                undefined,
+                undefined,
+                shouldClearSignals,
+              );
             },
             onDone: ({ turnId, text }) => {
               const finalText = text ?? accumulatedText;
@@ -321,6 +364,7 @@ export function useAgentConversation({
                 finalText,
                 overrides,
                 { status: "idle", error: null },
+                true,
               );
             },
             onError: (message) => {
@@ -330,6 +374,7 @@ export function useAgentConversation({
                   status: "idle",
                   error: message ?? "Loopie ran into an error.",
                 },
+                toolSignals: [],
               }));
               if (!accumulatedText) {
                 removeAssistantMessage();
@@ -350,6 +395,7 @@ export function useAgentConversation({
               status: "idle",
               error: "Loopie restarted the chat. Please send that again.",
             },
+            toolSignals: [],
           }));
           return;
         }
@@ -361,6 +407,7 @@ export function useAgentConversation({
         setState((previous) => ({
           ...previous,
           composer: { status: "idle", error: message },
+          toolSignals: [],
         }));
       } finally {
         if (abortControllerRef.current === controller) {

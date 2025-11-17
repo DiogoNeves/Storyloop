@@ -62,6 +62,7 @@ export function useAgentDemo({ enabled = true }: UseAgentDemoOptions = {}) {
   const [state, setState] = useState<AgentConversationState>(() => ({
     conversationId: crypto.randomUUID(),
     messages: demoIntroMessages,
+    toolSignals: [],
     composer: { status: "idle", error: null },
   }));
 
@@ -100,11 +101,12 @@ export function useAgentDemo({ enabled = true }: UseAgentDemoOptions = {}) {
         createdAt: new Date().toISOString(),
       };
 
-      setState((previous) => ({
-        ...previous,
-        messages: [...previous.messages, userMessage],
-        composer: { status: "sending", error: null },
-      }));
+    setState((previous) => ({
+      ...previous,
+      messages: [...previous.messages, userMessage],
+      toolSignals: [],
+      composer: { status: "sending", error: null },
+    }));
 
       await new Promise<void>((resolve) => {
         const typingTimer = setTimeout(() => {
@@ -122,6 +124,7 @@ export function useAgentDemo({ enabled = true }: UseAgentDemoOptions = {}) {
                 ...previous.messages,
                 buildAssistantReply(trimmed, previous.messages),
               ],
+              toolSignals: [],
               composer: { status: "idle", error: null },
             }));
             resolve();
@@ -142,6 +145,7 @@ export function useAgentDemo({ enabled = true }: UseAgentDemoOptions = {}) {
     setState({
       conversationId: crypto.randomUUID(),
       messages: demoIntroMessages,
+      toolSignals: [],
       composer: { status: "idle", error: null },
     });
   }, [clearTimers, enabled]);

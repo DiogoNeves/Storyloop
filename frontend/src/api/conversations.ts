@@ -73,6 +73,7 @@ export async function listConversationTurns(
 
 export interface ConversationStreamCallbacks {
   onOpen?: () => void;
+  onTool?: (tool: string) => void;
   onToken?: (token: string) => void;
   onDone?: (payload: { turnId?: string; text?: string }) => void;
   onError?: (message: string) => void;
@@ -129,7 +130,7 @@ function handleParsedEvent(
   parsed: ParsedSseEvent,
   callbacks: ConversationStreamCallbacks | undefined,
 ): boolean {
-  const { onToken, onDone, onError } = callbacks ?? {};
+  const { onToken, onDone, onError, onTool } = callbacks ?? {};
 
   switch (parsed.event) {
     case "token": {
@@ -139,6 +140,16 @@ function handleParsedEvent(
           : undefined;
       if (typeof token === "string") {
         onToken?.(token);
+      }
+      return false;
+    }
+    case "tool": {
+      const toolName =
+        typeof parsed.data === "object" && parsed.data !== null
+          ? (parsed.data as Record<string, unknown>).tool
+          : undefined;
+      if (typeof toolName === "string") {
+        onTool?.(toolName);
       }
       return false;
     }

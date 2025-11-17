@@ -14,6 +14,11 @@ export interface AgentMessageAnnotation {
   description?: string;
 }
 
+export interface AgentToolSignal {
+  id: string;
+  label: string;
+}
+
 export interface AgentComposerState {
   status: "idle" | "sending" | "responding";
   error?: string | null;
@@ -22,6 +27,7 @@ export interface AgentComposerState {
 export interface AgentConversationState {
   conversationId: string;
   messages: AgentMessage[];
+  toolSignals: AgentToolSignal[];
   composer: AgentComposerState;
 }
 

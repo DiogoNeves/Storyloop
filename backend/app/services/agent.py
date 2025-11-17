@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Awaitable, Callable
+
 import anyio
 from fastapi import FastAPI
 from pydantic import BaseModel, ConfigDict
@@ -18,6 +20,9 @@ from app.services.agent_tools import (
 )
 
 
+ToolObserver = Callable[[str], Awaitable[None]]
+
+
 class LoopieDeps(BaseModel):
     """Dependencies available to the Loopie agent during a run."""
 
@@ -26,9 +31,20 @@ class LoopieDeps(BaseModel):
     user_id: str
     journal_repo: JournalRepository
     youtube_repo: YouTubeRepository
+    tool_observer: ToolObserver | None = None
+
+    async def notify_tool(self, tool_name: str) -> None:
+        """Notify any attached observer that a tool was invoked."""
+
+        if self.tool_observer is None:
+            return
+
+        await self.tool_observer(tool_name)
 
 
-async def build_loopie_deps(app: FastAPI) -> LoopieDeps:
+async def build_loopie_deps(
+    app: FastAPI, tool_observer: ToolObserver | None = None
+) -> LoopieDeps:
     """Create Loopie dependency bundle from FastAPI application state."""
 
     entry_service = app.state.entry_service
@@ -48,6 +64,7 @@ async def build_loopie_deps(app: FastAPI) -> LoopieDeps:
         youtube_repo=YouTubeRepository(
             youtube_service, user_service, oauth_service
         ),
+        tool_observer=tool_observer,
     )
 
 
@@ -116,6 +133,7 @@ Your mission: help creators grow their channels and unlock creativity without ge
             before_iso: only return entries strictly before this timestamp
         """
 
+        await ctx.deps.notify_tool("load_journal_entries")
         return await ctx.deps.journal_repo.load_entries(
             user_id=ctx.deps.user_id, limit=limit, before=before_iso
         )
@@ -132,6 +150,7 @@ Your mission: help creators grow their channels and unlock creativity without ge
         Exclude Shorts unless the user explicitly requests them.
         """
 
+        await ctx.deps.notify_tool("list_recent_videos")
         return await ctx.deps.youtube_repo.list_recent_videos(
             limit=limit, include_shorts=include_shorts
         )
@@ -151,6 +170,7 @@ Your mission: help creators grow their channels and unlock creativity without ge
         This tool prevents hallucinating video metadata.
         """
 
+        await ctx.deps.notify_tool("get_video_details")
         return await ctx.deps.youtube_repo.get_video(video_id)
 
     @assistant_agent.tool
@@ -162,6 +182,7 @@ Your mission: help creators grow their channels and unlock creativity without ge
         Call this before making quantitative claims about performance.
         """
 
+        await ctx.deps.notify_tool("get_video_metrics")
         return await ctx.deps.youtube_repo.get_video_metrics(video_id)
 
     return assistant_agent
