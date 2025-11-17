@@ -63,10 +63,12 @@ export function useAgentDemo({ enabled = true }: UseAgentDemoOptions = {}) {
     conversationId: crypto.randomUUID(),
     messages: demoIntroMessages,
     composer: { status: "idle", error: null },
+    toolSignals: [],
   }));
 
   const typingTimersRef = useRef(new Set<ReturnType<typeof setTimeout>>());
   const responseTimersRef = useRef(new Set<ReturnType<typeof setTimeout>>());
+  const toolSignalTimersRef = useRef(new Set<ReturnType<typeof setTimeout>>());
 
   const clearTimers = useCallback(() => {
     typingTimersRef.current.forEach((timerId) => {
@@ -78,6 +80,11 @@ export function useAgentDemo({ enabled = true }: UseAgentDemoOptions = {}) {
       clearTimeout(timerId);
     });
     responseTimersRef.current.clear();
+
+    toolSignalTimersRef.current.forEach((timerId) => {
+      clearTimeout(timerId);
+    });
+    toolSignalTimersRef.current.clear();
   }, []);
 
   useEffect(() => clearTimers, [clearTimers]);
@@ -104,6 +111,7 @@ export function useAgentDemo({ enabled = true }: UseAgentDemoOptions = {}) {
         ...previous,
         messages: [...previous.messages, userMessage],
         composer: { status: "sending", error: null },
+        toolSignals: [],
       }));
 
       await new Promise<void>((resolve) => {
@@ -114,6 +122,22 @@ export function useAgentDemo({ enabled = true }: UseAgentDemoOptions = {}) {
             composer: { status: "responding", error: null },
           }));
 
+          const toolSignalTimer = setTimeout(() => {
+            toolSignalTimersRef.current.delete(toolSignalTimer);
+            setState((previous) => ({
+              ...previous,
+              toolSignals: [
+                ...previous.toolSignals,
+                {
+                  id: crypto.randomUUID(),
+                  message: "👀 your latest journal entries",
+                  receivedAt: new Date().toISOString(),
+                },
+              ],
+            }));
+          }, 120);
+          toolSignalTimersRef.current.add(toolSignalTimer);
+
           const responseTimer = setTimeout(() => {
             responseTimersRef.current.delete(responseTimer);
             setState((previous) => ({
@@ -123,6 +147,7 @@ export function useAgentDemo({ enabled = true }: UseAgentDemoOptions = {}) {
                 buildAssistantReply(trimmed, previous.messages),
               ],
               composer: { status: "idle", error: null },
+              toolSignals: [],
             }));
             resolve();
           }, 900);
@@ -143,6 +168,7 @@ export function useAgentDemo({ enabled = true }: UseAgentDemoOptions = {}) {
       conversationId: crypto.randomUUID(),
       messages: demoIntroMessages,
       composer: { status: "idle", error: null },
+      toolSignals: [],
     });
   }, [clearTimers, enabled]);
 
