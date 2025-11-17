@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type Entry } from "@/api/entries";
 import type { useYouTubeFeed as useYouTubeFeedHook } from "@/hooks/useYouTubeFeed";
 import { JournalDetailPage } from "@/pages/JournalDetailPage";
-import { SettingsProvider } from "@/context/SettingsContext";
+import { SettingsProvider } from "@/context/SettingsProvider";
 
 const useYouTubeFeedMock = vi.fn<
   (videoType?: "short" | "video" | "live" | null) =>
