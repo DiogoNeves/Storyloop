@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -48,6 +48,9 @@ export function NewEntryDialog({ onCreate, children }: NewEntryDialogProps) {
     summary: "",
     date: defaultDate,
   });
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const titleRef = useRef<HTMLInputElement | null>(null);
+  const summaryRef = useRef<HTMLTextAreaElement | null>(null);
 
   const isValid = formState.title.trim().length > 0 && formState.summary.trim().length > 0;
 
@@ -77,6 +80,22 @@ export function NewEntryDialog({ onCreate, children }: NewEntryDialogProps) {
     setOpen(false);
   };
 
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const isEditingExistingTitle = formState.title.trim().length > 0;
+    const target = isEditingExistingTitle ? summaryRef.current : titleRef.current;
+    target?.focus({ preventScroll: true });
+
+    if (isEditingExistingTitle && summaryRef.current) {
+      const endPosition = summaryRef.current.value.length;
+      summaryRef.current.setSelectionRange(endPosition, endPosition);
+      summaryRef.current.scrollTop = summaryRef.current.scrollHeight;
+    }
+  }, [open, formState.title]);
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
@@ -105,47 +124,63 @@ export function NewEntryDialog({ onCreate, children }: NewEntryDialogProps) {
           </div>
         </DialogHeader>
 
-        <div className="space-y-6 px-6">
-          <div className="space-y-2">
-            <Label htmlFor="new-entry-title">Title</Label>
-            <Input
-              id="new-entry-title"
-              placeholder="What happened?"
-              value={formState.title}
-              onChange={(event) =>
-                setFormState((prev) => ({ ...prev, title: event.target.value }))
-              }
-            />
+        <form
+          ref={formRef}
+          className="space-y-6"
+          onSubmit={(event) => {
+            event.preventDefault();
+            handleSubmit();
+          }}
+        >
+          <div className="space-y-6 px-6">
+            <div className="space-y-2">
+              <Label htmlFor="new-entry-title">Title</Label>
+              <Input
+                id="new-entry-title"
+                placeholder="What happened?"
+                value={formState.title}
+                ref={titleRef}
+                onChange={(event) =>
+                  setFormState((prev) => ({ ...prev, title: event.target.value }))
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="new-entry-summary">Entry</Label>
+              <Textarea
+                id="new-entry-summary"
+                placeholder="Capture the beats, insights, or takeaways…"
+                value={formState.summary}
+                ref={summaryRef}
+                onChange={(event) =>
+                  setFormState((prev) => ({ ...prev, summary: event.target.value }))
+                }
+                onKeyDown={(event) => {
+                  if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+                    event.preventDefault();
+                    formRef.current?.requestSubmit();
+                  }
+                }}
+                rows={6}
+              />
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="new-entry-summary">Entry</Label>
-            <Textarea
-              id="new-entry-summary"
-              placeholder="Capture the beats, insights, or takeaways…"
-              value={formState.summary}
-              onChange={(event) =>
-                setFormState((prev) => ({ ...prev, summary: event.target.value }))
-              }
-              rows={6}
-            />
-          </div>
-        </div>
-
-        <DialogFooter className={cn("gap-2 border-t px-6 py-4", "sm:flex-row sm:space-x-2")}
->
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => handleOpenChange(false)}
-            className="sm:ml-auto"
-          >
-            Cancel
-          </Button>
-          <Button type="button" onClick={handleSubmit} disabled={!isValid}>
-            Save entry
-          </Button>
-        </DialogFooter>
+          <DialogFooter className={cn("gap-2 border-t px-6 py-4", "sm:flex-row sm:space-x-2")}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => handleOpenChange(false)}
+              className="sm:ml-auto"
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={!isValid}>
+              Save entry
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
