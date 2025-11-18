@@ -1,3 +1,5 @@
+import { type KeyboardEvent } from "react";
+
 import { type ActivityDraft } from "./ActivityFeed";
 import { type ActivityItem } from "@/lib/types/entries";
 import { categoryBadgeClass } from "./ActivityFeedItem";
@@ -40,9 +42,23 @@ export function ActivityDraftCard({
   const titleInputId = `${idPrefix}-title`;
   const summaryInputId = `${idPrefix}-summary`;
 
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!(event.key === "Enter" && (event.metaKey || event.ctrlKey))) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (isSubmitDisabled || isSubmitting) {
+      return;
+    }
+
+    void onSubmit?.();
+  };
+
   return (
     <Card className="border-dashed border-primary/40 bg-primary/5">
-      <CardContent className="space-y-4 p-4">
+      <CardContent className="space-y-4 p-4" onKeyDown={handleKeyDown}>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <Badge variant="secondary" className={categoryBadgeClass[category]}>
             {category}

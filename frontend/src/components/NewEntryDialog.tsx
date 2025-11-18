@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode, type KeyboardEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -77,10 +77,22 @@ export function NewEntryDialog({ onCreate, children }: NewEntryDialogProps) {
     setOpen(false);
   };
 
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!(event.key === "Enter" && (event.metaKey || event.ctrlKey))) {
+      return;
+    }
+
+    event.preventDefault();
+    handleSubmit();
+  };
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="gap-6 p-0 sm:max-w-xl">
+      <DialogContent
+        className="gap-6 p-0 sm:max-w-xl"
+        onKeyDown={handleKeyDown}
+      >
         <DialogHeader className="space-y-0 border-b px-6 py-5">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-1 text-left">
