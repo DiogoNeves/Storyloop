@@ -98,12 +98,12 @@ export function ActivityFeedItem({
           </div>
         </div>
         <div className="flex gap-4">
-          <div className="flex flex-1 flex-col gap-2 pr-20">
-            <h3 className="text-sm font-semibold leading-tight text-foreground">
+          <div className="flex min-w-0 flex-1 flex-col gap-2 pr-20">
+            <h3 className="min-w-0 text-sm font-semibold leading-tight text-foreground">
               {detailPath ? (
                 <Link
                   to={detailPath}
-                  className="block truncate text-primary underline-offset-2 hover:underline"
+                  className="block truncate overflow-hidden text-primary underline-offset-2 hover:underline"
                   onClick={handleDetailClick}
                   title={titleText}
                 >
@@ -114,13 +114,13 @@ export function ActivityFeedItem({
                   href={item.linkUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block truncate text-primary underline-offset-2 hover:underline"
+                  className="block truncate overflow-hidden text-primary underline-offset-2 hover:underline"
                   title={titleText}
                 >
                   {titleText}
                 </a>
               ) : (
-                <span className="block truncate" title={titleText}>
+                <span className="block truncate overflow-hidden" title={titleText}>
                   {titleText}
                 </span>
               )}
