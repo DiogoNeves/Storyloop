@@ -214,6 +214,10 @@ export function useAgentConversation({
         return;
       }
 
+      if (state.composer.status !== "idle") {
+        return;
+      }
+
       const trimmed = input.trim();
       if (!trimmed) {
         return;
@@ -491,8 +495,44 @@ export function useAgentConversation({
       enabled,
       initializeConversation,
       persistConversationId,
+      state.composer.status,
     ],
   );
+
+  const stopResponse = useCallback(() => {
+    abortActiveStream();
+
+    setState((previous) => {
+      if (previous.composer.status === "idle") {
+        return previous;
+      }
+
+      if (previous.conversationId !== (conversationIdRef.current ?? previous.conversationId)) {
+        return previous;
+      }
+
+      const hasStopMarker = previous.messages.some(
+        (message) => message.content === "[user stopped]" && message.role === "system",
+      );
+
+      return {
+        ...previous,
+        messages: hasStopMarker
+          ? previous.messages
+          : [
+              ...previous.messages,
+              {
+                id: crypto.randomUUID(),
+                role: "system",
+                content: "[user stopped]",
+                createdAt: new Date().toISOString(),
+              },
+            ],
+        composer: { status: "idle", error: null },
+        toolSignals: [],
+      };
+    });
+  }, [abortActiveStream]);
 
   const resetConversation = useCallback(() => {
     if (!enabled) {
@@ -517,8 +557,9 @@ export function useAgentConversation({
 
   const adapter = useMemo<AgentConversationAdapter>(() => ({
     sendMessage,
+    stopResponse,
     resetConversation,
-  }), [resetConversation, sendMessage]);
+  }), [resetConversation, sendMessage, stopResponse]);
 
   return useMemo(
     () => ({

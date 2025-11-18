@@ -34,5 +34,6 @@ export interface AgentConversationState {
 
 export interface AgentConversationAdapter {
   sendMessage: (input: string) => Promise<void>;
+  stopResponse: () => void;
   resetConversation: () => void;
 }

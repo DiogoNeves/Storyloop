@@ -89,6 +89,40 @@ export function useAgentDemo({ enabled = true }: UseAgentDemoOptions = {}) {
 
   useEffect(() => clearTimers, [clearTimers]);
 
+  const stopResponse = useCallback(() => {
+    if (!enabled) {
+      return;
+    }
+
+    clearTimers();
+    setState((previous) => {
+      if (previous.composer.status === "idle") {
+        return previous;
+      }
+
+      const hasStopToken = previous.messages.some(
+        (message) => message.content === "[user stopped]" && message.role === "system",
+      );
+
+      return {
+        ...previous,
+        messages: hasStopToken
+          ? previous.messages
+          : [
+              ...previous.messages,
+              {
+                id: crypto.randomUUID(),
+                role: "system",
+                content: "[user stopped]",
+                createdAt: new Date().toISOString(),
+              },
+            ],
+        composer: { status: "idle", error: null },
+        toolSignals: [],
+      };
+    });
+  }, [clearTimers, enabled]);
+
   const sendMessage = useCallback(
     async (input: string) => {
       if (!enabled) {
@@ -175,9 +209,10 @@ export function useAgentDemo({ enabled = true }: UseAgentDemoOptions = {}) {
   const adapter = useMemo<AgentConversationAdapter>(
     () => ({
       sendMessage,
+      stopResponse,
       resetConversation,
     }),
-    [resetConversation, sendMessage],
+    [resetConversation, sendMessage, stopResponse],
   );
 
   return useMemo(
