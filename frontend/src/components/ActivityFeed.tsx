@@ -87,7 +87,7 @@ export function ActivityFeed({
         className,
       )}
     >
-      <CardHeader className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:justify-between sm:p-6">
+      <CardHeader className="flex flex-row justify-between gap-4 p-4 sm:flex-row sm:items-start sm:p-6">
         <div className="flex items-start gap-3">
           {shouldShowThumbnail ? (
             <img
