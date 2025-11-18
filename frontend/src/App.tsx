@@ -65,7 +65,7 @@ function AppLayout() {
       <NavBar onOpenSettings={() => setIsSettingsOpen(true)} />
       <main className="relative flex min-h-[calc(100vh-4rem)] flex-1 overflow-y-auto pt-16 lg:overflow-hidden">
         <div className="from-primary/8 pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b via-transparent to-transparent" />
-        <div className="relative grid h-full min-h-[calc(100vh-4rem)] w-full grid-cols-1 gap-6 px-6 py-10 sm:py-12 lg:grid-cols-3 lg:overflow-hidden lg:px-10 xl:px-16">
+        <div className="relative grid h-full min-h-[calc(100vh-4rem)] w-full grid-cols-1 gap-6 px-2 py-6 sm:py-12 lg:grid-cols-3 lg:overflow-hidden lg:px-10 xl:px-16">
           <div className="scrollbar-hide col-span-2 flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-hidden">
             <div className="flex h-full min-h-0 flex-col">
               <Outlet key={location.pathname} />
@@ -84,8 +84,11 @@ function AppLayout() {
 function JournalPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { setActiveConversation, state: agentConversationState, isDemo } =
-    useAgentConversationContext();
+  const {
+    setActiveConversation,
+    state: agentConversationState,
+    isDemo,
+  } = useAgentConversationContext();
 
   // Content type filter state - persisted in local storage
   const [contentTypeFilter, setContentTypeFilter] =
@@ -161,7 +164,8 @@ function JournalPage() {
       {
         id: "demo-conversation-2",
         title: "Quick check-in about pacing",
-        summary: "Loopie pinpointed the moment to trim and suggested a tighter intro beat.",
+        summary:
+          "Loopie pinpointed the moment to trim and suggested a tighter intro beat.",
         date: new Date(now - 1000 * 60 * 90).toISOString(),
         category: "conversation",
       },
@@ -184,7 +188,7 @@ function JournalPage() {
         const title =
           firstTurnTitle && firstTurnTitle.length > 0
             ? firstTurnTitle
-            : conversation.title ?? "Loopie conversation";
+            : (conversation.title ?? "Loopie conversation");
         return {
           id: conversation.id,
           title,
@@ -196,11 +200,7 @@ function JournalPage() {
           category: "conversation" as const,
         };
       });
-  }, [
-    conversationsQuery.data,
-    demoConversationActivityItems,
-    isDemo,
-  ]);
+  }, [conversationsQuery.data, demoConversationActivityItems, isDemo]);
   const handleConversationClick = useCallback(
     async (conversationId: string) => {
       await setActiveConversation(conversationId);
@@ -454,7 +454,7 @@ function JournalPage() {
   }, [entriesError, entriesStatus]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4">
+    <div className="flex h-full min-h-0 flex-col gap-2 sm:gap-4">
       <div className="hidden sm:block">
         <JournalSummaryCards
           score={growthScoreQuery.data ?? null}
