@@ -78,7 +78,7 @@ export function ActivityFeed({
   }, [channelThumbnailUrl]);
 
   return (
-    <Card>
+    <Card className="flex-shrink-0">
       <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
           {shouldShowThumbnail ? (
@@ -170,8 +170,9 @@ export function ActivityFeed({
             item.category !== "conversation" &&
             !item.id.startsWith("youtube:");
           const isConversation = item.category === "conversation";
-          const isConversationDeleting =
-            Boolean(isConversation && deletingConversationIds?.has(item.id));
+          const isConversationDeleting = Boolean(
+            isConversation && deletingConversationIds?.has(item.id),
+          );
 
           if (isEditing && editingState.editingDraft) {
             return (
