@@ -81,8 +81,13 @@ export function ActivityFeed({
   }, [channelThumbnailUrl]);
 
   return (
-    <Card className={cn("flex h-full min-h-0 flex-col", className)}>
-      <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <Card
+      className={cn(
+        "flex h-full min-h-0 flex-col rounded-none border-0 shadow-none sm:rounded-xl sm:border sm:shadow",
+        className,
+      )}
+    >
+      <CardHeader className="flex flex-row justify-between gap-4 p-4 sm:flex-row sm:items-start sm:p-6">
         <div className="flex items-start gap-3">
           {shouldShowThumbnail ? (
             <img
@@ -134,7 +139,7 @@ export function ActivityFeed({
           + entry
         </Button>
       </CardHeader>
-      <CardContent className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1 sm:pr-2">
+      <CardContent className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-6 pt-0 sm:px-6 sm:pr-2">
         {errorMessage ? (
           <p className="text-sm text-destructive" role="status">
             {errorMessage}

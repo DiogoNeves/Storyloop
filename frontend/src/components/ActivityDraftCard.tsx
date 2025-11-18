@@ -1,4 +1,5 @@
 import { type FormEvent, type KeyboardEvent, useEffect, useRef } from "react";
+import { cn } from "@/lib/utils";
 
 import { type ActivityDraft } from "./ActivityFeed";
 import { type ActivityItem } from "@/lib/types/entries";
@@ -82,7 +83,7 @@ export function ActivityDraftCard({
 
   return (
     <Card className="border-dashed border-primary/40 bg-primary/5">
-      <CardContent className="p-4">
+      <CardContent className="space-y-4 p-4">
         <form
           ref={formRef}
           className="space-y-4"
@@ -92,7 +93,10 @@ export function ActivityDraftCard({
           onKeyDown={handleEscapeToCancel}
         >
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <Badge variant="secondary" className={categoryBadgeClass[category]}>
+            <Badge
+              variant="secondary"
+              className={cn(categoryBadgeClass[category], "w-fit")}
+            >
               {category}
             </Badge>
             <div className="w-full max-w-[220px] space-y-2 text-left text-xs sm:w-auto">
@@ -141,8 +145,8 @@ export function ActivityDraftCard({
             />
           </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <div className="flex flex-row justify-between gap-2 sm:items-center">
+            <div className="flex flex-row gap-2 sm:justify-end">
               <Button type="button" variant="ghost" onClick={onCancel}>
                 Cancel
               </Button>

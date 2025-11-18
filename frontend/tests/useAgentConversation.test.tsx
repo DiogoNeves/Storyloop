@@ -1,7 +1,8 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { useAgentConversation } from "@/hooks";
+import type { StreamTurnOptions } from "@/api/conversations";
 import {
   mockCreateConversation,
   mockListConversationTurns,
@@ -45,12 +46,15 @@ describe("useAgentConversation", () => {
 
   it("streams assistant responses for an existing conversation", async () => {
     mockListConversationTurns.mockResolvedValue([]);
-    mockStreamConversationTurn.mockImplementation(async ({ callbacks }) => {
-      callbacks?.onOpen?.();
-      callbacks?.onToken?.("Hello");
-      callbacks?.onToken?.(", creator!");
-      callbacks?.onDone?.({ turnId: "assistant-1", text: "Hello, creator!" });
-    });
+    mockStreamConversationTurn.mockImplementation(
+      ({ callbacks }: StreamTurnOptions) => {
+        callbacks?.onOpen?.();
+        callbacks?.onToken?.("Hello");
+        callbacks?.onToken?.(", creator!");
+        callbacks?.onDone?.({ turnId: "assistant-1", text: "Hello, creator!" });
+        return Promise.resolve();
+      },
+    );
 
     const { result } = renderHook(() =>
       useAgentConversation({
