@@ -12,6 +12,8 @@ from collections.abc import AsyncIterator
 
 import anyio
 import httpx
+from asyncache import cachedmethod
+from cachetools import TTLCache
 from googleapiclient.discovery import build
 
 from app.services.youtube_identifier import build_lookup_candidates
@@ -318,6 +320,9 @@ class YoutubeService:
                 "YoutubeService initialised with both custom client and transport; "
                 "custom client will take precedence."
             )
+        self._response_cache: TTLCache[
+            tuple[str, tuple[tuple[str, Any], ...]], dict[str, Any]
+        ] = TTLCache(maxsize=128, ttl=300)
 
     def _create_client(self) -> httpx.AsyncClient:
         """Instantiate an HTTP client for YouTube API calls."""
@@ -791,10 +796,18 @@ class YoutubeService:
 
         return videos
 
+    @cachedmethod(
+        lambda self: self._response_cache,
+        key=lambda self, _client, endpoint, params: self._build_cache_key(
+            endpoint, params
+        ),
+    )
     async def _request_json(
         self, client: httpx.AsyncClient, endpoint: str, params: dict[str, Any]
     ) -> dict[str, Any]:
         """Perform a GET request against the YouTube API and decode the JSON body."""
+        loggable_params = {k: v for k, v in params.items() if k != "key"}
+        logger.info("Fetching YouTube API endpoint %s with params %s", endpoint, loggable_params)
         try:
             response = await client.get(endpoint, params=params)
             response.raise_for_status()
@@ -825,6 +838,19 @@ class YoutubeService:
             message = f"YouTube API returned unexpected payload for {endpoint}"
             raise YoutubeAPIRequestError(message)
         return data
+
+    def _build_cache_key(
+        self, endpoint: str, params: dict[str, Any]
+    ) -> tuple[str, tuple[tuple[str, Any], ...]]:
+        normalized_params = tuple(
+            sorted((key, self._normalize_param_value(value)) for key, value in params.items())
+        )
+        return (endpoint, normalized_params)
+
+    def _normalize_param_value(self, value: Any) -> Any:
+        if isinstance(value, (list, tuple)):
+            return tuple(value)
+        return value
 
     def sync_latest_metrics(self) -> None:
         """Log a placeholder sync until real metrics synchronization is wired in."""
