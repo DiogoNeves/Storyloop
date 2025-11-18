@@ -154,10 +154,15 @@ function JournalPage() {
     return conversationsQuery.data
       .filter((conversation) => (conversation.turnCount ?? 0) > 0)
       .map((conversation) => {
+        const firstTurnTitle = conversation.firstTurnText?.trim();
         const trimmedSummary = conversation.lastTurnText?.trim();
+        const title =
+          firstTurnTitle && firstTurnTitle.length > 0
+            ? firstTurnTitle
+            : conversation.title ?? "Loopie conversation";
         return {
           id: conversation.id,
-          title: conversation.title ?? "Loopie conversation",
+          title,
           summary:
             trimmedSummary && trimmedSummary.length > 0
               ? trimmedSummary
