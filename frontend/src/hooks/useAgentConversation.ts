@@ -15,6 +15,9 @@ import type {
 
 interface UseAgentConversationOptions {
   enabled?: boolean;
+  conversationId?: string | null;
+  allowCreate?: boolean;
+  persistConversationId?: boolean;
 }
 
 const INITIAL_STATE: AgentConversationState = {
@@ -63,8 +66,12 @@ function writeStoredConversationId(conversationId: string | null): void {
 
 export function useAgentConversation({
   enabled = true,
+  conversationId: initialConversationId,
+  allowCreate = true,
+  persistConversationId = true,
 }: UseAgentConversationOptions = {}) {
   const [state, setState] = useState<AgentConversationState>(INITIAL_STATE);
+  const [isInitializing, setIsInitializing] = useState(false);
 
   const conversationIdRef = useRef<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -81,7 +88,7 @@ export function useAgentConversation({
   const initializeConversation = useCallback(
     async ({
       forceNew = false,
-      conversationId: targetConversationId,
+      conversationId: targetConversationId = initialConversationId,
     }: {
       forceNew?: boolean;
       conversationId?: string | null;
@@ -95,8 +102,9 @@ export function useAgentConversation({
 
       abortActiveStream();
       conversationIdRef.current = null;
-       conversationIdPersistedRef.current = false;
+      conversationIdPersistedRef.current = false;
 
+      setIsInitializing(true);
       setState({
         conversationId: "",
         messages: [],
@@ -105,7 +113,7 @@ export function useAgentConversation({
       });
 
       try {
-        if (forceNew) {
+        if (forceNew && persistConversationId) {
           writeStoredConversationId(null);
         }
 
@@ -117,22 +125,14 @@ export function useAgentConversation({
           existingTurns = turns;
           conversationId = id;
           conversationIdPersistedRef.current = true;
-          writeStoredConversationId(id);
+          if (persistConversationId) {
+            writeStoredConversationId(id);
+          }
         };
 
         if (!forceNew && targetConversationId) {
-          try {
-            await loadConversation(targetConversationId);
-          } catch (error) {
-            if (isNotFoundError(error)) {
-              writeStoredConversationId(null);
-            } else {
-              throw error;
-            }
-          }
-        }
-
-        if (!forceNew && !conversationId) {
+          await loadConversation(targetConversationId);
+        } else if (!forceNew && persistConversationId) {
           const storedId = readStoredConversationId();
           if (storedId) {
             try {
@@ -175,8 +175,16 @@ export function useAgentConversation({
           toolSignals: [],
         });
       }
+      if (initializeTokenRef.current === initializeToken) {
+        setIsInitializing(false);
+      }
     },
-    [abortActiveStream, enabled],
+    [
+      abortActiveStream,
+      enabled,
+      initialConversationId,
+      persistConversationId,
+    ],
   );
 
   useEffect(() => {
@@ -184,15 +192,21 @@ export function useAgentConversation({
       abortActiveStream();
       conversationIdRef.current = null;
       setState(INITIAL_STATE);
+      setIsInitializing(false);
       return;
     }
 
-    void initializeConversation();
+    void initializeConversation({ conversationId: initialConversationId });
 
     return () => {
       abortActiveStream();
     };
-  }, [abortActiveStream, enabled, initializeConversation]);
+  }, [
+    abortActiveStream,
+    enabled,
+    initialConversationId,
+    initializeConversation,
+  ]);
 
   const sendMessage = useCallback(
     async (input: string) => {
@@ -207,12 +221,24 @@ export function useAgentConversation({
 
       let conversationId = conversationIdRef.current;
       if (!conversationId) {
+        if (!allowCreate) {
+          setState((previous) => ({
+            ...previous,
+            composer: {
+              status: "idle",
+              error: "We couldn't start this conversation.",
+            },
+          }));
+          return;
+        }
         try {
           const conversation = await createConversation();
           conversationId = conversation.id;
           conversationIdRef.current = conversationId;
           conversationIdPersistedRef.current = true;
-          writeStoredConversationId(conversationId);
+          if (persistConversationId) {
+            writeStoredConversationId(conversationId);
+          }
           setState((previous) => ({
             ...previous,
             conversationId,
@@ -407,7 +433,9 @@ export function useAgentConversation({
               );
               if (!conversationIdPersistedRef.current) {
                 conversationIdPersistedRef.current = true;
-                writeStoredConversationId(conversationId);
+                if (persistConversationId) {
+                  writeStoredConversationId(conversationId);
+                }
               }
             },
             onError: (message) => {
@@ -457,7 +485,13 @@ export function useAgentConversation({
         }
       }
     },
-    [abortActiveStream, enabled, initializeConversation],
+    [
+      abortActiveStream,
+      allowCreate,
+      enabled,
+      initializeConversation,
+      persistConversationId,
+    ],
   );
 
   const resetConversation = useCallback(() => {
@@ -491,7 +525,8 @@ export function useAgentConversation({
       state,
       adapter,
       setActiveConversation,
+      isInitializing,
     }),
-    [adapter, state, setActiveConversation],
+    [adapter, isInitializing, state, setActiveConversation],
   );
 }

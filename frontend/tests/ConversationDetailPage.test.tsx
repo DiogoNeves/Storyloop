@@ -8,27 +8,27 @@ import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ConversationDetailPage } from "@/pages/ConversationDetailPage";
-import {
-  mockDeleteConversation,
-  mockListConversationTurns,
-} from "./mocks/conversationApi";
+import { mockDeleteConversation } from "./mocks/conversationApi";
 
 const mockSetActiveConversation = vi.fn().mockResolvedValue(undefined);
+const mockUseAgentConversationContext = vi.fn(() => ({
+  state: {
+    conversationId: "",
+    messages: [],
+    composer: { status: "idle", error: null },
+    toolSignals: [],
+  },
+  adapter: {
+    sendMessage: vi.fn(),
+    resetConversation: vi.fn(),
+  },
+  setActiveConversation: mockSetActiveConversation,
+  isDemo: false,
+  isInitializing: false,
+}));
 
 vi.mock("@/context/AgentConversationContext", () => ({
-  useAgentConversationContext: () => ({
-    state: {
-      conversationId: "",
-      messages: [],
-      composer: { status: "idle", error: null },
-    },
-    adapter: {
-      sendMessage: vi.fn(),
-      resetConversation: vi.fn(),
-    },
-    setActiveConversation: mockSetActiveConversation,
-    isDemo: false,
-  }),
+  useAgentConversationContext: () => mockUseAgentConversationContext(),
 }));
 
 function renderPage(ui: ReactElement, initialPath: string) {
@@ -50,26 +50,40 @@ function renderPage(ui: ReactElement, initialPath: string) {
 
 describe("ConversationDetailPage", () => {
   beforeEach(() => {
-    mockListConversationTurns.mockReset();
     mockDeleteConversation.mockReset();
     mockSetActiveConversation.mockClear();
+    mockUseAgentConversationContext.mockClear();
   });
 
   it("renders conversation turns and back link", async () => {
-    mockListConversationTurns.mockResolvedValue([
-      {
-        id: "turn-1",
-        role: "user",
-        text: "Hello Loopie",
-        createdAt: "2024-01-01T00:00:00Z",
+    mockUseAgentConversationContext.mockReturnValue({
+      state: {
+        conversationId: "abc",
+        messages: [
+          {
+            id: "turn-1",
+            role: "user",
+            content: "Hello Loopie",
+            createdAt: "2024-01-01T00:00:00Z",
+          },
+          {
+            id: "turn-2",
+            role: "assistant",
+            content: "Hi creator!",
+            createdAt: "2024-01-01T00:00:05Z",
+          },
+        ],
+        composer: { status: "idle", error: null },
+        toolSignals: [],
       },
-      {
-        id: "turn-2",
-        role: "assistant",
-        text: "Hi creator!",
-        createdAt: "2024-01-01T00:00:05Z",
+      adapter: {
+        sendMessage: vi.fn(),
+        resetConversation: vi.fn(),
       },
-    ]);
+      setActiveConversation: mockSetActiveConversation,
+      isDemo: false,
+      isInitializing: false,
+    });
 
     renderPage(<ConversationDetailPage />, "/conversations/abc");
 
@@ -81,15 +95,29 @@ describe("ConversationDetailPage", () => {
   });
 
   it("deletes the conversation and navigates home", async () => {
-    mockListConversationTurns.mockResolvedValue([
-      {
-        id: "turn-1",
-        role: "user",
-        text: "Hello Loopie",
-        createdAt: "2024-01-01T00:00:00Z",
-      },
-    ]);
     mockDeleteConversation.mockResolvedValue(undefined);
+    mockUseAgentConversationContext.mockReturnValue({
+      state: {
+        conversationId: "xyz",
+        messages: [
+          {
+            id: "turn-1",
+            role: "user",
+            content: "Hello Loopie",
+            createdAt: "2024-01-01T00:00:00Z",
+          },
+        ],
+        composer: { status: "idle", error: null },
+        toolSignals: [],
+      },
+      adapter: {
+        sendMessage: vi.fn(),
+        resetConversation: vi.fn(),
+      },
+      setActiveConversation: mockSetActiveConversation,
+      isDemo: false,
+      isInitializing: false,
+    });
 
     renderPage(<ConversationDetailPage />, "/conversations/xyz");
 
