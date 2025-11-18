@@ -59,6 +59,13 @@ export function ActivityDraftCard({
     }
   };
 
+  const handleEscapeToCancel = (event: KeyboardEvent<HTMLFormElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      onCancel?.();
+    }
+  };
+
   return (
     <Card className="border-dashed border-primary/40 bg-primary/5">
       <CardContent className="p-4">
@@ -68,6 +75,7 @@ export function ActivityDraftCard({
           onSubmit={(event) => {
             handleSubmit(event);
           }}
+          onKeyDown={handleEscapeToCancel}
         >
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <Badge variant="secondary" className={categoryBadgeClass[category]}>
