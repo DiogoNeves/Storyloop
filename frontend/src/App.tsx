@@ -69,13 +69,13 @@ function AppLayout() {
       <NavBar onOpenSettings={() => setIsSettingsOpen(true)} />
       <main className="relative flex min-h-0 flex-1 overflow-hidden">
         <div className="from-primary/8 pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b via-transparent to-transparent" />
-        <div className="relative grid h-full min-h-0 w-full grid-cols-3 gap-6 px-6 pt-12 lg:px-10 xl:px-16">
-          <div className="scrollbar-hide col-span-2 flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-hidden pb-16">
+        <div className="relative grid h-full min-h-0 w-full grid-cols-3 gap-6 px-6 py-12 lg:px-10 xl:px-16">
+          <div className="scrollbar-hide col-span-2 flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-hidden">
             <div className="flex h-full min-h-0 flex-col">
               <Outlet key={location.pathname} />
             </div>
           </div>
-          <div className="col-span-1 flex h-full min-h-0 pb-12">
+          <div className="col-span-1 flex h-full min-h-0">
             <AgentPanel />
           </div>
         </div>
@@ -144,10 +144,7 @@ function JournalPage() {
     status: entriesStatus,
     error: entriesError,
   } = useQuery(entriesListQuery);
-  const conversationListQuery = useMemo(
-    () => conversationQueries.list(),
-    [],
-  );
+  const conversationListQuery = useMemo(() => conversationQueries.list(), []);
   const conversationsQuery = useQuery(conversationListQuery);
   const conversationActivityItems = useMemo<ActivityItem[]>(() => {
     if (!conversationsQuery.data) {
@@ -224,8 +221,6 @@ function JournalPage() {
 
   // Fetch YouTube videos with filter
   const youtubeState = useYouTubeFeed(videoTypeFilter);
-
-  const healthStatusQuery = useQuery(healthQueries.status());
 
   const growthScoreQuery = useQuery({
     ...growthQueries.score(youtubeState.channelId ?? null),
@@ -308,15 +303,16 @@ function JournalPage() {
     conversationActivityItems.length > 0 ||
     storedActivityItems.length > 0 ||
     Boolean(youtubeState.youtubeFeed);
-  const displayItems =
-    hasActivity
-      ? activityItems
-      : seedItems;
+  const displayItems = hasActivity ? activityItems : seedItems;
 
   const [draft, setDraft] = useState<ActivityDraft | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
-  const [conversationDeleteError, setConversationDeleteError] = useState<string | null>(null);
-  const [deletingConversationIds, setDeletingConversationIds] = useState<Set<string>>(new Set());
+  const [conversationDeleteError, setConversationDeleteError] = useState<
+    string | null
+  >(null);
+  const [deletingConversationIds, setDeletingConversationIds] = useState<
+    Set<string>
+  >(new Set());
 
   const { mutateAsync: saveEntry, isPending: isSavingEntry } = useMutation({
     ...entriesMutations.create(),
@@ -455,22 +451,6 @@ function JournalPage() {
         onConversationDelete={handleConversationDelete}
         deletingConversationIds={deletingConversationIds}
       />
-
-      <div className="shrink-0">
-        {healthStatusQuery.isLoading ? (
-          <p className="text-xs text-muted-foreground" role="status">
-            Checking API health…
-          </p>
-        ) : healthStatusQuery.isError ? (
-          <p className="text-xs text-destructive" role="status">
-            We couldn't reach the Storyloop API.
-          </p>
-        ) : healthStatusQuery.data?.status ? (
-          <p className="text-xs text-muted-foreground" role="status">
-            {healthStatusQuery.data.status}
-          </p>
-        ) : null}
-      </div>
     </div>
   );
 }
