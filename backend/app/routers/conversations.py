@@ -14,6 +14,7 @@ from pydantic import BaseModel, field_validator
 from sse_starlette.sse import EventSourceResponse
 
 from app.db_helpers.conversations import (
+    TurnRow,
     conversation_exists,
     delete_conversation,
     insert_conversation,
@@ -104,6 +105,23 @@ class TurnInput(BaseModel):
     """Request model for a turn input."""
 
     text: str
+
+
+def render_history_prompt(turns: list[TurnRow], latest_user_turn: str) -> str:
+    """Render a prompt with the full conversation history and latest user turn."""
+
+    if not turns:
+        history_block = "No previous turns. This is the first turn in the conversation."
+    else:
+        history_lines = [f"{turn['role'].upper()}: {turn['text']}" for turn in turns]
+        history_block = "\n".join(history_lines)
+
+    return (
+        "## Conversation history (oldest to newest)\n"
+        f"{history_block}\n\n"
+        "## Latest user turn\n"
+        f"{latest_user_turn}"
+    )
 
 
 @router.get("", response_model=list[ConversationListOut])
@@ -219,6 +237,16 @@ async def stream_turn(
             assistant_turn_id: str | None = None
             event_queue: asyncio.Queue[dict | None] = asyncio.Queue()
 
+            prior_turns = await asyncio.to_thread(
+                list_turns, db, conversation_id
+            )
+            conversation_history = [
+                turn for turn in prior_turns if turn["id"] != user_turn_id
+            ]
+            prompt_with_history = render_history_prompt(
+                conversation_history, body.text
+            )
+
             async def notify_tool_call(message: str) -> None:
                 await event_queue.put(
                     {
@@ -239,11 +267,13 @@ async def stream_turn(
                     # run_stream() returns an async context manager
                     try:
                         stream_context = assistant_agent.run_stream(
-                            body.text, deps=deps
+                            prompt_with_history, deps=deps
                         )
                     except TypeError:
                         # Support mocked agents that don't accept deps.
-                        stream_context = assistant_agent.run_stream(body.text)
+                        stream_context = assistant_agent.run_stream(
+                            prompt_with_history
+                        )
 
                     async with stream_context as result:
                         # Iterate over the streamed text tokens
