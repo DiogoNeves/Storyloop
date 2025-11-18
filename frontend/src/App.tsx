@@ -18,7 +18,7 @@ import useLocalStorageState from "use-local-storage-state";
 
 import { ActivityFeed, type ActivityDraft } from "@/components/ActivityFeed";
 import { NavBar } from "@/components/NavBar";
-import { AgentPanel } from "@/components/AgentPanel";
+import { AgentConversationContent, AgentPanel } from "@/components/AgentPanel";
 import {
   ContentTypeTabs,
   type ContentTypeFilter,
@@ -30,12 +30,8 @@ import {
   type CreateEntryInput,
   type Entry,
 } from "@/api/entries";
-import {
-  conversationQueries,
-  deleteConversation,
-} from "@/api/conversations";
+import { conversationQueries, deleteConversation } from "@/api/conversations";
 import { growthQueries } from "@/api/growth";
-import { healthQueries } from "@/api/health";
 import { type ActivityItem, entryToActivityItem } from "@/lib/types/entries";
 import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
 import { YoutubeAuthCallback } from "@/pages/YoutubeAuthCallback";
