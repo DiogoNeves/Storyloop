@@ -18,7 +18,7 @@ import useLocalStorageState from "use-local-storage-state";
 
 import { ActivityFeed, type ActivityDraft } from "@/components/ActivityFeed";
 import { NavBar } from "@/components/NavBar";
-import { AgentPanel } from "@/components/AgentPanel";
+import { AgentConversationContent, AgentPanel } from "@/components/AgentPanel";
 import {
   ContentTypeTabs,
   type ContentTypeFilter,
@@ -30,12 +30,8 @@ import {
   type CreateEntryInput,
   type Entry,
 } from "@/api/entries";
-import {
-  conversationQueries,
-  deleteConversation,
-} from "@/api/conversations";
+import { conversationQueries, deleteConversation } from "@/api/conversations";
 import { growthQueries } from "@/api/growth";
-import { healthQueries } from "@/api/health";
 import { type ActivityItem, entryToActivityItem } from "@/lib/types/entries";
 import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
 import { YoutubeAuthCallback } from "@/pages/YoutubeAuthCallback";
@@ -92,17 +88,17 @@ function AppLayout() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   return (
-    <div className="to-muted/12 flex h-screen flex-col overflow-hidden bg-gradient-to-br from-background text-foreground">
+    <div className="to-muted/12 relative min-h-screen bg-gradient-to-br from-background text-foreground">
       <NavBar onOpenSettings={() => setIsSettingsOpen(true)} />
-      <main className="relative flex min-h-0 flex-1 overflow-hidden">
+      <main className="relative flex min-h-[calc(100vh-4rem)] flex-1 overflow-y-auto pt-16 lg:overflow-hidden">
         <div className="from-primary/8 pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b via-transparent to-transparent" />
-        <div className="relative grid h-full min-h-0 w-full grid-cols-3 gap-6 px-6 py-12 lg:px-10 xl:px-16">
+        <div className="relative grid h-full min-h-[calc(100vh-4rem)] w-full grid-cols-1 gap-6 px-2 py-6 sm:py-12 lg:grid-cols-3 lg:overflow-hidden lg:px-10 xl:px-16">
           <div className="scrollbar-hide col-span-2 flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-hidden">
             <div className="flex h-full min-h-0 flex-col">
               <Outlet key={location.pathname} />
             </div>
           </div>
-          <div className="col-span-1 flex h-full min-h-0">
+          <div className="col-span-1 hidden h-full min-h-0 lg:flex">
             <AgentPanel />
           </div>
         </div>
@@ -115,8 +111,11 @@ function AppLayout() {
 function JournalPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { setActiveConversation, state: agentConversationState, isDemo } =
-    useAgentConversationContext();
+  const {
+    setActiveConversation,
+    state: agentConversationState,
+    isDemo,
+  } = useAgentConversationContext();
 
   // Content type filter state - persisted in local storage
   const [contentTypeFilter, setContentTypeFilter] =
@@ -162,7 +161,8 @@ function JournalPage() {
       {
         id: "demo-conversation-2",
         title: "Quick check-in about pacing",
-        summary: "Loopie pinpointed the moment to trim and suggested a tighter intro beat.",
+        summary:
+          "Loopie pinpointed the moment to trim and suggested a tighter intro beat.",
         date: new Date(now - 1000 * 60 * 90).toISOString(),
         category: "conversation",
       },
@@ -185,7 +185,7 @@ function JournalPage() {
         const title =
           firstTurnTitle && firstTurnTitle.length > 0
             ? firstTurnTitle
-            : conversation.title ?? "Loopie conversation";
+            : (conversation.title ?? "Loopie conversation");
         return {
           id: conversation.id,
           title,
@@ -197,11 +197,7 @@ function JournalPage() {
           category: "conversation" as const,
         };
       });
-  }, [
-    conversationsQuery.data,
-    demoConversationActivityItems,
-    isDemo,
-  ]);
+  }, [conversationsQuery.data, demoConversationActivityItems, isDemo]);
   const handleConversationClick = useCallback(
     async (conversationId: string) => {
       await setActiveConversation(conversationId);
@@ -455,12 +451,14 @@ function JournalPage() {
   }, [entriesError, entriesStatus]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4">
-      <JournalSummaryCards
-        score={growthScoreQuery.data ?? null}
-        isLoading={growthScoreQuery.isPending}
-        error={scoreErrorMessage}
-      />
+    <div className="flex h-full min-h-0 flex-col gap-2 sm:gap-4">
+      <div className="hidden sm:block">
+        <JournalSummaryCards
+          score={growthScoreQuery.data ?? null}
+          isLoading={growthScoreQuery.isPending}
+          error={scoreErrorMessage}
+        />
+      </div>
 
       <ContentTypeTabs
         value={contentTypeFilter}
@@ -491,6 +489,38 @@ function JournalPage() {
   );
 }
 
+function LoopiePage() {
+  const { state, adapter, isInitializing } = useAgentConversationContext();
+
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-4">
+      <section className="flex min-h-0 flex-1 flex-col gap-4 rounded-lg border border-border bg-background/90 p-4 shadow-sm sm:p-6">
+        <div className="space-y-1">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Loopie assistant
+          </p>
+          <h1 className="text-2xl font-semibold tracking-tight">Chat with Loopie</h1>
+          <p className="text-sm text-muted-foreground">
+            Keep the conversation going while the main panel is hidden on small screens.
+          </p>
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col">
+          <AgentConversationContent
+            state={state}
+            adapter={adapter}
+            surfaceVariant="page"
+            composerPlaceholder="Share your next note or question for Loopie…"
+            idleHelperText="Loopie will keep the active chat elsewhere unchanged."
+            respondingHelperText="Loopie is preparing a reply"
+            disabled={isInitializing}
+          />
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export function App() {
   return (
     <BrowserRouter>
@@ -502,6 +532,7 @@ export function App() {
                 <Route index element={<JournalPage />} />
                 <Route path="journal" element={<JournalPage />} />
                 <Route path="insights" element={<InsightsPage />} />
+                <Route path="loopie" element={<LoopiePage />} />
               </Route>
               <Route path="/videos/:videoId" element={<VideoDetailPage />} />
               <Route

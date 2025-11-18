@@ -26,15 +26,6 @@ const mockEntries = vi.hoisted<Entry[]>(() => [
   },
 ]);
 
-vi.mock("@/api/health", () => ({
-  healthQueries: {
-    status: () => ({
-      queryKey: ["health"],
-      queryFn: vi.fn().mockResolvedValue({ status: "Storyloop API ready" }),
-    }),
-  },
-}));
-
 vi.mock("@/api/entries", () => {
   const cloneEntries = (entries: Entry[]): Entry[] =>
     entries.map((entry) => ({ ...entry }));
@@ -134,7 +125,7 @@ vi.mock("@/api/growth", () => {
 });
 
 describe("App", () => {
-  it("renders the dashboard and health status", async () => {
+  it("renders the dashboard with mock entries and growth score", async () => {
     render(<App />);
 
     expect(screen.getByText(/Storyloop Score/i)).toBeInTheDocument();
@@ -147,8 +138,8 @@ describe("App", () => {
       screen.getByText(/Momentum across discovery, retention, loyalty/i),
     ).toBeInTheDocument();
 
-    await waitFor(() =>
-      expect(screen.getByText(/Storyloop API ready/i)).toBeInTheDocument(),
-    );
+    expect(
+      screen.getByText(/Published the season premiere/i),
+    ).toBeInTheDocument();
   });
 });
