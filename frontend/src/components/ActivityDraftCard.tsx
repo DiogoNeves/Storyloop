@@ -1,4 +1,4 @@
-import { type FormEvent, type KeyboardEvent, useRef } from "react";
+import { type FormEvent, type KeyboardEvent, useEffect, useRef } from "react";
 
 import { type ActivityDraft } from "./ActivityFeed";
 import { type ActivityItem } from "@/lib/types/entries";
@@ -42,6 +42,14 @@ export function ActivityDraftCard({
   const titleInputId = `${idPrefix}-title`;
   const summaryInputId = `${idPrefix}-summary`;
   const formRef = useRef<HTMLFormElement | null>(null);
+  const titleRef = useRef<HTMLInputElement | null>(null);
+  const summaryRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    const target =
+      draft.title.trim().length === 0 ? titleRef.current : summaryRef.current;
+    target?.focus({ preventScroll: true });
+  }, []);
 
   const handleSubmit = (event?: FormEvent<HTMLFormElement>) => {
     event?.preventDefault();
@@ -105,6 +113,7 @@ export function ActivityDraftCard({
               id={titleInputId}
               placeholder="What happened?"
               value={draft.title}
+              ref={titleRef}
               onChange={(event) =>
                 onChange({ ...draft, title: event.target.value })
               }
@@ -117,6 +126,7 @@ export function ActivityDraftCard({
               id={summaryInputId}
               placeholder="Capture the beats, insights, or takeaways…"
               value={draft.summary}
+              ref={summaryRef}
               onChange={(event) =>
                 onChange({ ...draft, summary: event.target.value })
               }

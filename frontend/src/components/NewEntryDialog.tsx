@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -49,6 +49,8 @@ export function NewEntryDialog({ onCreate, children }: NewEntryDialogProps) {
     date: defaultDate,
   });
   const formRef = useRef<HTMLFormElement | null>(null);
+  const titleRef = useRef<HTMLInputElement | null>(null);
+  const summaryRef = useRef<HTMLTextAreaElement | null>(null);
 
   const isValid = formState.title.trim().length > 0 && formState.summary.trim().length > 0;
 
@@ -77,6 +79,16 @@ export function NewEntryDialog({ onCreate, children }: NewEntryDialogProps) {
     });
     setOpen(false);
   };
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const target =
+      formState.title.trim().length === 0 ? titleRef.current : summaryRef.current;
+    target?.focus({ preventScroll: true });
+  }, [open, formState.title]);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -121,6 +133,7 @@ export function NewEntryDialog({ onCreate, children }: NewEntryDialogProps) {
                 id="new-entry-title"
                 placeholder="What happened?"
                 value={formState.title}
+                ref={titleRef}
                 onChange={(event) =>
                   setFormState((prev) => ({ ...prev, title: event.target.value }))
                 }
@@ -133,6 +146,7 @@ export function NewEntryDialog({ onCreate, children }: NewEntryDialogProps) {
                 id="new-entry-summary"
                 placeholder="Capture the beats, insights, or takeaways…"
                 value={formState.summary}
+                ref={summaryRef}
                 onChange={(event) =>
                   setFormState((prev) => ({ ...prev, summary: event.target.value }))
                 }
