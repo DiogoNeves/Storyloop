@@ -85,9 +85,15 @@ export function NewEntryDialog({ onCreate, children }: NewEntryDialogProps) {
       return;
     }
 
-    const target =
-      formState.title.trim().length === 0 ? titleRef.current : summaryRef.current;
+    const isEditingExistingTitle = formState.title.trim().length > 0;
+    const target = isEditingExistingTitle ? summaryRef.current : titleRef.current;
     target?.focus({ preventScroll: true });
+
+    if (isEditingExistingTitle && summaryRef.current) {
+      const endPosition = summaryRef.current.value.length;
+      summaryRef.current.setSelectionRange(endPosition, endPosition);
+      summaryRef.current.scrollTop = summaryRef.current.scrollHeight;
+    }
   }, [open, formState.title]);
 
   return (
