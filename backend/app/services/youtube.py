@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from collections import OrderedDict
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -13,6 +12,8 @@ from collections.abc import AsyncIterator
 
 import anyio
 import httpx
+from asyncache import cachedmethod
+from cachetools import TTLCache
 from googleapiclient.discovery import build
 
 from app.services.youtube_identifier import build_lookup_candidates
@@ -319,11 +320,9 @@ class YoutubeService:
                 "YoutubeService initialised with both custom client and transport; "
                 "custom client will take precedence."
             )
-        self._response_cache: OrderedDict[
-            tuple[str, tuple[tuple[str, Any], ...]], tuple[float, dict[str, Any]]
-        ] = OrderedDict()
-        self._cache_ttl_seconds = 300.0
-        self._cache_max_entries = 128
+        self._response_cache: TTLCache[
+            tuple[str, tuple[tuple[str, Any], ...]], dict[str, Any]
+        ] = TTLCache(maxsize=128, ttl=300)
 
     def _create_client(self) -> httpx.AsyncClient:
         """Instantiate an HTTP client for YouTube API calls."""
@@ -797,14 +796,16 @@ class YoutubeService:
 
         return videos
 
+    @cachedmethod(
+        lambda self: self._response_cache,
+        key=lambda self, _client, endpoint, params: self._build_cache_key(
+            endpoint, params
+        ),
+    )
     async def _request_json(
         self, client: httpx.AsyncClient, endpoint: str, params: dict[str, Any]
     ) -> dict[str, Any]:
         """Perform a GET request against the YouTube API and decode the JSON body."""
-        cache_key = self._build_cache_key(endpoint, params)
-        cached = self._get_cached_response(cache_key)
-        if cached is not None:
-            return cached
         try:
             response = await client.get(endpoint, params=params)
             response.raise_for_status()
@@ -834,7 +835,6 @@ class YoutubeService:
         if not isinstance(data, dict):
             message = f"YouTube API returned unexpected payload for {endpoint}"
             raise YoutubeAPIRequestError(message)
-        self._store_cached_response(cache_key, data)
         return data
 
     def _build_cache_key(
@@ -849,40 +849,6 @@ class YoutubeService:
         if isinstance(value, (list, tuple)):
             return tuple(value)
         return value
-
-    def _get_cached_response(
-        self, cache_key: tuple[str, tuple[tuple[str, Any], ...]]
-    ) -> dict[str, Any] | None:
-        now = anyio.current_time()
-        self._evict_expired(now)
-        cached = self._response_cache.get(cache_key)
-        if cached is None:
-            return None
-        expires_at, payload = cached
-        if expires_at <= now:
-            self._response_cache.pop(cache_key, None)
-            return None
-        self._response_cache.move_to_end(cache_key)
-        return payload
-
-    def _store_cached_response(
-        self,
-        cache_key: tuple[str, tuple[tuple[str, Any], ...]],
-        payload: dict[str, Any],
-    ) -> None:
-        now = anyio.current_time()
-        self._response_cache[cache_key] = (now + self._cache_ttl_seconds, payload)
-        self._response_cache.move_to_end(cache_key)
-        if len(self._response_cache) > self._cache_max_entries:
-            self._response_cache.popitem(last=False)
-
-    def _evict_expired(self, now: float | None = None) -> None:
-        timestamp = now if now is not None else anyio.current_time()
-        expired_keys = [
-            key for key, (expires_at, _) in self._response_cache.items() if expires_at <= timestamp
-        ]
-        for key in expired_keys:
-            self._response_cache.pop(key, None)
 
     def sync_latest_metrics(self) -> None:
         """Log a placeholder sync until real metrics synchronization is wired in."""
