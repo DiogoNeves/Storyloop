@@ -37,6 +37,7 @@ export function ActivityFeedItem({
     day: "numeric",
     year: "numeric",
   });
+  const titleText = item.title.trim();
   const summary = item.summary.trim();
   const truncatedSummary =
     summary.length > 280 ? `${summary.slice(0, 277).trimEnd()}…` : summary;
@@ -97,27 +98,31 @@ export function ActivityFeedItem({
           </div>
         </div>
         <div className="flex gap-4">
-          <div className="flex flex-1 flex-col gap-2 pr-20">
-            <h3 className="text-sm font-semibold text-foreground">
-            {detailPath ? (
-              <Link
-                to={detailPath}
-                className="text-primary underline-offset-2 hover:underline"
-                onClick={handleDetailClick}
-              >
-                {item.title}
-              </Link>
-            ) : item.linkUrl ? (
+          <div className="flex min-w-0 flex-1 flex-col gap-2 pr-20">
+            <h3 className="min-w-0 text-sm font-semibold leading-tight text-foreground">
+              {detailPath ? (
+                <Link
+                  to={detailPath}
+                  className="block truncate overflow-hidden text-primary underline-offset-2 hover:underline"
+                  onClick={handleDetailClick}
+                  title={titleText}
+                >
+                  {titleText}
+                </Link>
+              ) : item.linkUrl ? (
                 <a
                   href={item.linkUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-primary underline-offset-2 hover:underline"
+                  className="block truncate overflow-hidden text-primary underline-offset-2 hover:underline"
+                  title={titleText}
                 >
-                  {item.title}
+                  {titleText}
                 </a>
               ) : (
-                item.title
+                <span className="block truncate overflow-hidden" title={titleText}>
+                  {titleText}
+                </span>
               )}
             </h3>
             {summary.length > 0 ? (

@@ -67,6 +67,7 @@ class ConversationListOut(ConversationOut):
 
     last_turn_at: str | None
     last_turn_text: str | None
+    first_turn_text: str | None
     turn_count: int
 
     @field_validator("last_turn_at", mode="before")
