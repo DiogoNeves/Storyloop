@@ -26,7 +26,7 @@ export function NavBar({ onOpenSettings }: NavBarProps) {
             to="/loopie"
             className={({ isActive }) =>
               cn(
-                "rounded-md px-3 py-1.5 transition hover:text-foreground sm:hidden",
+                "rounded-md px-3 py-1.5 transition hover:text-foreground lg:hidden",
                 isActive ? "bg-muted text-foreground" : undefined,
               )
             }
