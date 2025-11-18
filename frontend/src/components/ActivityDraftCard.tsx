@@ -46,9 +46,15 @@ export function ActivityDraftCard({
   const summaryRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
-    const target =
-      draft.title.trim().length === 0 ? titleRef.current : summaryRef.current;
+    const isEditingExistingTitle = draft.title.trim().length > 0;
+    const target = isEditingExistingTitle ? summaryRef.current : titleRef.current;
     target?.focus({ preventScroll: true });
+
+    if (isEditingExistingTitle && summaryRef.current) {
+      const endPosition = summaryRef.current.value.length;
+      summaryRef.current.setSelectionRange(endPosition, endPosition);
+      summaryRef.current.scrollTop = summaryRef.current.scrollHeight;
+    }
   }, []);
 
   const handleSubmit = (event?: FormEvent<HTMLFormElement>) => {
