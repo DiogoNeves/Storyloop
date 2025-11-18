@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowUp, Bot, Plus } from "lucide-react";
+import { ArrowUp, Bot, Plus, Square } from "lucide-react";
 
 import { useAgentConversationContext } from "@/context/AgentConversationContext";
 import {
@@ -42,10 +42,11 @@ export function AgentConversationContent({
   const [inputValue, setInputValue] = useState("");
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
-  const isComposerDisabled =
-    disabled ||
-    state.composer.status === "sending" ||
-    state.composer.status === "responding";
+  const isTextareaDisabled = disabled || state.composer.status === "responding";
+  const isSendDisabled =
+    disabled || state.composer.status !== "idle" || inputValue.trim() === "";
+  const showStopButton =
+    state.composer.status === "sending" || state.composer.status === "responding";
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -62,13 +63,16 @@ export function AgentConversationContent({
   }, [state.messages, state.composer.status]);
 
   const handleSubmit = useCallback(() => {
+    if (state.composer.status !== "idle") {
+      return;
+    }
     const trimmed = inputValue.trim();
     if (!trimmed) {
       return;
     }
     void adapter.sendMessage(trimmed);
     setInputValue("");
-  }, [adapter, inputValue]);
+  }, [adapter, inputValue, state.composer.status]);
 
   const composerLabel =
     state.composer.status === "responding"
@@ -142,38 +146,49 @@ export function AgentConversationContent({
             <p className="text-xs text-destructive">{state.composer.error}</p>
           ) : null}
           <div className="relative flex select-none items-end rounded-2xl border border-border/50 bg-muted/30 shadow-sm focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20">
-            <Textarea
-              id="agent-composer"
-              placeholder={composerPlaceholder}
-              value={inputValue}
-              onChange={(event) => setInputValue(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey) {
-                  event.preventDefault();
-                  handleSubmit();
-                }
-              }}
-              disabled={isComposerDisabled}
-              className="min-h-[104px] resize-none rounded-2xl border-0 bg-transparent px-4 py-3 pr-24 text-sm shadow-none focus-visible:outline-none focus-visible:ring-0"
-            />
-            <div className="absolute bottom-3 right-3 flex select-none items-center gap-2">
-              <span className="hidden text-[10px] text-muted-foreground/70 sm:inline">
-                {state.composer.status === "responding"
-                  ? "Loopie is thinking"
-                  : "Shift + Enter"}
-              </span>
+          <Textarea
+            id="agent-composer"
+            placeholder={composerPlaceholder}
+            value={inputValue}
+            onChange={(event) => setInputValue(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                handleSubmit();
+              }
+            }}
+            disabled={isTextareaDisabled}
+            className="min-h-[104px] resize-none rounded-2xl border-0 bg-transparent px-4 py-3 pr-24 text-sm shadow-none focus-visible:outline-none focus-visible:ring-0"
+          />
+          <div className="absolute bottom-3 right-3 flex select-none items-center gap-2">
+            <span className="hidden text-[10px] text-muted-foreground/70 sm:inline">
+              {state.composer.status === "responding"
+                ? "Loopie is thinking"
+                : "Shift + Enter"}
+            </span>
+            {showStopButton ? (
+              <Button
+                type="button"
+                onClick={adapter.stopResponse}
+                className="h-9 w-9 rounded-full bg-destructive/90 p-0 text-destructive-foreground shadow-lg transition hover:bg-destructive"
+                aria-label="Stop response"
+              >
+                <Square className="h-4 w-4" />
+              </Button>
+            ) : (
               <Button
                 type="button"
                 onClick={handleSubmit}
-                disabled={isComposerDisabled}
+                disabled={isSendDisabled}
                 className="h-9 w-9 rounded-full bg-gradient-to-r from-primary via-primary/80 to-primary p-0 text-primary-foreground shadow-lg transition hover:from-primary/90 hover:to-primary/80 disabled:opacity-60"
                 aria-label="Send to Loopie"
               >
                 <ArrowUp className="h-4 w-4" />
               </Button>
-            </div>
+            )}
           </div>
-          <p className="text-[10px] text-muted-foreground/70">{helperText}</p>
+        </div>
+        <p className="text-[10px] text-muted-foreground/70">{helperText}</p>
         </div>
       </div>
     </div>
