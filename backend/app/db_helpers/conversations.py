@@ -21,6 +21,7 @@ class ConversationSummaryRow(ConversationRow):
 
     last_turn_at: str | None
     last_turn_text: str | None
+    first_turn_text: str | None
     turn_count: int
 
 
@@ -108,6 +109,13 @@ def list_conversation_summaries(
                 LIMIT 1
             ) AS last_turn_text,
             (
+                SELECT text
+                FROM turns
+                WHERE turns.conversation_id = conversations.id
+                ORDER BY created_at ASC
+                LIMIT 1
+            ) AS first_turn_text,
+            (
                 SELECT COUNT(*)
                 FROM turns
                 WHERE turns.conversation_id = conversations.id
@@ -127,7 +135,8 @@ def list_conversation_summaries(
             "created_at": row[2],
             "last_turn_at": row[3],
             "last_turn_text": row[4],
-            "turn_count": row[5],
+            "first_turn_text": row[5],
+            "turn_count": row[6],
         }
         for row in rows
     ]

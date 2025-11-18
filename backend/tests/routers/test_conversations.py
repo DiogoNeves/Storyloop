@@ -162,6 +162,7 @@ def test_list_conversations_includes_recent_turn(
     summary = body[0]
     assert summary["id"] == conversation_id
     assert summary["title"] == "Summary"
+    assert summary["first_turn_text"] == "Hello"
     assert summary["last_turn_text"] == "Final reply"
     assert summary["last_turn_at"] is not None
     assert summary["turn_count"] == 2
