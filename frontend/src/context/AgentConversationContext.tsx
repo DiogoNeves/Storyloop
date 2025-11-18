@@ -13,6 +13,7 @@ interface AgentConversationContextValue {
   adapter: AgentConversationAdapter;
   setActiveConversation: (conversationId?: string | null) => Promise<void>;
   isDemo: boolean;
+  isInitializing: boolean;
 }
 
 const AgentConversationContext =
@@ -34,6 +35,7 @@ export function AgentConversationProvider({
     state: conversationState,
     adapter: conversationAdapter,
     setActiveConversation: baseSetActiveConversation,
+    isInitializing,
   } = useAgentConversation({ enabled: !isDemoMode });
 
   const setActiveConversation = useCallback(
@@ -52,12 +54,14 @@ export function AgentConversationProvider({
       adapter: isDemoMode ? demo.adapter : conversationAdapter,
       setActiveConversation,
       isDemo: isDemoMode,
+      isInitializing: !isDemoMode && isInitializing,
     }),
     [
       conversationAdapter,
       conversationState,
       demo.adapter,
       demo.state,
+      isInitializing,
       isDemoMode,
       setActiveConversation,
     ],
