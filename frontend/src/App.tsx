@@ -88,7 +88,7 @@ function AppLayout() {
 function JournalPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { setActiveConversation, state: agentConversationState } =
+  const { setActiveConversation, state: agentConversationState, isDemo } =
     useAgentConversationContext();
 
   // Content type filter state - persisted in local storage
@@ -146,7 +146,37 @@ function JournalPage() {
   } = useQuery(entriesListQuery);
   const conversationListQuery = useMemo(() => conversationQueries.list(), []);
   const conversationsQuery = useQuery(conversationListQuery);
+  const demoConversationActivityItems = useMemo<ActivityItem[]>(() => {
+    if (!isDemo) {
+      return [];
+    }
+
+    const now = Date.now();
+
+    return [
+      {
+        id: "demo-conversation-1",
+        title: "Loopie summarized your audience research sprint",
+        summary:
+          "Loopie connected sentiment shifts across shorts, distilled the most replayed hooks, and drafted the next set of experiments for the July uploads.",
+        date: new Date(now - 1000 * 60 * 35).toISOString(),
+        category: "conversation",
+      },
+      {
+        id: "demo-conversation-2",
+        title: "Quick check-in about pacing",
+        summary: "Loopie pinpointed the moment to trim and suggested a tighter intro beat.",
+        date: new Date(now - 1000 * 60 * 90).toISOString(),
+        category: "conversation",
+      },
+    ];
+  }, [isDemo]);
+
   const conversationActivityItems = useMemo<ActivityItem[]>(() => {
+    if (isDemo) {
+      return demoConversationActivityItems;
+    }
+
     if (!conversationsQuery.data) {
       return [];
     }
@@ -170,7 +200,11 @@ function JournalPage() {
           category: "conversation" as const,
         };
       });
-  }, [conversationsQuery.data]);
+  }, [
+    conversationsQuery.data,
+    demoConversationActivityItems,
+    isDemo,
+  ]);
   const handleConversationClick = useCallback(
     async (conversationId: string) => {
       await setActiveConversation(conversationId);
@@ -453,7 +487,7 @@ function JournalPage() {
         errorMessage={entriesErrorMessage}
         conversationErrorMessage={conversationDeleteError}
         onConversationClick={handleConversationClick}
-        onConversationDelete={handleConversationDelete}
+        onConversationDelete={isDemo ? undefined : handleConversationDelete}
         deletingConversationIds={deletingConversationIds}
       />
     </div>
