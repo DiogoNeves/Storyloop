@@ -10,7 +10,7 @@ from uuid import uuid4
 import logfire
 import sqlite3
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sse_starlette.sse import EventSourceResponse
 
 from app.db_helpers.conversations import (
@@ -43,6 +43,24 @@ class ConversationOut(BaseModel):
     title: str | None
     created_at: str
 
+    @field_validator("id", mode="before")
+    @classmethod
+    def validate_id(cls, v: str | int | None) -> str:
+        """Convert id to string."""
+        return str(v) if v is not None else ""
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def validate_title(cls, v: str | int | None) -> str | None:
+        """Convert title to string or None."""
+        return str(v) if v is not None else None
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def validate_created_at(cls, v: str | int | None) -> str:
+        """Convert created_at to string."""
+        return str(v) if v is not None else ""
+
 
 class ConversationListOut(ConversationOut):
     """Response model for a conversation summary."""
@@ -50,6 +68,26 @@ class ConversationListOut(ConversationOut):
     last_turn_at: str | None
     last_turn_text: str | None
     turn_count: int
+
+    @field_validator("last_turn_at", mode="before")
+    @classmethod
+    def validate_last_turn_at(cls, v: str | int | None) -> str | None:
+        """Convert last_turn_at to string or None."""
+        return str(v) if v is not None else None
+
+    @field_validator("last_turn_text", mode="before")
+    @classmethod
+    def validate_last_turn_text(cls, v: str | int | None) -> str | None:
+        """Convert last_turn_text to string or None."""
+        return str(v) if v is not None else None
+
+    @field_validator("turn_count", mode="before")
+    @classmethod
+    def validate_turn_count(cls, v: str | int | None) -> int:
+        """Convert turn_count to int."""
+        if v is None:
+            return 0
+        return int(v)
 
 
 class TurnOut(BaseModel):
@@ -73,7 +111,9 @@ def list_conversations(
 ) -> list[ConversationListOut]:
     """List conversations with their most recent activity."""
     summaries = list_conversation_summaries(db)
-    return [ConversationListOut(**summary) for summary in summaries]
+    return [
+        ConversationListOut.model_validate(summary) for summary in summaries
+    ]
 
 
 @router.delete("/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -180,7 +220,10 @@ async def stream_turn(
 
             async def notify_tool_call(message: str) -> None:
                 await event_queue.put(
-                    {"event": "tool_call", "data": json.dumps({"message": message})}
+                    {
+                        "event": "tool_call",
+                        "data": json.dumps({"message": message}),
+                    }
                 )
 
             deps = await build_loopie_deps(
@@ -262,7 +305,9 @@ async def stream_turn(
                     await event_queue.put(
                         {
                             "event": "error",
-                            "data": json.dumps({"message": "Generation failed"}),
+                            "data": json.dumps(
+                                {"message": "Generation failed"}
+                            ),
                         }
                     )
                 finally:
