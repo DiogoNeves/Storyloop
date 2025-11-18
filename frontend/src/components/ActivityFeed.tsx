@@ -6,6 +6,7 @@ import type {
   YoutubeLinkStatusResponse,
 } from "@/api/youtube";
 import { useEntryEditing } from "@/hooks/useEntryEditing";
+import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LinkYouTubeAccountCard } from "@/components/LinkYouTubeAccountCard";
@@ -40,6 +41,7 @@ interface ActivityFeedProps {
   onConversationClick?: (conversationId: string) => Promise<void>;
   onConversationDelete?: (conversationId: string) => Promise<void>;
   deletingConversationIds?: Set<string>;
+  className?: string;
 }
 
 export function ActivityFeed({
@@ -60,6 +62,7 @@ export function ActivityFeed({
   onConversationClick,
   onConversationDelete,
   deletingConversationIds,
+  className,
 }: ActivityFeedProps) {
   const editingState = useEntryEditing();
   const [thumbnailError, setThumbnailError] = useState(false);
@@ -78,7 +81,7 @@ export function ActivityFeed({
   }, [channelThumbnailUrl]);
 
   return (
-    <Card className="flex-shrink-0">
+    <Card className={cn("flex h-full min-h-0 flex-col", className)}>
       <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
           {shouldShowThumbnail ? (
@@ -131,7 +134,7 @@ export function ActivityFeed({
           + entry
         </Button>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1 sm:pr-2">
         {errorMessage ? (
           <p className="text-sm text-destructive" role="status">
             {errorMessage}
