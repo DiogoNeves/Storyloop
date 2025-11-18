@@ -806,6 +806,8 @@ class YoutubeService:
         self, client: httpx.AsyncClient, endpoint: str, params: dict[str, Any]
     ) -> dict[str, Any]:
         """Perform a GET request against the YouTube API and decode the JSON body."""
+        loggable_params = {k: v for k, v in params.items() if k != "key"}
+        logger.info("Fetching YouTube API endpoint %s with params %s", endpoint, loggable_params)
         try:
             response = await client.get(endpoint, params=params)
             response.raise_for_status()
