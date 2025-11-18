@@ -78,11 +78,11 @@ export function ConversationDetailPage() {
     Boolean(conversationId) && !isInitializing && state.messages.length === 0;
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-br from-background to-muted/12 text-foreground">
+    <div className="relative min-h-screen bg-gradient-to-br from-background to-muted/12 text-foreground">
       <NavBar />
-      <main className="relative flex min-h-0 flex-1 overflow-hidden">
+      <main className="relative flex min-h-[calc(100vh-4rem)] flex-1 overflow-y-auto pt-16 lg:overflow-hidden">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-primary/8 via-transparent to-transparent" />
-        <div className="relative grid h-full min-h-0 w-full grid-cols-1 gap-6 px-6 py-12 lg:px-10 xl:px-16">
+        <div className="relative grid h-full min-h-[calc(100vh-4rem)] w-full grid-cols-1 gap-6 px-6 py-10 sm:py-12 lg:px-10 xl:px-16">
           <div className="col-span-1 flex h-full min-h-0 flex-col gap-6 overflow-y-auto scrollbar-hide">
             <Link
               to="/"
