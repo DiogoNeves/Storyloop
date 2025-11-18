@@ -70,8 +70,10 @@ function AppLayout() {
       <main className="relative flex min-h-0 flex-1 overflow-hidden">
         <div className="from-primary/8 pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b via-transparent to-transparent" />
         <div className="relative grid h-full min-h-0 w-full grid-cols-3 gap-6 px-6 pt-12 lg:px-10 xl:px-16">
-          <div className="scrollbar-hide col-span-2 flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-y-auto pb-16">
-            <Outlet key={location.pathname} />
+          <div className="scrollbar-hide col-span-2 flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-hidden pb-16">
+            <div className="flex h-full min-h-0 flex-col">
+              <Outlet key={location.pathname} />
+            </div>
           </div>
           <div className="col-span-1 flex h-full min-h-0 pb-12">
             <AgentPanel />
@@ -421,7 +423,7 @@ function JournalPage() {
   }, [entriesError, entriesStatus]);
 
   return (
-    <>
+    <div className="flex h-full min-h-0 flex-col gap-4">
       <JournalSummaryCards
         score={growthScoreQuery.data ?? null}
         isLoading={growthScoreQuery.isPending}
@@ -434,6 +436,7 @@ function JournalPage() {
       />
 
       <ActivityFeed
+        className="flex-1"
         items={displayItems}
         youtubeFeed={youtubeState.youtubeFeed}
         isLinked={youtubeState.isLinked}
@@ -453,7 +456,7 @@ function JournalPage() {
         deletingConversationIds={deletingConversationIds}
       />
 
-      <div>
+      <div className="shrink-0">
         {healthStatusQuery.isLoading ? (
           <p className="text-xs text-muted-foreground" role="status">
             Checking API health…
@@ -468,7 +471,7 @@ function JournalPage() {
           </p>
         ) : null}
       </div>
-    </>
+    </div>
   );
 }
 
