@@ -8,13 +8,14 @@ import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ConversationDetailPage } from "@/pages/ConversationDetailPage";
+import type { AgentMessage } from "@/lib/types/agent";
 import { mockDeleteConversation } from "./mocks/conversationApi";
 
 const mockSetActiveConversation = vi.fn().mockResolvedValue(undefined);
 const mockUseAgentConversationContext = vi.fn(() => ({
   state: {
     conversationId: "",
-    messages: [],
+    messages: [] as AgentMessage[],
     composer: { status: "idle", error: null },
     toolSignals: [],
   },
