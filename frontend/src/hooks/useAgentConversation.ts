@@ -2,11 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   createConversation,
-  isNotFoundError,
   listConversationTurns,
   streamConversationTurn,
   type ConversationTurn,
 } from "@/api/conversations";
+import { isNotFoundError } from "@/api/client";
 import type {
   AgentConversationAdapter,
   AgentConversationState,
@@ -245,7 +245,7 @@ export function useAgentConversation({
           }
           setState((previous) => ({
             ...previous,
-            conversationId,
+            conversationId: conversationId ?? "",
           }));
         } catch (error) {
           const message =
@@ -280,11 +280,11 @@ export function useAgentConversation({
           const baseMessage: AgentMessage =
             existingIndex === -1
               ? {
-                  id: streamingMessageId,
-                  role: "assistant",
-                  content: "",
-                  createdAt: streamingMessageCreatedAt,
-                }
+                id: streamingMessageId,
+                role: "assistant",
+                content: "",
+                createdAt: streamingMessageCreatedAt,
+              }
               : previous.messages[existingIndex];
 
           const updatedMessage: AgentMessage = {
@@ -297,8 +297,8 @@ export function useAgentConversation({
             existingIndex === -1
               ? [...previous.messages, updatedMessage]
               : previous.messages.map((message, index) =>
-                  index === existingIndex ? updatedMessage : message,
-                );
+                index === existingIndex ? updatedMessage : message,
+              );
 
           if (composerOverride) {
             return {
@@ -520,14 +520,14 @@ export function useAgentConversation({
         messages: hasStopMarker
           ? previous.messages
           : [
-              ...previous.messages,
-              {
-                id: crypto.randomUUID(),
-                role: "system",
-                content: "[user stopped]",
-                createdAt: new Date().toISOString(),
-              },
-            ],
+            ...previous.messages,
+            {
+              id: crypto.randomUUID(),
+              role: "system",
+              content: "[user stopped]",
+              createdAt: new Date().toISOString(),
+            },
+          ],
         composer: { status: "idle", error: null },
         toolSignals: [],
       };

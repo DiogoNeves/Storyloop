@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 
 const DEFAULT_TIMEOUT = 10_000;
 const DEFAULT_BASE_URL = "http://localhost:8000";
@@ -20,3 +20,14 @@ export const apiClient = axios.create({
 
 export const API_BASE_URL = baseURL;
 
+
+export function isAxiosError(error: unknown): error is AxiosError {
+  return axios.isAxiosError(error);
+}
+
+export function isNotFoundError(error: unknown): boolean {
+  if (!isAxiosError(error)) {
+    return false;
+  }
+  return error.response?.status === 404;
+}

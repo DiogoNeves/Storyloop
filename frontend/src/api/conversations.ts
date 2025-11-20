@@ -1,5 +1,5 @@
 import { createQueryKeys } from "@lukemorales/query-key-factory";
-import axios, { AxiosError } from "axios";
+
 
 import { API_BASE_URL, apiClient } from "@/api/client";
 import type { AgentMessageRole } from "@/lib/types/agent";
@@ -41,16 +41,7 @@ export interface ConversationTurn {
   createdAt: string;
 }
 
-export function isNotFoundError(error: unknown): boolean {
-  if (!isAxiosError(error)) {
-    return false;
-  }
-  return error.response?.status === 404;
-}
 
-function isAxiosError(error: unknown): error is AxiosError {
-  return axios.isAxiosError(error);
-}
 
 export async function createConversation(
   title?: string | null,
@@ -59,8 +50,8 @@ export async function createConversation(
     typeof title === "undefined"
       ? {}
       : {
-          title,
-        };
+        title,
+      };
   const { data } = await apiClient.post<ConversationRecord>("/conversations", payload);
   return {
     id: data.id,

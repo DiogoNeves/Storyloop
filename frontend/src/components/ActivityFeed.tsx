@@ -14,6 +14,7 @@ import { ActivityFeedItem } from "./ActivityFeedItem";
 import { ActivityDraftCard } from "./ActivityDraftCard";
 import { InfoModal } from "./InfoModal";
 import { ActivityFeedInfo } from "./ActivityFeedInfo";
+import { isActivityEditable } from "@/lib/activity-helpers";
 
 export type { ActivityItem };
 
@@ -173,10 +174,7 @@ export function ActivityFeed({
           const isEditing =
             editingState.editingEntryId === item.id &&
             editingState.editingDraft;
-          const isEditable =
-            item.category !== "content" &&
-            item.category !== "conversation" &&
-            !item.id.startsWith("youtube:");
+          const isEditable = isActivityEditable(item);
           const isConversation = item.category === "conversation";
           const isConversationDeleting = Boolean(
             isConversation && deletingConversationIds?.has(item.id),
@@ -200,8 +198,8 @@ export function ActivityFeed({
                 onDelete={
                   isEditable
                     ? () => {
-                        void editingState.deleteEntry(item.id);
-                      }
+                      void editingState.deleteEntry(item.id);
+                    }
                     : undefined
                 }
                 isDeleting={editingState.isDeleting(item.id)}
@@ -217,23 +215,23 @@ export function ActivityFeed({
               onConversationDelete={
                 isConversation && onConversationDelete
                   ? () => {
-                      void onConversationDelete(item.id);
-                    }
+                    void onConversationDelete(item.id);
+                  }
                   : undefined
               }
               isConversationDeleting={isConversationDeleting}
               onEdit={
                 isEditable
                   ? () => {
-                      editingState.startEdit(item);
-                    }
+                    editingState.startEdit(item);
+                  }
                   : undefined
               }
               onDelete={
                 isEditable
                   ? () => {
-                      void editingState.deleteEntry(item.id);
-                    }
+                    void editingState.deleteEntry(item.id);
+                  }
                   : undefined
               }
               isDeleting={editingState.isDeleting(item.id)}

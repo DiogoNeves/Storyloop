@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Bot } from "lucide-react";
 
 import { type ActivityItem } from "@/lib/types/entries";
+import { getActivityDetailPath } from "@/lib/activity-helpers";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -42,14 +43,7 @@ export function ActivityFeedItem({
   const truncatedSummary =
     summary.length > 280 ? `${summary.slice(0, 277).trimEnd()}…` : summary;
   const showThumbnail = item.category === "content" && Boolean(item.thumbnailUrl);
-  const detailPath =
-    item.category === "content" && item.videoId
-      ? `/videos/${item.videoId}`
-      : item.category === "journal"
-        ? `/journals/${item.id}`
-        : item.category === "conversation"
-          ? `/conversations/${item.id}`
-          : null;
+  const detailPath = getActivityDetailPath(item);
 
   const handleDetailClick = () => {
     if (item.category === "conversation" && onConversationClick) {
