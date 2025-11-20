@@ -6,9 +6,6 @@ backend:
 dev:
 	python scripts/dev.py
 
-seed:
-	python scripts/seed_demo_data.py
-
 test:
 	make test-backend
 	make test-frontend
