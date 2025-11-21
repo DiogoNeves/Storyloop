@@ -13,15 +13,12 @@ import {
   Outlet,
   useLocation,
   useNavigate,
-  Link,
 } from "react-router-dom";
 import useLocalStorageState from "use-local-storage-state";
 
 import { ActivityFeed, type ActivityDraft } from "@/components/ActivityFeed";
 import { NavBar } from "@/components/NavBar";
-import { AgentConversationContent, AgentPanel } from "@/components/AgentPanel";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { LoopiePanel } from "@/components/LoopiePanel";
 import {
   ContentTypeTabs,
   type ContentTypeFilter,
@@ -42,6 +39,7 @@ import { VideoDetailPage } from "@/pages/VideoDetailPage";
 import { JournalDetailPage } from "@/pages/JournalDetailPage";
 import { InsightsPage } from "@/pages/InsightsPage";
 import { ConversationDetailPage } from "@/pages/ConversationDetailPage";
+import { LoopiePage } from "@/pages/LoopiePage";
 import { JournalSummaryCards } from "@/components/JournalSummaryCards";
 import {
   AgentConversationProvider,
@@ -89,6 +87,7 @@ const seedActivityItems: ActivityItem[] = [
 function AppLayout() {
   const location = useLocation();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const isLoopieRoute = location.pathname.startsWith("/loopie");
 
   return (
     <div className="to-muted/12 relative min-h-screen bg-gradient-to-br from-background text-foreground sm:flex sm:h-screen sm:flex-col sm:overflow-hidden">
@@ -102,9 +101,11 @@ function AppLayout() {
               <Outlet key={location.pathname} />
             </div>
           </div>
-          <div className="col-span-1 hidden h-full min-h-0 lg:flex">
-            <AgentPanel />
-          </div>
+          {!isLoopieRoute ? (
+            <div className="col-span-1 hidden h-full min-h-0 lg:flex">
+              <LoopiePanel />
+            </div>
+          ) : null}
         </div>
       </main>
       <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
@@ -489,44 +490,6 @@ function JournalPage() {
         onConversationDelete={isDemo ? undefined : handleConversationDelete}
         deletingConversationIds={deletingConversationIds}
       />
-    </div>
-  );
-}
-
-function LoopiePage() {
-  const { state, adapter, isInitializing } = useAgentConversationContext();
-
-  return (
-    <div className="flex h-full min-h-0 flex-col gap-4">
-      <section className="flex min-h-0 flex-1 flex-col gap-4 rounded-lg border border-border bg-background/90 p-4 shadow-sm sm:p-6">
-        <div className="space-y-1">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Loopie assistant
-          </p>
-          <h1 className="text-2xl font-semibold tracking-tight">Chat with Loopie</h1>
-          <p className="text-sm text-muted-foreground">
-            Keep the conversation going while the main panel is hidden on small screens.
-          </p>
-        </div>
-        <Link to="/new-conversation" className="absolute right-4 top-4 lg:hidden">
-          <Button size="icon" variant="outline">
-            <Plus className="h-4 w-4" />
-            <span className="sr-only">New Conversation</span>
-          </Button>
-        </Link>
-
-        <div className="flex min-h-0 flex-1 flex-col">
-          <AgentConversationContent
-            state={state}
-            adapter={adapter}
-            surfaceVariant="page"
-            composerPlaceholder="Share your next note or question for Loopie…"
-            idleHelperText="Loopie will keep the active chat elsewhere unchanged."
-            respondingHelperText="Loopie is preparing a reply"
-            disabled={isInitializing}
-          />
-        </div>
-      </section>
     </div>
   );
 }

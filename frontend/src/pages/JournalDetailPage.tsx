@@ -11,7 +11,7 @@ import { entryToActivityItem } from "@/lib/types/entries";
 import { NavBar } from "@/components/NavBar";
 import { VideoLinkCard } from "@/components/VideoLinkCard";
 import { ActivityDraftCard } from "@/components/ActivityDraftCard";
-import { AgentPanel } from "@/components/AgentPanel";
+import { LoopiePanel } from "@/components/LoopiePanel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { YoutubeVideoResponse } from "@/api/youtube";
@@ -355,7 +355,7 @@ export function JournalDetailPage() {
               </section>
             </div>
             <div className="col-span-1 hidden h-full min-h-0 lg:flex">
-              <AgentPanel />
+              <LoopiePanel />
             </div>
           </div>
         </main>
