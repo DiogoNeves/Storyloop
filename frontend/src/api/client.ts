@@ -1,7 +1,11 @@
 import axios, { AxiosError } from "axios";
 
 const DEFAULT_TIMEOUT = 10_000;
-const DEFAULT_BASE_URL = "http://localhost:8000";
+const defaultProtocol =
+  typeof window === "undefined" ? "http:" : window.location.protocol;
+const defaultBackendHost =
+  typeof window === "undefined" ? "localhost" : window.location.hostname;
+const DEFAULT_BASE_URL = `${defaultProtocol}//${defaultBackendHost}:8000`;
 
 const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
