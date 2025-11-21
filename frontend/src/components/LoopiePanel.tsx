@@ -214,7 +214,6 @@ export function LoopiePanelView({
   isInitializing,
   variant = "panel",
   className,
-  showConversationLink = false,
 }: LoopiePanelViewProps) {
   const containerClasses = cn(
     "relative flex h-full w-full flex-1 flex-col overflow-hidden",
@@ -256,13 +255,6 @@ export function LoopiePanelView({
                   Demo
                 </span>
               ) : null}
-              {showConversationLink ? (
-                <Link to="/new-conversation" className="lg:hidden">
-                  <Button size="icon" variant="outline" aria-label="Start a new conversation">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </Link>
-              ) : null}
               <Button
                 type="button"
                 variant="ghost"
@@ -292,9 +284,9 @@ export function LoopiePanelView({
 export function LoopiePanel({
   variant = "panel",
   className,
-  showConversationLink = false,
 }: LoopiePanelProps) {
-  const { state, adapter, isDemo, isInitializing } = useAgentConversationContext();
+  const { state, adapter, isDemo, isInitializing } =
+    useAgentConversationContext();
   return (
     <LoopiePanelView
       state={state}
@@ -303,7 +295,6 @@ export function LoopiePanel({
       isInitializing={isInitializing}
       variant={variant}
       className={className}
-      showConversationLink={showConversationLink}
     />
   );
 }
