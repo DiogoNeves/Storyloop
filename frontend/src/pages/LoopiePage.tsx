@@ -7,17 +7,16 @@ export function LoopiePage() {
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Loopie assistant
         </p>
-        <h1 className="text-2xl font-semibold tracking-tight">Chat with Loopie</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Chat with Loopie
+        </h1>
         <p className="text-sm text-muted-foreground">
-          Keep the conversation going while the main panel is hidden on small screens.
+          Keep the conversation going while the main panel is hidden on small
+          screens.
         </p>
       </section>
 
-      <LoopiePanel
-        variant="page"
-        showConversationLink
-        className="flex-1 min-h-[520px]"
-      />
+      <LoopiePanel variant="page" className="min-h-[520px] flex-1" />
     </div>
   );
 }
