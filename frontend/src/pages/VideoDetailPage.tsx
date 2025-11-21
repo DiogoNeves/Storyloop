@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { fetchVideoDetail, type YoutubeVideoDetailResponse } from "@/api/youtube";
 import { NavBar } from "@/components/NavBar";
-import { AgentPanel } from "@/components/AgentPanel";
+import { LoopiePanel } from "@/components/LoopiePanel";
 import { SettingsDialog } from "@/components/SettingsDialog";
 
 export function VideoDetailPage() {
@@ -133,7 +133,7 @@ export function VideoDetailPage() {
               </section>
             </div>
             <div className="col-span-1 hidden h-full min-h-0 lg:flex">
-              <AgentPanel />
+              <LoopiePanel />
             </div>
           </div>
         </main>

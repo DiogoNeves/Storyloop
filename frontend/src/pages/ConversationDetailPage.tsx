@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { conversationQueries, deleteConversation } from "@/api/conversations";
-import { AgentConversationContent } from "@/components/AgentPanel";
+import { LoopieConversationContent } from "@/components/LoopiePanel";
 import { NavBar } from "@/components/NavBar";
 import { Button } from "@/components/ui/button";
 import { SettingsDialog } from "@/components/SettingsDialog";
@@ -132,7 +132,7 @@ export function ConversationDetailPage() {
                   <p className="text-sm text-muted-foreground">
                     Start a new conversation with Loopie.
                   </p>
-                  <AgentConversationContent
+                  <LoopieConversationContent
                     state={state}
                     adapter={adapter}
                     surfaceVariant="page"
@@ -155,7 +155,7 @@ export function ConversationDetailPage() {
                       conversation.
                     </p>
                   ) : null}
-                  <AgentConversationContent
+                  <LoopieConversationContent
                     state={state}
                     adapter={adapter}
                     surfaceVariant="page"
