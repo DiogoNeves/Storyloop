@@ -32,19 +32,28 @@ vi.mock("@/context/AgentConversationContext", () => ({
   useAgentConversationContext: () => mockUseAgentConversationContext(),
 }));
 
+import { SettingsContext } from "@/context/SettingsContext";
+
 function renderPage(ui: ReactElement, initialPath: string) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
 
+  const mockSettings = {
+    publicOnly: false,
+    setPublicOnly: vi.fn(),
+  };
+
   render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[initialPath]}>
-        <Routes>
-          <Route path="/conversations/:conversationId" element={ui} />
-          <Route path="/" element={<div data-testid="activity-feed" />} />
-        </Routes>
-      </MemoryRouter>
+      <SettingsContext.Provider value={mockSettings}>
+        <MemoryRouter initialEntries={[initialPath]}>
+          <Routes>
+            <Route path="/conversations/:conversationId" element={ui} />
+            <Route path="/" element={<div data-testid="activity-feed" />} />
+          </Routes>
+        </MemoryRouter>
+      </SettingsContext.Provider>
     </QueryClientProvider>,
   );
 }
