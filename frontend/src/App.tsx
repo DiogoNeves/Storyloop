@@ -516,10 +516,6 @@ export function App() {
                 path="/conversations/:conversationId"
                 element={<ConversationDetailPage />}
               />
-              <Route
-                path="/new-conversation"
-                element={<ConversationDetailPage />}
-              />
               <Route path="/auth/callback" element={<YoutubeAuthCallback />} />
             </Routes>
           </AgentConversationProvider>
