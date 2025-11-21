@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowUp, Bot, Plus, Square } from "lucide-react";
+import { ArrowUp, Bot, Plus, RotateCcw, Square } from "lucide-react";
 
 import { useAgentConversationContext } from "@/context/AgentConversationContext";
 import {
@@ -273,7 +273,7 @@ export function LoopiePanelView({
                 className="border border-transparent text-muted-foreground transition hover:border-border/40"
                 disabled={isInitializing}
               >
-                <Plus className="h-4 w-4" />
+                <RotateCcw className="h-4 w-4" />
               </Button>
             </div>
           </div>
