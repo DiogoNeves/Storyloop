@@ -42,22 +42,32 @@ def parse_duration_seconds(duration: str | None) -> int | None:
     """
     if not duration:
         return None
-    # ISO 8601 duration format: PT[nH][nM][nS]
-    # Remove "PT" prefix
-    if not duration.startswith("PT"):
+    # ISO 8601 duration format: P[nD]T[nH][nM][nS] or P[nD]
+    if not duration.startswith("P"):
         logger.warning("Unexpected duration format: %s", duration)
         return None
-    duration_str = duration[2:]
+    
+    duration_str = duration[1:] # Remove "P"
     total_seconds = 0
-    # Parse hours, minutes, seconds
-    hours_match = re.search(r"(\d+)H", duration_str)
-    minutes_match = re.search(r"(\d+)M", duration_str)
-    seconds_match = re.search(r"(\d+)S", duration_str)
-    if hours_match:
-        total_seconds += int(hours_match.group(1)) * 3600
-    if minutes_match:
-        total_seconds += int(minutes_match.group(1)) * 60
-    if seconds_match:
-        total_seconds += int(seconds_match.group(1))
+    
+    # Parse days
+    days_match = re.search(r"(\d+)D", duration_str)
+    if days_match:
+        total_seconds += int(days_match.group(1)) * 86400
+        
+    # Parse time components if present
+    if "T" in duration_str:
+        time_str = duration_str.split("T")[1]
+        hours_match = re.search(r"(\d+)H", time_str)
+        minutes_match = re.search(r"(\d+)M", time_str)
+        seconds_match = re.search(r"(\d+)S", time_str)
+        
+        if hours_match:
+            total_seconds += int(hours_match.group(1)) * 3600
+        if minutes_match:
+            total_seconds += int(minutes_match.group(1)) * 60
+        if seconds_match:
+            total_seconds += int(seconds_match.group(1))
+            
     return total_seconds
 
