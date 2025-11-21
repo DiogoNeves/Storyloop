@@ -6,6 +6,7 @@ import { conversationQueries, deleteConversation } from "@/api/conversations";
 import { AgentConversationContent } from "@/components/AgentPanel";
 import { NavBar } from "@/components/NavBar";
 import { Button } from "@/components/ui/button";
+import { SettingsDialog } from "@/components/SettingsDialog";
 import { useAgentConversationContext } from "@/context/AgentConversationContext";
 
 export function ConversationDetailPage() {
@@ -15,6 +16,7 @@ export function ConversationDetailPage() {
   const { state, adapter, setActiveConversation, isInitializing } =
     useAgentConversationContext();
 
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const conversationListQuery = useMemo(() => conversationQueries.list(), []);
@@ -79,7 +81,7 @@ export function ConversationDetailPage() {
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-background to-muted/12 text-foreground">
-      <NavBar />
+      <NavBar onOpenSettings={() => setIsSettingsOpen(true)} />
       <main className="relative flex min-h-[calc(100vh-4rem)] flex-1 overflow-y-auto pt-16 lg:overflow-hidden">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-primary/8 via-transparent to-transparent" />
         <div className="relative grid h-full min-h-[calc(100vh-4rem)] w-full grid-cols-1 gap-6 px-6 py-10 sm:py-12 lg:px-10 xl:px-16">
@@ -99,7 +101,7 @@ export function ConversationDetailPage() {
                   <h1 className="text-2xl font-semibold tracking-tight">
                     {conversationId
                       ? "Conversation detail"
-                      : "Conversation not found"}
+                      : "New Conversation"}
                   </h1>
                 </div>
                 {conversationId ? (
@@ -126,9 +128,20 @@ export function ConversationDetailPage() {
               ) : null}
 
               {!conversationId ? (
-                <p className="text-sm text-muted-foreground">
-                  We couldn't find that conversation.
-                </p>
+                <div className="flex min-h-0 flex-1 flex-col gap-3">
+                  <p className="text-sm text-muted-foreground">
+                    Start a new conversation with Loopie.
+                  </p>
+                  <AgentConversationContent
+                    state={state}
+                    adapter={adapter}
+                    surfaceVariant="page"
+                    composerPlaceholder="Share your next note or question for Loopie…"
+                    idleHelperText="Loopie will keep the active chat elsewhere unchanged."
+                    respondingHelperText="Loopie is preparing a reply"
+                    disabled={isInitializing}
+                  />
+                </div>
               ) : (
                 <div className="flex min-h-0 flex-1 flex-col gap-3">
                   {isInitializing ? (
@@ -157,6 +170,7 @@ export function ConversationDetailPage() {
           </div>
         </div>
       </main>
+      <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
     </div>
   );
 }
