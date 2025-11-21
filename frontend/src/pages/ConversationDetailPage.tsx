@@ -80,12 +80,12 @@ export function ConversationDetailPage() {
     Boolean(conversationId) && !isInitializing && state.messages.length === 0;
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-background to-muted/12 text-foreground">
+    <div className="to-muted/12 relative min-h-screen bg-gradient-to-br from-background text-foreground">
       <NavBar onOpenSettings={() => setIsSettingsOpen(true)} />
       <main className="relative flex min-h-[calc(100vh-4rem)] flex-1 overflow-y-auto pt-16 lg:overflow-hidden">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-primary/8 via-transparent to-transparent" />
+        <div className="from-primary/8 pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b via-transparent to-transparent" />
         <div className="relative grid h-full min-h-[calc(100vh-4rem)] w-full grid-cols-1 gap-6 px-6 py-10 sm:py-12 lg:px-10 xl:px-16">
-          <div className="col-span-1 flex h-full min-h-0 flex-col gap-6 overflow-y-auto scrollbar-hide">
+          <div className="scrollbar-hide col-span-1 flex h-full min-h-0 flex-col gap-6 overflow-y-auto">
             <Link
               to="/"
               className="text-sm font-medium text-primary underline-offset-2 hover:underline"
@@ -99,9 +99,7 @@ export function ConversationDetailPage() {
                     Loopie conversations
                   </p>
                   <h1 className="text-2xl font-semibold tracking-tight">
-                    {conversationId
-                      ? "Conversation detail"
-                      : "New Conversation"}
+                    Conversation detail
                   </h1>
                 </div>
                 {conversationId ? (
@@ -127,45 +125,28 @@ export function ConversationDetailPage() {
                 </p>
               ) : null}
 
-              {!conversationId ? (
-                <div className="flex min-h-0 flex-1 flex-col gap-3">
+              <div className="flex min-h-0 flex-1 flex-col gap-3">
+                {isInitializing ? (
                   <p className="text-sm text-muted-foreground">
-                    Start a new conversation with Loopie.
+                    Loading conversation…
                   </p>
-                  <LoopieConversationContent
-                    state={state}
-                    adapter={adapter}
-                    surfaceVariant="page"
-                    composerPlaceholder="Share your next note or question for Loopie…"
-                    idleHelperText="Loopie will keep the active chat elsewhere unchanged."
-                    respondingHelperText="Loopie is preparing a reply"
-                    disabled={isInitializing}
-                  />
-                </div>
-              ) : (
-                <div className="flex min-h-0 flex-1 flex-col gap-3">
-                  {isInitializing ? (
-                    <p className="text-sm text-muted-foreground">
-                      Loading conversation…
-                    </p>
-                  ) : null}
-                  {shouldShowEmptyState ? (
-                    <p className="text-sm text-muted-foreground">
-                      No turns yet. Start chatting with Loopie to capture this
-                      conversation.
-                    </p>
-                  ) : null}
-                  <LoopieConversationContent
-                    state={state}
-                    adapter={adapter}
-                    surfaceVariant="page"
-                    composerPlaceholder="Share your next note or question for Loopie…"
-                    idleHelperText="Loopie will keep the active chat elsewhere unchanged."
-                    respondingHelperText="Loopie is preparing a reply"
-                    disabled={isInitializing}
-                  />
-                </div>
-              )}
+                ) : null}
+                {shouldShowEmptyState ? (
+                  <p className="text-sm text-muted-foreground">
+                    No turns yet. Start chatting with Loopie to capture this
+                    conversation.
+                  </p>
+                ) : null}
+                <LoopieConversationContent
+                  state={state}
+                  adapter={adapter}
+                  surfaceVariant="page"
+                  composerPlaceholder="Share your next note or question for Loopie…"
+                  idleHelperText="Loopie will keep the active chat elsewhere unchanged."
+                  respondingHelperText="Loopie is preparing a reply"
+                  disabled={isInitializing}
+                />
+              </div>
             </section>
           </div>
         </div>
