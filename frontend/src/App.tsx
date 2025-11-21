@@ -13,12 +13,15 @@ import {
   Outlet,
   useLocation,
   useNavigate,
+  Link,
 } from "react-router-dom";
 import useLocalStorageState from "use-local-storage-state";
 
 import { ActivityFeed, type ActivityDraft } from "@/components/ActivityFeed";
 import { NavBar } from "@/components/NavBar";
 import { AgentConversationContent, AgentPanel } from "@/components/AgentPanel";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 import {
   ContentTypeTabs,
   type ContentTypeFilter,
@@ -505,6 +508,12 @@ function LoopiePage() {
             Keep the conversation going while the main panel is hidden on small screens.
           </p>
         </div>
+        <Link to="/new-conversation" className="absolute right-4 top-4 lg:hidden">
+          <Button size="icon" variant="outline">
+            <Plus className="h-4 w-4" />
+            <span className="sr-only">New Conversation</span>
+          </Button>
+        </Link>
 
         <div className="flex min-h-0 flex-1 flex-col">
           <AgentConversationContent
@@ -542,6 +551,10 @@ export function App() {
               />
               <Route
                 path="/conversations/:conversationId"
+                element={<ConversationDetailPage />}
+              />
+              <Route
+                path="/new-conversation"
                 element={<ConversationDetailPage />}
               />
               <Route path="/auth/callback" element={<YoutubeAuthCallback />} />
