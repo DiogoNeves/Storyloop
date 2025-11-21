@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowUp, Bot, Plus, Square } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowUp, Bot, Plus, RotateCcw, Square } from "lucide-react";
 
 import { useAgentConversationContext } from "@/context/AgentConversationContext";
 import {
@@ -12,13 +13,7 @@ import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { ChatMessage } from "./chat/ChatMessage";
 
-interface AgentPanelViewProps {
-  state: AgentConversationState;
-  adapter: AgentConversationAdapter;
-  isDemo?: boolean;
-}
-
-interface AgentConversationContentProps {
+interface LoopieConversationContentProps {
   state: AgentConversationState;
   adapter: AgentConversationAdapter;
   className?: string;
@@ -29,7 +24,23 @@ interface AgentConversationContentProps {
   disabled?: boolean;
 }
 
-export function AgentConversationContent({
+interface LoopiePanelViewProps {
+  state: AgentConversationState;
+  adapter: AgentConversationAdapter;
+  isDemo?: boolean;
+  isInitializing?: boolean;
+  variant?: "panel" | "page";
+  className?: string;
+  showConversationLink?: boolean;
+}
+
+interface LoopiePanelProps {
+  variant?: "panel" | "page";
+  className?: string;
+  showConversationLink?: boolean;
+}
+
+export function LoopieConversationContent({
   state,
   adapter,
   className,
@@ -38,7 +49,7 @@ export function AgentConversationContent({
   idleHelperText,
   respondingHelperText,
   disabled = false,
-}: AgentConversationContentProps) {
+}: LoopieConversationContentProps) {
   const [inputValue, setInputValue] = useState("");
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -81,7 +92,8 @@ export function AgentConversationContent({
         ? "Sending to Loopie"
         : "Share your next move with Loopie";
 
-  const padding = surfaceVariant === "panel" ? "px-6 py-5" : "px-4 py-4";
+  const padding =
+    surfaceVariant === "panel" ? "px-6 py-5" : "px-4 py-4 sm:px-5 sm:py-5";
   const composerSurface =
     surfaceVariant === "panel"
       ? "bg-background/98 border-t border-border/40"
@@ -146,61 +158,87 @@ export function AgentConversationContent({
             <p className="text-xs text-destructive">{state.composer.error}</p>
           ) : null}
           <div className="relative flex select-none items-end rounded-2xl border border-border/50 bg-muted/30 shadow-sm focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20">
-          <Textarea
-            id="agent-composer"
-            placeholder={composerPlaceholder}
-            value={inputValue}
-            onChange={(event) => setInputValue(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey) {
-                event.preventDefault();
-                handleSubmit();
-              }
-            }}
-            disabled={isTextareaDisabled}
-            className="min-h-[104px] resize-none rounded-2xl border-0 bg-transparent px-4 py-3 pr-24 text-sm shadow-none focus-visible:outline-none focus-visible:ring-0"
-          />
-          <div className="absolute bottom-3 right-3 flex select-none items-center gap-2">
-            <span className="hidden text-[10px] text-muted-foreground/70 sm:inline">
-              {state.composer.status === "responding"
-                ? "Loopie is thinking"
-                : "Shift + Enter"}
-            </span>
-            {showStopButton ? (
-              <Button
-                type="button"
-                onClick={adapter.stopResponse}
-                className="h-9 w-9 rounded-full bg-destructive/90 p-0 text-destructive-foreground shadow-lg transition hover:bg-destructive"
-                aria-label="Stop response"
-              >
-                <Square className="h-4 w-4" />
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                onClick={handleSubmit}
-                disabled={isSendDisabled}
-                className="h-9 w-9 rounded-full bg-gradient-to-r from-primary via-primary/80 to-primary p-0 text-primary-foreground shadow-lg transition hover:from-primary/90 hover:to-primary/80 disabled:opacity-60"
-                aria-label="Send to Loopie"
-              >
-                <ArrowUp className="h-4 w-4" />
-              </Button>
-            )}
+            <Textarea
+              id="agent-composer"
+              placeholder={composerPlaceholder}
+              value={inputValue}
+              onChange={(event) => setInputValue(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  handleSubmit();
+                }
+              }}
+              disabled={isTextareaDisabled}
+              className="min-h-[104px] resize-none rounded-2xl border-0 bg-transparent px-4 py-3 pr-24 text-sm shadow-none focus-visible:outline-none focus-visible:ring-0"
+            />
+            <div className="absolute bottom-3 right-3 flex select-none items-center gap-2">
+              <span className="hidden text-[10px] text-muted-foreground/70 sm:inline">
+                {state.composer.status === "responding"
+                  ? "Loopie is thinking"
+                  : "Shift + Enter"}
+              </span>
+              {showStopButton ? (
+                <Button
+                  type="button"
+                  onClick={adapter.stopResponse}
+                  className="h-9 w-9 rounded-full bg-destructive/90 p-0 text-destructive-foreground shadow-lg transition hover:bg-destructive"
+                  aria-label="Stop response"
+                >
+                  <Square className="h-4 w-4" />
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={isSendDisabled}
+                  className="h-9 w-9 rounded-full bg-gradient-to-r from-primary via-primary/80 to-primary p-0 text-primary-foreground shadow-lg transition hover:from-primary/90 hover:to-primary/80 disabled:opacity-60"
+                  aria-label="Send to Loopie"
+                >
+                  <ArrowUp className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
-        <p className="text-[10px] text-muted-foreground/70">{helperText}</p>
+          <p className="text-[10px] text-muted-foreground/70">{helperText}</p>
         </div>
       </div>
     </div>
   );
 }
 
-export function AgentPanelView({ state, adapter, isDemo }: AgentPanelViewProps) {
+export function LoopiePanelView({
+  state,
+  adapter,
+  isDemo,
+  isInitializing,
+  variant = "panel",
+  className,
+}: LoopiePanelViewProps) {
+  const containerClasses = cn(
+    "relative flex h-full w-full flex-1 flex-col overflow-hidden",
+    variant === "panel"
+      ? "rounded-2xl border border-primary/15 bg-background/98 shadow-[0_24px_70px_-50px_rgba(32,0,77,0.6)]"
+      : "rounded-xl border border-border/70 bg-background/95 shadow-sm",
+    className,
+  );
+  const headerPadding = variant === "panel" ? "px-3 py-3" : "px-4 py-4 sm:px-5";
+
   return (
-    <aside className="bg-background/98 relative flex h-full w-full flex-1 flex-col overflow-hidden rounded-2xl border border-primary/15 shadow-[0_24px_70px_-50px_rgba(32,0,77,0.6)]">
-      <div className="from-primary/12 pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b via-primary/5 to-transparent opacity-60" />
+    <section className={containerClasses}>
+      {variant === "panel" ? (
+        <div className="from-primary/12 pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b via-primary/5 to-transparent opacity-60" />
+      ) : null}
       <div className="relative flex h-full flex-col">
-        <header className="flex items-start gap-4 border-b border-border/40 px-3 py-3 backdrop-blur">
+        <header
+          className={cn(
+            "flex items-start gap-4 border-b",
+            variant === "panel"
+              ? "border-border/40 backdrop-blur"
+              : "border-border/60 bg-background/95",
+            headerPadding,
+          )}
+        >
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/30 bg-primary/15 text-primary">
             <Bot className="h-6 w-6" aria-hidden="true" />
           </div>
@@ -225,21 +263,38 @@ export function AgentPanelView({ state, adapter, isDemo }: AgentPanelViewProps) 
                 aria-label="Clear conversation"
                 title="Clear conversation"
                 className="border border-transparent text-muted-foreground transition hover:border-border/40"
+                disabled={isInitializing}
               >
-                <Plus className="h-4 w-4" />
+                <RotateCcw className="h-4 w-4" />
               </Button>
             </div>
           </div>
         </header>
-        <AgentConversationContent state={state} adapter={adapter} />
+        <LoopieConversationContent
+          state={state}
+          adapter={adapter}
+          surfaceVariant={variant}
+          disabled={isInitializing}
+        />
       </div>
-    </aside>
+    </section>
   );
 }
 
-export function AgentPanel() {
-  const { state, adapter, isDemo } = useAgentConversationContext();
+export function LoopiePanel({
+  variant = "panel",
+  className,
+}: LoopiePanelProps) {
+  const { state, adapter, isDemo, isInitializing } =
+    useAgentConversationContext();
   return (
-    <AgentPanelView state={state} adapter={adapter} isDemo={isDemo} />
+    <LoopiePanelView
+      state={state}
+      adapter={adapter}
+      isDemo={isDemo}
+      isInitializing={isInitializing}
+      variant={variant}
+      className={className}
+    />
   );
 }

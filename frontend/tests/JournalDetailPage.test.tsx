@@ -15,8 +15,8 @@ const useYouTubeFeedMock = vi.fn<
 >();
 const apiGetMock = vi.hoisted(() => vi.fn());
 
-vi.mock("@/components/AgentPanel", () => ({
-  AgentPanel: () => <div data-testid="agent-panel" />,
+vi.mock("@/components/LoopiePanel", () => ({
+  LoopiePanel: () => <div data-testid="agent-panel" />,
 }));
 
 vi.mock("@/api/client", () => ({
