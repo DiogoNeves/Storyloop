@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import { ArrowUp, Bot, Plus, RotateCcw, Square } from "lucide-react";
+import { ArrowUp, Bot, RotateCcw, Square } from "lucide-react";
 
 import { useAgentConversationContext } from "@/context/AgentConversationContext";
 import {
