@@ -45,7 +45,8 @@ export function ActivityFeedItem({
   const summary = item.summary.trim();
   const truncatedSummary =
     summary.length > 280 ? `${summary.slice(0, 277).trimEnd()}…` : summary;
-  const showThumbnail = item.category === "content" && Boolean(item.thumbnailUrl);
+  const showThumbnail =
+    item.category === "content" && Boolean(item.thumbnailUrl);
   const detailPath = getActivityDetailPath(item);
 
   const handleDetailClick = () => {
@@ -100,7 +101,7 @@ export function ActivityFeedItem({
               {detailPath ? (
                 <Link
                   to={detailPath}
-                  className="block truncate overflow-hidden text-primary underline-offset-2 hover:underline"
+                  className="block overflow-hidden truncate text-primary underline-offset-2 hover:underline"
                   onClick={handleDetailClick}
                   title={titleText}
                 >
@@ -111,13 +112,16 @@ export function ActivityFeedItem({
                   href={item.linkUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block truncate overflow-hidden text-primary underline-offset-2 hover:underline"
+                  className="block overflow-hidden truncate text-primary underline-offset-2 hover:underline"
                   title={titleText}
                 >
                   {titleText}
                 </a>
               ) : (
-                <span className="block truncate overflow-hidden" title={titleText}>
+                <span
+                  className="block overflow-hidden truncate"
+                  title={titleText}
+                >
                   {titleText}
                 </span>
               )}
@@ -188,12 +192,14 @@ export function ActivityFeedItem({
             )
           ) : null}
         </div>
-        {onEdit || onDelete || (item.category === "conversation" && onConversationDelete) ? (
+        {onEdit ||
+        onDelete ||
+        (item.category === "conversation" && onConversationDelete) ? (
           <div className="absolute bottom-2 right-4 hidden items-center gap-2 group-hover:flex">
             {onEdit ? (
               <button
                 type="button"
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                className="text-xs text-muted-foreground transition-colors hover:text-foreground"
                 onClick={() => {
                   onEdit();
                 }}
@@ -204,7 +210,7 @@ export function ActivityFeedItem({
             {onDelete ? (
               <button
                 type="button"
-                className="text-xs text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
+                className="text-xs text-muted-foreground transition-colors hover:text-destructive disabled:opacity-50"
                 onClick={() => {
                   onDelete();
                 }}
@@ -216,7 +222,7 @@ export function ActivityFeedItem({
             {item.category === "conversation" && onConversationDelete ? (
               <button
                 type="button"
-                className="text-xs text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
+                className="text-xs text-muted-foreground transition-colors hover:text-destructive disabled:opacity-50"
                 onClick={handleConversationDelete}
                 disabled={isConversationDeleting}
               >
@@ -226,17 +232,17 @@ export function ActivityFeedItem({
           </div>
         ) : null}
 
-      <DeleteConversationDialog
-        open={isConfirmingDelete}
-        onOpenChange={setIsConfirmingDelete}
-        isDeleting={isConversationDeleting}
-        description="This Loopie conversation will be removed from your activity feed. This action cannot be undone."
-        onConfirm={() => {
-          setIsConfirmingDelete(false);
-          onConversationDelete();
-        }}
-      />
-    </CardContent>
-  </Card>
+        <DeleteConversationDialog
+          open={isConfirmingDelete}
+          onOpenChange={setIsConfirmingDelete}
+          isDeleting={isConversationDeleting}
+          description="This Loopie conversation will be removed from your activity feed. This action cannot be undone."
+          onConfirm={() => {
+            setIsConfirmingDelete(false);
+            onConversationDelete?.();
+          }}
+        />
+      </CardContent>
+    </Card>
   );
 }
