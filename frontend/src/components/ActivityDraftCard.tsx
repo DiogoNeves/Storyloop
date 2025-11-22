@@ -56,7 +56,7 @@ export function ActivityDraftCard({
       summaryRef.current.setSelectionRange(endPosition, endPosition);
       summaryRef.current.scrollTop = summaryRef.current.scrollHeight;
     }
-  }, []);
+  }, [draft.title]);
 
   const handleSubmit = (event?: FormEvent<HTMLFormElement>) => {
     event?.preventDefault();
