@@ -3,7 +3,13 @@ import {
   QueryClient,
   QueryClientProvider,
 } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -131,10 +137,17 @@ describe("ConversationDetailPage", () => {
 
     renderPage(<ConversationDetailPage />, "/conversations/xyz");
 
+    const user = userEvent.setup();
     const deleteButton = await screen.findByRole("button", {
       name: /Delete conversation/i,
     });
-    deleteButton.click();
+    await user.click(deleteButton);
+
+    const dialog = await screen.findByRole("dialog");
+    const confirmDelete = within(dialog).getByRole("button", {
+      name: /Delete conversation/i,
+    });
+    await user.click(confirmDelete);
 
     await waitFor(() => {
       expect(mockDeleteConversation).toHaveBeenCalled();

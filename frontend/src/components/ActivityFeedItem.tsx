@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Bot } from "lucide-react";
 
@@ -5,6 +6,15 @@ import { type ActivityItem } from "@/lib/types/entries";
 import { getActivityDetailPath } from "@/lib/activity-helpers";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const categoryBadgeClass: Record<ActivityItem["category"], string> = {
@@ -33,6 +43,7 @@ export function ActivityFeedItem({
   onConversationDelete,
   isConversationDeleting,
 }: ActivityFeedItemProps) {
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const formattedDate = new Date(item.date).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
@@ -54,7 +65,7 @@ export function ActivityFeedItem({
   };
   const handleConversationDelete = () => {
     if (item.category === "conversation" && onConversationDelete) {
-      onConversationDelete();
+      setIsConfirmingDelete(true);
     }
   };
 
@@ -222,7 +233,40 @@ export function ActivityFeedItem({
             ) : null}
           </div>
         ) : null}
-      </CardContent>
-    </Card>
+
+      <Dialog open={isConfirmingDelete} onOpenChange={setIsConfirmingDelete}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete conversation?</DialogTitle>
+            <DialogDescription>
+              This Loopie conversation will be removed from your activity feed.
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:space-x-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsConfirmingDelete(false)}
+              disabled={isConversationDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                setIsConfirmingDelete(false);
+                onConversationDelete();
+              }}
+              disabled={isConversationDeleting}
+            >
+              {isConversationDeleting ? "Deleting…" : "Delete conversation"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </CardContent>
+  </Card>
   );
 }
