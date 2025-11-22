@@ -6,6 +6,14 @@ import { conversationQueries, deleteConversation } from "@/api/conversations";
 import { LoopieConversationContent } from "@/components/LoopiePanel";
 import { NavBar } from "@/components/NavBar";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { useAgentConversationContext } from "@/context/AgentConversationContext";
 
@@ -17,6 +25,7 @@ export function ConversationDetailPage() {
     useAgentConversationContext();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const conversationListQuery = useMemo(() => conversationQueries.list(), []);
@@ -107,9 +116,7 @@ export function ConversationDetailPage() {
                     type="button"
                     variant="destructive"
                     size="sm"
-                    onClick={() => {
-                      void handleDeleteConversation();
-                    }}
+                    onClick={() => setIsConfirmingDelete(true)}
                     disabled={deleteMutation.isPending}
                   >
                     {deleteMutation.isPending
@@ -152,6 +159,39 @@ export function ConversationDetailPage() {
         </div>
       </main>
       <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+
+      <Dialog open={isConfirmingDelete} onOpenChange={setIsConfirmingDelete}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete conversation?</DialogTitle>
+            <DialogDescription>
+              This Loopie conversation and its turns will be deleted. This
+              action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:space-x-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsConfirmingDelete(false)}
+              disabled={deleteMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                setIsConfirmingDelete(false);
+                void handleDeleteConversation();
+              }}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? "Deleting…" : "Delete conversation"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
