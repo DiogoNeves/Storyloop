@@ -6,15 +6,7 @@ import { type ActivityItem } from "@/lib/types/entries";
 import { getActivityDetailPath } from "@/lib/activity-helpers";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { DeleteConversationDialog } from "@/components/DeleteConversationDialog";
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const categoryBadgeClass: Record<ActivityItem["category"], string> = {
@@ -234,38 +226,16 @@ export function ActivityFeedItem({
           </div>
         ) : null}
 
-      <Dialog open={isConfirmingDelete} onOpenChange={setIsConfirmingDelete}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete conversation?</DialogTitle>
-            <DialogDescription>
-              This Loopie conversation will be removed from your activity feed.
-              This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:space-x-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsConfirmingDelete(false)}
-              disabled={isConversationDeleting}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={() => {
-                setIsConfirmingDelete(false);
-                onConversationDelete();
-              }}
-              disabled={isConversationDeleting}
-            >
-              {isConversationDeleting ? "Deleting…" : "Delete conversation"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteConversationDialog
+        open={isConfirmingDelete}
+        onOpenChange={setIsConfirmingDelete}
+        isDeleting={isConversationDeleting}
+        description="This Loopie conversation will be removed from your activity feed. This action cannot be undone."
+        onConfirm={() => {
+          setIsConfirmingDelete(false);
+          onConversationDelete();
+        }}
+      />
     </CardContent>
   </Card>
   );
