@@ -105,7 +105,7 @@ export function ConversationDetailPage() {
                 {conversationId ? (
                   <Button
                     type="button"
-                    variant="destructive"
+                    variant="outline"
                     size="sm"
                     onClick={() => {
                       void handleDeleteConversation();
