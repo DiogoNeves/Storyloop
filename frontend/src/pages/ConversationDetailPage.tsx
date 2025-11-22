@@ -6,6 +6,7 @@ import { conversationQueries, deleteConversation } from "@/api/conversations";
 import { LoopieConversationContent } from "@/components/LoopiePanel";
 import { NavBar } from "@/components/NavBar";
 import { Button } from "@/components/ui/button";
+import { DeleteConversationDialog } from "@/components/DeleteConversationDialog";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { useAgentConversationContext } from "@/context/AgentConversationContext";
 
@@ -17,6 +18,7 @@ export function ConversationDetailPage() {
     useAgentConversationContext();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const conversationListQuery = useMemo(() => conversationQueries.list(), []);
@@ -107,9 +109,7 @@ export function ConversationDetailPage() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      void handleDeleteConversation();
-                    }}
+                    onClick={() => setIsConfirmingDelete(true)}
                     disabled={deleteMutation.isPending}
                   >
                     {deleteMutation.isPending
@@ -152,6 +152,17 @@ export function ConversationDetailPage() {
         </div>
       </main>
       <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+
+      <DeleteConversationDialog
+        open={isConfirmingDelete}
+        onOpenChange={setIsConfirmingDelete}
+        isDeleting={deleteMutation.isPending}
+        description="This Loopie conversation and its turns will be deleted. This action cannot be undone."
+        onConfirm={() => {
+          setIsConfirmingDelete(false);
+          void handleDeleteConversation();
+        }}
+      />
     </div>
   );
 }
