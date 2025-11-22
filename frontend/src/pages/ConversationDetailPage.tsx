@@ -6,14 +6,7 @@ import { conversationQueries, deleteConversation } from "@/api/conversations";
 import { LoopieConversationContent } from "@/components/LoopiePanel";
 import { NavBar } from "@/components/NavBar";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { DeleteConversationDialog } from "@/components/DeleteConversationDialog";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { useAgentConversationContext } from "@/context/AgentConversationContext";
 
@@ -160,38 +153,16 @@ export function ConversationDetailPage() {
       </main>
       <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
 
-      <Dialog open={isConfirmingDelete} onOpenChange={setIsConfirmingDelete}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete conversation?</DialogTitle>
-            <DialogDescription>
-              This Loopie conversation and its turns will be deleted. This
-              action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:space-x-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsConfirmingDelete(false)}
-              disabled={deleteMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={() => {
-                setIsConfirmingDelete(false);
-                void handleDeleteConversation();
-              }}
-              disabled={deleteMutation.isPending}
-            >
-              {deleteMutation.isPending ? "Deleting…" : "Delete conversation"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteConversationDialog
+        open={isConfirmingDelete}
+        onOpenChange={setIsConfirmingDelete}
+        isDeleting={deleteMutation.isPending}
+        description="This Loopie conversation and its turns will be deleted. This action cannot be undone."
+        onConfirm={() => {
+          setIsConfirmingDelete(false);
+          void handleDeleteConversation();
+        }}
+      />
     </div>
   );
 }
