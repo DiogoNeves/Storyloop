@@ -351,27 +351,28 @@ function JournalPage() {
     Set<string>
   >(new Set());
 
-  const { mutateAsync: saveEntry, isPending: isSavingEntry } = useMutation({
-    ...entriesMutations.create(),
-    onSuccess: (savedEntry) => {
-      if (!savedEntry) {
-        return;
-      }
-      queryClient.setQueryData<Entry[]>(
-        entriesListQuery.queryKey,
-        (current) => {
-          const next = (current ?? []).filter(
-            (entry) => entry.id !== savedEntry.id,
-          );
-          next.push(savedEntry);
-          next.sort(
-            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-          );
-          return next;
-        },
-      );
-    },
-  });
+  const { mutateAsync: saveEntry, isPending: isSavingEntry } = useMutation(
+    entriesMutations.create(queryClient, {
+      onSuccess: (savedEntry) => {
+        if (!savedEntry) {
+          return;
+        }
+        queryClient.setQueryData<Entry[]>(
+          entriesListQuery.queryKey,
+          (current) => {
+            const next = (current ?? []).filter(
+              (entry) => entry.id !== savedEntry.id,
+            );
+            next.push(savedEntry);
+            next.sort(
+              (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+            );
+            return next;
+          },
+        );
+      },
+    }),
+  );
 
   const formatNowAsDateTimeLocal = useCallback(() => {
     const now = new Date();
