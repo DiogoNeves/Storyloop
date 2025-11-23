@@ -173,7 +173,7 @@ APScheduler configuration for recurring jobs:
 
 **Implementation:**
 
-- Uses OpenAI's `gpt-5-nano` model via PydanticAI
+- Uses OpenAI's `gpt-5.1-chat-latest` model via PydanticAI
 - System prompt configured for YouTube creator assistance
 - Agent initialized at application startup and stored in `app.state.assistant_agent`
 - Returns `None` if `OPENAI_API_KEY` environment variable is not set (optional, like YouTube OAuth)

@@ -109,7 +109,7 @@ When an insight lands, the agent explains what changed, why it matters, and how 
 
 **Current Implementation:** `backend/app/services/agent.py`
 
-- ✅ `build_agent()` - Creates and configures PydanticAI agent with OpenAI's gpt-5-nano model
+- ✅ `build_agent()` - Creates and configures PydanticAI agent with OpenAI's gpt-5.1-chat-latest model
 - ✅ Basic system prompt for YouTube creator assistance
 - ✅ Optional initialization (returns None if OPENAI_API_KEY not set)
 - ✅ Stored in `app.state.assistant_agent` for dependency injection
