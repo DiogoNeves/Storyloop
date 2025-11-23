@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { ChatMessage } from "./chat/ChatMessage";
+import { type AgentToolSignal } from "@/lib/types/agent";
 
 interface LoopieConversationContentProps {
   state: AgentConversationState;
@@ -92,8 +93,7 @@ export function LoopieConversationContent({
         ? "Sending to Loopie"
         : "Share your next move with Loopie";
 
-  const padding =
-    surfaceVariant === "panel" ? "px-6 py-5" : "px-4 py-4 sm:px-5 sm:py-5";
+  const padding = surfaceVariant === "panel" ? "px-6 py-5" : "p-0 sm:p-4";
   const composerSurface =
     surfaceVariant === "panel"
       ? "bg-background/98 border-t border-border/40"
@@ -115,7 +115,7 @@ export function LoopieConversationContent({
       >
         <div
           ref={scrollContainerRef}
-          className="scrollbar-hide min-h-0 flex-1 space-y-5 overflow-y-auto pr-1"
+          className="scrollbar-hide min-h-0 flex-1 space-y-5 overflow-y-auto"
         >
           {state.messages.map((message) => (
             <ChatMessage key={message.id} message={message} />
@@ -126,23 +126,7 @@ export function LoopieConversationContent({
               Loopie is preparing insight…
             </div>
           ) : null}
-          {state.toolSignals.length > 0 ? (
-            <div className="space-y-2 pl-1">
-              {state.toolSignals.map((signal) => (
-                <div
-                  key={signal.id}
-                  className="flex items-center gap-2 rounded-xl border border-dashed border-primary/30 bg-primary/5 px-3 py-2 text-xs text-muted-foreground"
-                >
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-                  <div className="flex flex-col leading-tight">
-                    <span className="text-xs text-muted-foreground">
-                      {signal.message}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : null}
+          <ToolSignals signals={state.toolSignals} />
         </div>
       </div>
 
@@ -296,5 +280,33 @@ export function LoopiePanel({
       variant={variant}
       className={className}
     />
+  );
+}
+
+interface ToolSignalsProps {
+  signals: AgentToolSignal[];
+}
+
+function ToolSignals({ signals }: ToolSignalsProps) {
+  if (signals.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-2 pl-1">
+      {signals.map((signal) => (
+        <div
+          key={signal.id}
+          className="flex items-center gap-2 rounded-xl border border-dashed border-primary/30 bg-primary/5 px-3 py-2 text-xs text-muted-foreground"
+        >
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+          <div className="flex flex-col leading-tight">
+            <span className="text-xs text-muted-foreground">
+              {signal.message}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
