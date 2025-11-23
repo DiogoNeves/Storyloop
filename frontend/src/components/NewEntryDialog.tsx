@@ -51,12 +51,16 @@ export function NewEntryDialog({ onCreate, children }: NewEntryDialogProps) {
   const formRef = useRef<HTMLFormElement | null>(null);
   const titleRef = useRef<HTMLInputElement | null>(null);
   const summaryRef = useRef<HTMLTextAreaElement | null>(null);
+  const hasFocusedRef = useRef(false);
 
   const isValid = formState.title.trim().length > 0 && formState.summary.trim().length > 0;
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
       setFormState({ title: "", summary: "", date: formatDateLocal(new Date()) });
+      hasFocusedRef.current = false;
+    } else {
+      hasFocusedRef.current = false;
     }
     setOpen(nextOpen);
   };
@@ -81,7 +85,7 @@ export function NewEntryDialog({ onCreate, children }: NewEntryDialogProps) {
   };
 
   useEffect(() => {
-    if (!open) {
+    if (!open || hasFocusedRef.current) {
       return;
     }
 
@@ -94,6 +98,8 @@ export function NewEntryDialog({ onCreate, children }: NewEntryDialogProps) {
       summaryRef.current.setSelectionRange(endPosition, endPosition);
       summaryRef.current.scrollTop = summaryRef.current.scrollHeight;
     }
+
+    hasFocusedRef.current = true;
   }, [open, formState.title]);
 
   return (
