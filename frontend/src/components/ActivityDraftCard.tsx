@@ -45,16 +45,33 @@ export function ActivityDraftCard({
   const formRef = useRef<HTMLFormElement | null>(null);
   const titleRef = useRef<HTMLInputElement | null>(null);
   const summaryRef = useRef<HTMLTextAreaElement | null>(null);
+  const hasFocusedRef = useRef(false);
+  const initialTitleRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
-    const isEditingExistingTitle = draft.title.trim().length > 0;
-    const target = isEditingExistingTitle ? summaryRef.current : titleRef.current;
-    target?.focus({ preventScroll: true });
+    // Capture the initial title on first render
+    if (initialTitleRef.current === undefined) {
+      initialTitleRef.current = draft.title;
+    }
 
-    if (isEditingExistingTitle && summaryRef.current) {
-      const endPosition = summaryRef.current.value.length;
-      summaryRef.current.setSelectionRange(endPosition, endPosition);
-      summaryRef.current.scrollTop = summaryRef.current.scrollHeight;
+    // Focus only once when editing starts
+    if (hasFocusedRef.current) {
+      return;
+    }
+
+    // Use the initial title to determine focus target, not the current title
+    const isEditingExistingTitle = (initialTitleRef.current ?? "").trim().length > 0;
+    const target = isEditingExistingTitle ? summaryRef.current : titleRef.current;
+    if (target) {
+      target.focus({ preventScroll: true });
+
+      if (isEditingExistingTitle && summaryRef.current) {
+        const endPosition = summaryRef.current.value.length;
+        summaryRef.current.setSelectionRange(endPosition, endPosition);
+        summaryRef.current.scrollTop = summaryRef.current.scrollHeight;
+      }
+
+      hasFocusedRef.current = true;
     }
   }, [draft.title]);
 
