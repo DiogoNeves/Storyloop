@@ -99,11 +99,8 @@ export function ConversationDetailPage() {
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <p className="text-sm uppercase tracking-wide text-muted-foreground">
-                      Loopie conversations
+                      Loopie conversation
                     </p>
-                    <h1 className="text-2xl font-semibold tracking-tight">
-                      Conversation detail
-                    </h1>
                   </div>
                   {conversationId ? (
                     <Button
