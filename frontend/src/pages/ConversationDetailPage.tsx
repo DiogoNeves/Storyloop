@@ -86,68 +86,70 @@ export function ConversationDetailPage() {
       <NavBar onOpenSettings={() => setIsSettingsOpen(true)} />
       <main className="relative flex min-h-[calc(100vh-4rem)] flex-1 overflow-y-auto pt-16 lg:overflow-hidden">
         <div className="from-primary/8 pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b via-transparent to-transparent" />
-        <div className="relative grid h-full min-h-[calc(100vh-4rem)] w-full grid-cols-1 gap-6 px-6 py-10 sm:py-12 lg:px-10 xl:px-16">
-          <div className="scrollbar-hide col-span-1 flex h-full min-h-0 flex-col gap-6 overflow-y-auto">
-            <Link
-              to="/"
-              className="text-sm font-medium text-primary underline-offset-2 hover:underline"
-            >
-              ← Back to activity feed
-            </Link>
-            <section className="flex min-h-0 flex-col gap-6 rounded-lg border border-border bg-background/90 p-6 shadow-sm">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm uppercase tracking-wide text-muted-foreground">
-                    Loopie conversations
-                  </p>
-                  <h1 className="text-2xl font-semibold tracking-tight">
-                    Conversation detail
-                  </h1>
+        <div className="relative flex h-full min-h-[calc(100vh-4rem)] w-full justify-start">
+          <div className="grid h-full min-h-[calc(100vh-4rem)] w-full grid-cols-1 gap-4 px-4 py-4 sm:gap-6 sm:px-5 sm:py-5 lg:w-2/3 lg:px-10">
+            <div className="scrollbar-hide col-span-1 flex h-full min-h-0 flex-col gap-4 overflow-y-auto sm:gap-6">
+              <Link
+                to="/"
+                className="text-sm font-medium text-primary underline-offset-2 hover:underline"
+              >
+                ← Back to activity feed
+              </Link>
+              <section className="flex min-h-0 flex-col gap-6 rounded-xl border border-border/80 bg-background/90 p-4 shadow-sm sm:p-5">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm uppercase tracking-wide text-muted-foreground">
+                      Loopie conversations
+                    </p>
+                    <h1 className="text-2xl font-semibold tracking-tight">
+                      Conversation detail
+                    </h1>
+                  </div>
+                  {conversationId ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsConfirmingDelete(true)}
+                      disabled={deleteMutation.isPending}
+                    >
+                      {deleteMutation.isPending
+                        ? "Deleting…"
+                        : "Delete conversation"}
+                    </Button>
+                  ) : null}
                 </div>
-                {conversationId ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsConfirmingDelete(true)}
-                    disabled={deleteMutation.isPending}
-                  >
-                    {deleteMutation.isPending
-                      ? "Deleting…"
-                      : "Delete conversation"}
-                  </Button>
-                ) : null}
-              </div>
 
-              {deleteError ? (
-                <p className="text-sm text-destructive" role="status">
-                  {deleteError}
-                </p>
-              ) : null}
-
-              <div className="flex min-h-0 flex-1 flex-col gap-3">
-                {isInitializing ? (
-                  <p className="text-sm text-muted-foreground">
-                    Loading conversation…
+                {deleteError ? (
+                  <p className="text-sm text-destructive" role="status">
+                    {deleteError}
                   </p>
                 ) : null}
-                {shouldShowEmptyState ? (
-                  <p className="text-sm text-muted-foreground">
-                    No turns yet. Start chatting with Loopie to capture this
-                    conversation.
-                  </p>
-                ) : null}
-                <LoopieConversationContent
-                  state={state}
-                  adapter={adapter}
-                  surfaceVariant="page"
-                  composerPlaceholder="Share your next note or question for Loopie…"
-                  idleHelperText="Loopie will keep the active chat elsewhere unchanged."
-                  respondingHelperText="Loopie is preparing a reply"
-                  disabled={isInitializing}
-                />
-              </div>
-            </section>
+
+                <div className="flex min-h-0 flex-1 flex-col gap-3">
+                  {isInitializing ? (
+                    <p className="text-sm text-muted-foreground">
+                      Loading conversation…
+                    </p>
+                  ) : null}
+                  {shouldShowEmptyState ? (
+                    <p className="text-sm text-muted-foreground">
+                      No turns yet. Start chatting with Loopie to capture this
+                      conversation.
+                    </p>
+                  ) : null}
+                  <LoopieConversationContent
+                    state={state}
+                    adapter={adapter}
+                    surfaceVariant="page"
+                    composerPlaceholder="Share your next note or question for Loopie…"
+                    idleHelperText="Loopie will keep the active chat elsewhere unchanged."
+                    respondingHelperText="Loopie is preparing a reply"
+                    disabled={isInitializing}
+                  />
+                </div>
+              </section>
+            </div>
           </div>
         </div>
       </main>
