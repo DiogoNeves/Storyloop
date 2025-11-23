@@ -1,7 +1,7 @@
 {
   "name": "Storyloop",
   "short_name": "Storyloop",
-  "description": "Your personal growth companion",
+  "description": "Your personal YouTube journey companion",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -16,4 +16,3 @@
     }
   ]
 }
-
