@@ -17,6 +17,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import type { YoutubeVideoResponse } from "@/api/youtube";
 import type { ContentTypeFilter } from "@/components/ContentTypeTabs";
 import { SettingsDialog } from "@/components/SettingsDialog";
+import { MarkdownMessage } from "@/components/chat/MarkdownMessage";
 
 export function JournalDetailPage() {
   const { journalId } = useParams<{ journalId: string }>();
@@ -329,11 +330,16 @@ export function JournalDetailPage() {
                       <div className="flex flex-col gap-2 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
                         <span>{formattedDate ?? "Entry date unavailable"}</span>
                       </div>
-                      <p className="whitespace-pre-line text-sm text-muted-foreground">
-                        {summaryText.length > 0
-                          ? summaryText
-                          : "No notes saved for this journal entry."}
-                      </p>
+                      {summaryText.length > 0 ? (
+                        <MarkdownMessage
+                          content={summaryText}
+                          className="text-muted-foreground"
+                        />
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          No notes saved for this journal entry.
+                        </p>
+                      )}
                     </div>
 
                     <div className="h-px w-full bg-border" aria-hidden="true" />
