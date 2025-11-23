@@ -1,15 +1,27 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { type ReactNode } from "react";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { useAgentConversation } from "@/hooks";
-import type { StreamTurnOptions } from "@/api/conversations";
+import { type Conversation, type StreamTurnOptions } from "@/api/conversations";
 import {
+  mockConversationList,
   mockCreateConversation,
   mockListConversationTurns,
   mockStreamConversationTurn,
 } from "./mocks/conversationApi";
 
 describe("useAgentConversation", () => {
+  let queryClient: QueryClient;
+
+  const createQueryClientWrapper = () => {
+    queryClient = new QueryClient();
+    return ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+  };
+
   beforeEach(() => {
     mockListConversationTurns.mockReset();
     mockStreamConversationTurn.mockReset();
@@ -26,12 +38,14 @@ describe("useAgentConversation", () => {
       },
     ]);
 
-    const { result } = renderHook(() =>
-      useAgentConversation({
-        conversationId: "conversation-123",
-        allowCreate: false,
-        persistConversationId: false,
-      }),
+    const { result } = renderHook(
+      () =>
+        useAgentConversation({
+          conversationId: "conversation-123",
+          allowCreate: false,
+          persistConversationId: false,
+        }),
+      { wrapper: createQueryClientWrapper() },
     );
 
     await waitFor(() => {
@@ -56,12 +70,14 @@ describe("useAgentConversation", () => {
       },
     );
 
-    const { result } = renderHook(() =>
-      useAgentConversation({
-        conversationId: "conversation-abc",
-        allowCreate: false,
-        persistConversationId: false,
-      }),
+    const { result } = renderHook(
+      () =>
+        useAgentConversation({
+          conversationId: "conversation-abc",
+          allowCreate: false,
+          persistConversationId: false,
+        }),
+      { wrapper: createQueryClientWrapper() },
     );
 
     await waitFor(() => {
@@ -90,5 +106,91 @@ describe("useAgentConversation", () => {
     expect(mockStreamConversationTurn).toHaveBeenCalledWith(
       expect.objectContaining({ conversationId: "conversation-abc" }),
     );
+  });
+
+  it("populates the conversation list cache when starting a new conversation", async () => {
+    mockListConversationTurns.mockResolvedValue([]);
+    mockStreamConversationTurn.mockImplementation(
+      ({ callbacks }: StreamTurnOptions) => {
+        callbacks?.onDone?.({ turnId: "assistant-123", text: "Hello!" });
+        return Promise.resolve();
+      },
+    );
+
+    const wrapper = createQueryClientWrapper();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    const { result } = renderHook(
+      () =>
+        useAgentConversation({
+          allowCreate: true,
+          persistConversationId: false,
+        }),
+      { wrapper },
+    );
+
+    await waitFor(() => {
+      expect(result.current.isInitializing).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.adapter.sendMessage("Draft a caption");
+    });
+
+    await waitFor(() => {
+      const cachedConversations = queryClient.getQueryData([
+        "conversations",
+      ]);
+      expect(cachedConversations?.[0]).toMatchObject({
+        id: "conversation-mock",
+        lastTurnText: "Hello!",
+        turnCount: 1,
+      });
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["conversations"] });
+  });
+
+  it("keeps the first assistant response as the conversation summary", async () => {
+    mockListConversationTurns.mockResolvedValue([]);
+    mockStreamConversationTurn
+      .mockImplementationOnce(({ callbacks }: StreamTurnOptions) => {
+        callbacks?.onDone?.({ turnId: "assistant-1", text: "First reply" });
+        return Promise.resolve();
+      })
+      .mockImplementationOnce(({ callbacks }: StreamTurnOptions) => {
+        callbacks?.onDone?.({ turnId: "assistant-2", text: "Second reply" });
+        return Promise.resolve();
+      });
+
+    const { result } = renderHook(
+      () =>
+        useAgentConversation({
+          allowCreate: true,
+          persistConversationId: false,
+        }),
+      { wrapper: createQueryClientWrapper() },
+    );
+
+    await waitFor(() => {
+      expect(result.current.isInitializing).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.adapter.sendMessage("First message");
+    });
+
+    await act(async () => {
+      await result.current.adapter.sendMessage("Follow-up message");
+    });
+
+    const cachedConversations =
+      queryClient.getQueryData<Conversation[]>(["conversations"]);
+
+    expect(cachedConversations?.[0]).toMatchObject({
+      id: "conversation-mock",
+      lastTurnText: "First reply",
+      turnCount: 2,
+    });
   });
 });
