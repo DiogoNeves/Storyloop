@@ -99,8 +99,30 @@ export async function deleteEntry(id: string): Promise<void> {
 }
 
 export const entriesMutations = {
-  create: () => ({
+  create: (
+    queryClient: QueryClient,
+    callbacks?: MutationCallbacks<Entry | null, CreateEntryInput>,
+  ): UseMutationOptions<
+    Entry | null,
+    unknown,
+    CreateEntryInput,
+    EntriesMutationContext
+  > => ({
     mutationFn: createEntry,
+    onSuccess(data, variables, context) {
+      callbacks?.onSuccess?.(data, variables, context);
+    },
+    onSettled(data, error, variables, context) {
+      const listQuery = entriesQueries.all();
+      void queryClient.invalidateQueries({ queryKey: listQuery.queryKey });
+
+      if (variables) {
+        const byIdQuery = entriesQueries.byId(variables.id);
+        void queryClient.invalidateQueries({ queryKey: byIdQuery.queryKey });
+      }
+
+      callbacks?.onSettled?.(data, error, variables, context);
+    },
   }),
   update: (
     queryClient: QueryClient,
@@ -168,6 +190,24 @@ export const entriesMutations = {
       callbacks?.onError?.(error, variables, context);
     },
     onSuccess(data, variables, context) {
+      const listQuery = entriesQueries.all();
+
+      queryClient.setQueryData<Entry[] | undefined>(
+        listQuery.queryKey,
+        (previousEntries) => {
+          if (!previousEntries) {
+            return previousEntries;
+          }
+
+          return previousEntries.map((entry) =>
+            entry.id === data.id ? data : entry,
+          );
+        },
+      );
+
+      const byIdQuery = entriesQueries.byId(data.id);
+      queryClient.setQueryData<Entry>(byIdQuery.queryKey, data);
+
       callbacks?.onSuccess?.(data, variables, context);
     },
     onSettled(data, error, variables, context) {
