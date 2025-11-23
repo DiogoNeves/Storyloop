@@ -93,7 +93,7 @@ export function LoopieConversationContent({
         ? "Sending to Loopie"
         : "Share your next move with Loopie";
 
-  const padding = surfaceVariant === "panel" ? "px-6 py-5" : "p-0 sm:p-4";
+  const padding = surfaceVariant === "panel" ? "px-6 py-5" : "p-2 sm:p-4";
   const composerSurface =
     surfaceVariant === "panel"
       ? "bg-background/98 border-t border-border/40"
