@@ -1,4 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { type ReactNode } from "react";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { useAgentConversation } from "@/hooks";
@@ -10,6 +12,13 @@ import {
 } from "./mocks/conversationApi";
 
 describe("useAgentConversation", () => {
+  const createQueryClientWrapper = () => {
+    const queryClient = new QueryClient();
+    return ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+  };
+
   beforeEach(() => {
     mockListConversationTurns.mockReset();
     mockStreamConversationTurn.mockReset();
@@ -26,12 +35,14 @@ describe("useAgentConversation", () => {
       },
     ]);
 
-    const { result } = renderHook(() =>
-      useAgentConversation({
-        conversationId: "conversation-123",
-        allowCreate: false,
-        persistConversationId: false,
-      }),
+    const { result } = renderHook(
+      () =>
+        useAgentConversation({
+          conversationId: "conversation-123",
+          allowCreate: false,
+          persistConversationId: false,
+        }),
+      { wrapper: createQueryClientWrapper() },
     );
 
     await waitFor(() => {
@@ -56,12 +67,14 @@ describe("useAgentConversation", () => {
       },
     );
 
-    const { result } = renderHook(() =>
-      useAgentConversation({
-        conversationId: "conversation-abc",
-        allowCreate: false,
-        persistConversationId: false,
-      }),
+    const { result } = renderHook(
+      () =>
+        useAgentConversation({
+          conversationId: "conversation-abc",
+          allowCreate: false,
+          persistConversationId: false,
+        }),
+      { wrapper: createQueryClientWrapper() },
     );
 
     await waitFor(() => {

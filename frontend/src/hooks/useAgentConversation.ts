@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import {
   createConversation,
+  conversationQueries,
   listConversationTurns,
   streamConversationTurn,
   type ConversationTurn,
@@ -72,6 +74,9 @@ export function useAgentConversation({
 }: UseAgentConversationOptions = {}) {
   const [state, setState] = useState<AgentConversationState>(INITIAL_STATE);
   const [isInitializing, setIsInitializing] = useState(false);
+
+  const queryClient = useQueryClient();
+  const conversationListQuery = useMemo(() => conversationQueries.list(), []);
 
   const conversationIdRef = useRef<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -243,6 +248,9 @@ export function useAgentConversation({
           if (persistConversationId) {
             writeStoredConversationId(conversationId);
           }
+          await queryClient.invalidateQueries({
+            queryKey: conversationListQuery.queryKey,
+          });
           setState((previous) => ({
             ...previous,
             conversationId: conversationId ?? "",
@@ -495,6 +503,8 @@ export function useAgentConversation({
       enabled,
       initializeConversation,
       persistConversationId,
+      queryClient,
+      conversationListQuery.queryKey,
       state.composer.status,
     ],
   );
