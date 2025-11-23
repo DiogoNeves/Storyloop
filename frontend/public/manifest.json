@@ -1,0 +1,19 @@
+{
+  "name": "Storyloop",
+  "short_name": "Storyloop",
+  "description": "Your personal growth companion",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#FF0000",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/storyloop.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
+
