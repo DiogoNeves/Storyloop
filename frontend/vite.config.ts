@@ -17,5 +17,6 @@ export default defineConfig({
   },
   server: {
     allowedHosts: true,
-  }
+  },
+  envDir: resolve(__dirname, ".."), // Load .env from project root
 });

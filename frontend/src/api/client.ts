@@ -24,7 +24,6 @@ export const apiClient = axios.create({
 
 export const API_BASE_URL = baseURL;
 
-
 export function isAxiosError(error: unknown): error is AxiosError {
   return axios.isAxiosError(error);
 }
