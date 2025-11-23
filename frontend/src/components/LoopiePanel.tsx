@@ -56,7 +56,8 @@ export function LoopieConversationContent({
   const isSendDisabled =
     disabled || state.composer.status !== "idle" || inputValue.trim() === "";
   const showStopButton =
-    state.composer.status === "sending" || state.composer.status === "responding";
+    state.composer.status === "sending" ||
+    state.composer.status === "responding";
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -99,8 +100,8 @@ export function LoopieConversationContent({
       : "bg-background/90 border-t border-border/50";
   const helperText =
     state.composer.status === "responding"
-      ? respondingHelperText ?? "Loopie is synthesizing a tailored suggestion"
-      : idleHelperText ?? composerLabel;
+      ? (respondingHelperText ?? "Loopie is synthesizing a tailored suggestion")
+      : (idleHelperText ?? composerLabel);
 
   return (
     <div
