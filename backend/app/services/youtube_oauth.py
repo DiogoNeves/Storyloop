@@ -76,13 +76,16 @@ class YoutubeOAuthService:
 
         return self._config.redirect_uri
 
-    def create_flow(self, *, state: str | None = None) -> Flow:
+    def create_flow(
+        self, *, state: str | None = None, redirect_uri: str | None = None
+    ) -> Flow:
         """Build a configured Google OAuth flow instance."""
 
+        selected_redirect = redirect_uri or self._config.redirect_uri
         flow = Flow.from_client_config(
             self._config.as_dict(), scopes=YOUTUBE_OAUTH_SCOPES, state=state
         )
-        flow.redirect_uri = self._config.redirect_uri
+        flow.redirect_uri = selected_redirect
         return flow
 
     def serialize_credentials(self, credentials: Credentials) -> str:

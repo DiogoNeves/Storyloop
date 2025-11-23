@@ -46,6 +46,7 @@ References:
 from __future__ import annotations
 
 import secrets
+from urllib.parse import urlsplit, urlunsplit
 from datetime import UTC, datetime
 from typing import Any
 
@@ -74,15 +75,32 @@ class CompleteAuthRequest(BaseModel):
     state: str
 
 
+def _build_redirect_uri(request: Request, fallback: str) -> str:
+    """Combine the incoming request host with the configured redirect path."""
+
+    parsed_fallback = urlsplit(fallback)
+    return urlunsplit(
+        (
+            request.url.scheme,
+            request.url.netloc,
+            parsed_fallback.path,
+            parsed_fallback.query,
+            parsed_fallback.fragment,
+        )
+    )
+
+
 @router.post("/start")
 def start_youtube_auth(
+    request: Request,
     user_service: UserService = Depends(get_user_service),
     oauth_service: YoutubeOAuthService = Depends(get_youtube_oauth_service),
 ) -> dict[str, str]:
     """Generate a Google OAuth authorization URL for the frontend."""
 
     state = secrets.token_urlsafe(32)
-    flow = oauth_service.create_flow(state=state)
+    redirect_uri = _build_redirect_uri(request, oauth_service.redirect_uri)
+    flow = oauth_service.create_flow(state=state, redirect_uri=redirect_uri)
     authorization_url, generated_state = flow.authorization_url(
         access_type="offline",
         include_granted_scopes="true",
@@ -99,6 +117,7 @@ def _complete_oauth_flow(
     user_service: UserService,
     oauth_service: YoutubeOAuthService,
     youtube_service: YoutubeService,
+    redirect_uri: str | None = None,
 ) -> dict[str, Any]:
     """Complete the OAuth flow by exchanging code for tokens and fetching channel info."""
 
@@ -108,7 +127,7 @@ def _complete_oauth_flow(
     if state != record.oauth_state:
         raise HTTPException(status_code=400, detail="OAuth state mismatch")
 
-    flow = oauth_service.create_flow(state=state)
+    flow = oauth_service.create_flow(state=state, redirect_uri=redirect_uri)
     try:
         flow.fetch_token(code=code)
     except Exception as exc:  # pragma: no cover - passthrough for Google errors
@@ -186,11 +205,14 @@ def complete_youtube_auth(
         user_service=user_service,
         oauth_service=oauth_service,
         youtube_service=youtube_service,
+        redirect_uri=_build_redirect_uri(request, oauth_service.redirect_uri),
     )
 
     settings = request.app.state.settings
     redirect_targets = settings.cors_origins
-    redirect_url = redirect_targets[0] if redirect_targets else "/"
+    redirect_url = request.headers.get("origin") or (
+        redirect_targets[0] if redirect_targets else "/"
+    )
     return RedirectResponse(url=redirect_url, status_code=302)
 
 
