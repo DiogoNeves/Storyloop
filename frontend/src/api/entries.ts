@@ -190,6 +190,24 @@ export const entriesMutations = {
       callbacks?.onError?.(error, variables, context);
     },
     onSuccess(data, variables, context) {
+      const listQuery = entriesQueries.all();
+
+      queryClient.setQueryData<Entry[] | undefined>(
+        listQuery.queryKey,
+        (previousEntries) => {
+          if (!previousEntries) {
+            return previousEntries;
+          }
+
+          return previousEntries.map((entry) =>
+            entry.id === data.id ? data : entry,
+          );
+        },
+      );
+
+      const byIdQuery = entriesQueries.byId(data.id);
+      queryClient.setQueryData<Entry>(byIdQuery.queryKey, data);
+
       callbacks?.onSuccess?.(data, variables, context);
     },
     onSettled(data, error, variables, context) {
