@@ -72,16 +72,23 @@ const createMarkdownComponents = (tone: ChatTone) => {
         {...props}
       />
     ),
-    ul: ({ className, ...props }: HTMLAttributes<HTMLUListElement>) => (
-      <ul
-        className={cn(
-          "mb-4 ml-4 list-disc space-y-2 last:mb-0",
-          textColor,
-          normalizeClassName(className),
-        )}
-        {...props}
-      />
-    ),
+    ul: ({ className, ...props }: HTMLAttributes<HTMLUListElement>) => {
+      const isTaskList = normalizeClassName(className)?.includes(
+        "contains-task-list",
+      );
+
+      return (
+        <ul
+          className={cn(
+            "mb-4 ml-4 space-y-2 last:mb-0",
+            isTaskList ? "list-none pl-0" : "list-disc",
+            textColor,
+            normalizeClassName(className),
+          )}
+          {...props}
+        />
+      );
+    },
     ol: ({ className, ...props }: HTMLAttributes<HTMLOListElement>) => (
       <ol
         className={cn(
@@ -94,7 +101,14 @@ const createMarkdownComponents = (tone: ChatTone) => {
     ),
     li: ({ className, ...props }: HTMLAttributes<HTMLLIElement>) => (
       <li
-        className={cn("leading-7", textColor, normalizeClassName(className))}
+        className={cn(
+          "leading-7",
+          normalizeClassName(className)?.includes("task-list-item")
+            ? "list-none"
+            : undefined,
+          textColor,
+          normalizeClassName(className),
+        )}
         {...props}
       />
     ),
