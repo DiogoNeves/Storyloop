@@ -6,6 +6,7 @@ import {
   conversationQueries,
   listConversationTurns,
   streamConversationTurn,
+  type Conversation,
   type ConversationTurn,
 } from "@/api/conversations";
 import { isNotFoundError } from "@/api/client";
@@ -77,6 +78,48 @@ export function useAgentConversation({
 
   const queryClient = useQueryClient();
   const conversationListQuery = useMemo(() => conversationQueries.list(), []);
+
+  const upsertConversationSummary = useCallback(
+    (
+      conversationId: string,
+      updates: Partial<Conversation>,
+      options?: { incrementTurnCount?: boolean },
+    ) => {
+      queryClient.setQueryData<Conversation[]>(
+        conversationListQuery.queryKey,
+        (previous) => {
+          const existing = previous?.find(
+            (conversation) => conversation.id === conversationId,
+          );
+
+          const base: Conversation = existing ?? {
+            id: conversationId,
+            title: null,
+            createdAt: updates.createdAt ?? new Date().toISOString(),
+            lastTurnAt: null,
+            lastTurnText: null,
+            firstTurnText: null,
+            turnCount: 0,
+          };
+
+          const next: Conversation = {
+            ...base,
+            ...updates,
+            firstTurnText: base.firstTurnText ?? updates.firstTurnText ?? null,
+            turnCount: options?.incrementTurnCount
+              ? (base.turnCount ?? 0) + 1
+              : updates.turnCount ?? base.turnCount ?? 0,
+          };
+
+          const withoutExisting = (previous ?? []).filter(
+            (conversation) => conversation.id !== conversationId,
+          );
+          return [next, ...withoutExisting];
+        },
+      );
+    },
+    [conversationListQuery.queryKey, queryClient],
+  );
 
   const conversationIdRef = useRef<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -248,6 +291,10 @@ export function useAgentConversation({
           if (persistConversationId) {
             writeStoredConversationId(conversationId);
           }
+          upsertConversationSummary(conversationId, {
+            title: conversation.title,
+            createdAt: conversation.createdAt,
+          });
           await queryClient.invalidateQueries({
             queryKey: conversationListQuery.queryKey,
           });
@@ -391,6 +438,16 @@ export function useAgentConversation({
         composer: { status: "sending", error: null },
       }));
 
+      upsertConversationSummary(
+        conversationId,
+        {
+          lastTurnAt: userMessage.createdAt,
+          lastTurnText: trimmed,
+          firstTurnText: trimmed,
+        },
+        { incrementTurnCount: true },
+      );
+
       abortActiveStream();
 
       const controller = new AbortController();
@@ -449,6 +506,19 @@ export function useAgentConversation({
                   writeStoredConversationId(conversationId);
                 }
               }
+
+              upsertConversationSummary(
+                conversationId,
+                {
+                  lastTurnAt: streamingMessageCreatedAt,
+                  lastTurnText: finalText,
+                },
+                { incrementTurnCount: false },
+              );
+
+              void queryClient.invalidateQueries({
+                queryKey: conversationListQuery.queryKey,
+              });
             },
             onError: (message) => {
               clearToolSignals();
@@ -505,6 +575,7 @@ export function useAgentConversation({
       persistConversationId,
       queryClient,
       conversationListQuery.queryKey,
+      upsertConversationSummary,
       state.composer.status,
     ],
   );
