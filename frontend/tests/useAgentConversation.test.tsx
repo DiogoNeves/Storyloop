@@ -6,7 +6,6 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { useAgentConversation } from "@/hooks";
 import { type Conversation, type StreamTurnOptions } from "@/api/conversations";
 import {
-  mockConversationList,
   mockCreateConversation,
   mockListConversationTurns,
   mockStreamConversationTurn,
@@ -138,9 +137,7 @@ describe("useAgentConversation", () => {
     });
 
     await waitFor(() => {
-      const cachedConversations = queryClient.getQueryData([
-        "conversations",
-      ]);
+      const cachedConversations = queryClient.getQueryData(["conversations"]);
       expect(cachedConversations?.[0]).toMatchObject({
         id: "conversation-mock",
         lastTurnText: "Hello!",
@@ -184,8 +181,9 @@ describe("useAgentConversation", () => {
       await result.current.adapter.sendMessage("Follow-up message");
     });
 
-    const cachedConversations =
-      queryClient.getQueryData<Conversation[]>(["conversations"]);
+    const cachedConversations = queryClient.getQueryData<Conversation[]>([
+      "conversations",
+    ]);
 
     expect(cachedConversations?.[0]).toMatchObject({
       id: "conversation-mock",
