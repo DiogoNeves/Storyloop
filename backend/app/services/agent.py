@@ -36,7 +36,9 @@ class LoopieDeps(BaseModel):
 
 
 async def build_loopie_deps(
-    app: FastAPI, *, tool_call_notifier: Callable[[str], Awaitable[None]] | None = None
+    app: FastAPI,
+    *,
+    tool_call_notifier: Callable[[str], Awaitable[None]] | None = None,
 ) -> LoopieDeps:
     """Create Loopie dependency bundle from FastAPI application state."""
 
@@ -47,7 +49,9 @@ async def build_loopie_deps(
 
     user_id = "anonymous"
     if user_service is not None:
-        active_user = await anyio.to_thread.run_sync(user_service.get_active_user)
+        active_user = await anyio.to_thread.run_sync(
+            user_service.get_active_user
+        )
         if active_user is not None:
             user_id = active_user.id
 
@@ -90,7 +94,7 @@ def build_agent(active_settings: Settings) -> Agent[LoopieDeps, str] | None:
 
     # Ensure the API key is set in environment for PydanticAI to use
     os.environ["OPENAI_API_KEY"] = active_settings.openai_api_key
-    model = OpenAIChatModel("gpt-5-nano")
+    model = OpenAIChatModel("gpt-5.1-chat-latest")
 
     system_prompt = """You are Loopie, the slightly loopy (yet extremely useful) creative partner for YouTube creators on Storyloop.
 Lean into playful, curious energy while keeping advice crisp, practical, and unblocking.
