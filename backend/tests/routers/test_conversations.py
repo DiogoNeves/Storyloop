@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -63,7 +63,9 @@ class ControllableAgent:
         self.runs: list[ControllableAgentRun] = []
         self._run_added = asyncio.Event()
 
-    async def wait_for_run_count(self, count: int, timeout: float = 5.0) -> None:
+    async def wait_for_run_count(
+        self, count: int, timeout: float = 5.0
+    ) -> None:
         """Wait until the requested number of runs have been registered."""
         while len(self.runs) < count:
             self._run_added.clear()
@@ -372,7 +374,9 @@ async def test_stream_turn_cancels_inflight_run(
     """Ensure a new stream cancels any in-flight agent run for the same conversation."""
 
     fake_agent = ControllableAgent()
-    app = _create_test_app(memory_connection_factory, assistant_agent=fake_agent)
+    app = _create_test_app(
+        memory_connection_factory, assistant_agent=fake_agent
+    )
     transport = ASGITransport(app=app)
 
     async with AsyncClient(
