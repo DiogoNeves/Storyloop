@@ -102,13 +102,21 @@ export function useAgentConversation({
             turnCount: 0,
           };
 
+          const nextTurnCount = options?.incrementTurnCount
+            ? (base.turnCount ?? 0) + 1
+            : updates.turnCount ?? base.turnCount ?? 0;
+
+          const shouldUpdateLastTurnText =
+            updates.lastTurnText !== undefined && (base.turnCount ?? 0) <= 1;
+
           const next: Conversation = {
             ...base,
             ...updates,
             firstTurnText: base.firstTurnText ?? updates.firstTurnText ?? null,
-            turnCount: options?.incrementTurnCount
-              ? (base.turnCount ?? 0) + 1
-              : updates.turnCount ?? base.turnCount ?? 0,
+            lastTurnText: shouldUpdateLastTurnText
+              ? updates.lastTurnText
+              : base.lastTurnText ?? updates.lastTurnText ?? null,
+            turnCount: nextTurnCount,
           };
 
           const withoutExisting = (previous ?? []).filter(
@@ -442,7 +450,6 @@ export function useAgentConversation({
         conversationId,
         {
           lastTurnAt: userMessage.createdAt,
-          lastTurnText: trimmed,
           firstTurnText: trimmed,
         },
         { incrementTurnCount: true },

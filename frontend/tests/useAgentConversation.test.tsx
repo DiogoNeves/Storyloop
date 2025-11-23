@@ -4,8 +4,9 @@ import { type ReactNode } from "react";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { useAgentConversation } from "@/hooks";
-import type { StreamTurnOptions } from "@/api/conversations";
+import { type Conversation, type StreamTurnOptions } from "@/api/conversations";
 import {
+  mockConversationList,
   mockCreateConversation,
   mockListConversationTurns,
   mockStreamConversationTurn,
@@ -148,5 +149,48 @@ describe("useAgentConversation", () => {
     });
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["conversations"] });
+  });
+
+  it("keeps the first assistant response as the conversation summary", async () => {
+    mockListConversationTurns.mockResolvedValue([]);
+    mockStreamConversationTurn
+      .mockImplementationOnce(({ callbacks }: StreamTurnOptions) => {
+        callbacks?.onDone?.({ turnId: "assistant-1", text: "First reply" });
+        return Promise.resolve();
+      })
+      .mockImplementationOnce(({ callbacks }: StreamTurnOptions) => {
+        callbacks?.onDone?.({ turnId: "assistant-2", text: "Second reply" });
+        return Promise.resolve();
+      });
+
+    const { result } = renderHook(
+      () =>
+        useAgentConversation({
+          allowCreate: true,
+          persistConversationId: false,
+        }),
+      { wrapper: createQueryClientWrapper() },
+    );
+
+    await waitFor(() => {
+      expect(result.current.isInitializing).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.adapter.sendMessage("First message");
+    });
+
+    await act(async () => {
+      await result.current.adapter.sendMessage("Follow-up message");
+    });
+
+    const cachedConversations =
+      queryClient.getQueryData<Conversation[]>(["conversations"]);
+
+    expect(cachedConversations?.[0]).toMatchObject({
+      id: "conversation-mock",
+      lastTurnText: "First reply",
+      turnCount: 2,
+    });
   });
 });
