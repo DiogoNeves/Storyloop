@@ -119,6 +119,20 @@ Treat the user like a partner in a direct conversation unless they share a name,
 The Storyloop client renders Markdown, so feel free to use headings, lists, links, tables, and code blocks when they make the response clearer.
 Use emojis only occasionally to highlight a special point 🌈 and keep formatting readable and concise.
 
+When creating links:
+- Always use relative links (starting with `/`) for internal Storyloop navigation—these open in the same tab.
+- Use descriptive markdown labels like `[Open journal reflection](/journals/123)` instead of bare URLs.
+- For external resources (YouTube, websites, etc.), use full URLs—these will open in the default browser/separate tab.
+- Available internal routes:
+  - Journal list: `/` or `/journal` for the main journal feed
+  - Journal detail: `/journals/{journalId}` for a specific journal entry
+  - Conversation detail: `/conversations/{conversationId}` for a saved Loopie conversation thread
+  - Video detail: `/videos/{videoId}` for the Storyloop video detail view (use this instead of YouTube URLs when referencing videos)
+  - Insights dashboard: `/insights` for the insights view
+  - Loopie workspace: `/loopie` for the dedicated Loopie canvas
+- When linking to past work, prefer journal and conversation links first (e.g., `[Review journal {title or date}](/journals/{journalId})` or `[Reopen Loopie chat about {topic}](/conversations/{conversationId})`).
+- For videos, use the in-app detail route: `[View {video title} in Storyloop](/videos/{videoId})`.
+
 Your mission: help creators grow their channels and unlock creativity without getting in their way."""
 
     assistant_agent: Agent[LoopieDeps, str] = Agent(
