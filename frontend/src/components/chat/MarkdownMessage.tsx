@@ -7,6 +7,7 @@ import {
 
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Link } from "react-router-dom";
 
 import { cn } from "@/lib/utils";
 import { getToneColors, resolveTone, type ChatTone } from "./toneStyles";
@@ -73,9 +74,8 @@ const createMarkdownComponents = (tone: ChatTone) => {
       />
     ),
     ul: ({ className, ...props }: HTMLAttributes<HTMLUListElement>) => {
-      const isTaskList = normalizeClassName(className)?.includes(
-        "contains-task-list",
-      );
+      const isTaskList =
+        normalizeClassName(className)?.includes("contains-task-list");
 
       return (
         <ul
@@ -112,22 +112,40 @@ const createMarkdownComponents = (tone: ChatTone) => {
         {...props}
       />
     ),
-    a: ({ className, ...props }: AnchorHTMLAttributes<HTMLAnchorElement>) => (
-      <a
-        className={cn(
-          "text-primary underline-offset-4 transition-colors hover:underline",
-          textColor,
-          normalizeClassName(className),
-        )}
-        target="_blank"
-        rel="noreferrer"
-        {...props}
-      />
-    ),
-    blockquote: ({
+    a: ({
       className,
+      href,
+      children,
       ...props
-    }: HTMLAttributes<HTMLQuoteElement>) => (
+    }: AnchorHTMLAttributes<HTMLAnchorElement>) => {
+      const linkClassName = cn(
+        "text-primary underline underline-offset-4 transition-colors",
+        textColor,
+        normalizeClassName(className),
+      );
+
+      // Use Link for relative/internal links, regular anchor for external
+      if (href?.startsWith("/")) {
+        return (
+          <Link to={href} className={linkClassName} {...props}>
+            {children}
+          </Link>
+        );
+      }
+
+      return (
+        <a
+          href={href}
+          className={linkClassName}
+          target="_blank"
+          rel="noreferrer"
+          {...props}
+        >
+          {children}
+        </a>
+      );
+    },
+    blockquote: ({ className, ...props }: HTMLAttributes<HTMLQuoteElement>) => (
       <blockquote
         className={cn(
           "mb-4 mt-2 border-l-2 border-primary/40 bg-primary/5 px-4 py-3 italic last:mb-0",
@@ -193,7 +211,10 @@ const createMarkdownComponents = (tone: ChatTone) => {
         </table>
       </div>
     ),
-    thead: ({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) => (
+    thead: ({
+      className,
+      ...props
+    }: HTMLAttributes<HTMLTableSectionElement>) => (
       <thead
         className={cn("bg-muted/60", textColor, normalizeClassName(className))}
         {...props}
@@ -209,7 +230,10 @@ const createMarkdownComponents = (tone: ChatTone) => {
         {...props}
       />
     ),
-    tbody: ({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) => (
+    tbody: ({
+      className,
+      ...props
+    }: HTMLAttributes<HTMLTableSectionElement>) => (
       <tbody
         className={cn(
           "divide-y divide-border/60",
@@ -220,7 +244,10 @@ const createMarkdownComponents = (tone: ChatTone) => {
       />
     ),
     tr: ({ className, ...props }: HTMLAttributes<HTMLTableRowElement>) => (
-      <tr className={cn("even:bg-muted/20", normalizeClassName(className))} {...props} />
+      <tr
+        className={cn("even:bg-muted/20", normalizeClassName(className))}
+        {...props}
+      />
     ),
     td: ({ className, ...props }: HTMLAttributes<HTMLTableCellElement>) => (
       <td
@@ -251,7 +278,11 @@ export function MarkdownMessage({
 
   return (
     <div
-      className={cn("markdown-message text-sm leading-relaxed", textColor, className)}
+      className={cn(
+        "markdown-message text-sm leading-relaxed",
+        textColor,
+        className,
+      )}
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
