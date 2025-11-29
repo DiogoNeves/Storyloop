@@ -117,6 +117,11 @@ export function LoopieConversationContent({
           ref={scrollContainerRef}
           className="scrollbar-hide min-h-0 flex-1 space-y-5 overflow-y-auto"
         >
+          {state.messages.length === 0 ? (
+            <p className="text-sm italic text-muted-foreground/70">
+              Loopie here—share a win or question and I’ll chime in. ✨
+            </p>
+          ) : null}
           {state.messages.map((message) => (
             <ChatMessage key={message.id} message={message} />
           ))}
