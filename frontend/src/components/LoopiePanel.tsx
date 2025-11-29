@@ -119,7 +119,7 @@ export function LoopieConversationContent({
         >
           {state.messages.length === 0 ? (
             <p className="text-sm italic text-muted-foreground/70">
-              Loopie here—share a win or question and I’ll chime in. ✨
+              Loopie here, let&apos;s chat. 😊
             </p>
           ) : null}
           {state.messages.map((message) => (
