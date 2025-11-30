@@ -118,7 +118,7 @@ export function LoopieConversationContent({
           className="scrollbar-hide min-h-0 flex-1 space-y-5 overflow-y-auto"
         >
           {state.messages.length === 0 ? (
-            <p className="text-sm italic text-muted-foreground/70">
+            <p className="text-sm text-muted-foreground/40">
               Loopie here, let&apos;s chat. 😊
             </p>
           ) : null}
