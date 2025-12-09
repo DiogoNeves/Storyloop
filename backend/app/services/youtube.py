@@ -112,6 +112,84 @@ class YoutubeAPIRequestError(YoutubeError):
 
 
 @dataclass(slots=True)
+class YoutubeChannelStatistics:
+    """Statistics for a YouTube channel."""
+
+    view_count: int | None
+    subscriber_count: int | None
+    video_count: int | None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize the statistics into a JSON-friendly dictionary."""
+        return {
+            "viewCount": self.view_count,
+            "subscriberCount": self.subscriber_count,
+            "videoCount": self.video_count,
+        }
+
+    @classmethod
+    def from_api_response(cls, statistics: dict[str, Any] | None) -> "YoutubeChannelStatistics":
+        """Construct statistics from a YouTube API statistics response."""
+        if not statistics or not isinstance(statistics, dict):
+            return cls(view_count=None, subscriber_count=None, video_count=None)
+
+        def parse_int(value: Any) -> int | None:
+            if value is None:
+                return None
+            try:
+                return int(value)
+            except (ValueError, TypeError):
+                return None
+
+        # Note: subscriberCount may be hidden if channel has opted out
+        hidden_subscriber_count = statistics.get("hiddenSubscriberCount", False)
+        subscriber_count = None if hidden_subscriber_count else parse_int(statistics.get("subscriberCount"))
+
+        return cls(
+            view_count=parse_int(statistics.get("viewCount")),
+            subscriber_count=subscriber_count,
+            video_count=parse_int(statistics.get("videoCount")),
+        )
+
+
+@dataclass(slots=True)
+class YoutubeVideoStatistics:
+    """Statistics for a YouTube video."""
+
+    view_count: int | None
+    like_count: int | None
+    comment_count: int | None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize the statistics into a JSON-friendly dictionary."""
+        return {
+            "viewCount": self.view_count,
+            "likeCount": self.like_count,
+            "commentCount": self.comment_count,
+        }
+
+    @classmethod
+    def from_api_response(cls, statistics: dict[str, Any] | None) -> "YoutubeVideoStatistics":
+        """Construct statistics from a YouTube API statistics response."""
+        if not statistics or not isinstance(statistics, dict):
+            return cls(view_count=None, like_count=None, comment_count=None)
+
+        def parse_int(value: Any) -> int | None:
+            if value is None:
+                return None
+            try:
+                return int(value)
+            except (ValueError, TypeError):
+                return None
+
+        return cls(
+            view_count=parse_int(statistics.get("viewCount")),
+            like_count=parse_int(statistics.get("likeCount")),
+            comment_count=parse_int(statistics.get("commentCount")),
+        )
+
+
+@dataclass(slots=True)
 class YoutubeVideo:
     """Structured representation of a YouTube video."""
 
@@ -123,10 +201,11 @@ class YoutubeVideo:
     thumbnail_url: str | None
     video_type: Literal["short", "live", "video"]
     privacy_status: str  # "public", "unlisted", "private"
+    statistics: YoutubeVideoStatistics | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the video into a JSON-friendly dictionary."""
-        return {
+        result: dict[str, Any] = {
             "id": self.id,
             "title": self.title,
             "description": self.description,
@@ -136,6 +215,9 @@ class YoutubeVideo:
             "videoType": self.video_type,
             "privacyStatus": self.privacy_status,
         }
+        if self.statistics is not None:
+            result["statistics"] = self.statistics.to_dict()
+        return result
 
     @classmethod
     def from_playlist_item(cls, item: dict[str, Any]) -> YoutubeVideo | None:
@@ -1189,7 +1271,7 @@ class YoutubeService:
 
         async with self.client_session() as client:
             params = {
-                "part": "contentDetails,snippet,status",
+                "part": "contentDetails,snippet,status,statistics",
                 "id": video_id,
                 "key": self.api_key,
             }
@@ -1212,6 +1294,7 @@ class YoutubeService:
             snippet = video_item.get("snippet", {})
             content_details = video_item.get("contentDetails", {})
             status = video_item.get("status", {})
+            statistics_data = video_item.get("statistics", {})
 
             # Create a playlist item-like dict
             playlist_item_like = {
@@ -1233,6 +1316,8 @@ class YoutubeService:
                 raise YoutubeAPIRequestError(
                     f"Failed to parse video {video_id}"
                 )
+            # Add statistics to the video
+            video.statistics = YoutubeVideoStatistics.from_api_response(statistics_data)
             return video
 
     def _fetch_video_detail_authenticated(
@@ -1247,7 +1332,7 @@ class YoutubeService:
         video_response = (
             client.videos()
             .list(
-                part="contentDetails,snippet,status", id=video_id, maxResults=1
+                part="contentDetails,snippet,status,statistics", id=video_id, maxResults=1
             )
             .execute()
         )
@@ -1270,6 +1355,7 @@ class YoutubeService:
         snippet = video_item.get("snippet", {})
         content_details = video_item.get("contentDetails", {})
         status = video_item.get("status", {})
+        statistics_data = video_item.get("statistics", {})
 
         # Create a playlist item-like dict
         playlist_item_like = {
@@ -1289,7 +1375,102 @@ class YoutubeService:
         video = YoutubeVideo.from_playlist_item(playlist_item_like)
         if video is None:
             raise YoutubeAPIRequestError(f"Failed to parse video {video_id}")
+        # Add statistics to the video
+        video.statistics = YoutubeVideoStatistics.from_api_response(statistics_data)
         return video
+
+    async def fetch_channel_statistics(
+        self,
+        channel_id: str,
+        *,
+        user_service: "UserService | None" = None,
+        oauth_service: "YoutubeOAuthService | None" = None,
+    ) -> YoutubeChannelStatistics:
+        """Return statistics for a channel by ID.
+
+        Automatically chooses between authenticated and API key-based requests
+        based on available credentials.
+
+        Args:
+            channel_id: YouTube channel ID.
+            user_service: Service for accessing user data.
+            oauth_service: Service for OAuth credential management.
+
+        Returns:
+            YoutubeChannelStatistics with view count, subscriber count, and video count.
+        """
+        # Check if we should attempt authenticated request
+        is_authenticated = False
+        if user_service is not None and oauth_service is not None:
+            record = user_service.get_active_user()
+            is_authenticated = (
+                record is not None and record.credentials_json is not None
+            )
+
+        if (
+            is_authenticated
+            and user_service is not None
+            and oauth_service is not None
+        ):
+            # Try authenticated method first
+            try:
+                return await anyio.to_thread.run_sync(
+                    self._fetch_channel_statistics_authenticated,
+                    channel_id,
+                    user_service,
+                    oauth_service,
+                )
+            except YoutubeConfigurationError:
+                # Fall back to API key method if auth fails
+                pass
+
+        # Use API key method
+        return await self._fetch_channel_statistics_with_api_key(channel_id)
+
+    async def _fetch_channel_statistics_with_api_key(
+        self, channel_id: str
+    ) -> YoutubeChannelStatistics:
+        """Fetch channel statistics using API key authentication."""
+        if not self.api_key:
+            raise YoutubeConfigurationError("YouTube API key not configured")
+
+        async with self.client_session() as client:
+            params = {
+                "part": "statistics",
+                "id": channel_id,
+                "key": self.api_key,
+            }
+            payload = await self._request_json(client, "channels", params)
+            items = payload.get("items", [])
+            if not isinstance(items, list) or not items:
+                raise YoutubeAPIRequestError(f"Channel {channel_id} not found")
+
+            channel_item = items[0]
+            statistics_data = channel_item.get("statistics", {})
+            return YoutubeChannelStatistics.from_api_response(statistics_data)
+
+    def _fetch_channel_statistics_authenticated(
+        self,
+        channel_id: str,
+        user_service: "UserService",
+        oauth_service: "YoutubeOAuthService",
+    ) -> YoutubeChannelStatistics:
+        """Fetch channel statistics using OAuth authentication."""
+        client = self.build_authenticated_client(user_service, oauth_service)
+
+        channel_response = (
+            client.channels()
+            .list(part="statistics", id=channel_id, maxResults=1)
+            .execute()
+        )
+
+        items = channel_response.get("items", [])
+        if not isinstance(items, list) or not items:
+            raise YoutubeAPIRequestError(f"Channel {channel_id} not found")
+
+        channel_item = items[0]
+        statistics_data = channel_item.get("statistics", {})
+        return YoutubeChannelStatistics.from_api_response(statistics_data)
 
 
 def _select_thumbnail_url(

@@ -1,6 +1,6 @@
 """Supporting utilities for the Loopie agent."""
 
-from .models import JournalEntry, VideoDetails, VideoMetrics
+from .models import ChannelMetrics, JournalEntry, VideoDetails, VideoMetrics
 from .repositories import (
     BaseJournalRepository,
     BaseYouTubeRepository,
@@ -11,6 +11,7 @@ from .repositories import (
 )
 
 __all__ = [
+    "ChannelMetrics",
     "JournalEntry",
     "VideoDetails",
     "VideoMetrics",
