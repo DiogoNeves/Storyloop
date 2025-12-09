@@ -8,7 +8,7 @@ import anyio
 from app.services.entries import EntryService
 from app.services.users import UserService
 from app.services.youtube import YoutubeService
-from app.services.agent_tools.models import JournalEntry, VideoDetails, VideoMetrics
+from app.services.agent_tools.models import ChannelMetrics, JournalEntry, VideoDetails, VideoMetrics
 from app.services.youtube_oauth import YoutubeOAuthService
 
 
@@ -151,9 +151,8 @@ class YouTubeRepository:
     async def get_video_metrics(self, video_id: str) -> VideoMetrics:
         """Return available metrics for a single video.
 
-        Metrics synchronization is not yet implemented; this method returns a
-        structured placeholder anchored to real video metadata to avoid
-        hallucination.
+        Fetches real statistics from the YouTube Data API including
+        view count, like count, and comment count.
         """
 
         video = await self._youtube_service.fetch_video_detail(
@@ -161,12 +160,36 @@ class YouTubeRepository:
             user_service=self._user_service,
             oauth_service=self._oauth_service,
         )
+        stats = video.statistics
         return VideoMetrics(
             video_id=video.id,
-            notes=(
-                "Metrics collection is not yet available; this placeholder is"
-                " grounded in the retrieved video data."
-            ),
+            view_count=stats.view_count if stats else None,
+            like_count=stats.like_count if stats else None,
+            comment_count=stats.comment_count if stats else None,
+        )
+
+    async def get_channel_metrics(self) -> ChannelMetrics:
+        """Return metrics for the active channel.
+
+        Fetches real statistics from the YouTube Data API including
+        view count, subscriber count, and video count.
+        """
+
+        active_user = await self._get_active_user()
+        channel_id = active_user.channel_id if active_user else None
+        if channel_id is None:
+            raise RuntimeError("No active channel configured")
+
+        stats = await self._youtube_service.fetch_channel_statistics(
+            channel_id,
+            user_service=self._user_service,
+            oauth_service=self._oauth_service,
+        )
+        return ChannelMetrics(
+            channel_id=channel_id,
+            view_count=stats.view_count,
+            subscriber_count=stats.subscriber_count,
+            video_count=stats.video_count,
         )
 
 
@@ -185,6 +208,9 @@ class BaseYouTubeRepository(Protocol):
     async def get_video_metrics(self, video_id: str) -> VideoMetrics:
         """Return metrics for a specific video."""
 
+    async def get_channel_metrics(self) -> ChannelMetrics:
+        """Return metrics for the active channel."""
+
 
 class EmptyYouTubeRepository:
     """Fallback repository returning empty YouTube data."""
@@ -198,4 +224,7 @@ class EmptyYouTubeRepository:
         raise RuntimeError("YouTube service not configured")
 
     async def get_video_metrics(self, video_id: str) -> VideoMetrics:
+        raise RuntimeError("YouTube service not configured")
+
+    async def get_channel_metrics(self) -> ChannelMetrics:
         raise RuntimeError("YouTube service not configured")

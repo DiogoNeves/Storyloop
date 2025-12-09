@@ -14,6 +14,7 @@ from app.config import Settings
 from app.services.agent_tools import (
     BaseJournalRepository,
     BaseYouTubeRepository,
+    ChannelMetrics,
     EmptyJournalRepository,
     EmptyYouTubeRepository,
     JournalEntry,
@@ -222,5 +223,21 @@ Your mission: help creators grow their channels and unlock creativity without ge
             await ctx.deps.tool_call_notifier("📈 metrics for a specific video")
 
         return await ctx.deps.youtube_repo.get_video_metrics(video_id)
+
+    @assistant_agent.tool
+    async def get_channel_metrics(
+        ctx: RunContext[LoopieDeps],
+    ) -> ChannelMetrics:
+        """Load overall metrics for the active YouTube channel.
+
+        Call this to get channel-wide statistics like total views,
+        subscriber count, and video count. Useful for understanding
+        the creator's overall reach and growth.
+        """
+
+        if ctx.deps.tool_call_notifier:
+            await ctx.deps.tool_call_notifier("📊 channel-wide statistics")
+
+        return await ctx.deps.youtube_repo.get_channel_metrics()
 
     return assistant_agent

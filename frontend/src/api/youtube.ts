@@ -2,6 +2,12 @@ import { createQueryKeys } from "@lukemorales/query-key-factory";
 
 import { apiClient } from "@/api/client";
 
+export interface YoutubeVideoStatistics {
+  viewCount: number | null;
+  likeCount: number | null;
+  commentCount: number | null;
+}
+
 export interface YoutubeVideoResponse {
   id: string;
   title: string;
@@ -11,10 +17,12 @@ export interface YoutubeVideoResponse {
   thumbnailUrl: string | null;
   videoType: "short" | "live" | "video";
   privacyStatus: "public" | "unlisted" | "private";
+  statistics?: YoutubeVideoStatistics;
 }
 
 export interface YoutubeVideoDetailResponse extends YoutubeVideoResponse {
   transcript: string | null;
+  statistics?: YoutubeVideoStatistics;
 }
 
 export interface YoutubeFeedResponse {
