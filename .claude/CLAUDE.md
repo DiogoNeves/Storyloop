@@ -1,29 +1,52 @@
-# Storyloop - FastAPI + React Creator Analytics Journal
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Tech Stack
 
-- Backend: Python 3.11, FastAPI, APScheduler, SQLite, pytest
-- Frontend: React 18, Vite, TypeScript, Tailwind CSS, shadcn/ui, Vitest
+- Backend: Python 3.11, FastAPI, APScheduler, SQLite, PydanticAI
+- Frontend: React 19, Vite, TypeScript, Tailwind CSS, shadcn/ui, TanStack Query
 - Package managers: uv (Python), pnpm (Node)
 - Icons: Lucide React
 
+## Architecture
+
+Creator analytics journal with FastAPI backend + React frontend. Data flows: user actions → frontend → API → services → SQLite. Background jobs (APScheduler) sync YouTube metrics weekly and recalculate growth scores daily.
+
+Key services: `YoutubeService` (API integration), `GrowthScoreService` (scoring logic), PydanticAI agent (SSE streaming conversations). See `thinking/` for detailed architecture docs.
+
 ## Project Structure
 
-- `backend/app/` - FastAPI app: `main.py` (routers), `routers/` (endpoints), `services/` (scheduler/data)
-- `backend/tests/` - pytest suites mirroring app layout
-- `frontend/src/` - React features with colocated styles/hooks
-- `frontend/tests/` - Vitest suites, feature-focused directories
+- `backend/app/` - FastAPI app: `main.py` (entry), `routers/` (endpoints), `services/` (business logic), `db_helpers/` (persistence)
+- `frontend/src/` - React app: `api/` (TanStack Query + Axios), `components/` (UI), `App.tsx` (dashboard)
 - `scripts/` - automation (`dev.py` launcher, `seed_demo_data.py`)
-- `design/` - product references
-- `thinking/` - project docs (architecture.md, backend-structure.md, frontend-structure.md, data-flow.md, story.md, system-diagram.md). Use `@understand-project` command to generate/update.
+- `thinking/` - architecture docs (architecture.md, backend-structure.md, frontend-structure.md, data-flow.md, insights.md)
 
 ## Development Commands
 
-- `python scripts/dev.py` - boot both servers (FastAPI :8000, Vite :5173)
-- `make backend` - run uvicorn backend only
-- `make test-backend` - run pytest in backend/
-- `make test-frontend` - run Vitest once (remove `-- --run` for watch)
-- `make lint-frontend` - apply flat ESLint config
+```bash
+# Start both servers (FastAPI :8000, Vite :5173)
+python scripts/dev.py
+
+# Backend only
+make backend
+
+# Run all tests
+make test-backend              # pytest
+make test-frontend             # Vitest once (remove `-- --run` for watch mode)
+
+# Run single test
+cd backend && uv run pytest tests/test_health.py::test_health_returns_healthy -v
+cd frontend && pnpm test -- tests/setup.test.ts
+
+# Type checking and linting
+uv run ruff check backend && uv run mypy backend
+cd frontend && pnpm run lint
+npx tsc --noEmit                # Frontend type check
+
+# Seed demo data
+make seed
+```
 
 ## Code Style
 
