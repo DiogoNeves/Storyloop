@@ -6,6 +6,7 @@ import { fetchVideoDetail, type YoutubeVideoDetailResponse } from "@/api/youtube
 import { NavBar } from "@/components/NavBar";
 import { LoopiePanel } from "@/components/LoopiePanel";
 import { SettingsDialog } from "@/components/SettingsDialog";
+import { VideoStatCards } from "@/components/VideoStatCards";
 
 export function VideoDetailPage() {
   const { videoId } = useParams<{ videoId: string }>();
@@ -94,6 +95,10 @@ export function VideoDetailPage() {
                           Watch on YouTube
                         </a>
                       </div>
+                      <VideoStatCards
+                        statistics={video.statistics}
+                        isLoading={videoDetailQuery.isLoading}
+                      />
                       <div className="aspect-video w-full overflow-hidden rounded-md border border-border bg-black">
                         <iframe
                           title={String(video.title)}
