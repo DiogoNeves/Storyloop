@@ -31,3 +31,12 @@ class VideoMetrics(BaseModel):
     comment_count: int | None = None
     average_view_duration_seconds: float | None = None
     notes: str | None = None
+
+
+class ChannelMetrics(BaseModel):
+    """Structured channel metrics Storyloop exposes to the agent."""
+
+    channel_id: str
+    view_count: int | None = None
+    subscriber_count: int | None = None
+    video_count: int | None = None
