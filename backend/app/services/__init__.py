@@ -4,6 +4,7 @@ from app.services.agent import build_agent, build_loopie_deps
 from app.services.entries import EntryRecord, EntryService
 from app.services.growth import GrowthScoreService
 from app.services.youtube import YoutubeService
+from app.services.youtube_analytics import YoutubeAnalyticsService
 from app.services.youtube_demo import (
     DemoUserService,
     DemoYoutubeOAuthService,
@@ -25,6 +26,7 @@ __all__ = [
     "DemoYoutubeOAuthService",
     "DemoUserService",
     "FakeYoutubeApiClient",
+    "YoutubeAnalyticsService",
     "YoutubeService",
     "YoutubeOAuthService",
 ]

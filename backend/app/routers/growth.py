@@ -7,9 +7,19 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.dependencies import get_growth_score_service
+from app.dependencies import (
+    get_growth_score_service,
+    get_user_service,
+    get_youtube_analytics_service,
+    get_youtube_oauth_service_optional,
+    get_youtube_service,
+)
 from app.services.growth import GrowthScoreService
 from app.services.sgi import ScoreComputation, ScoreComponentResult
+from app.services.users import UserService
+from app.services.youtube import YoutubeService
+from app.services.youtube_analytics import YoutubeAnalyticsService
+from app.services.youtube_oauth import YoutubeOAuthService
 
 router = APIRouter(prefix="/growth", tags=["growth"])
 
@@ -47,10 +57,14 @@ class GrowthScoreResponse(BaseModel):
 
 
 @router.get("/score", response_model=GrowthScoreResponse)
-def read_growth_score(
+async def read_growth_score(
     channel_id: str | None = Query(default=None, alias="channelId"),
     video_type: str | None = Query(default=None, alias="videoType"),
     service: GrowthScoreService = Depends(get_growth_score_service),
+    youtube_service: YoutubeService = Depends(get_youtube_service),
+    analytics_service: YoutubeAnalyticsService = Depends(get_youtube_analytics_service),
+    user_service: UserService = Depends(get_user_service),
+    oauth_service: YoutubeOAuthService | None = Depends(get_youtube_oauth_service_optional),
 ) -> GrowthScoreResponse:
     """Return the Storyloop Growth Index for the requested channel.
 
@@ -58,8 +72,13 @@ def read_growth_score(
         channel_id: Optional channel identifier.
         video_type: Optional filter by video type ("short", "live", or "video").
     """
-    computation = service.load_latest_score(
-        channel_id=channel_id, video_type=video_type
+    computation = await service.load_latest_score(
+        channel_id=channel_id,
+        video_type=video_type,
+        youtube_service=youtube_service,
+        analytics_service=analytics_service,
+        user_service=user_service,
+        oauth_service=oauth_service,
     )
     return _serialize_score(computation)
 
@@ -67,10 +86,10 @@ def read_growth_score(
 def _serialize_score(computation: ScoreComputation) -> GrowthScoreResponse:
     breakdown = computation.breakdown
     return GrowthScoreResponse(
-        total_score=computation.total_score,
-        score_delta=computation.score_delta,
-        updated_at=computation.updated_at,
-        is_early_channel=computation.is_early_channel,
+        totalScore=computation.total_score,
+        scoreDelta=computation.score_delta,
+        updatedAt=computation.updated_at,
+        isEarlyChannel=computation.is_early_channel,
         breakdown=ScoreBreakdownModel(
             discovery=_serialize_component(breakdown.discovery),
             retention=_serialize_component(breakdown.retention),
@@ -81,7 +100,7 @@ def _serialize_score(computation: ScoreComputation) -> GrowthScoreResponse:
 
 def _serialize_component(component: ScoreComponentResult) -> ScoreComponentModel:
     return ScoreComponentModel(
-        raw_value=component.raw_value,
+        rawValue=component.raw_value,
         score=component.score,
         weight=component.weight,
     )

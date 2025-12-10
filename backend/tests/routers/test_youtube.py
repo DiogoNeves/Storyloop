@@ -215,6 +215,11 @@ async def test_get_video_detail_returns_video_with_transcript_none():
         "videoType": "video",
         "privacyStatus": "public",
         "transcript": None,
+        "statistics": {
+            "viewCount": None,
+            "likeCount": None,
+            "commentCount": None,
+        },
     }
 
 

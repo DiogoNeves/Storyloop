@@ -15,6 +15,7 @@ from app.services import (
     YoutubeOAuthService,
     YoutubeService,
 )
+from app.services.youtube_analytics import YoutubeAnalyticsService
 from app.services.youtube_demo import (
     DemoUserService,
     DemoYoutubeOAuthService,
@@ -89,6 +90,17 @@ def get_youtube_oauth_service_optional(
 def get_youtube_demo_mode(request: Request) -> bool:
     """Extract YouTube demo mode status from application state."""
     return getattr(request.app.state, "youtube_demo_mode", False)
+
+
+def get_youtube_analytics_service(request: Request) -> YoutubeAnalyticsService:
+    """Extract YoutubeAnalyticsService from application state."""
+    service = getattr(request.app.state, "youtube_analytics_service", None)
+    if service is None:
+        raise HTTPException(
+            status_code=503,
+            detail="YouTube Analytics service not configured",
+        )
+    return service
 
 
 def get_db(request: Request) -> Iterator[sqlite3.Connection]:

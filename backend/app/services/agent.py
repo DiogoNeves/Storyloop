@@ -47,6 +47,7 @@ async def build_loopie_deps(
     youtube_service = getattr(app.state, "active_youtube_service", None)
     user_service = getattr(app.state, "user_service", None)
     oauth_service = getattr(app.state, "youtube_oauth_service", None)
+    analytics_service = getattr(app.state, "youtube_analytics_service", None)
 
     user_id = "anonymous"
     if user_service is not None:
@@ -67,7 +68,7 @@ async def build_loopie_deps(
         youtube_repo = EmptyYouTubeRepository()
     else:
         youtube_repo = YouTubeRepository(
-            youtube_service, user_service, oauth_service
+            youtube_service, user_service, oauth_service, analytics_service
         )
 
     return LoopieDeps(
