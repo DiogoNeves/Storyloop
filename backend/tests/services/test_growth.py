@@ -7,10 +7,11 @@ import pytest
 from app.services.growth import GrowthScoreService
 
 
-def test_load_latest_score_returns_expected_breakdown() -> None:
+def test_compute_sample_score_returns_expected_breakdown() -> None:
+    """Test that the sample/fallback score computation works correctly."""
     service = GrowthScoreService()
 
-    result = service.load_latest_score()
+    result = service._compute_sample_score()
 
     assert result.total_score == pytest.approx(68.3)
     assert result.score_delta == pytest.approx(18.3)

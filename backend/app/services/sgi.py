@@ -266,7 +266,7 @@ def _calculate_retention_raw(video: VideoScoreInputs) -> float | None:
     if avp_percent is not None and ehs is not None:
         return 0.6 * avp_percent + 0.4 * ehs
     if avp_percent is not None:
-        return 0.6 * avp_percent
+        return avp_percent  # Full weight when EHS unavailable
     if ehs is not None:
         return float(ehs)
     return None

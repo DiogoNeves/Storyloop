@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Sequence
+from typing import TYPE_CHECKING
 
 from app.services.sgi import (
     ScoreComputation,
@@ -12,7 +12,15 @@ from app.services.sgi import (
     compute_growth_score,
 )
 
+if TYPE_CHECKING:
+    from app.services.users import UserService
+    from app.services.youtube import YoutubeService, YoutubeVideo
+    from app.services.youtube_analytics import VideoAnalytics, YoutubeAnalyticsService
+    from app.services.youtube_oauth import YoutubeOAuthService
+
 logger = logging.getLogger(__name__)
+
+DEFAULT_BASELINE_SIZE = 10
 
 
 @dataclass
@@ -23,31 +31,141 @@ class GrowthScoreService:
         """Log a placeholder recalculation until real metrics are wired in."""
         logger.info("Pretending to recalculate growth score aggregates.")
 
-    def load_latest_score(
-        self, channel_id: str | None = None, video_type: str | None = None
+    async def load_latest_score(
+        self,
+        channel_id: str | None,
+        video_type: str | None,
+        youtube_service: YoutubeService,
+        analytics_service: YoutubeAnalyticsService,
+        user_service: UserService,
+        oauth_service: YoutubeOAuthService | None,
     ) -> ScoreComputation:
         """Calculate the latest Storyloop Growth Index for the given channel.
 
+        Fetches recent videos and their analytics from YouTube APIs, then computes
+        the SGI using the latest video as "current" and previous videos as baseline.
+
         Args:
-            channel_id: Optional channel identifier.
+            channel_id: Optional channel identifier. If None, uses active user's channel.
             video_type: Optional filter by video type ("short", "live", or "video").
+            youtube_service: Service for fetching video data.
+            analytics_service: Service for fetching analytics data.
+            user_service: Service for user/channel info.
+            oauth_service: OAuth service for authenticated requests.
         """
-        current_video, baseline_videos = self._load_sample_dataset(
-            channel_id, video_type
+        videos = await self._fetch_recent_videos(
+            channel_id,
+            video_type,
+            youtube_service,
+            user_service,
+            oauth_service,
         )
-        return compute_growth_score(current_video, baseline_videos)
+
+        if not videos:
+            logger.info("No videos found, returning sample score")
+            return self._compute_sample_score()
+
+        analytics = await analytics_service.fetch_videos_analytics(
+            [(v.id, v.published_at) for v in videos]
+        )
+
+        inputs = self._build_score_inputs(videos, analytics)
+        if not inputs:
+            logger.info("No valid inputs, returning sample score")
+            return self._compute_sample_score()
+
+        current = inputs[0]
+        baseline = inputs[1:] if len(inputs) > 1 else []
+
+        return compute_growth_score(current, baseline)
+
+    async def _fetch_recent_videos(
+        self,
+        channel_id: str | None,
+        video_type: str | None,
+        youtube_service: YoutubeService,
+        user_service: UserService,
+        oauth_service: YoutubeOAuthService | None,
+    ) -> list[YoutubeVideo]:
+        """Fetch recent videos for score calculation."""
+        import anyio
+
+        # Get channel identifier
+        identifier = channel_id
+        if identifier is None:
+            user = await anyio.to_thread.run_sync(user_service.get_active_user)
+            identifier = user.channel_id if user else None
+
+        if not identifier:
+            return []
+
+        try:
+            feed = await youtube_service.fetch_channel_feed(
+                identifier,
+                video_type=video_type,
+                user_service=user_service,
+                oauth_service=oauth_service,
+                max_results=DEFAULT_BASELINE_SIZE + 1,
+            )
+            return feed.videos
+        except Exception as e:
+            logger.warning(f"Failed to fetch videos: {e}")
+            return []
+
+    def _build_score_inputs(
+        self,
+        videos: list[YoutubeVideo],
+        analytics: dict[str, VideoAnalytics],
+    ) -> list[VideoScoreInputs]:
+        """Build VideoScoreInputs from video data and analytics."""
+        inputs: list[VideoScoreInputs] = []
+
+        for video in videos:
+            video_analytics = analytics.get(video.id)
+
+            # Get view velocity from analytics, fall back to current views from Data API
+            views_7d = None
+            views_28d = None
+            avp = None
+            subs_gained = None
+            subs_lost = None
+
+            if video_analytics:
+                views_7d = video_analytics.views_7d
+                views_28d = video_analytics.views_28d
+                # Convert from percentage (0-100) to decimal (0-1) for SGI
+                if video_analytics.average_view_percentage is not None:
+                    avp = video_analytics.average_view_percentage / 100.0
+                subs_gained = video_analytics.subscribers_gained
+                subs_lost = video_analytics.subscribers_lost
+
+            # Fallback: use current view count as approximate VV7 if no analytics
+            if views_7d is None and video.statistics:
+                views_7d = video.statistics.view_count
+
+            inputs.append(
+                VideoScoreInputs(
+                    video_id=video.id,
+                    view_velocity_7d=float(views_7d) if views_7d else None,
+                    average_view_percentage=avp,
+                    early_hook_score=None,  # Not available in public API
+                    subscribers_gained=subs_gained,
+                    subscribers_lost=subs_lost,
+                    views_28d=views_28d,
+                )
+            )
+
+        return inputs
+
+    def _compute_sample_score(self) -> ScoreComputation:
+        """Return a sample score when real data is unavailable."""
+        current, baseline = self._load_sample_dataset()
+        return compute_growth_score(current, baseline)
 
     def _load_sample_dataset(
-        self, channel_id: str | None, video_type: str | None = None
-    ) -> tuple[VideoScoreInputs, Sequence[VideoScoreInputs]]:
-        """Return a deterministic dataset while API integrations are in progress.
-
-        Args:
-            channel_id: Optional channel identifier (currently unused).
-            video_type: Optional filter by video type (currently unused, will be
-                applied when real metrics are wired in).
-        """
-
+        self,
+    ) -> tuple[VideoScoreInputs, list[VideoScoreInputs]]:
+        """Return a deterministic dataset for demo/fallback purposes."""
         baseline: list[VideoScoreInputs] = [
             VideoScoreInputs(
                 video_id="storyloop-001",
@@ -115,7 +233,6 @@ class GrowthScoreService:
             views_28d=64_000,
         )
 
-        # channel_id currently unused; the dataset stands in until persistence arrives
         return current, baseline
 
 

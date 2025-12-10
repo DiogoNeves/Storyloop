@@ -26,6 +26,7 @@ from app.services import (
     build_agent,
 )
 from app.services.youtube import YoutubeConfigurationError
+from app.services.youtube_analytics import YoutubeAnalyticsService
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +117,12 @@ def build_lifespan(
             )
         except YoutubeConfigurationError:
             app.state.youtube_oauth_service = None
+
+        # Initialize YouTube Analytics service (requires user_service and oauth_service)
+        app.state.youtube_analytics_service = YoutubeAnalyticsService(
+            user_service=user_service,
+            oauth_service=app.state.youtube_oauth_service,
+        )
         app.state.growth_score_service = growth_score_service
         app.state.assistant_agent = assistant_agent
 
