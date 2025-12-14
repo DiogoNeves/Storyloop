@@ -205,10 +205,10 @@ export function LoopiePanelView({
   className,
 }: LoopiePanelViewProps) {
   const containerClasses = cn(
-    "relative flex h-full w-full flex-1 flex-col overflow-hidden",
+    "relative flex min-h-0 w-full flex-1 flex-col overflow-hidden",
     variant === "panel"
-      ? "rounded-2xl border border-primary/15 bg-background/98 shadow-[0_24px_70px_-50px_rgba(32,0,77,0.6)]"
-      : "rounded-xl border border-border/70 bg-background/95 shadow-sm",
+      ? "h-[calc(100dvh-10rem)] max-h-[calc(100dvh-10rem)] rounded-2xl border border-primary/15 bg-background/98 shadow-[0_24px_70px_-50px_rgba(32,0,77,0.6)]"
+      : "h-full rounded-xl border border-border/70 bg-background/95 shadow-sm",
     className,
   );
   const headerPadding = variant === "panel" ? "px-3 py-3" : "px-4 py-4 sm:px-5";
@@ -218,7 +218,7 @@ export function LoopiePanelView({
       {variant === "panel" ? (
         <div className="from-primary/12 pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b via-primary/5 to-transparent opacity-60" />
       ) : null}
-      <div className="relative flex h-full flex-col">
+      <div className="relative flex h-full min-h-0 flex-col">
         <header
           className={cn(
             "flex items-start gap-4 border-b",
