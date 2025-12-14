@@ -7,9 +7,10 @@ import {
   type YoutubeVideoDetailResponse,
 } from "@/api/youtube";
 import { NavBar } from "@/components/NavBar";
-import { LoopiePanel } from "@/components/LoopiePanel";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { VideoStatCards } from "@/components/VideoStatCards";
+import { TwoColumnDetailLayout } from "@/components/TwoColumnDetailLayout";
+import { StickyHeaderScrollableCard } from "@/components/StickyHeaderScrollableCard";
 
 export function VideoDetailPage() {
   const { videoId } = useParams<{ videoId: string }>();
@@ -54,110 +55,146 @@ export function VideoDetailPage() {
     ? String(video.description).trim()
     : "";
 
+  const backLink = (
+    <Link
+      to="/"
+      className="text-sm font-medium text-primary underline-offset-2 hover:underline"
+    >
+      ← Back to activity feed
+    </Link>
+  );
+
+  const renderCardContent = () => {
+    if (!videoId) {
+      return (
+        <StickyHeaderScrollableCard>
+          <p className="text-sm text-muted-foreground">
+            We couldn't determine which video to display.
+          </p>
+        </StickyHeaderScrollableCard>
+      );
+    }
+
+    if (videoDetailQuery.isLoading) {
+      return (
+        <StickyHeaderScrollableCard>
+          <p className="text-sm text-muted-foreground">
+            Loading video details…
+          </p>
+        </StickyHeaderScrollableCard>
+      );
+    }
+
+    if (videoDetailQuery.isError) {
+      return (
+        <StickyHeaderScrollableCard>
+          <p className="text-sm text-destructive">
+            {videoDetailQuery.error instanceof Error
+              ? videoDetailQuery.error.message
+              : String(videoDetailQuery.error)}
+          </p>
+        </StickyHeaderScrollableCard>
+      );
+    }
+
+    if (!video) {
+      return (
+        <StickyHeaderScrollableCard>
+          <p className="text-sm text-muted-foreground">
+            We couldn't find details for this video.
+          </p>
+        </StickyHeaderScrollableCard>
+      );
+    }
+
+    const header = (
+      <>
+        <h1 className="text-2xl font-semibold text-foreground">
+          {String(video.title)}
+        </h1>
+        <div className="flex flex-col gap-2 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
+          <span>{publishedDate ?? "Publish date unavailable"}</span>
+          <a
+            href={String(video.url)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline"
+          >
+            Watch on YouTube
+          </a>
+        </div>
+      </>
+    );
+
+    const body = (
+      <div className="space-y-6">
+        <div className="space-y-4">
+          <VideoStatCards
+            statistics={video.statistics}
+            isLoading={videoDetailQuery.isLoading}
+          />
+          <div className="aspect-video w-full overflow-hidden rounded-md border border-border bg-black">
+            <iframe
+              title={String(video.title)}
+              src={`https://www.youtube.com/embed/${videoId}`}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              className="h-full w-full"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <section>
+            <h2 className="text-lg font-semibold text-foreground">
+              Description
+            </h2>
+            <p className="whitespace-pre-line text-sm text-muted-foreground">
+              {descriptionText && descriptionText.length > 0
+                ? descriptionText
+                : "No description available."}
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-foreground">
+              Transcript
+            </h2>
+            {transcriptText && transcriptText.length > 0 ? (
+              <p className="whitespace-pre-line text-sm text-muted-foreground">
+                {transcriptText}
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Transcript not available yet.
+              </p>
+            )}
+          </section>
+        </div>
+      </div>
+    );
+
+    return (
+      <StickyHeaderScrollableCard
+        header={header}
+        stickyHeaderAt="lg"
+        bodyClassName="space-y-6"
+      >
+        {body}
+      </StickyHeaderScrollableCard>
+    );
+  };
+
   return (
     <>
       <div className="to-muted/12 relative min-h-screen bg-gradient-to-br from-background text-foreground">
         <NavBar onOpenSettings={() => setIsSettingsOpen(true)} />
         <main className="relative flex min-h-[calc(100vh-4rem)] flex-1 overflow-y-auto pt-16 lg:h-[100dvh] lg:min-h-0 lg:overflow-hidden">
           <div className="from-primary/8 pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b via-transparent to-transparent" />
-          <div className="relative grid h-full min-h-[calc(100vh-4rem)] w-full grid-cols-1 gap-6 px-6 py-10 sm:py-12 lg:h-[calc(100dvh-4rem)] lg:min-h-0 lg:grid-cols-3 lg:overflow-hidden lg:px-10 xl:px-16">
-            <div className="col-span-2 flex h-full min-h-0 flex-col gap-6 overflow-hidden">
-              <Link
-                to="/"
-                className="text-sm font-medium text-primary underline-offset-2 hover:underline"
-              >
-                ← Back to activity feed
-              </Link>
-              <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-background shadow-sm">
-                <div className="scrollbar-hide min-h-0 flex-1 space-y-6 overflow-y-auto p-6">
-                  {!videoId ? (
-                    <p className="text-sm text-muted-foreground">
-                      We couldn’t determine which video to display.
-                    </p>
-                  ) : videoDetailQuery.isLoading ? (
-                    <p className="text-sm text-muted-foreground">
-                      Loading video details…
-                    </p>
-                  ) : videoDetailQuery.isError ? (
-                    <p className="text-sm text-destructive">
-                      {videoDetailQuery.error instanceof Error
-                        ? videoDetailQuery.error.message
-                        : String(videoDetailQuery.error)}
-                    </p>
-                  ) : !video ? (
-                    <p className="text-sm text-muted-foreground">
-                      We couldn’t find details for this video.
-                    </p>
-                  ) : (
-                    <div className="space-y-6">
-                      <div className="space-y-4">
-                        <h1 className="text-2xl font-semibold text-foreground">
-                          {String(video.title)}
-                        </h1>
-                        <div className="flex flex-col gap-2 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
-                          <span>
-                            {publishedDate ?? "Publish date unavailable"}
-                          </span>
-                          <a
-                            href={String(video.url)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline"
-                          >
-                            Watch on YouTube
-                          </a>
-                        </div>
-                        <VideoStatCards
-                          statistics={video.statistics}
-                          isLoading={videoDetailQuery.isLoading}
-                        />
-                        <div className="aspect-video w-full overflow-hidden rounded-md border border-border bg-black">
-                          <iframe
-                            title={String(video.title)}
-                            src={`https://www.youtube.com/embed/${videoId}`}
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                            className="h-full w-full"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <section>
-                          <h2 className="text-lg font-semibold text-foreground">
-                            Description
-                          </h2>
-                          <p className="whitespace-pre-line text-sm text-muted-foreground">
-                            {descriptionText && descriptionText.length > 0
-                              ? descriptionText
-                              : "No description available."}
-                          </p>
-                        </section>
-
-                        <section>
-                          <h2 className="text-lg font-semibold text-foreground">
-                            Transcript
-                          </h2>
-                          {transcriptText && transcriptText.length > 0 ? (
-                            <p className="whitespace-pre-line text-sm text-muted-foreground">
-                              {transcriptText}
-                            </p>
-                          ) : (
-                            <p className="text-sm text-muted-foreground">
-                              Transcript not available yet.
-                            </p>
-                          )}
-                        </section>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </section>
-            </div>
-            <div className="col-span-1 hidden h-full min-h-0 lg:flex">
-              <LoopiePanel />
-            </div>
-          </div>
+          <TwoColumnDetailLayout
+            leftTop={backLink}
+            left={renderCardContent()}
+          />
         </main>
       </div>
       <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
