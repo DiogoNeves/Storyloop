@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 
 import type { ActivityItem } from "@/lib/types/entries";
 import type {
@@ -9,12 +9,14 @@ import { useEntryEditing } from "@/hooks/useEntryEditing";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { LinkYouTubeAccountCard } from "@/components/LinkYouTubeAccountCard";
 import { ActivityFeedItem } from "./ActivityFeedItem";
 import { ActivityDraftCard } from "./ActivityDraftCard";
 import { InfoModal } from "./InfoModal";
 import { ActivityFeedInfo } from "./ActivityFeedInfo";
 import { isActivityEditable } from "@/lib/activity-helpers";
+import { filterActivityItems } from "@/lib/activity-search";
 
 export type { ActivityItem };
 
@@ -67,6 +69,7 @@ export function ActivityFeed({
 }: ActivityFeedProps) {
   const editingState = useEntryEditing();
   const [thumbnailError, setThumbnailError] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const channelThumbnailUrl = youtubeFeed?.channelThumbnailUrl?.trim() ?? null;
   const isValidUrl =
@@ -80,6 +83,11 @@ export function ActivityFeed({
   useEffect(() => {
     setThumbnailError(false);
   }, [channelThumbnailUrl]);
+
+  const filteredItems = useMemo(
+    () => filterActivityItems(items, searchQuery),
+    [items, searchQuery],
+  );
 
   return (
     <Card
@@ -131,14 +139,24 @@ export function ActivityFeed({
             ) : null}
           </div>
         </div>
-        <Button
-          type="button"
-          onClick={onStartDraft}
-          disabled={Boolean(draft)}
-          className="self-start sm:ml-auto sm:self-end"
-        >
-          + entry
-        </Button>
+        <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+          <div className="w-full max-w-[220px] sm:max-w-[260px]">
+            <Input
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search activity"
+              aria-label="Search activity"
+            />
+          </div>
+          <Button
+            type="button"
+            onClick={onStartDraft}
+            disabled={Boolean(draft)}
+            className="self-start sm:self-auto"
+          >
+            + entry
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-6 pt-0 sm:px-6 sm:pr-2">
         {errorMessage ? (
@@ -170,7 +188,12 @@ export function ActivityFeed({
             idPrefix="new-entry"
           />
         ) : null}
-        {items.map((item) => {
+        {filteredItems.length === 0 && searchQuery ? (
+          <p className="text-sm text-muted-foreground" role="status">
+            No activity matches “{searchQuery}”.
+          </p>
+        ) : null}
+        {filteredItems.map((item) => {
           const isEditing =
             editingState.editingEntryId === item.id &&
             editingState.editingDraft;
