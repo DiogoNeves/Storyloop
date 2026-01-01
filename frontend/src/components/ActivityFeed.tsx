@@ -9,7 +9,6 @@ import { useEntryEditing } from "@/hooks/useEntryEditing";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { LinkYouTubeAccountCard } from "@/components/LinkYouTubeAccountCard";
 import { ActivityFeedItem } from "./ActivityFeedItem";
 import { ActivityDraftCard } from "./ActivityDraftCard";
@@ -44,6 +43,7 @@ interface ActivityFeedProps {
   onConversationClick?: (conversationId: string) => Promise<void>;
   onConversationDelete?: (conversationId: string) => Promise<void>;
   deletingConversationIds?: Set<string>;
+  searchQuery: string;
   className?: string;
 }
 
@@ -65,11 +65,11 @@ export function ActivityFeed({
   onConversationClick,
   onConversationDelete,
   deletingConversationIds,
+  searchQuery,
   className,
 }: ActivityFeedProps) {
   const editingState = useEntryEditing();
   const [thumbnailError, setThumbnailError] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
 
   const channelThumbnailUrl = youtubeFeed?.channelThumbnailUrl?.trim() ?? null;
   const isValidUrl =
@@ -140,14 +140,6 @@ export function ActivityFeed({
           </div>
         </div>
         <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
-          <div className="w-full max-w-[220px] sm:max-w-[260px]">
-            <Input
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search activity"
-              aria-label="Search activity"
-            />
-          </div>
           <Button
             type="button"
             onClick={onStartDraft}
