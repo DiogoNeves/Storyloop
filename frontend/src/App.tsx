@@ -41,6 +41,7 @@ import { InsightsPage } from "@/pages/InsightsPage";
 import { ConversationDetailPage } from "@/pages/ConversationDetailPage";
 import { LoopiePage } from "@/pages/LoopiePage";
 import { JournalSummaryCards } from "@/components/JournalSummaryCards";
+import { Input } from "@/components/ui/input";
 import {
   AgentConversationProvider,
   useAgentConversationContext,
@@ -130,6 +131,7 @@ function JournalPage() {
 
   const { publicOnly, setPublicOnly } = useSettings();
   void setPublicOnly;
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Determine videoType filter for API calls: null if "all", otherwise the type
   const videoTypeFilter = useMemo<"short" | "video" | "live" | null>(() => {
@@ -466,10 +468,20 @@ function JournalPage() {
         />
       </div>
 
-      <ContentTypeTabs
-        value={contentTypeFilter}
-        onChange={setContentTypeFilter}
-      />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <ContentTypeTabs
+          value={contentTypeFilter}
+          onChange={setContentTypeFilter}
+        />
+        <div className="w-full sm:max-w-[260px]">
+          <Input
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search activity"
+            aria-label="Search activity"
+          />
+        </div>
+      </div>
 
       <ActivityFeed
         className="flex-1"
@@ -490,6 +502,7 @@ function JournalPage() {
         onConversationClick={handleConversationClick}
         onConversationDelete={isDemo ? undefined : handleConversationDelete}
         deletingConversationIds={deletingConversationIds}
+        searchQuery={searchQuery}
       />
     </div>
   );
