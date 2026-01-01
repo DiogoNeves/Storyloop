@@ -33,15 +33,20 @@ describe("filterActivityItems", () => {
     expect(filterActivityItems(items, "")).toEqual(items);
   });
 
-  it("matches fuzzy terms across titles and summaries", () => {
+  it("matches fuzzy terms across titles", () => {
     const result = filterActivityItems(items, "audience sprint");
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe("conversation-1");
   });
 
   it("matches non-contiguous fuzzy sequences", () => {
-    const result = filterActivityItems(items, "cvai");
+    const result = filterActivityItems(items, "ctav");
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe("journal-1");
+  });
+
+  it("does not match summary-only queries", () => {
+    const result = filterActivityItems(items, "experiments");
+    expect(result).toHaveLength(0);
   });
 });

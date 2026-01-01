@@ -18,7 +18,7 @@ export function filterActivityItems(
 }
 
 export function buildActivitySearchText(item: ActivityItem): string {
-  return normalizeSearchText(`${item.title} ${item.summary}`);
+  return normalizeSearchText(item.title);
 }
 
 function normalizeSearchText(value: string): string {
