@@ -24,7 +24,8 @@ export function filterActivityItems(
 }
 
 export function buildActivitySearchText(item: ActivityItem): string {
-  return normalizeSearchText(item.title);
+  // Search over both title and summary/description content.
+  return normalizeSearchText(`${item.title} ${item.summary}`);
 }
 
 function normalizeSearchText(value: string): string {
