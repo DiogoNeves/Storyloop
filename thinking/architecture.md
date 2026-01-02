@@ -48,9 +48,9 @@ Storyloop is a creator analytics journal that combines a FastAPI backend with a 
 ┌─────────────────────────────────────────────────────────────┐
 │              FastAPI Backend (Uvicorn)                      │
 │  ┌──────────────────────────────────────────────────────┐   │
-│  │  Routers (/health)                                    │   │
-│  │  Services (YouTube, Growth Score)                     │   │
-│  │  Database Layer (SQLite)                              │   │
+│  │  Routers (/health, /entries, /assets, /conversations) │   │
+│  │  Services (YouTube, Growth Score, Assets, Entries)    │   │
+│  │  Storage Layer (SQLite + assets on disk)              │   │
 │  └──────────────────┬───────────────────────────────────┘   │
 │                     │                                        │
 │  ┌──────────────────▼───────────────────────────────────┐   │
@@ -62,8 +62,8 @@ Storyloop is a creator analytics journal that combines a FastAPI backend with a 
                    │
                    ▼
 ┌─────────────────────────────────────────────────────────────┐
-│              SQLite Database                                │
-│  (backend/.data/storyloop.db)                               │
+│         SQLite Database + Assets Directory                  │
+│  (db_dir/storyloop.db + db_dir/assets/)                     │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -98,14 +98,18 @@ Storyloop is a creator analytics journal that combines a FastAPI backend with a 
 
 - `YoutubeService` - Handles YouTube API integration and metric syncing
 - `GrowthScoreService` - Calculates and maintains growth score metrics. See [thinking/insights.md](insights.md) for the full scoring and insights logic.
+- `EntryService` - Persists journal and content entries for the activity feed and agent tools
+- `AssetService` - Stores uploads on disk, keeps metadata in SQLite, and extracts PDF text for agent context
 - `build_agent()` - Creates and configures PydanticAI agent for conversational interactions
 - Database abstraction through `SqliteConnectionFactory`
 
 **Frontend Modules:**
 
 - API layer (`src/api/`) - Centralized HTTP client and query definitions
+- Asset uploads (`src/api/assets.ts`, `src/hooks/useAssetUpload.ts`) - Handles image/PDF uploads and inserts markdown or attachments
 - Components (`src/components/`) - Reusable UI components
 - Pages (`src/App.tsx`) - Main application view
+- Markdown rendering (`src/components/chat/MarkdownMessage.tsx`) - Rewrites `/assets/` URLs to `API_BASE_URL` and renders asset previews
 
 ### Environment Configuration
 
@@ -164,6 +168,7 @@ Settings are managed through `backend/app/config.py` using Pydantic:
 - Basic system prompt configured for YouTube creator assistance
 - Insights will be generated through agent interactions, not automatic parsing of journal entries
 - Journal entries remain simple and user-focused
+- Image/PDF attachments are included as data URLs or extracted text in agent context when available
 
 **Future Enhancements:**
 

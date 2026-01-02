@@ -5,25 +5,43 @@
 ```
 frontend/
 ├── src/
-│   ├── api/              # API client and queries
+│   ├── api/              # API client and query helpers
+│   │   ├── assets.ts     # Asset uploads + metadata
 │   │   ├── client.ts     # Axios instance
+│   │   ├── conversations.ts # Loopie conversations + turns
+│   │   ├── entries.ts    # Activity/journal entries
+│   │   ├── growth.ts     # Growth score queries
 │   │   ├── health.ts     # Health check queries
-│   │   └── entries.ts    # Entry queries (future)
+│   │   └── youtube.ts    # YouTube data endpoints
+│   ├── assets/           # Local static images
 │   ├── components/       # React components
+│   │   ├── ActivityDraftCard.tsx # Entry editor + uploads
 │   │   ├── ActivityFeed.tsx      # Main journal feed
-│   │   ├── NavBar.tsx            # Navigation header
-│   │   ├── NewEntryDialog.tsx    # Entry creation form
+│   │   ├── LoopiePanel.tsx       # Agent chat panel
+│   │   ├── chat/                 # Chat rendering
+│   │   │   ├── AssetAttachmentList.tsx
+│   │   │   ├── AssetLinkCard.tsx
+│   │   │   └── MarkdownMessage.tsx
 │   │   └── ui/                   # shadcn components
-│   │       ├── badge.tsx
-│   │       ├── button.tsx
-│   │       ├── card.tsx
-│   │       ├── dialog.tsx
-│   │       ├── input.tsx
-│   │       ├── label.tsx
-│   │       └── textarea.tsx
-│   ├── lib/              # Utilities
+│   ├── context/          # Shared state providers
+│   │   ├── AgentConversationContext.tsx
+│   │   └── SettingsProvider.tsx
+│   ├── hooks/            # Feature hooks
+│   │   ├── useAgentConversation.ts
+│   │   ├── useAssetUpload.ts
+│   │   ├── useEntryEditing.ts
+│   │   └── useYouTubeFeed.ts
+│   ├── lib/              # Utilities and types
+│   │   ├── assets.ts     # Asset URL helpers
+│   │   ├── types/        # Shared TS types
 │   │   └── utils.ts      # cn() helper
-│   ├── App.tsx           # Main application
+│   ├── pages/            # Routed pages
+│   │   ├── ConversationDetailPage.tsx
+│   │   ├── InsightsPage.tsx
+│   │   ├── JournalDetailPage.tsx
+│   │   ├── LoopiePage.tsx
+│   │   └── VideoDetailPage.tsx
+│   ├── App.tsx           # App shell + routing
 │   ├── main.tsx          # React entry point
 │   └── index.css         # Global styles + theme
 ├── tests/                # Test files
@@ -35,39 +53,35 @@ frontend/
 
 ## Core Application
 
-### App.tsx - Main Dashboard
+### App.tsx - App Shell & Routing
 
 **Design:** [Main Screen Design](../design/main-screen.png)
 
 **Structure:**
 
-- `App()` - Root component wrapping with QueryClientProvider
-- `DashboardShell()` - Main dashboard layout
-- `HealthBadge()` - Backend connection status indicator
-- `ScorePlaceholder()` - Growth score and simple score chart displayed at the top
+- `App()` - Root component wrapping providers (QueryClient, Settings, AgentConversation, Router)
+- `AppLayout()` - Main layout with NavBar, journal column, and Loopie panel
+- Routes for journal, insights, Loopie, conversations, and video details
 
 **Layout:**
 
-1. **Top Section:** Score and simple score chart (as is)
-2. **Timeline Section:** Activity feed displaying chronological entries
+1. **Journal Column:** Activity feed with draft editor and timeline items
+2. **Loopie Column (desktop):** Agent chat panel and conversation context
+3. **Detail Pages:** Journal entry detail, conversation detail, video detail, insights
 
 **State Management:**
 
-- Local state for activity items and draft entries
-- React Query for server state (health status, channel configuration)
-- Memoized seed data for development
+- React Query for server state (entries, conversations, growth, YouTube feed)
+- Local state for drafts, filters, and UI controls
+- Memoized demo data when no server data is available
 
 **Key Features:**
 
-- Health status monitoring
-- Growth score visualization at top
-- Timeline feed below score with:
-  - Content items (videos, lives, shorts, posts, etc.)
-  - Journal entries (from the user)
-  - Insights (from AI, not available yet)
-- Entry creation with date/time selection
-- Sortable chronological feed
-- Channel selection on first login (to be implemented)
+- Activity feed driven by persisted entries + YouTube content + Loopie conversations
+- Journal entry creation and editing (title, summary, date)
+- Image/PDF attachments inserted into markdown summaries via uploads
+- Loopie chat panel with attachment support
+- Conversation and detail routes for deeper inspection
 
 ### ActivityFeed Component
 
@@ -84,9 +98,10 @@ frontend/
 
 **Timeline Content Types:**
 
-- **Content** - Videos, lives, shorts, posts, etc. (synced from YouTube/other platforms)
-- **Journal Entries** - Simple user-created entries capturing creative decisions and reflections (no automatic parsing or insight extraction)
-- **Insights** - AI-generated insights from agent interactions. Users can ask the agent to track specific insights, and the agent can save background actions to monitor patterns over time (not available yet)
+- **Content** - Videos from YouTube sync
+- **Journal Entries** - User-created entries (markdown summary supports `/assets/{id}` links)
+- **Insights** - AI-generated insights from agent interactions
+- **Conversations** - Loopie chat threads surfaced in the feed
 
 **Agent Integration:**
 
@@ -98,11 +113,36 @@ frontend/
 **Features:**
 
 - Chronological sorting (newest first)
-- Category badges (video, insight, journal)
-- Date/time formatting
-- Empty state handling
-- Draft entry UI
-- Unified timeline view showing all activity types together
+- Category badges and inline edit/delete
+- Draft entry UI with attachment uploads
+- Search filtering and YouTube link status
+
+### ActivityDraftCard Component
+
+**Purpose:** Edit or create a journal entry with optional image/PDF uploads.
+
+**Features:**
+
+- Drag/drop and paste uploads for images and PDFs
+- Inserts markdown snippets (`![alt](/assets/{id})`, `[file](/assets/{id})`)
+- Inline error handling for upload failures
+
+### LoopiePanel Component
+
+**Purpose:** Conversational agent UI with attachments and streaming responses.
+
+**Features:**
+
+- Attachments list with previews before sending
+- Drag/drop and paste uploads in the composer
+- Sends attachment IDs alongside the message to the backend
+
+### Chat Rendering
+
+**MarkdownMessage:**
+
+- Rewrites `/assets/` URLs to `API_BASE_URL`
+- Renders asset link cards for non-image attachments
 
 ### NavBar Component
 
@@ -125,14 +165,17 @@ frontend/
 - JSON content type
 - Environment variable support
 
-### Query Definitions (`api/health.ts`)
+### Query Definitions (`api/*`)
 
 **Pattern:** Using `@lukemorales/query-key-factory`
 
 **Structure:**
 
 ```typescript
-healthQueries.status() - Returns query config for health check
+healthQueries.status() - Health check
+entriesQueries.all() - Entries list
+conversationQueries.list() - Loopie conversations
+growthQueries.summary() - Growth score snapshot
 ```
 
 **Query Options (from App.tsx):**
@@ -212,9 +255,9 @@ Update CSS variables in `index.css`:
 
 **Used For:**
 
-- Health check status
-- API data fetching
-- Cache management
+- Entries, conversations, growth, YouTube feed
+- Asset upload responses and metadata
+- Cache management and invalidation
 
 **Benefits:**
 
@@ -227,9 +270,9 @@ Update CSS variables in `index.css`:
 
 **Used For:**
 
-- UI interactions (dialogs, drafts)
+- UI interactions (dialogs, drafts, filters)
 - Temporary form data
-- Client-side sorting
+- Client-side sorting and search
 
 **Benefits:**
 
@@ -364,12 +407,10 @@ import.meta.env.VITE_API_BASE_URL;
 **Planned:**
 
 - Channel selection UI and persistence
-- Entry API integration
 - Real-time updates via WebSockets
 - Drag-and-drop entry ordering
-- Entry search and filtering
+- Advanced search and filtering
 - Rich text editor for journal entries
-- Image attachments
 - Entry categories and tags
 - Agent integration for insight tracking
   - Users can interact with agent to request insight tracking

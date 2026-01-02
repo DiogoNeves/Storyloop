@@ -30,6 +30,7 @@ graph TB
 
     subgraph "Storage"
         SQLite[(SQLite Database)]
+        AssetsDir[(Assets Directory)]
     end
 
     UI --> Query
@@ -39,6 +40,7 @@ graph TB
     Router --> Service
     Service --> DB_Factory
     DB_Factory --> SQLite
+    Service --> AssetsDir
 
     FastAPI --> Scheduler
     Scheduler --> YT_Job
@@ -210,6 +212,10 @@ FastAPI Application
 │   │   └── YouTube API integration
 │   ├── GrowthScoreService
 │   │   └── Score calculations
+│   ├── EntryService
+│   │   └── Journal + timeline entries
+│   ├── AssetService
+│   │   └── Uploaded files + metadata
 │   └── Agent Service (agent.py)
 │       └── PydanticAI agent builder
 │

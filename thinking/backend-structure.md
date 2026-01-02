@@ -9,19 +9,32 @@ backend/
 │   ├── main.py            # Application entry point
 │   ├── config.py          # Settings and configuration
 │   ├── db.py              # Database connection utilities
+│   ├── dependencies.py    # FastAPI dependency providers
 │   ├── db_helpers/        # Database helper modules
 │   │   ├── __init__.py
 │   │   └── conversations.py  # Conversation/turn persistence
 │   ├── scheduler.py       # Background job configuration
 │   ├── routers/           # HTTP endpoints
 │   │   ├── __init__.py
+│   │   ├── assets.py      # Asset upload + retrieval
+│   │   ├── conversations.py  # Conversation streaming endpoints
+│   │   ├── entries.py     # Journal/timeline entries CRUD
+│   │   ├── growth.py      # Growth score endpoints
 │   │   ├── health.py      # Health check endpoint
-│   │   └── conversations.py  # Conversation streaming endpoints
+│   │   ├── youtube.py     # YouTube data endpoints
+│   │   └── youtube_auth.py  # YouTube OAuth endpoints
 │   └── services/          # Business logic
 │       ├── __init__.py
 │       ├── agent.py       # PydanticAI agent builder
+│       ├── agent_tools/   # Agent tool adapters + models
+│       ├── assets.py      # Asset storage + metadata
+│       ├── entries.py     # Entry persistence
+│       ├── growth.py      # Growth score calculations
+│       ├── sgi.py         # Storyloop Growth Index helpers
+│       ├── users.py       # Active user/channel state
 │       ├── youtube.py     # YouTube API integration
-│       └── growth.py      # Growth score calculations
+│       ├── youtube_analytics.py # YouTube analytics helpers
+│       └── youtube_oauth.py  # OAuth helpers
 ├── tests/                 # Test suite
 ├── pyproject.toml         # Python dependencies
 └── pytest.ini            # Test configuration
@@ -49,6 +62,9 @@ Key functions:
 
 - `app.state.settings` - Application configuration
 - `app.state.get_db` - Database connection factory
+- `app.state.entry_service` - Entry persistence helpers
+- `app.state.asset_service` - Asset persistence and metadata helpers
+- `app.state.user_service` - Active user/channel state
 - `app.state.youtube_service` - YouTube API service
 - `app.state.growth_score_service` - Growth score service
 - `app.state.assistant_agent` - PydanticAI agent instance
@@ -163,6 +179,28 @@ APScheduler configuration for recurring jobs:
 - Generate insights and recommendations
 - Store calculated metrics in database
 
+#### EntryService (`services/entries.py`)
+
+**Purpose:** Persist timeline and journal entries in SQLite.
+
+**Methods:**
+
+- `ensure_schema()` - Creates and migrates the entries table
+- `save_new_entries()` - Insert new entries from the frontend
+- `list_entries()` - Return entries ordered by recency
+- `update_entry()` / `delete_entry()` - Edit and remove entries
+
+#### AssetService (`services/assets.py`)
+
+**Purpose:** Store uploaded files on disk with metadata in SQLite.
+
+**Features:**
+
+- Resizes images to a max edge length
+- Extracts text from PDFs for agent context
+- Stores files under `db_dir/assets/` derived from the database path
+- Provides metadata (`sizeBytes`, `width`, `height`) on demand
+
 #### Agent Service (`services/agent.py`)
 
 **Purpose:** Build and configure PydanticAI agent for conversational interactions
@@ -204,6 +242,30 @@ APScheduler configuration for recurring jobs:
 
 **Integration:** Frontend uses this to show connection status badge
 
+#### Assets Router (`routers/assets.py`)
+
+**Endpoints:**
+
+- `POST /assets` - Upload an image or PDF
+- `POST /assets/{id}` - Upload with a client-computed hash ID
+- `GET /assets/{id}` - Stream the stored file
+- `GET /assets/{id}/meta` - Fetch derived metadata
+
+**Purpose:** Accept file uploads and serve stored assets.
+
+#### Entries Router (`routers/entries.py`)
+
+**Endpoints:**
+
+- `GET /entries` - List stored entries
+- `POST /entries` - Persist new entries (bulk create)
+- `GET /entries/{id}` - Fetch an entry
+- `PUT /entries/{id}` - Update an entry
+- `DELETE /entries/{id}` - Remove an entry
+
+**Purpose:** CRUD operations for timeline/journal entries. Journal summaries can include
+markdown links to `/assets/{id}` for attachments.
+
 #### Conversations Router (`routers/conversations.py`)
 
 **Endpoints:**
@@ -215,10 +277,10 @@ APScheduler configuration for recurring jobs:
 
 - `GET /conversations/{conversation_id}/turns` - List all turns for a conversation
 
-  - Response: `[{ "id": "...", "role": "user|assistant", "text": "...", "created_at": "..." }]`
+  - Response: `[{ "id": "...", "role": "user|assistant", "text": "...", "attachments": [], "created_at": "..." }]`
 
 - `POST /conversations/{conversation_id}/turns/stream` - Stream assistant response (SSE)
-  - Request: `{ "text": "user message" }`
+  - Request: `{ "text": "user message", "attachments": ["asset_id"] }`
   - Response: Server-Sent Events stream with `token` events and final `done` event
   - Automatically cancels any in-flight generation for the same conversation
 
@@ -228,12 +290,12 @@ APScheduler configuration for recurring jobs:
 - In-flight task tracking for cancellation support
 - Logfire tracing for observability
 - SQLite persistence for conversation history
-- User and assistant turns stored separately
+- User and assistant turns stored separately (attachments stored in `turns.attachments`)
 
 **Database Schema:**
 
 - `conversations` table: `id`, `title`, `created_at`
-- `turns` table: `id`, `conversation_id`, `role`, `text`, `created_at`
+- `turns` table: `id`, `conversation_id`, `role`, `text`, `attachments`, `created_at`
 
 #### Channel Settings Router (Future: `routers/settings.py`)
 
