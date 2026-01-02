@@ -31,9 +31,13 @@ export async function uploadAsset(file: File): Promise<AssetUploadResponse> {
 
   const endpoint = hash ? `/assets/${hash}` : "/assets";
   // Let axios auto-detect Content-Type for FormData (overrides client default)
-  const { data } = await apiClient.post<AssetUploadResponse>(endpoint, formData, {
-    headers: { "Content-Type": undefined },
-  });
+  const { data } = await apiClient.post<AssetUploadResponse>(
+    endpoint,
+    formData,
+    {
+      headers: { "Content-Type": undefined },
+    },
+  );
   return data;
 }
 
