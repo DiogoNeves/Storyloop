@@ -18,6 +18,7 @@ from app.db_helpers.conversations import (
     insert_turn,
 )
 from app.routers.conversations import router as conversations_router
+from app.services.assets import AssetService
 
 
 def _create_test_app(
@@ -30,6 +31,11 @@ def _create_test_app(
 
     app = FastAPI()
     app.state.get_db = memory_connection_factory
+    asset_service = AssetService(
+        memory_connection_factory, "sqlite:///:memory:"
+    )
+    asset_service.ensure_schema()
+    app.state.asset_service = asset_service
     app.state.assistant_agent = assistant_agent
     app.include_router(conversations_router, prefix="/conversations")
     return app
@@ -153,8 +159,8 @@ def test_list_conversations_includes_recent_turn(
     conversation_id = create_response.json()["id"]
 
     with memory_connection_factory() as connection:
-        insert_turn(connection, conversation_id, "user", "Hello")
-        insert_turn(connection, conversation_id, "assistant", "Final reply")
+        insert_turn(connection, conversation_id, "user", "Hello", [])
+        insert_turn(connection, conversation_id, "assistant", "Final reply", [])
 
     response = client.get("/conversations")
 
@@ -213,7 +219,7 @@ def test_delete_conversation(
     conversation_id = create_response.json()["id"]
 
     with memory_connection_factory() as connection:
-        insert_turn(connection, conversation_id, "user", "Hello")
+        insert_turn(connection, conversation_id, "user", "Hello", [])
 
     delete_response = client.delete(f"/conversations/{conversation_id}")
     assert delete_response.status_code == 204

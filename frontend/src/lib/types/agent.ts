@@ -5,7 +5,17 @@ export interface AgentMessage {
   role: AgentMessageRole;
   content: string;
   createdAt: string;
+  attachments?: AgentMessageAttachment[];
   annotations?: AgentMessageAnnotation[];
+}
+
+export interface AgentMessageAttachment {
+  id: string;
+  url: string;
+  filename: string;
+  mimeType: string;
+  width?: number | null;
+  height?: number | null;
 }
 
 export interface AgentMessageAnnotation {
@@ -33,7 +43,10 @@ export interface AgentConversationState {
 }
 
 export interface AgentConversationAdapter {
-  sendMessage: (input: string) => Promise<void>;
+  sendMessage: (
+    input: string,
+    attachments?: AgentMessageAttachment[],
+  ) => Promise<void>;
   stopResponse: () => void;
   resetConversation: () => void;
 }

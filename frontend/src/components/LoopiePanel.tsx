@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowUp, Bot, RotateCcw, Square } from "lucide-react";
+import { ArrowUp, Bot, ImagePlus, RotateCcw, Square } from "lucide-react";
 
 import { useAgentConversationContext } from "@/context/AgentConversationContext";
 import {
   type AgentConversationAdapter,
   type AgentConversationState,
+  type AgentMessageAttachment,
 } from "@/lib/types/agent";
 import { cn } from "@/lib/utils";
+import { useAssetUpload } from "@/hooks/useAssetUpload";
+import { AssetAttachmentList } from "@/components/chat/AssetAttachmentList";
 
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
@@ -51,11 +54,16 @@ export function LoopieConversationContent({
   disabled = false,
 }: LoopieConversationContentProps) {
   const [inputValue, setInputValue] = useState("");
+  const [attachments, setAttachments] = useState<AgentMessageAttachment[]>([]);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const isTextareaDisabled = disabled || state.composer.status === "responding";
   const isSendDisabled =
-    disabled || state.composer.status !== "idle" || inputValue.trim() === "";
+    disabled ||
+    state.composer.status !== "idle" ||
+    (inputValue.trim() === "" && attachments.length === 0);
   const showStopButton =
     state.composer.status === "sending" ||
     state.composer.status === "responding";
@@ -79,12 +87,45 @@ export function LoopieConversationContent({
       return;
     }
     const trimmed = inputValue.trim();
-    if (!trimmed) {
+    if (!trimmed && attachments.length === 0) {
       return;
     }
-    void adapter.sendMessage(trimmed);
+    void adapter.sendMessage(trimmed, attachments);
     setInputValue("");
-  }, [adapter, inputValue, state.composer.status]);
+    setAttachments([]);
+  }, [adapter, attachments, inputValue, state.composer.status]);
+
+  const { uploadFiles, isUploading } = useAssetUpload({
+    onUploaded: (asset) => {
+      setUploadError(null);
+      setAttachments((previous) => [
+        ...previous,
+        {
+          id: asset.id,
+          url: asset.url,
+          filename: asset.filename,
+          mimeType: asset.mimeType,
+          width: asset.width ?? undefined,
+          height: asset.height ?? undefined,
+        },
+      ]);
+    },
+    onError: (error) => {
+      setUploadError(error.message);
+    },
+  });
+  const acceptTypes = "image/*,application/pdf";
+
+  const handleFilesSelected = useCallback(
+    (files: FileList | File[]) => {
+      if (files.length === 0) {
+        return;
+      }
+      setUploadError(null);
+      void uploadFiles(files);
+    },
+    [uploadFiles],
+  );
 
   const composerLabel =
     state.composer.status === "responding"
@@ -146,6 +187,51 @@ export function LoopieConversationContent({
           {state.composer.error ? (
             <p className="text-xs text-destructive">{state.composer.error}</p>
           ) : null}
+          {uploadError ? (
+            <p className="text-xs text-destructive">{uploadError}</p>
+          ) : null}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={acceptTypes}
+            className="hidden"
+            multiple
+            onChange={(event) => {
+              if (!event.target.files) {
+                return;
+              }
+              handleFilesSelected(event.target.files);
+              event.target.value = "";
+            }}
+          />
+          {attachments.length > 0 ? (
+            <AssetAttachmentList
+              attachments={attachments}
+              onRemove={(attachmentId) => {
+                setAttachments((previous) =>
+                  previous.filter(
+                    (attachment) => attachment.id !== attachmentId,
+                  ),
+                );
+              }}
+            />
+          ) : null}
+          <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                fileInputRef.current?.click();
+              }}
+              disabled={isTextareaDisabled || isUploading}
+              className="gap-2"
+            >
+              <ImagePlus className="h-4 w-4" />
+              Add image or PDF
+            </Button>
+            {isUploading ? <span>Uploading…</span> : null}
+          </div>
           <div className="relative flex select-none items-end rounded-2xl border border-border/50 bg-muted/30 shadow-sm focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20">
             <Textarea
               id="agent-composer"
@@ -156,6 +242,25 @@ export function LoopieConversationContent({
                 if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault();
                   handleSubmit();
+                }
+              }}
+              onPaste={(event) => {
+                if (!event.clipboardData?.files?.length) {
+                  return;
+                }
+                event.preventDefault();
+                handleFilesSelected(event.clipboardData.files);
+              }}
+              onDrop={(event) => {
+                if (!event.dataTransfer.files.length) {
+                  return;
+                }
+                event.preventDefault();
+                handleFilesSelected(event.dataTransfer.files);
+              }}
+              onDragOver={(event) => {
+                if (event.dataTransfer.types.includes("Files")) {
+                  event.preventDefault();
                 }
               }}
               disabled={isTextareaDisabled}

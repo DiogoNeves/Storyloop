@@ -1,4 +1,11 @@
-import { type FormEvent, type KeyboardEvent, useEffect, useRef } from "react";
+import {
+  type FormEvent,
+  type KeyboardEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { cn } from "@/lib/utils";
 
 import { type ActivityDraft } from "./ActivityFeed";
@@ -10,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useAssetUpload } from "@/hooks/useAssetUpload";
 
 export interface ActivityDraftCardProps {
   draft: ActivityDraft;
@@ -45,8 +53,10 @@ export function ActivityDraftCard({
   const formRef = useRef<HTMLFormElement | null>(null);
   const titleRef = useRef<HTMLInputElement | null>(null);
   const summaryRef = useRef<HTMLTextAreaElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const hasFocusedRef = useRef(false);
   const initialTitleRef = useRef<string | undefined>(undefined);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   useEffect(() => {
     // Capture the initial title on first render
@@ -98,6 +108,53 @@ export function ActivityDraftCard({
     }
   };
 
+  const insertSummarySnippet = useCallback(
+    (snippet: string) => {
+      const textarea = summaryRef.current;
+      const current = draft.summary;
+      if (!textarea) {
+        onChange({ ...draft, summary: `${current}${snippet}` });
+        return;
+      }
+
+      const start = textarea.selectionStart ?? current.length;
+      const end = textarea.selectionEnd ?? start;
+      const nextSummary =
+        current.slice(0, start) + snippet + current.slice(end);
+      onChange({ ...draft, summary: nextSummary });
+      requestAnimationFrame(() => {
+        textarea.focus();
+        const cursor = start + snippet.length;
+        textarea.setSelectionRange(cursor, cursor);
+      });
+    },
+    [draft, onChange],
+  );
+
+  const { uploadFiles, isUploading } = useAssetUpload({
+    onUploaded: (asset) => {
+      setUploadError(null);
+      const snippet = asset.mimeType.startsWith("image/")
+        ? `![${asset.filename}](${asset.url})`
+        : `[${asset.filename}](${asset.url})`;
+      insertSummarySnippet(snippet);
+    },
+    onError: (error) => {
+      setUploadError(error.message);
+    },
+  });
+
+  const handleFilesSelected = useCallback(
+    (files: FileList | File[]) => {
+      if (files.length === 0) {
+        return;
+      }
+      setUploadError(null);
+      void uploadFiles(files);
+    },
+    [uploadFiles],
+  );
+
   return (
     <Card className="border-dashed border-primary/40 bg-primary/5">
       <CardContent className="space-y-4 p-4">
@@ -148,7 +205,34 @@ export function ActivityDraftCard({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor={summaryInputId}>Entry (optional)</Label>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Label htmlFor={summaryInputId}>Entry (optional)</Label>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  fileInputRef.current?.click();
+                }}
+                disabled={isUploading}
+              >
+                {isUploading ? "Uploading…" : "Add image or PDF"}
+              </Button>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,application/pdf"
+              className="hidden"
+              multiple
+              onChange={(event) => {
+                if (!event.target.files) {
+                  return;
+                }
+                handleFilesSelected(event.target.files);
+                event.target.value = "";
+              }}
+            />
             <Textarea
               id={summaryInputId}
               placeholder="Capture the beats, insights, or takeaways…"
@@ -158,8 +242,30 @@ export function ActivityDraftCard({
                 onChange({ ...draft, summary: event.target.value })
               }
               onKeyDown={handleShortcutSubmit}
+              onPaste={(event) => {
+                if (!event.clipboardData?.files?.length) {
+                  return;
+                }
+                event.preventDefault();
+                handleFilesSelected(event.clipboardData.files);
+              }}
+              onDrop={(event) => {
+                if (!event.dataTransfer.files.length) {
+                  return;
+                }
+                event.preventDefault();
+                handleFilesSelected(event.dataTransfer.files);
+              }}
+              onDragOver={(event) => {
+                if (event.dataTransfer.types.includes("Files")) {
+                  event.preventDefault();
+                }
+              }}
               rows={6}
             />
+            {uploadError ? (
+              <p className="text-xs text-destructive">{uploadError}</p>
+            ) : null}
           </div>
 
           <div className="flex flex-row justify-between gap-2 sm:items-center">
