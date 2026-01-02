@@ -22,6 +22,16 @@ interface TurnRecord {
   role: AgentMessageRole;
   text: string;
   created_at: string;
+  attachments?: TurnAttachmentRecord[];
+}
+
+interface TurnAttachmentRecord {
+  id: string;
+  url: string;
+  filename: string;
+  mimeType: string;
+  width?: number | null;
+  height?: number | null;
 }
 
 export interface Conversation {
@@ -39,6 +49,7 @@ export interface ConversationTurn {
   role: AgentMessageRole;
   text: string;
   createdAt: string;
+  attachments?: TurnAttachmentRecord[];
 }
 
 
@@ -96,6 +107,7 @@ export async function listConversationTurns(
     role: turn.role,
     text: turn.text,
     createdAt: turn.created_at,
+    attachments: turn.attachments ?? [],
   }));
 }
 
@@ -110,6 +122,7 @@ export interface ConversationStreamCallbacks {
 export interface StreamTurnOptions {
   conversationId: string;
   text: string;
+  attachments?: string[];
   signal?: AbortSignal;
   callbacks?: ConversationStreamCallbacks;
 }
@@ -222,7 +235,7 @@ export async function streamConversationTurn(
         Accept: "text/event-stream",
         "Cache-Control": "no-cache",
       },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, attachments: options.attachments ?? [] }),
       signal,
       mode: "cors",
     },

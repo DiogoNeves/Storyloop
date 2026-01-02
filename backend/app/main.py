@@ -25,6 +25,7 @@ from app.services import (
     YoutubeService,
     build_agent,
 )
+from app.services.assets import AssetService
 from app.services.youtube import YoutubeConfigurationError
 from app.services.youtube_analytics import YoutubeAnalyticsService
 
@@ -59,6 +60,12 @@ def build_lifespan(
     user_service.ensure_schema()
     entry_service = EntryService(connection_factory)
     entry_service.ensure_schema()
+    asset_service = AssetService(
+        connection_factory,
+        active_settings.effective_database_url,
+        demo_mode=active_settings.youtube_demo_mode,
+    )
+    asset_service.ensure_schema()
 
     # Initialize conversation tables
     with closing(connection_factory()) as connection:
@@ -106,6 +113,7 @@ def build_lifespan(
         app.state.settings = active_settings
         app.state.get_db = connection_factory
         app.state.entry_service = entry_service
+        app.state.asset_service = asset_service
         app.state.user_service = user_service
         app.state.youtube_service = youtube_service or resolved_youtube_service
         app.state.youtube_demo_service = demo_youtube_service

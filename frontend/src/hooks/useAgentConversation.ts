@@ -14,6 +14,7 @@ import type {
   AgentConversationAdapter,
   AgentConversationState,
   AgentMessage,
+  AgentMessageAttachment,
 } from "@/lib/types/agent";
 
 interface UseAgentConversationOptions {
@@ -38,6 +39,7 @@ function mapTurnToMessage(turn: ConversationTurn): AgentMessage {
     role: turn.role,
     content: turn.text,
     createdAt: turn.createdAt,
+    attachments: turn.attachments ?? [],
   };
 }
 
@@ -265,7 +267,7 @@ export function useAgentConversation({
   ]);
 
   const sendMessage = useCallback(
-    async (input: string) => {
+    async (input: string, attachments: AgentMessageAttachment[] = []) => {
       if (!enabled) {
         return;
       }
@@ -275,7 +277,7 @@ export function useAgentConversation({
       }
 
       const trimmed = input.trim();
-      if (!trimmed) {
+      if (!trimmed && attachments.length === 0) {
         return;
       }
 
@@ -437,6 +439,7 @@ export function useAgentConversation({
         role: "user",
         content: trimmed,
         createdAt: new Date().toISOString(),
+        attachments,
       };
 
       setState((previous) => ({
@@ -467,6 +470,7 @@ export function useAgentConversation({
         await streamConversationTurn({
           conversationId,
           text: trimmed,
+          attachments: attachments.map((attachment) => attachment.id),
           signal: controller.signal,
           callbacks: {
             onOpen: () => {

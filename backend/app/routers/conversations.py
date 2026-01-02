@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import asyncio
 import json
+from typing import Iterable
 from contextlib import suppress
 from uuid import uuid4
 
 import logfire
 import sqlite3
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic_ai import messages as ai_messages
 from sse_starlette.sse import EventSourceResponse
 
 from app.db_helpers.conversations import (
@@ -22,8 +24,9 @@ from app.db_helpers.conversations import (
     list_conversation_summaries,
     list_turns,
 )
-from app.dependencies import get_db
+from app.dependencies import get_asset_service, get_db
 from app.services.agent import build_loopie_deps
+from app.services.assets import AssetService
 
 router = APIRouter()
 
@@ -99,12 +102,27 @@ class TurnOut(BaseModel):
     role: str
     text: str
     created_at: str
+    attachments: list["TurnAttachmentOut"] = []
+
+
+class TurnAttachmentOut(BaseModel):
+    """Attachment metadata for a turn."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str
+    url: str
+    filename: str
+    mime_type: str = Field(alias="mimeType")
+    width: int | None = None
+    height: int | None = None
 
 
 class TurnInput(BaseModel):
     """Request model for a turn input."""
 
     text: str
+    attachments: list[str] = Field(default_factory=list)
 
 
 def render_history_prompt(turns: list[TurnRow], latest_user_turn: str) -> str:
@@ -122,6 +140,75 @@ def render_history_prompt(turns: list[TurnRow], latest_user_turn: str) -> str:
         "## Latest user turn\n"
         f"{latest_user_turn}"
     )
+
+
+def _build_turn_attachments(
+    asset_service: AssetService, asset_ids: Iterable[str]
+) -> list[TurnAttachmentOut]:
+    ids = [asset_id for asset_id in asset_ids if asset_id]
+    if not ids:
+        return []
+    records = asset_service.list_records(ids)
+    record_map = {record.id: record for record in records}
+    attachments: list[TurnAttachmentOut] = []
+    for asset_id in ids:
+        record = record_map.get(asset_id)
+        if record is None:
+            continue
+        meta = asset_service.get_meta(asset_id)
+        attachments.append(
+            TurnAttachmentOut(
+                id=record.id,
+                url=asset_service.resolve_url(record.id),
+                filename=record.original_filename,
+                mime_type=record.mime_type,
+                width=meta.width if meta else None,
+                height=meta.height if meta else None,
+            )
+        )
+    return attachments
+
+
+def _build_user_prompt_parts(
+    asset_service: AssetService,
+    prompt_with_history: str,
+    attachments: Iterable[str],
+) -> list[ai_messages.UserContent]:
+    parts: list[ai_messages.UserContent] = [prompt_with_history]
+    attachment_ids = [asset_id for asset_id in attachments if asset_id]
+    if not attachment_ids:
+        return parts
+
+    records = asset_service.list_records(attachment_ids)
+    record_map = {record.id: record for record in records}
+
+    for asset_id in attachment_ids:
+        record = record_map.get(asset_id)
+        if record is None:
+            continue
+        if record.mime_type.startswith("image/"):
+            data_url = asset_service.build_data_url(asset_id)
+            if data_url:
+                parts.append(
+                    ai_messages.ImageUrl(
+                        url=data_url,
+                        media_type=record.mime_type,
+                        identifier=record.id,
+                    )
+                )
+            continue
+
+        if record.mime_type == "application/pdf":
+            if record.extracted_text:
+                parts.append(
+                    f"PDF attachment '{record.original_filename}':\n{record.extracted_text}"
+                )
+            else:
+                parts.append(
+                    f"PDF attachment '{record.original_filename}' has no extractable text."
+                )
+
+    return parts
 
 
 @router.get("", response_model=list[ConversationListOut])
@@ -164,6 +251,7 @@ def create_conversation(
 def get_turns(
     conversation_id: str,
     db: sqlite3.Connection = Depends(get_db),
+    asset_service: AssetService = Depends(get_asset_service),
 ) -> list[TurnOut]:
     """List all turns for a conversation."""
     if not conversation_exists(db, conversation_id):
@@ -172,7 +260,18 @@ def get_turns(
             detail="Conversation not found",
         )
     turns = list_turns(db, conversation_id)
-    return [TurnOut(**turn) for turn in turns]
+    return [
+        TurnOut(
+            id=turn["id"],
+            role=turn["role"],
+            text=turn["text"],
+            created_at=turn["created_at"],
+            attachments=_build_turn_attachments(
+                asset_service, turn["attachments"]
+            ),
+        )
+        for turn in turns
+    ]
 
 
 @router.post("/{conversation_id}/turns/stream")
@@ -181,6 +280,7 @@ async def stream_turn(
     body: TurnInput,
     request: Request,
     db: sqlite3.Connection = Depends(get_db),
+    asset_service: AssetService = Depends(get_asset_service),
 ) -> EventSourceResponse:
     """Stream assistant response for a user message."""
     # Check conversation exists (run in thread to avoid blocking event loop)
@@ -193,7 +293,12 @@ async def stream_turn(
 
     # Insert user turn immediately (run in thread to avoid blocking event loop)
     user_turn_id = await asyncio.to_thread(
-        insert_turn, db, conversation_id, "user", body.text
+        insert_turn,
+        db,
+        conversation_id,
+        "user",
+        body.text,
+        body.attachments,
     )
 
     # Cancel any existing task for this conversation
@@ -246,6 +351,12 @@ async def stream_turn(
             prompt_with_history = render_history_prompt(
                 conversation_history, body.text
             )
+            user_prompt_parts = await asyncio.to_thread(
+                _build_user_prompt_parts,
+                asset_service,
+                prompt_with_history,
+                body.attachments,
+            )
 
             async def notify_tool_call(message: str) -> None:
                 await event_queue.put(
@@ -267,12 +378,12 @@ async def stream_turn(
                     # run_stream() returns an async context manager
                     try:
                         stream_context = assistant_agent.run_stream(
-                            prompt_with_history, deps=deps
+                            user_prompt_parts, deps=deps
                         )
                     except TypeError:
                         # Support mocked agents that don't accept deps.
                         stream_context = assistant_agent.run_stream(
-                            prompt_with_history
+                            user_prompt_parts
                         )
 
                     async with stream_context as result:

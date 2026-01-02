@@ -44,6 +44,7 @@ async def build_loopie_deps(
     """Create Loopie dependency bundle from FastAPI application state."""
 
     entry_service = getattr(app.state, "entry_service", None)
+    asset_service = getattr(app.state, "asset_service", None)
     youtube_service = getattr(app.state, "active_youtube_service", None)
     user_service = getattr(app.state, "user_service", None)
     oauth_service = getattr(app.state, "youtube_oauth_service", None)
@@ -61,7 +62,7 @@ async def build_loopie_deps(
     if entry_service is None:
         journal_repo = EmptyJournalRepository()
     else:
-        journal_repo = JournalRepository(entry_service)
+        journal_repo = JournalRepository(entry_service, asset_service)
 
     youtube_repo: BaseYouTubeRepository
     if youtube_service is None or user_service is None:
