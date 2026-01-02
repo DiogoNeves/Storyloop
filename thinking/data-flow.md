@@ -72,7 +72,7 @@ UI Update (Badge shows "API ready")
 ### 2. Journal Entry Creation Flow
 
 ```
-User clicks "New Entry"
+User clicks "+ entry"
     │
     ▼
 ActivityFeed.tsx
@@ -80,81 +80,90 @@ ActivityFeed.tsx
     │ onStartDraft()
     │
     ▼
-App.tsx (DashboardShell)
+App.tsx (JournalPage)
     │
     │ setDraft({ title: "", summary: "", date: now })
     │
     ▼
-Dialog Opens (NewEntryDialog)
+ActivityDraftCard
     │
     │ User fills form
     │   - Title input
-    │   - Summary textarea
+    │   - Summary textarea (markdown)
     │   - Date/time picker
-    │
-    ▼
-onDraftChange(draft)
-    │
-    │ setDraft(updatedDraft)
-    │
-    ▼
-User clicks "Save"
     │
     ▼
 onSubmitDraft()
     │
     │ handleSubmitDraft()
+    │   - Validate title
     │   - Generate UUID
-    │   - Create ActivityItem
-    │   - Add to activityItems array
-    │   - Sort by date
+    │   - Build CreateEntryInput
+    │   - mutateAsync(createEntry)
     │
     ▼
-State Update
+api/entries.ts
     │
-    │ setActivityItems(sortedItems)
+    │ POST /entries
+    │ body: [{ id, title, summary, date, category }]
+    │
+    ▼
+Backend Router (routers/entries.py)
+    │
+    │ Save to SQLite (EntryService)
+    │
+    ▼
+Response: saved entry
+    │
+    ▼
+React Query cache update
+    │
+    │ setQueryData(entries)
     │ setDraft(null)
     │
     ▼
 ActivityFeed Re-renders
     │
     │ New entry appears at top
-    │ Dialog closes
-    │
-    ▼
-[Future: API call to persist entry]
 ```
 
-**Current State:** Entries stored in React state only (not persisted)
+**Notes:**
 
-**Future Implementation:**
+- Journal summaries are markdown strings that can include `/assets/{id}` links for attachments.
+
+### 3. Asset Upload Flow (Journal + Loopie)
 
 ```
-handleSubmitDraft()
-    │
-    │ mutation.mutate(draft)
+User adds image/PDF
     │
     ▼
-api/entries.ts
+ActivityDraftCard / LoopiePanel
     │
-    │ POST /entries
-    │ body: { title, summary, date }
-    │
-    ▼
-Backend Router
-    │
-    │ Save to SQLite
+    │ useAssetUpload()
     │
     ▼
-Database
+api/assets.ts
     │
-    │ INSERT INTO entries (...)
+    │ POST /assets or POST /assets/{hash}
+    │ form-data: file
     │
     ▼
-Return saved entry
+Backend Router (routers/assets.py)
     │
-    │ Update React state
-    │ Optimistic update
+    │ AssetService.create_asset()
+    │ - Resize images
+    │ - Extract PDF text
+    │ - Save file to disk
+    │ - Store metadata in SQLite
+    │
+    ▼
+Response: asset metadata
+    │
+    ▼
+Frontend inserts snippet
+    │
+    │ Journal: ![alt](/assets/{id}) or [file](/assets/{id})
+    │ Loopie: attachment list before send
 ```
 
 ## Background Job Flow
@@ -260,8 +269,12 @@ create_app() called
 build_lifespan()
     │
     │ Initialize services:
+    │ - UserService
+    │ - EntryService
+    │ - AssetService
     │ - YoutubeService
     │ - GrowthScoreService
+    │ - Assistant agent (optional)
     │
     ▼
 Scheduler Setup
@@ -276,8 +289,12 @@ App State Setup
     │
     │ app.state.settings = ...
     │ app.state.get_db = ...
+    │ app.state.entry_service = ...
+    │ app.state.asset_service = ...
+    │ app.state.user_service = ...
     │ app.state.youtube_service = ...
     │ app.state.growth_score_service = ...
+    │ app.state.assistant_agent = ...
     │ app.state.scheduler = ...
     │
     ▼
@@ -363,10 +380,13 @@ Load dashboard with channel context
 App State
 ├── Server State (TanStack Query)
 │   ├── Health status (cached, 60s stale)
-│   └── Channel preference (cached, persistent)
+│   ├── Entries (journal + content)
+│   ├── Conversations + turns
+│   └── YouTube feed + growth summary
 └── Local State (useState)
-    ├── activityItems[] (content, journal entries, insights)
-    └── draft (current entry being edited)
+    ├── activityItems[] (content, journal, insight, conversation)
+    ├── draft (current entry being edited)
+    └── filters + search query
 ```
 
 ### Backend State
@@ -375,8 +395,12 @@ App State
 FastAPI App State
 ├── settings (Configuration)
 ├── get_db (Database factory)
+├── entry_service (Entry persistence)
+├── asset_service (Asset storage + metadata)
+├── user_service (Active user/channel state)
 ├── youtube_service (YouTube integration)
 ├── growth_score_service (Growth calculations)
+├── assistant_agent (PydanticAI agent or None)
 └── scheduler (Background jobs)
 ```
 
@@ -392,15 +416,20 @@ FastAPI App State
   title: string
   summary: string
   date: string (ISO timestamp)
-  category: "content" | "insight" | "journal" | "live" | "short" | "post"
+  category: "content" | "insight" | "journal" | "conversation"
+  linkUrl?: string
+  thumbnailUrl?: string
+  videoId?: string
+  videoType?: "short" | "live" | "video"
 }
 ```
 
 **Timeline Content Types:**
 
-- **Content** (`content`, `live`, `short`, `post`): Synced from YouTube/other platforms
+- **Content** (`content`): Synced from YouTube
 - **Journal Entries** (`journal`): User-created entries
 - **Insights** (`insight`): AI-generated insights (not yet available)
+- **Conversations** (`conversation`): Loopie conversation summaries
 
 **HealthResponse (Backend):**
 
@@ -410,21 +439,46 @@ FastAPI App State
 }
 ```
 
-### Future Models
-
 **Entry (Backend):**
 
 ```python
 class Entry:
-    id: UUID
+    id: str
     title: str
-    summary: str
+    summary: str  # markdown, may include /assets/{id}
     date: datetime
-    category: str  # "content", "live", "short", "post", "journal", "insight"
-    created_at: datetime
-    updated_at: datetime
-    video_id: Optional[str]  # For linking journal entries to content
+    category: Literal["content", "insight", "journal"]
+    link_url: Optional[str]
+    thumbnail_url: Optional[str]
+    video_id: Optional[str]
 ```
+
+**Conversation Turn (Backend):**
+
+```python
+class Turn:
+    id: str
+    role: Literal["user", "assistant"]
+    text: str
+    attachments: list[str]  # asset ids (request)
+```
+
+**Asset Payload (Backend):**
+
+```json
+{
+  "id": "sha256...",
+  "url": "/assets/{id}",
+  "filename": "upload.png",
+  "mimeType": "image/png",
+  "sizeBytes": 12345,
+  "width": 800,
+  "height": 600,
+  "markdown": "![upload](/assets/{id})"
+}
+```
+
+### Future Models
 
 **Channel Preference (Backend):**
 
@@ -520,14 +574,17 @@ Frontend handles error
 User sends message to agent
     │
     │ POST /conversations/{id}/turns/stream
-    │ Body: { "text": "How can I improve retention?" }
+    │ Body: { "text": "How can I improve retention?", "attachments": ["asset_id"] }
     │
     ▼
 FastAPI Backend (conversations.py)
     │
     │ 1. Validate conversation exists
     │ 2. Insert user turn into database
-    │ 3. Cancel any in-flight generation for this conversation
+    │ 3. Load attachments (images + PDFs)
+    │    - Images converted to data URLs
+    │    - PDF text appended as context
+    │ 4. Cancel any in-flight generation for this conversation
     │
     ▼
 EventSourceResponse (SSE stream)
@@ -571,6 +628,7 @@ Client Receives Complete Response
 - Real-time streaming: Token-by-token responses via Server-Sent Events
 - Conversation persistence: All turns stored in SQLite for context reconstruction
 - Cancellation support: New messages automatically cancel in-flight generations
+- Attachment support: Images + PDFs included in agent context
 - Observability: Logfire traces capture generation timing and errors
 - Simple API: REST endpoints for conversation management, SSE for streaming
 
