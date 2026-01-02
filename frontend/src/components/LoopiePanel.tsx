@@ -252,16 +252,15 @@ export function LoopieConversationContent({
                 handleFilesSelected(event.clipboardData.files);
               }}
               onDrop={(event) => {
-                if (!event.dataTransfer.files.length) {
-                  return;
-                }
                 event.preventDefault();
-                handleFilesSelected(event.dataTransfer.files);
+                event.stopPropagation();
+                if (event.dataTransfer.files.length > 0) {
+                  handleFilesSelected(event.dataTransfer.files);
+                }
               }}
               onDragOver={(event) => {
-                if (event.dataTransfer.types.includes("Files")) {
-                  event.preventDefault();
-                }
+                event.preventDefault();
+                event.stopPropagation();
               }}
               disabled={isTextareaDisabled}
               className="min-h-[104px] resize-none rounded-2xl border-0 bg-transparent px-4 py-3 pr-24 text-sm shadow-none focus-visible:outline-none focus-visible:ring-0"
