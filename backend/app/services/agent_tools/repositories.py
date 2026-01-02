@@ -5,6 +5,7 @@ from typing import Any, Protocol, runtime_checkable
 
 import anyio
 
+from app.services.assets import AssetService, extract_asset_ids
 from app.services.entries import EntryService
 from app.services.users import UserService
 from app.services.youtube import YoutubeService
@@ -12,6 +13,7 @@ from app.services.agent_tools.models import (
     ChannelMetrics,
     GrowthScoreResult,
     JournalEntry,
+    JournalEntryAttachment,
     VideoAnalyticsMetrics,
     VideoDetails,
     VideoMetrics,
@@ -23,8 +25,13 @@ from app.services.youtube_oauth import YoutubeOAuthService
 class JournalRepository:
     """Readonly accessors for journal entries scoped to the current user."""
 
-    def __init__(self, entry_service: EntryService) -> None:
+    def __init__(
+        self,
+        entry_service: EntryService,
+        asset_service: AssetService | None = None,
+    ) -> None:
         self._entry_service = entry_service
+        self._asset_service = asset_service
 
     async def load_entries(
         self, *, user_id: str, limit: int, before: str | None
@@ -63,6 +70,9 @@ class JournalRepository:
                     title=record.title,
                     created_at=record.occurred_at.isoformat(),
                     text=record.summary,
+                    attachments=_collect_attachments(
+                        self._asset_service, record.summary
+                    ),
                 )
                 for record in limited
             ]
@@ -87,6 +97,38 @@ class EmptyJournalRepository:
         self, *, user_id: str, limit: int, before: str | None
     ) -> list[JournalEntry]:
         return []
+
+
+def _collect_attachments(
+    asset_service: AssetService | None, summary: str
+) -> list[JournalEntryAttachment]:
+    if asset_service is None or not summary:
+        return []
+
+    asset_ids = extract_asset_ids(summary)
+    if not asset_ids:
+        return []
+
+    records = asset_service.list_records(asset_ids)
+    record_map = {record.id: record for record in records}
+    attachments: list[JournalEntryAttachment] = []
+    for asset_id in asset_ids:
+        record = record_map.get(asset_id)
+        if record is None:
+            continue
+        meta = asset_service.get_meta(asset_id)
+        attachments.append(
+            JournalEntryAttachment(
+                id=record.id,
+                filename=record.original_filename,
+                mime_type=record.mime_type,
+                url=asset_service.resolve_url(record.id),
+                width=meta.width if meta else None,
+                height=meta.height if meta else None,
+                extracted_text=record.extracted_text,
+            )
+        )
+    return attachments
 
 
 class YouTubeRepository:

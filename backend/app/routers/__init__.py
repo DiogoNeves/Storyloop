@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter
 
+from app.routers.assets import router as assets_router
 from app.routers.conversations import router as conversations_router
 from app.routers.entries import router as entries_router
 from app.routers.growth import router as growth_router
@@ -11,6 +12,7 @@ from app.routers.youtube_auth import router as youtube_auth_router
 
 api_router = APIRouter()
 api_router.include_router(health_router, prefix="/health", tags=["health"])
+api_router.include_router(assets_router)
 api_router.include_router(
     conversations_router, prefix="/conversations", tags=["conversations"]
 )

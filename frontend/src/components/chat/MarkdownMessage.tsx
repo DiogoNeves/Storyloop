@@ -1,4 +1,5 @@
 import {
+  Children,
   type AnchorHTMLAttributes,
   type HTMLAttributes,
   type TableHTMLAttributes,
@@ -9,6 +10,8 @@ import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Link } from "react-router-dom";
 
+import { AssetLinkCard } from "@/components/chat/AssetLinkCard";
+import { getAssetId, isAssetPath, resolveAssetUrl } from "@/lib/assets";
 import { cn } from "@/lib/utils";
 import { getToneColors, resolveTone, type ChatTone } from "./toneStyles";
 
@@ -124,6 +127,23 @@ const createMarkdownComponents = (tone: ChatTone) => {
         normalizeClassName(className),
       );
 
+      if (href && isAssetPath(href)) {
+        const assetId = getAssetId(href);
+        if (assetId) {
+          const label = Children.toArray(children)
+            .map((child) => (typeof child === "string" ? child : ""))
+            .join("")
+            .trim();
+          return (
+            <AssetLinkCard
+              assetId={assetId}
+              href={href}
+              label={label.length > 0 ? label : undefined}
+            />
+          );
+        }
+      }
+
       // Use Link for relative/internal links, regular anchor for external
       if (href?.startsWith("/")) {
         return (
@@ -143,6 +163,24 @@ const createMarkdownComponents = (tone: ChatTone) => {
         >
           {children}
         </a>
+      );
+    },
+    img: ({ className, src, alt, ...props }) => {
+      if (!src) {
+        return null;
+      }
+      const resolvedSrc = resolveAssetUrl(src);
+      return (
+        <img
+          src={resolvedSrc}
+          alt={alt ?? ""}
+          loading="lazy"
+          className={cn(
+            "my-3 max-h-[360px] w-full rounded-xl border border-border/60 object-cover",
+            normalizeClassName(className),
+          )}
+          {...props}
+        />
       );
     },
     blockquote: ({ className, ...props }: HTMLAttributes<HTMLQuoteElement>) => (

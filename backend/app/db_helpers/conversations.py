@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from datetime import datetime
 from typing import TypedDict
@@ -32,6 +33,7 @@ class TurnRow(TypedDict):
     role: str
     text: str
     created_at: str
+    attachments: list[str]
 
 
 def init_conversation_tables(connection: sqlite3.Connection) -> None:
@@ -52,11 +54,18 @@ def init_conversation_tables(connection: sqlite3.Connection) -> None:
             conversation_id TEXT NOT NULL,
             role TEXT NOT NULL,
             text TEXT NOT NULL,
+            attachments TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(conversation_id) REFERENCES conversations(id)
         )
         """
     )
+    columns = {
+        row["name"]
+        for row in connection.execute("PRAGMA table_info(turns)").fetchall()
+    }
+    if "attachments" not in columns:
+        connection.execute("ALTER TABLE turns ADD COLUMN attachments TEXT")
     connection.commit()
 
 
@@ -147,16 +156,18 @@ def insert_turn(
     conversation_id: str,
     role: str,
     text: str,
+    attachments: list[str] | None = None,
 ) -> str:
     """Insert a turn and return its generated UUID."""
     turn_id = str(uuid4())
     created_at = datetime.utcnow().isoformat()
+    attachments_payload = json.dumps(attachments or [])
     connection.execute(
         """
-        INSERT INTO turns (id, conversation_id, role, text, created_at)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO turns (id, conversation_id, role, text, attachments, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
-        (turn_id, conversation_id, role, text, created_at),
+        (turn_id, conversation_id, role, text, attachments_payload, created_at),
     )
     connection.commit()
     return turn_id
@@ -168,7 +179,7 @@ def list_turns(
     """Return ordered list of turns for a conversation."""
     cursor = connection.execute(
         """
-        SELECT id, role, text, created_at
+        SELECT id, role, text, attachments, created_at
         FROM turns
         WHERE conversation_id = ?
         ORDER BY created_at ASC
@@ -181,7 +192,8 @@ def list_turns(
             "id": row[0],
             "role": row[1],
             "text": row[2],
-            "created_at": row[3],
+            "attachments": json.loads(row[3]) if row[3] else [],
+            "created_at": row[4],
         }
         for row in rows
     ]
