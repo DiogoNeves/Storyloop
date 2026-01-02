@@ -15,6 +15,7 @@ from app.services import (
     YoutubeOAuthService,
     YoutubeService,
 )
+from app.services.assets import AssetService
 from app.services.youtube_analytics import YoutubeAnalyticsService
 from app.services.youtube_demo import (
     DemoUserService,
@@ -25,6 +26,11 @@ from app.services.youtube_demo import (
 def get_entry_service(request: Request) -> EntryService:
     """Extract EntryService from application state."""
     return request.app.state.entry_service
+
+
+def get_asset_service(request: Request) -> AssetService:
+    """Extract AssetService from application state."""
+    return request.app.state.asset_service
 
 
 def get_youtube_service(request: Request) -> YoutubeService:

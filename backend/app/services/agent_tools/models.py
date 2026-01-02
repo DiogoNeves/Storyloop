@@ -10,6 +10,19 @@ class JournalEntry(BaseModel):
     title: str
     created_at: str
     text: str
+    attachments: list["JournalEntryAttachment"] = Field(default_factory=list)
+
+
+class JournalEntryAttachment(BaseModel):
+    """Attachment metadata for journal entries."""
+
+    id: str
+    filename: str
+    mime_type: str
+    url: str
+    width: int | None = None
+    height: int | None = None
+    extracted_text: str | None = None
 
 
 class VideoDetails(BaseModel):

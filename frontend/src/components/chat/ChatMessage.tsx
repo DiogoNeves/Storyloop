@@ -4,6 +4,7 @@ import { type AgentMessage } from "@/lib/types/agent";
 import { cn } from "@/lib/utils";
 
 import { MarkdownMessage } from "./MarkdownMessage";
+import { AssetAttachmentList } from "./AssetAttachmentList";
 import { getToneLayout, resolveTone } from "./toneStyles";
 
 interface ChatMessageProps {
@@ -23,6 +24,9 @@ function ChatMessageComponent({ message }: ChatMessageProps) {
           tone={tone}
         />
       </div>
+      {message.attachments && message.attachments.length > 0 ? (
+        <AssetAttachmentList attachments={message.attachments} />
+      ) : null}
     </div>
   );
 }
