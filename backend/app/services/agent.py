@@ -19,6 +19,7 @@ from app.services.agent_tools import (
     EmptyYouTubeRepository,
     JournalEntry,
     JournalRepository,
+    VideoCountResult,
     VideoDetails,
     VideoMetrics,
     YouTubeRepository,
@@ -133,7 +134,7 @@ When creating links:
   - Video detail: `/videos/{videoId}` for the Storyloop video detail view (use this instead of YouTube URLs when referencing videos)
   - Insights dashboard: `/insights` for the insights view
   - Loopie workspace: `/loopie` for the dedicated Loopie canvas
-- When linking to journals or videos, always use their actual titles whenever possible. Call the appropriate tools (`load_journal_entries`, `get_video_details`, `list_recent_videos`) to retrieve titles before creating links.
+- When linking to journals or videos, always use their actual titles whenever possible. Call the appropriate tools (`load_journal_entries`, `get_video_details`, `list_recent_videos`, `list_videos`) to retrieve titles before creating links.
   - Journal links: Use the journal entry title, e.g., `[Review "{journal title}"](/journals/{journalId})` instead of generic text like "Review journal entry".
   - Video links: Use the video title, e.g., `[View "{video title}" in Storyloop](/videos/{videoId})` instead of generic text like "View video".
   - Only fall back to dates or generic descriptions if the title is unavailable or inappropriate.
@@ -190,6 +191,58 @@ Your mission: help creators grow their channels and unlock creativity without ge
 
         return await ctx.deps.youtube_repo.list_recent_videos(
             limit=limit, include_shorts=include_shorts
+        )
+
+    @assistant_agent.tool
+    async def list_videos(
+        ctx: RunContext[LoopieDeps],
+        *,
+        limit: int = 50,
+        start_iso: str | None = None,
+        end_iso: str | None = None,
+        include_shorts: bool = False,
+        max_scan: int | None = None,
+    ) -> list[VideoDetails]:
+        """List videos for the active channel, optionally filtered by publish date.
+
+        Use this when you need to look across multiple uploads (e.g., "what did I
+        publish last year?", "show me my uploads from October").
+        """
+
+        if ctx.deps.tool_call_notifier:
+            await ctx.deps.tool_call_notifier("📚 a list of your uploads")
+
+        return await ctx.deps.youtube_repo.list_videos(
+            limit=limit,
+            include_shorts=include_shorts,
+            start_iso=start_iso,
+            end_iso=end_iso,
+            max_scan=max_scan,
+        )
+
+    @assistant_agent.tool
+    async def count_videos_published(
+        ctx: RunContext[LoopieDeps],
+        *,
+        start_iso: str | None = None,
+        end_iso: str | None = None,
+        include_shorts: bool = False,
+        max_scan: int | None = None,
+    ) -> VideoCountResult:
+        """Count videos published in a date range for the active channel.
+
+        Prefer this tool for quantitative questions like "how many videos did I
+        publish last year?" to avoid guessing.
+        """
+
+        if ctx.deps.tool_call_notifier:
+            await ctx.deps.tool_call_notifier("🧮 counting your uploads")
+
+        return await ctx.deps.youtube_repo.count_videos_published(
+            start_iso=start_iso,
+            end_iso=end_iso,
+            include_shorts=include_shorts,
+            max_scan=max_scan,
         )
 
     @assistant_agent.tool
