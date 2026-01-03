@@ -1,0 +1,45 @@
+{
+  "kind": "youtube#videoListResponse",
+  "etag": "demo-video-detail-1",
+  "pageInfo": {
+    "totalResults": 1,
+    "resultsPerPage": 1
+  },
+  "items": [
+    {
+      "kind": "youtube#video",
+      "etag": "demo-video-detail-1-item",
+      "id": "DEMO_VIDEO_1",
+      "snippet": {
+        "publishedAt": "2024-06-12T14:32:00Z",
+        "channelId": "UCDEMOCHANNEL",
+        "title": "Designing a brighter creator workflow",
+        "description": "0:00 Intro and goals\n0:42 What changed in the workflow\n2:05 Building the chapter navigation\n3:18 Final recap\n\nThanks for watching! Drop a comment with your favorite moment.",
+        "thumbnails": {
+          "default": {
+            "url": "https://i.ytimg.com/vi/DEMO_VIDEO_1/default.jpg"
+          },
+          "medium": {
+            "url": "https://i.ytimg.com/vi/DEMO_VIDEO_1/mqdefault.jpg"
+          },
+          "high": {
+            "url": "https://i.ytimg.com/vi/DEMO_VIDEO_1/hqdefault.jpg"
+          }
+        },
+        "channelTitle": "Storyloop Demo Studio",
+        "liveBroadcastContent": "none"
+      },
+      "contentDetails": {
+        "duration": "PT4M30S"
+      },
+      "status": {
+        "privacyStatus": "public"
+      },
+      "statistics": {
+        "viewCount": "3482",
+        "likeCount": "312",
+        "commentCount": "28"
+      }
+    }
+  ]
+}
