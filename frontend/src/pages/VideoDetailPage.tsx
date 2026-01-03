@@ -15,6 +15,10 @@ import { StickyHeaderScrollableCard } from "@/components/StickyHeaderScrollableC
 export function VideoDetailPage() {
   const { videoId } = useParams<{ videoId: string }>();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [playerStart, setPlayerStart] = useState<{
+    start: number | null;
+    nonce: number;
+  }>({ start: null, nonce: 0 });
 
   const videoDetailQueryKey = [
     "youtube",
@@ -126,6 +130,9 @@ export function VideoDetailPage() {
       </>
     );
 
+    const chapterLines = parseDescriptionLines(descriptionText);
+    const videoEmbedSrc = buildVideoEmbedSrc(videoId, playerStart.start);
+
     const body = (
       <div className="space-y-6">
         <div className="space-y-4">
@@ -136,7 +143,8 @@ export function VideoDetailPage() {
           <div className="aspect-video w-full overflow-hidden rounded-md border border-border bg-black">
             <iframe
               title={String(video.title)}
-              src={`https://www.youtube.com/embed/${videoId}`}
+              key={`${videoId}-${playerStart.nonce}`}
+              src={videoEmbedSrc}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
               className="h-full w-full"
@@ -149,11 +157,38 @@ export function VideoDetailPage() {
             <h2 className="text-lg font-semibold text-foreground">
               Description
             </h2>
-            <p className="whitespace-pre-line text-sm text-muted-foreground">
-              {descriptionText && descriptionText.length > 0
-                ? descriptionText
-                : "No description available."}
-            </p>
+            {descriptionText && descriptionText.length > 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {chapterLines.map((line, index) => (
+                  <span key={`${line.key}-${index}`}>
+                    {line.type === "chapter" ? (
+                      <>
+                        <button
+                          type="button"
+                          className="text-primary underline-offset-2 hover:underline"
+                          onClick={() =>
+                            setPlayerStart((previous) => ({
+                              start: line.seconds,
+                              nonce: previous.nonce + 1,
+                            }))
+                          }
+                        >
+                          {line.time}
+                        </button>{" "}
+                        <span>{line.title}</span>
+                      </>
+                    ) : (
+                      line.text
+                    )}
+                    {index < chapterLines.length - 1 && <br />}
+                  </span>
+                ))}
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No description available.
+              </p>
+            )}
           </section>
 
           <section>
@@ -203,3 +238,81 @@ export function VideoDetailPage() {
 }
 
 export default VideoDetailPage;
+
+type DescriptionLine =
+  | {
+      type: "chapter";
+      key: string;
+      time: string;
+      title: string;
+      seconds: number;
+    }
+  | {
+      type: "text";
+      key: string;
+      text: string;
+    };
+
+function parseDescriptionLines(descriptionText: string): DescriptionLine[] {
+  if (!descriptionText) {
+    return [];
+  }
+
+  return descriptionText.split(/\r?\n/).map((line, index) => {
+    const trimmed = line.trim();
+    const chapterMatch = trimmed.match(/^((?:\d{1,2}:)?\d{1,2}:\d{2})\s+(.+)$/);
+    if (!chapterMatch) {
+      return {
+        type: "text",
+        key: `text-${index}`,
+        text: line,
+      };
+    }
+
+    const [, time, title] = chapterMatch;
+    const seconds = parseTimestampToSeconds(time);
+    if (seconds === null) {
+      return {
+        type: "text",
+        key: `text-${index}`,
+        text: line,
+      };
+    }
+
+    return {
+      type: "chapter",
+      key: `chapter-${index}`,
+      time,
+      title,
+      seconds,
+    };
+  });
+}
+
+function parseTimestampToSeconds(timestamp: string): number | null {
+  const parts = timestamp.split(":").map((part) => Number(part));
+  if (parts.some((part) => Number.isNaN(part))) {
+    return null;
+  }
+
+  if (parts.length === 2) {
+    const [minutes, seconds] = parts;
+    return minutes * 60 + seconds;
+  }
+
+  if (parts.length === 3) {
+    const [hours, minutes, seconds] = parts;
+    return hours * 3600 + minutes * 60 + seconds;
+  }
+
+  return null;
+}
+
+function buildVideoEmbedSrc(videoId: string, start: number | null) {
+  const url = new URL(`https://www.youtube.com/embed/${videoId}`);
+  if (start !== null) {
+    url.searchParams.set("start", String(start));
+    url.searchParams.set("autoplay", "1");
+  }
+  return url.toString();
+}
