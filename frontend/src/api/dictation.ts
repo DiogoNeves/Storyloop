@@ -18,11 +18,7 @@ export async function transcribeDictation(
   const response = await apiClient.post<DictationTranscriptResponse>(
     "/dictation/transcribe",
     formData,
-    {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    },
+    {},
   );
 
   return response.data;

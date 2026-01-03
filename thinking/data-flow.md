@@ -198,6 +198,8 @@ Frontend appends transcript
     ├─ Journal: summary textarea (append with spacing)
     └─ Loopie: composer input (no auto-send)
     │
+    │ If transcription fails, keep the audio blob in memory for retry.
+    │
     ▼
 Journal-only title generation
     │
