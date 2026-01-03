@@ -124,7 +124,7 @@ export function useAgentDemo({ enabled = true }: UseAgentDemoOptions = {}) {
   }, [clearTimers, enabled]);
 
   const sendMessage = useCallback(
-    async (input: string, attachments = []) => {
+    async (input: string, attachments: AgentMessage["attachments"] = []) => {
       if (!enabled) {
         return;
       }

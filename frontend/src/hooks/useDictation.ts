@@ -47,8 +47,9 @@ function appendWithSpacing(current: string, addition: string): string {
 
 function resolveErrorMessage(error: unknown): string {
   if (isAxiosError(error)) {
+    const responseData = error.response?.data as { detail?: string } | undefined;
     const message =
-      error.response?.data?.detail ??
+      responseData?.detail ??
       error.message ??
       "We couldn't reach the dictation service.";
     return typeof message === "string" ? message : JSON.stringify(message);
