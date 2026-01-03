@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowUp, Bot, ImagePlus, RotateCcw, Square } from "lucide-react";
+import { ArrowUp, Bot, ImagePlus, Mic, RotateCcw, Square } from "lucide-react";
 
 import { useAgentConversationContext } from "@/context/AgentConversationContext";
 import {
@@ -9,6 +9,7 @@ import {
 } from "@/lib/types/agent";
 import { cn } from "@/lib/utils";
 import { useAssetUpload } from "@/hooks/useAssetUpload";
+import { appendDictationText, useDictation } from "@/hooks/useDictation";
 import { AssetAttachmentList } from "@/components/chat/AssetAttachmentList";
 
 import { Button } from "./ui/button";
@@ -67,6 +68,23 @@ export function LoopieConversationContent({
   const showStopButton =
     state.composer.status === "sending" ||
     state.composer.status === "responding";
+
+  const {
+    status: dictationStatus,
+    error: dictationError,
+    startRecording,
+    stopRecording,
+    retryTranscription,
+    hasRetry,
+  } = useDictation({
+    onTranscript: (text) => {
+      setInputValue((current) => appendDictationText(current, text));
+    },
+  });
+
+  const isDictationActive = dictationStatus === "recording";
+  const isDictationBusy = dictationStatus === "transcribing";
+  const isDictationDisabled = isTextareaDisabled || isDictationBusy;
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -190,6 +208,23 @@ export function LoopieConversationContent({
           {uploadError ? (
             <p className="text-xs text-destructive">{uploadError}</p>
           ) : null}
+          {dictationError ? (
+            <div className="flex flex-wrap items-center gap-2 text-xs text-destructive">
+              <span>{dictationError}</span>
+              {hasRetry ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    void retryTranscription();
+                  }}
+                >
+                  Retry
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
           <input
             ref={fileInputRef}
             type="file"
@@ -271,6 +306,35 @@ export function LoopieConversationContent({
                   ? "Loopie is thinking"
                   : "Shift + Enter"}
               </span>
+              <Button
+                type="button"
+                onClick={() => {
+                  if (isDictationActive) {
+                    stopRecording();
+                    return;
+                  }
+                  void startRecording();
+                }}
+                disabled={isDictationDisabled}
+                className={cn(
+                  "h-9 w-9 rounded-full border border-border/60 bg-background p-0 text-muted-foreground shadow-sm transition hover:text-foreground",
+                  isDictationActive
+                    ? "border-destructive/60 text-destructive hover:text-destructive"
+                    : "hover:border-border",
+                )}
+                aria-label={
+                  isDictationActive ? "Stop dictation" : "Start dictation"
+                }
+                title={
+                  isDictationActive ? "Stop dictation" : "Start dictation"
+                }
+              >
+                {isDictationActive ? (
+                  <Square className="h-4 w-4" />
+                ) : (
+                  <Mic className="h-4 w-4" />
+                )}
+              </Button>
               {showStopButton ? (
                 <Button
                   type="button"
@@ -293,6 +357,16 @@ export function LoopieConversationContent({
               )}
             </div>
           </div>
+          {dictationStatus === "recording" ? (
+            <p className="text-[10px] text-primary">
+              Dictation is listening…
+            </p>
+          ) : null}
+          {dictationStatus === "transcribing" ? (
+            <p className="text-[10px] text-muted-foreground">
+              Transcribing dictation…
+            </p>
+          ) : null}
           <p className="text-[10px] text-muted-foreground/70">{helperText}</p>
         </div>
       </div>

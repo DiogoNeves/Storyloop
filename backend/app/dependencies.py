@@ -9,6 +9,7 @@ import sqlite3
 from fastapi import HTTPException, Request
 
 from app.services import (
+    DictationService,
     EntryService,
     GrowthScoreService,
     UserService,
@@ -56,6 +57,16 @@ def get_growth_score_service(request: Request) -> GrowthScoreService:
     if service is None:
         service = GrowthScoreService()
         request.app.state.growth_score_service = service
+    return service
+
+
+def get_dictation_service(request: Request) -> DictationService:
+    """Extract DictationService from application state."""
+    service = getattr(request.app.state, "dictation_service", None)
+    if service is None:
+        settings = request.app.state.settings
+        service = DictationService(settings)
+        request.app.state.dictation_service = service
     return service
 
 

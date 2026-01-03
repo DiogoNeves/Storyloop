@@ -18,6 +18,7 @@ backend/
 │   │   ├── __init__.py
 │   │   ├── assets.py      # Asset upload + retrieval
 │   │   ├── conversations.py  # Conversation streaming endpoints
+│   │   ├── dictation.py   # Audio transcription + title generation
 │   │   ├── entries.py     # Journal/timeline entries CRUD
 │   │   ├── growth.py      # Growth score endpoints
 │   │   ├── health.py      # Health check endpoint
@@ -28,6 +29,7 @@ backend/
 │       ├── agent.py       # PydanticAI agent builder
 │       ├── agent_tools/   # Agent tool adapters + models
 │       ├── assets.py      # Asset storage + metadata
+│       ├── dictation.py   # OpenAI transcription + title generation
 │       ├── entries.py     # Entry persistence
 │       ├── growth.py      # Growth score calculations
 │       ├── sgi.py         # Storyloop Growth Index helpers
@@ -64,6 +66,7 @@ Key functions:
 - `app.state.get_db` - Database connection factory
 - `app.state.entry_service` - Entry persistence helpers
 - `app.state.asset_service` - Asset persistence and metadata helpers
+- `app.state.dictation_service` - Dictation transcription + title helper
 - `app.state.user_service` - Active user/channel state
 - `app.state.youtube_service` - YouTube API service
 - `app.state.growth_score_service` - Growth score service
@@ -201,6 +204,15 @@ APScheduler configuration for recurring jobs:
 - Stores files under `db_dir/assets/` derived from the database path
 - Provides metadata (`sizeBytes`, `width`, `height`) on demand
 
+#### DictationService (`services/dictation.py`)
+
+**Purpose:** Transcribe audio and generate journal titles using OpenAI.
+
+**Methods:**
+
+- `transcribe_audio()` - Sends recorded audio to OpenAI's transcription API.
+- `generate_title()` - Uses GPT-5 mini to create short journal titles.
+
 #### Agent Service (`services/agent.py`)
 
 **Purpose:** Build and configure PydanticAI agent for conversational interactions
@@ -296,6 +308,15 @@ markdown links to `/assets/{id}` for attachments.
 
 - `conversations` table: `id`, `title`, `created_at`
 - `turns` table: `id`, `conversation_id`, `role`, `text`, `attachments`, `created_at`
+
+#### Dictation Router (`routers/dictation.py`)
+
+**Endpoints:**
+
+- `POST /dictation/transcribe` - Transcribe uploaded audio (`multipart/form-data`).
+- `POST /dictation/title` - Generate a short title from journal body text.
+
+**Purpose:** Support voice dictation for journal entries and Loopie input.
 
 #### Channel Settings Router (Future: `routers/settings.py`)
 

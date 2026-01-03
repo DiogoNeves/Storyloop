@@ -18,6 +18,7 @@ from app.db_helpers.conversations import init_conversation_tables
 from app.routers import api_router
 from app.scheduler import create_scheduler
 from app.services import (
+    DictationService,
     EntryService,
     GrowthScoreService,
     UserService,
@@ -66,6 +67,7 @@ def build_lifespan(
         demo_mode=active_settings.youtube_demo_mode,
     )
     asset_service.ensure_schema()
+    dictation_service = DictationService(active_settings)
 
     # Initialize conversation tables
     with closing(connection_factory()) as connection:
@@ -114,6 +116,7 @@ def build_lifespan(
         app.state.get_db = connection_factory
         app.state.entry_service = entry_service
         app.state.asset_service = asset_service
+        app.state.dictation_service = dictation_service
         app.state.user_service = user_service
         app.state.youtube_service = youtube_service or resolved_youtube_service
         app.state.youtube_demo_service = demo_youtube_service

@@ -166,6 +166,52 @@ Frontend inserts snippet
     │ Loopie: attachment list before send
 ```
 
+### 4. Dictation Flow (Journal + Loopie)
+
+```
+User taps dictation button
+    │
+    ▼
+ActivityDraftCard / LoopiePanel
+    │
+    │ useDictation()
+    │ - MediaRecorder captures audio
+    │ - Stop button ends recording
+    │
+    ▼
+api/dictation.ts
+    │
+    │ POST /dictation/transcribe (multipart audio)
+    │
+    ▼
+Backend Router (routers/dictation.py)
+    │
+    │ DictationService.transcribe_audio()
+    │ - OpenAI transcription model
+    │
+    ▼
+Response: { text }
+    │
+    ▼
+Frontend appends transcript
+    │
+    ├─ Journal: summary textarea (append with spacing)
+    └─ Loopie: composer input (no auto-send)
+    │
+    ▼
+Journal-only title generation
+    │
+    │ POST /dictation/title (body text)
+    │
+    ▼
+DictationService.generate_title()
+    │
+    │ GPT-5 mini returns title
+    │
+    ▼
+Frontend updates title (if untouched)
+```
+
 ## Background Job Flow
 
 ### Weekly YouTube Sync

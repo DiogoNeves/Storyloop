@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { Mic, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { type ActivityDraft } from "./ActivityFeed";
@@ -18,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAssetUpload } from "@/hooks/useAssetUpload";
+import { appendDictationText, useDictation } from "@/hooks/useDictation";
 
 export interface ActivityDraftCardProps {
   draft: ActivityDraft;
@@ -56,7 +58,13 @@ export function ActivityDraftCard({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const hasFocusedRef = useRef(false);
   const initialTitleRef = useRef<string | undefined>(undefined);
+  const lastGeneratedTitleRef = useRef<string | null>(null);
+  const draftRef = useRef(draft);
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
 
   useEffect(() => {
     // Capture the initial title on first render
@@ -155,6 +163,42 @@ export function ActivityDraftCard({
     [uploadFiles],
   );
 
+  const buildSummaryWithDictation = useCallback((snippet: string) => {
+    const currentDraft = draftRef.current;
+    return appendDictationText(currentDraft.summary, snippet);
+  }, []);
+
+  const {
+    status: dictationStatus,
+    error: dictationError,
+    startRecording,
+    stopRecording,
+    retryTranscription,
+    hasRetry,
+  } = useDictation({
+    onTranscript: (text) => {
+      const nextSummary = buildSummaryWithDictation(text);
+      onChange({ ...draftRef.current, summary: nextSummary });
+    },
+    buildTitleInput: (text) => buildSummaryWithDictation(text),
+    onTitle: (title) => {
+      const currentDraft = draftRef.current;
+      const currentTitle = currentDraft.title.trim();
+      const shouldUpdateTitle =
+        currentTitle.length === 0 ||
+        currentTitle === (lastGeneratedTitleRef.current ?? "");
+      if (!shouldUpdateTitle) {
+        return;
+      }
+      lastGeneratedTitleRef.current = title;
+      onChange({ ...currentDraft, title });
+    },
+  });
+
+  const isDictationActive = dictationStatus === "recording";
+  const isDictationBusy = dictationStatus === "transcribing";
+  const isDictationDisabled = isSubmitting || isDictationBusy;
+
   return (
     <Card className="border-dashed border-primary/40 bg-primary/5">
       <CardContent className="space-y-4 p-4">
@@ -207,17 +251,45 @@ export function ActivityDraftCard({
           <div className="space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <Label htmlFor={summaryInputId}>Entry (optional)</Label>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  fileInputRef.current?.click();
-                }}
-                disabled={isUploading}
-              >
-                {isUploading ? "Uploading…" : "Add image or PDF"}
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant={isDictationActive ? "destructive" : "secondary"}
+                  size="sm"
+                  onClick={() => {
+                    if (isDictationActive) {
+                      stopRecording();
+                      return;
+                    }
+                    void startRecording();
+                  }}
+                  disabled={isDictationDisabled}
+                  className="gap-2"
+                >
+                  {isDictationActive ? (
+                    <>
+                      <Square className="h-4 w-4" />
+                      Stop dictation
+                    </>
+                  ) : (
+                    <>
+                      <Mic className="h-4 w-4" />
+                      Dictate
+                    </>
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    fileInputRef.current?.click();
+                  }}
+                  disabled={isUploading}
+                >
+                  {isUploading ? "Uploading…" : "Add image or PDF"}
+                </Button>
+              </div>
             </div>
             <input
               ref={fileInputRef}
@@ -265,6 +337,33 @@ export function ActivityDraftCard({
             />
             {uploadError ? (
               <p className="text-xs text-destructive">{uploadError}</p>
+            ) : null}
+            {dictationStatus === "recording" ? (
+              <p className="text-xs text-primary">
+                Listening… press stop when you&apos;re done.
+              </p>
+            ) : null}
+            {dictationStatus === "transcribing" ? (
+              <p className="text-xs text-muted-foreground">
+                Transcribing your dictation…
+              </p>
+            ) : null}
+            {dictationError ? (
+              <div className="flex flex-wrap items-center gap-2 text-xs text-destructive">
+                <span>{dictationError}</span>
+                {hasRetry ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      void retryTranscription();
+                    }}
+                  >
+                    Retry
+                  </Button>
+                ) : null}
+              </div>
             ) : null}
           </div>
 

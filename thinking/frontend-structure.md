@@ -9,6 +9,7 @@ frontend/
 │   │   ├── assets.ts     # Asset uploads + metadata
 │   │   ├── client.ts     # Axios instance
 │   │   ├── conversations.ts # Loopie conversations + turns
+│   │   ├── dictation.ts  # Audio transcription + title generation
 │   │   ├── entries.ts    # Activity/journal entries
 │   │   ├── growth.ts     # Growth score queries
 │   │   ├── health.ts     # Health check queries
@@ -29,6 +30,7 @@ frontend/
 │   ├── hooks/            # Feature hooks
 │   │   ├── useAgentConversation.ts
 │   │   ├── useAssetUpload.ts
+│   │   ├── useDictation.ts
 │   │   ├── useEntryEditing.ts
 │   │   └── useYouTubeFeed.ts
 │   ├── lib/              # Utilities and types
@@ -126,6 +128,7 @@ frontend/
 - Drag/drop and paste uploads for images and PDFs
 - Inserts markdown snippets (`![alt](/assets/{id})`, `[file](/assets/{id})`)
 - Inline error handling for upload failures
+- Dictation control that records audio, transcribes into the entry body, and requests an auto-title
 
 ### LoopiePanel Component
 
@@ -136,6 +139,7 @@ frontend/
 - Attachments list with previews before sending
 - Drag/drop and paste uploads in the composer
 - Sends attachment IDs alongside the message to the backend
+- Dictation button that appends transcribed audio into the composer without sending
 
 ### Chat Rendering
 
