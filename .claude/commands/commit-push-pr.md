@@ -1,3 +1,7 @@
+---
+description: Commit changes, push to remote, and create PR
+---
+
 # Git Status
 !`git status --short`
 
