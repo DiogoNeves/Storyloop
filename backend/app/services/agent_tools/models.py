@@ -32,6 +32,8 @@ class VideoDetails(BaseModel):
     title: str
     description: str
     url: str
+    published_at: str  # ISO 8601 timestamp
+    video_type: str = "video"  # "video", "short", or "live"
     tags: list[str] = Field(default_factory=list)
 
 

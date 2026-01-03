@@ -110,6 +110,14 @@ When responding, you must:
 4) Note that future versions will store tone and preferences in persistent user memory; today you infer from provided context.
 5) Be explicit about any gaps in knowledge or access—say what you don't know instead of guessing.
 
+For aggregate questions (counting videos, trends, comparisons across multiple uploads):
+- Use `list_recent_videos` with a higher `limit` (50-100) to get enough data.
+- Use `published_after` and `published_before` to filter by date range. For example:
+  - "Last year" → published_after="2025-01-01", published_before="2026-01-01"
+  - "Past 6 months" → calculate the date 6 months ago for published_after
+- The response includes `published_at` (ISO timestamp) and `video_type` ("video", "short", or "live") for each video.
+- Count and analyze the returned videos to answer the user's question accurately.
+
 Most Storyloop users are early-stage creators, so explain metrics simply and briefly, focusing on why they matter.
 If the user demonstrates deeper knowledge, match their level and keep explanations tight.
 
@@ -176,20 +184,34 @@ Your mission: help creators grow their channels and unlock creativity without ge
     @assistant_agent.tool
     async def list_recent_videos(
         ctx: RunContext[LoopieDeps],
-        limit: int = 5,
+        limit: int = 25,
         include_shorts: bool = False,
+        published_after: str | None = None,
+        published_before: str | None = None,
     ) -> list[VideoDetails]:
         """Load recent video details for the active channel.
 
         Use this to ground any ideas, rewrites, or comparisons in real uploads.
         Exclude Shorts unless the user explicitly requests them.
+
+        Args:
+            limit: Maximum videos to return. Use higher values (50-100) for
+                   aggregate queries like counting videos or analyzing trends.
+            include_shorts: Whether to include YouTube Shorts in results.
+            published_after: Only include videos published on or after this
+                             ISO 8601 date (e.g., "2024-01-01").
+            published_before: Only include videos published before this
+                              ISO 8601 date (e.g., "2025-01-01").
         """
 
         if ctx.deps.tool_call_notifier:
             await ctx.deps.tool_call_notifier("📺 your latest uploads")
 
         return await ctx.deps.youtube_repo.list_recent_videos(
-            limit=limit, include_shorts=include_shorts
+            limit=limit,
+            include_shorts=include_shorts,
+            published_after=published_after,
+            published_before=published_before,
         )
 
     @assistant_agent.tool

@@ -150,11 +150,22 @@ class YouTubeRepository:
         return await anyio.to_thread.run_sync(self._user_service.get_active_user)
 
     async def list_recent_videos(
-        self, *, limit: int = 5, include_shorts: bool = False
+        self,
+        *,
+        limit: int = 25,
+        include_shorts: bool = False,
+        published_after: str | None = None,
+        published_before: str | None = None,
     ) -> list[VideoDetails]:
         """Return recent videos for the active channel.
 
         Shorts are excluded by default to prioritize long-form context.
+
+        Args:
+            limit: Maximum number of videos to return.
+            include_shorts: Whether to include YouTube Shorts.
+            published_after: Only include videos published on or after this ISO date.
+            published_before: Only include videos published before this ISO date.
         """
 
         active_user = await self._get_active_user()
@@ -162,23 +173,49 @@ class YouTubeRepository:
         if channel_identifier is None:
             return []
 
+        # Request more videos than limit to account for date filtering
+        fetch_limit = limit * 2 if (published_after or published_before) else limit
+        fetch_limit = max(fetch_limit, 50)  # Fetch at least 50 for filtering
+
         video_type = None if include_shorts else "video"
         feed = await self._youtube_service.fetch_channel_feed(
             channel_identifier,
             video_type=video_type,
             user_service=self._user_service,
             oauth_service=self._oauth_service,
-            max_results=max(limit, 5),
+            max_results=fetch_limit,
         )
+
         videos = [
             video for video in feed.videos if include_shorts or video.video_type == "video"
-        ][:limit]
+        ]
+
+        # Apply date filtering
+        if published_after:
+            try:
+                cutoff = datetime.fromisoformat(published_after.replace("Z", "+00:00"))
+                videos = [v for v in videos if v.published_at >= cutoff]
+            except ValueError:
+                pass  # Ignore malformed timestamps
+
+        if published_before:
+            try:
+                cutoff = datetime.fromisoformat(published_before.replace("Z", "+00:00"))
+                videos = [v for v in videos if v.published_at < cutoff]
+            except ValueError:
+                pass  # Ignore malformed timestamps
+
+        # Apply limit after filtering
+        videos = videos[:limit]
+
         return [
             VideoDetails(
                 video_id=video.id,
                 title=video.title,
                 description=video.description,
                 url=video.url,
+                published_at=video.published_at.isoformat(),
+                video_type=video.video_type,
                 tags=[],
             )
             for video in videos
@@ -197,6 +234,8 @@ class YouTubeRepository:
             title=video.title,
             description=video.description,
             url=video.url,
+            published_at=video.published_at.isoformat(),
+            video_type=video.video_type,
             tags=[],
         )
 
@@ -309,7 +348,12 @@ class BaseYouTubeRepository(Protocol):
     """Interface for YouTube repositories consumed by the agent."""
 
     async def list_recent_videos(
-        self, *, limit: int = 5, include_shorts: bool = False
+        self,
+        *,
+        limit: int = 25,
+        include_shorts: bool = False,
+        published_after: str | None = None,
+        published_before: str | None = None,
     ) -> list[VideoDetails]:
         """Return recent videos for the active channel."""
 
@@ -333,7 +377,12 @@ class EmptyYouTubeRepository:
     """Fallback repository returning empty YouTube data."""
 
     async def list_recent_videos(
-        self, *, limit: int = 5, include_shorts: bool = False
+        self,
+        *,
+        limit: int = 25,
+        include_shorts: bool = False,
+        published_after: str | None = None,
+        published_before: str | None = None,
     ) -> list[VideoDetails]:
         return []
 
