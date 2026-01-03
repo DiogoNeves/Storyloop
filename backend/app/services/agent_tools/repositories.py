@@ -14,6 +14,7 @@ from app.services.agent_tools.models import (
     GrowthScoreResult,
     JournalEntry,
     JournalEntryAttachment,
+    VideoCountResult,
     VideoAnalyticsMetrics,
     VideoDetails,
     VideoMetrics,
@@ -134,6 +135,9 @@ def _collect_attachments(
 class YouTubeRepository:
     """Readonly accessors for YouTube data exposed to the agent."""
 
+    _DEFAULT_MAX_SCAN: int = 500
+    _HARD_MAX_SCAN: int = 2000
+
     def __init__(
         self,
         youtube_service: YoutubeService,
@@ -178,6 +182,7 @@ class YouTubeRepository:
                 video_id=video.id,
                 title=video.title,
                 description=video.description,
+                published_at=video.published_at.isoformat(),
                 url=video.url,
                 tags=[],
             )
@@ -196,8 +201,146 @@ class YouTubeRepository:
             video_id=video.id,
             title=video.title,
             description=video.description,
+            published_at=video.published_at.isoformat(),
             url=video.url,
             tags=[],
+        )
+
+    async def list_videos(
+        self,
+        *,
+        limit: int = 50,
+        include_shorts: bool = False,
+        start_iso: str | None = None,
+        end_iso: str | None = None,
+        max_scan: int | None = None,
+    ) -> list[VideoDetails]:
+        """List videos for the active channel, optionally filtered by date range.
+
+        This is designed for agent queries like "how many uploads last year?"
+        or "show me titles from last month".
+
+        Notes:
+        - Results are bounded by `max_scan` to avoid expensive API usage.
+        - Date filtering is applied after fetching (YouTube uploads are newest-first).
+        """
+
+        active_user = await self._get_active_user()
+        channel_identifier = active_user.channel_id if active_user else None
+        if channel_identifier is None:
+            return []
+
+        effective_max_scan = max_scan or self._DEFAULT_MAX_SCAN
+        effective_max_scan = max(1, min(effective_max_scan, self._HARD_MAX_SCAN))
+
+        video_type = None if include_shorts else "video"
+        feed = await self._youtube_service.fetch_channel_feed(
+            channel_identifier,
+            video_type=video_type,
+            user_service=self._user_service,
+            oauth_service=self._oauth_service,
+            max_results=effective_max_scan,
+        )
+
+        start_dt = _parse_iso_datetime(start_iso)
+        end_dt = _parse_iso_datetime(end_iso)
+
+        filtered: list[VideoDetails] = []
+        for video in feed.videos:
+            if not include_shorts and video.video_type != "video":
+                continue
+            if start_dt and video.published_at < start_dt:
+                continue
+            if end_dt and video.published_at >= end_dt:
+                continue
+            filtered.append(
+                VideoDetails(
+                    video_id=video.id,
+                    title=video.title,
+                    description=video.description,
+                    published_at=video.published_at.isoformat(),
+                    url=video.url,
+                    tags=[],
+                )
+            )
+            if len(filtered) >= limit:
+                break
+
+        return filtered
+
+    async def count_videos_published(
+        self,
+        *,
+        start_iso: str | None = None,
+        end_iso: str | None = None,
+        include_shorts: bool = False,
+        max_scan: int | None = None,
+    ) -> VideoCountResult:
+        """Count videos published in a date range for the active channel."""
+
+        active_user = await self._get_active_user()
+        channel_identifier = active_user.channel_id if active_user else None
+        if channel_identifier is None:
+            return VideoCountResult(
+                start_iso=start_iso,
+                end_iso=end_iso,
+                count=0,
+                scanned=0,
+                truncated=False,
+                note="No active channel configured.",
+            )
+
+        effective_max_scan = max_scan or self._DEFAULT_MAX_SCAN
+        effective_max_scan = max(1, min(effective_max_scan, self._HARD_MAX_SCAN))
+
+        video_type = None if include_shorts else "video"
+        feed = await self._youtube_service.fetch_channel_feed(
+            channel_identifier,
+            video_type=video_type,
+            user_service=self._user_service,
+            oauth_service=self._oauth_service,
+            max_results=effective_max_scan,
+        )
+
+        start_dt = _parse_iso_datetime(start_iso)
+        end_dt = _parse_iso_datetime(end_iso)
+
+        count = 0
+        for video in feed.videos:
+            if not include_shorts and video.video_type != "video":
+                continue
+            if start_dt and video.published_at < start_dt:
+                continue
+            if end_dt and video.published_at >= end_dt:
+                continue
+            count += 1
+
+        scanned = len(feed.videos)
+        truncated = False
+        note: str | None = None
+        if scanned >= effective_max_scan:
+            # If we hit the scan cap and the oldest scanned video might still be in-range,
+            # we can't guarantee completeness.
+            oldest = min((v.published_at for v in feed.videos), default=None)
+            if oldest is None:
+                truncated = False
+            elif start_dt is None:
+                truncated = True
+            else:
+                truncated = oldest >= start_dt
+            if truncated:
+                note = (
+                    "Result may be incomplete: scan limit reached. "
+                    "Increase max_scan to improve coverage."
+                )
+
+        return VideoCountResult(
+            start_iso=start_iso,
+            end_iso=end_iso,
+            count=count,
+            scanned=scanned,
+            truncated=truncated,
+            note=note,
         )
 
     async def get_video_metrics(self, video_id: str) -> VideoMetrics:
@@ -316,6 +459,27 @@ class BaseYouTubeRepository(Protocol):
     async def get_video(self, video_id: str) -> VideoDetails:
         """Return detailed metadata for a single video."""
 
+    async def list_videos(
+        self,
+        *,
+        limit: int = 50,
+        include_shorts: bool = False,
+        start_iso: str | None = None,
+        end_iso: str | None = None,
+        max_scan: int | None = None,
+    ) -> list[VideoDetails]:
+        """List videos, optionally filtered by date range."""
+
+    async def count_videos_published(
+        self,
+        *,
+        start_iso: str | None = None,
+        end_iso: str | None = None,
+        include_shorts: bool = False,
+        max_scan: int | None = None,
+    ) -> VideoCountResult:
+        """Count videos published in a date range."""
+
     async def get_video_metrics(self, video_id: str) -> VideoMetrics:
         """Return metrics for a specific video."""
 
@@ -340,6 +504,34 @@ class EmptyYouTubeRepository:
     async def get_video(self, video_id: str) -> VideoDetails:
         raise RuntimeError("YouTube service not configured")
 
+    async def list_videos(
+        self,
+        *,
+        limit: int = 50,
+        include_shorts: bool = False,
+        start_iso: str | None = None,
+        end_iso: str | None = None,
+        max_scan: int | None = None,
+    ) -> list[VideoDetails]:
+        return []
+
+    async def count_videos_published(
+        self,
+        *,
+        start_iso: str | None = None,
+        end_iso: str | None = None,
+        include_shorts: bool = False,
+        max_scan: int | None = None,
+    ) -> VideoCountResult:
+        return VideoCountResult(
+            start_iso=start_iso,
+            end_iso=end_iso,
+            count=0,
+            scanned=0,
+            truncated=False,
+            note="YouTube service not configured.",
+        )
+
     async def get_video_metrics(self, video_id: str) -> VideoMetrics:
         raise RuntimeError("YouTube service not configured")
 
@@ -351,3 +543,18 @@ class EmptyYouTubeRepository:
 
     async def get_channel_growth_score(self) -> GrowthScoreResult:
         raise RuntimeError("YouTube service not configured")
+
+
+def _parse_iso_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        # Assume UTC if tz is missing.
+        from datetime import UTC
+
+        return parsed.replace(tzinfo=UTC)
+    return parsed

@@ -31,8 +31,20 @@ class VideoDetails(BaseModel):
     video_id: str
     title: str
     description: str
+    published_at: str
     url: str
     tags: list[str] = Field(default_factory=list)
+
+
+class VideoCountResult(BaseModel):
+    """Count result for multi-video queries over a date range."""
+
+    start_iso: str | None = None
+    end_iso: str | None = None
+    count: int
+    scanned: int
+    truncated: bool = False
+    note: str | None = None
 
 
 class VideoMetrics(BaseModel):
