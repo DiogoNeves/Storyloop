@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { ImageWithFallback } from "@/components/ui/image-with-fallback";
 
 export function LinkYouTubeAccountCard() {
   const statusQuery = useQuery(youtubeQueries.authStatus());
@@ -144,13 +145,11 @@ export function LinkYouTubeAccountCard() {
       <CardContent className="flex flex-col gap-4 p-4 pt-2 text-sm text-muted-foreground">
         {channel ? (
           <div className="flex items-center gap-3">
-            {channel.thumbnailUrl ? (
-              <img
-                src={channel.thumbnailUrl}
-                alt={`${channel.title ?? "YouTube channel"} thumbnail`}
-                className="h-10 w-10 rounded-full border border-border object-cover"
-              />
-            ) : null}
+            <ImageWithFallback
+              src={channel.thumbnailUrl}
+              alt={`${channel.title ?? "YouTube channel"} thumbnail`}
+              className="h-10 w-10 rounded-full border border-border object-cover"
+            />
             <div className="space-y-1">
               <p className="font-medium text-foreground">
                 {channel.title ?? "YouTube channel"}
