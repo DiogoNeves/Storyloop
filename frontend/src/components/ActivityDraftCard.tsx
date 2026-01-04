@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAssetUpload } from "@/hooks/useAssetUpload";
 import { StatusMessage } from "@/components/ui/status-message";
+import { FormField } from "@/components/ui/form-field";
 
 export interface ActivityDraftCardProps {
   draft: ActivityDraft;
@@ -192,8 +193,7 @@ export function ActivityDraftCard({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor={titleInputId}>Title</Label>
+          <FormField id={titleInputId} label="Title">
             <Input
               id={titleInputId}
               placeholder="What happened?"
@@ -203,7 +203,7 @@ export function ActivityDraftCard({
                 onChange({ ...draft, title: event.target.value })
               }
             />
-          </div>
+          </FormField>
 
           <div className="space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
