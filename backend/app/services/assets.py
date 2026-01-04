@@ -17,6 +17,7 @@ from pypdf import PdfReader
 from PIL import Image
 
 from app.db import SqliteConnectionFactory
+from app.services.base import DatabaseService
 
 MAX_IMAGE_EDGE_PX = 2000
 ASSET_URL_PREFIX = "/assets/"
@@ -45,7 +46,7 @@ class AssetMeta:
     height: int | None
 
 
-class AssetService:
+class AssetService(DatabaseService):
     """Manage asset persistence on disk and metadata in SQLite."""
 
     def __init__(
@@ -55,7 +56,7 @@ class AssetService:
         *,
         demo_mode: bool = False,
     ) -> None:
-        self._connection_factory = connection_factory
+        super().__init__(connection_factory)
         self._database_url = database_url
         self._demo_mode = demo_mode
         self._assets_root = _resolve_assets_root(database_url)

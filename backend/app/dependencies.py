@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from dataclasses import dataclass
 
 import sqlite3
 
-from fastapi import HTTPException, Request
+from fastapi import Depends, HTTPException, Request
 
 from app.services import (
     EntryService,
@@ -120,3 +121,35 @@ def get_db(request: Request) -> Iterator[sqlite3.Connection]:
         yield connection
     finally:
         connection.close()
+
+
+@dataclass
+class YoutubeAuthDeps:
+    """Composite dependency for YouTube services with optional OAuth.
+
+    Groups the commonly-used trio of YouTube-related services for endpoints
+    that support both authenticated and API key-based requests.
+    """
+
+    youtube_service: YoutubeService
+    user_service: UserService
+    oauth_service: YoutubeOAuthService | None
+
+
+def get_youtube_auth_deps(
+    youtube_service: YoutubeService = Depends(get_youtube_service),
+    user_service: UserService = Depends(get_user_service),
+    oauth_service: YoutubeOAuthService | None = Depends(
+        get_youtube_oauth_service_optional
+    ),
+) -> YoutubeAuthDeps:
+    """Get all YouTube auth-related services as a single composite dependency.
+
+    Use this when an endpoint needs youtube_service, user_service, and
+    oauth_service together.
+    """
+    return YoutubeAuthDeps(
+        youtube_service=youtube_service,
+        user_service=user_service,
+        oauth_service=oauth_service,
+    )

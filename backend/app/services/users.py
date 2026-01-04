@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from sqlite3 import Row
 
-from app.db import SqliteConnectionFactory
+from app.services.base import DatabaseService
 
 _DEFAULT_USER_ID = "active"
 
@@ -56,11 +56,8 @@ def _row_to_record(row: Row) -> UserRecord:
     )
 
 
-class UserService:
+class UserService(DatabaseService):
     """High-level operations for persisting YouTube user credentials."""
-
-    def __init__(self, connection_factory: SqliteConnectionFactory) -> None:
-        self._connection_factory = connection_factory
 
     def ensure_schema(self) -> None:
         """Create the ``users`` table when it is missing."""

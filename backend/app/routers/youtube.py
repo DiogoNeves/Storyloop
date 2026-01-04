@@ -4,15 +4,9 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
 
-from app.dependencies import (
-    get_user_service,
-    get_youtube_oauth_service_optional,
-    get_youtube_service,
-)
+from app.dependencies import YoutubeAuthDeps, get_youtube_auth_deps
 from app.routers.errors import handle_youtube_error
-from app.services.users import UserService
-from app.services.youtube import YoutubeError, YoutubeService
-from app.services.youtube_oauth import YoutubeOAuthService
+from app.services.youtube import YoutubeError
 
 router = APIRouter(prefix="/youtube", tags=["youtube"])
 
@@ -21,11 +15,7 @@ router = APIRouter(prefix="/youtube", tags=["youtube"])
 async def list_channel_videos(
     channel: str = Query(..., min_length=1),
     video_type: str | None = Query(default=None, alias="videoType"),
-    youtube_service: YoutubeService = Depends(get_youtube_service),
-    user_service: UserService = Depends(get_user_service),
-    oauth_service: YoutubeOAuthService | None = Depends(
-        get_youtube_oauth_service_optional
-    ),
+    deps: YoutubeAuthDeps = Depends(get_youtube_auth_deps),
 ):
     """Return the latest published videos for the requested channel.
 
@@ -37,11 +27,11 @@ async def list_channel_videos(
         video_type: Optional filter by video type ("short", "live", or "video").
     """
     try:
-        feed = await youtube_service.fetch_channel_feed(
+        feed = await deps.youtube_service.fetch_channel_feed(
             channel,
             video_type=video_type,
-            user_service=user_service,
-            oauth_service=oauth_service,
+            user_service=deps.user_service,
+            oauth_service=deps.oauth_service,
         )
     except YoutubeError as exc:
         raise handle_youtube_error(exc) from exc
@@ -51,11 +41,7 @@ async def list_channel_videos(
 @router.get("/videos/{video_id}")
 async def get_video_detail(
     video_id: str,
-    youtube_service: YoutubeService = Depends(get_youtube_service),
-    user_service: UserService = Depends(get_user_service),
-    oauth_service: YoutubeOAuthService | None = Depends(
-        get_youtube_oauth_service_optional
-    ),
+    deps: YoutubeAuthDeps = Depends(get_youtube_auth_deps),
 ):
     """Return details for a single video by ID, including transcript if available.
 
@@ -66,10 +52,10 @@ async def get_video_detail(
         video_id: YouTube video ID.
     """
     try:
-        video = await youtube_service.fetch_video_detail(
+        video = await deps.youtube_service.fetch_video_detail(
             video_id,
-            user_service=user_service,
-            oauth_service=oauth_service,
+            user_service=deps.user_service,
+            oauth_service=deps.oauth_service,
         )
         # Convert to dict and add transcript field (null for now, can be extended later)
         video_dict = video.to_dict()
