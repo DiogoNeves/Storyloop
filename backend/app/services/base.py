@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from contextlib import closing
-from sqlite3 import Cursor
+from sqlite3 import Row
 from typing import Any
 
 from app.db import SqliteConnectionFactory
@@ -19,32 +19,46 @@ class DatabaseService:
     def __init__(self, connection_factory: SqliteConnectionFactory) -> None:
         self._connection_factory = connection_factory
 
-    def _execute(
+    def _fetch_all(
         self,
         query: str,
         params: tuple[Any, ...] = (),
-    ) -> Cursor:
-        """Execute a read-only query and return the cursor.
+    ) -> list[Row]:
+        """Execute a query and return all rows.
 
-        The connection is closed after the query completes. Use this for
-        SELECT queries where you need the cursor for fetchone/fetchall.
+        Use this for SELECT queries that return multiple rows.
         """
         with closing(self._connection_factory()) as connection:
-            return connection.execute(query, params)
+            cursor = connection.execute(query, params)
+            return cursor.fetchall()
+
+    def _fetch_one(
+        self,
+        query: str,
+        params: tuple[Any, ...] = (),
+    ) -> Row | None:
+        """Execute a query and return the first row, or None.
+
+        Use this for SELECT queries that return a single row.
+        """
+        with closing(self._connection_factory()) as connection:
+            cursor = connection.execute(query, params)
+            return cursor.fetchone()
 
     def _execute_and_commit(
         self,
         query: str,
         params: tuple[Any, ...] = (),
-    ) -> Cursor:
-        """Execute a query and commit the transaction.
+    ) -> int:
+        """Execute a query, commit, and return lastrowid.
 
         Use this for INSERT, UPDATE, DELETE operations that modify data.
+        Returns the lastrowid (useful for INSERT) or 0 if not applicable.
         """
         with closing(self._connection_factory()) as connection:
             cursor = connection.execute(query, params)
             connection.commit()
-            return cursor
+            return cursor.lastrowid or 0
 
 
 __all__ = ["DatabaseService"]
