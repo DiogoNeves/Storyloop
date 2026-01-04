@@ -8,7 +8,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
 
-from app.dependencies import get_asset_service, get_youtube_demo_mode
+from app.dependencies import get_asset_service
+from app.routers.guards import require_non_demo
 from app.services.assets import AssetService
 
 router = APIRouter(prefix="/assets", tags=["assets"])
@@ -18,15 +19,9 @@ router = APIRouter(prefix="/assets", tags=["assets"])
 async def upload_asset(
     file: Annotated[UploadFile, File(...)],
     asset_service: AssetService = Depends(get_asset_service),
-    demo_mode: bool = Depends(get_youtube_demo_mode),
+    _: None = Depends(require_non_demo),
 ) -> dict[str, object]:
     """Upload a file and return asset metadata."""
-    if demo_mode:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Assets are disabled in demo mode.",
-        )
-
     return await _handle_upload(file, asset_service, expected_hash=None)
 
 
@@ -35,15 +30,9 @@ async def upload_asset_with_id(
     asset_id: str,
     file: Annotated[UploadFile, File(...)],
     asset_service: AssetService = Depends(get_asset_service),
-    demo_mode: bool = Depends(get_youtube_demo_mode),
+    _: None = Depends(require_non_demo),
 ) -> dict[str, object]:
     """Upload a file with a client-computed hash id."""
-    if demo_mode:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Assets are disabled in demo mode.",
-        )
-
     return await _handle_upload(file, asset_service, expected_hash=asset_id)
 
 
