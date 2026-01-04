@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAssetUpload } from "@/hooks/useAssetUpload";
+import { StatusMessage } from "@/components/ui/status-message";
 
 export interface ActivityDraftCardProps {
   draft: ActivityDraft;
@@ -291,11 +292,7 @@ export function ActivityDraftCard({
               </Button>
             ) : null}
           </div>
-          {errorMessage ? (
-            <p className="text-sm text-destructive" role="alert">
-              {errorMessage}
-            </p>
-          ) : null}
+          <StatusMessage type="error" message={errorMessage} />
         </form>
       </CardContent>
     </Card>
