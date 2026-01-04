@@ -1254,87 +1254,27 @@ class YoutubeService:
         # Use API key method (either no auth available or auth failed)
         return await self._fetch_video_detail_with_api_key(video_id)
 
-    async def _fetch_video_detail_with_api_key(
-        self, video_id: str
+    def _parse_video_detail_response(
+        self, items: list[Any], video_id: str
     ) -> YoutubeVideo:
-        """Fetch video details using API key authentication."""
-        if not self.api_key:
-            raise YoutubeConfigurationError("YouTube API key not configured")
+        """Parse video detail from API response items.
 
-        async with self.client_session() as client:
-            params = {
-                "part": "contentDetails,snippet,status,statistics",
-                "id": video_id,
-                "key": self.api_key,
-            }
-            payload = await self._request_json(client, "videos", params)
-            items = payload.get("items", [])
-            if not isinstance(items, list) or not items:
-                raise YoutubeAPIRequestError(f"Video {video_id} not found")
+        Shared parsing logic for both authenticated and API key methods.
 
-            # Find the video item matching the requested video_id
-            # (in case fixture returns multiple videos)
-            video_item = None
-            for item in items:
-                if isinstance(item, dict) and item.get("id") == video_id:
-                    video_item = item
-                    break
+        Args:
+            items: The "items" list from a videos.list API response
+            video_id: The video ID being fetched (for error messages)
 
-            if video_item is None:
-                raise YoutubeAPIRequestError(f"Video {video_id} not found")
+        Returns:
+            Parsed YoutubeVideo with statistics
 
-            snippet = video_item.get("snippet", {})
-            content_details = video_item.get("contentDetails", {})
-            status = video_item.get("status", {})
-            statistics_data = video_item.get("statistics", {})
-
-            # Create a playlist item-like dict
-            playlist_item_like = {
-                "snippet": {
-                    **snippet,
-                    "resourceId": {"videoId": video_id},
-                    "liveBroadcastContent": snippet.get(
-                        "liveBroadcastContent", "none"
-                    ),
-                    "privacyStatus": status.get("privacyStatus", "public")
-                    if isinstance(status, dict)
-                    else "public",
-                },
-                "contentDetails": content_details,
-            }
-
-            video = YoutubeVideo.from_playlist_item(playlist_item_like)
-            if video is None:
-                raise YoutubeAPIRequestError(
-                    f"Failed to parse video {video_id}"
-                )
-            # Add statistics to the video
-            video.statistics = YoutubeVideoStatistics.from_api_response(statistics_data)
-            return video
-
-    def _fetch_video_detail_authenticated(
-        self,
-        video_id: str,
-        user_service: "UserService",
-        oauth_service: "YoutubeOAuthService",
-    ) -> YoutubeVideo:
-        """Fetch video details using OAuth authentication."""
-        client = self.build_authenticated_client(user_service, oauth_service)
-
-        video_response = (
-            client.videos()
-            .list(
-                part="contentDetails,snippet,status,statistics", id=video_id, maxResults=1
-            )
-            .execute()
-        )
-
-        items = video_response.get("items", [])
+        Raises:
+            YoutubeAPIRequestError: If video not found or parsing fails
+        """
         if not isinstance(items, list) or not items:
             raise YoutubeAPIRequestError(f"Video {video_id} not found")
 
         # Find the video item matching the requested video_id
-        # (in case fixture returns multiple videos)
         video_item = None
         for item in items:
             if isinstance(item, dict) and item.get("id") == video_id:
@@ -1354,9 +1294,7 @@ class YoutubeService:
             "snippet": {
                 **snippet,
                 "resourceId": {"videoId": video_id},
-                "liveBroadcastContent": snippet.get(
-                    "liveBroadcastContent", "none"
-                ),
+                "liveBroadcastContent": snippet.get("liveBroadcastContent", "none"),
                 "privacyStatus": status.get("privacyStatus", "public")
                 if isinstance(status, dict)
                 else "public",
@@ -1367,9 +1305,46 @@ class YoutubeService:
         video = YoutubeVideo.from_playlist_item(playlist_item_like)
         if video is None:
             raise YoutubeAPIRequestError(f"Failed to parse video {video_id}")
-        # Add statistics to the video
+
         video.statistics = YoutubeVideoStatistics.from_api_response(statistics_data)
         return video
+
+    async def _fetch_video_detail_with_api_key(
+        self, video_id: str
+    ) -> YoutubeVideo:
+        """Fetch video details using API key authentication."""
+        if not self.api_key:
+            raise YoutubeConfigurationError("YouTube API key not configured")
+
+        async with self.client_session() as client:
+            params = {
+                "part": "contentDetails,snippet,status,statistics",
+                "id": video_id,
+                "key": self.api_key,
+            }
+            payload = await self._request_json(client, "videos", params)
+            items = payload.get("items", [])
+            return self._parse_video_detail_response(items, video_id)
+
+    def _fetch_video_detail_authenticated(
+        self,
+        video_id: str,
+        user_service: "UserService",
+        oauth_service: "YoutubeOAuthService",
+    ) -> YoutubeVideo:
+        """Fetch video details using OAuth authentication."""
+        client = self.build_authenticated_client(user_service, oauth_service)
+
+        video_response = (
+            client.videos()
+            .list(
+                part="contentDetails,snippet,status,statistics", id=video_id, maxResults=1
+            )
+            .execute()
+        )
+
+        items = video_response.get("items", [])
+        return self._parse_video_detail_response(items, video_id)
 
     async def fetch_channel_statistics(
         self,
