@@ -1146,6 +1146,21 @@ class YoutubeService:
         )
         return cast("YoutubeApiClient", client)
 
+    def _can_use_authenticated(
+        self,
+        user_service: "UserService | None",
+        oauth_service: "YoutubeOAuthService | None",
+    ) -> bool:
+        """Check if authenticated requests are available.
+
+        Returns True if both services are provided and valid credentials exist.
+        Used by fetch methods to decide between authenticated and API key paths.
+        """
+        if user_service is None or oauth_service is None:
+            return False
+        record = user_service.get_active_user()
+        return record is not None and record.credentials_json is not None
+
     async def fetch_channel_feed(
         self,
         channel: str,
@@ -1171,33 +1186,19 @@ class YoutubeService:
         Returns:
             YoutubeFeed with channel metadata and videos.
         """
-        # Check if we should attempt authenticated request
-        is_authenticated = False
-        if user_service is not None and oauth_service is not None:
-            record = user_service.get_active_user()
-            is_authenticated = (
-                record is not None and record.credentials_json is not None
-            )
-
-        if (
-            is_authenticated
-            and user_service is not None
-            and oauth_service is not None
-        ):
-            # Try authenticated method first
+        if self._can_use_authenticated(user_service, oauth_service):
             try:
+                # user_service and oauth_service are guaranteed non-None here
                 return await self.fetch_authenticated_channel_videos(
-                    user_service,
-                    oauth_service,
+                    user_service,  # type: ignore[arg-type]
+                    oauth_service,  # type: ignore[arg-type]
                     channel_id=channel,
                     max_results=max_results,
                     video_type=video_type,
                 )
             except YoutubeConfigurationError:
-                # Fall back to API key method if auth fails
-                pass
+                pass  # Fall back to API key method
 
-        # Use API key method (either no auth available or auth failed)
         return await self.fetch_channel_videos(
             channel, max_results=max_results, video_type=video_type
         )
@@ -1229,29 +1230,16 @@ class YoutubeService:
         if not video_id:
             raise YoutubeAPIRequestError("Video ID is required")
 
-        # Check if we should attempt authenticated request
-        is_authenticated = False
-        if user_service is not None and oauth_service is not None:
-            record = user_service.get_active_user()
-            is_authenticated = (
-                record is not None and record.credentials_json is not None
-            )
-
-        if (
-            is_authenticated
-            and user_service is not None
-            and oauth_service is not None
-        ):
-            # Try authenticated method first
+        if self._can_use_authenticated(user_service, oauth_service):
             try:
                 return self._fetch_video_detail_authenticated(
-                    video_id, user_service, oauth_service
+                    video_id,
+                    user_service,  # type: ignore[arg-type]
+                    oauth_service,  # type: ignore[arg-type]
                 )
             except YoutubeConfigurationError:
-                # Fall back to API key method if auth fails
-                pass
+                pass  # Fall back to API key method
 
-        # Use API key method (either no auth available or auth failed)
         return await self._fetch_video_detail_with_api_key(video_id)
 
     def _parse_video_detail_response(
@@ -1366,20 +1354,7 @@ class YoutubeService:
         Returns:
             YoutubeChannelStatistics with view count, subscriber count, and video count.
         """
-        # Check if we should attempt authenticated request
-        is_authenticated = False
-        if user_service is not None and oauth_service is not None:
-            record = user_service.get_active_user()
-            is_authenticated = (
-                record is not None and record.credentials_json is not None
-            )
-
-        if (
-            is_authenticated
-            and user_service is not None
-            and oauth_service is not None
-        ):
-            # Try authenticated method first
+        if self._can_use_authenticated(user_service, oauth_service):
             try:
                 return await anyio.to_thread.run_sync(
                     self._fetch_channel_statistics_authenticated,
@@ -1388,10 +1363,8 @@ class YoutubeService:
                     oauth_service,
                 )
             except YoutubeConfigurationError:
-                # Fall back to API key method if auth fails
-                pass
+                pass  # Fall back to API key method
 
-        # Use API key method
         return await self._fetch_channel_statistics_with_api_key(channel_id)
 
     async def _fetch_channel_statistics_with_api_key(
