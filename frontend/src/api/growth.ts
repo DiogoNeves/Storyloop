@@ -45,7 +45,3 @@ export const growthQueries = createQueryKeys("growth", {
     queryFn: () => fetchGrowthScore(channelId, null),
   }),
 });
-
-export const growthApi = {
-  fetchGrowthScore,
-};

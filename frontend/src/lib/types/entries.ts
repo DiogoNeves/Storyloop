@@ -1,5 +1,3 @@
-import { type YoutubeVideoResponse } from "@/api/youtube";
-
 /**
  * Entry types and transformation utilities.
  *
@@ -56,28 +54,5 @@ export function entryToActivityItem(entry: Entry): ActivityItem {
     thumbnailUrl: entry.thumbnailUrl ?? undefined,
     videoId: entry.videoId ?? undefined,
     videoType: entry.videoType ?? undefined,
-  };
-}
-
-/**
- * Converts a YouTube video to an ActivityItem.
- *
- * @param video - YouTube video from the YouTube API
- * @returns ActivityItem for use in frontend components
- */
-export function youtubeVideoToActivityItem(
-  video: YoutubeVideoResponse,
-): ActivityItem {
-  return {
-    id: `youtube:${video.id}`,
-    title: video.title,
-    summary: video.description,
-    date: video.publishedAt,
-    category: "content",
-    linkUrl: video.url,
-    thumbnailUrl: video.thumbnailUrl ?? undefined,
-    videoId: video.id,
-    videoType: video.videoType,
-    privacyStatus: video.privacyStatus,
   };
 }
