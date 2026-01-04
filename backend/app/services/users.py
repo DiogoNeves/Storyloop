@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from sqlite3 import Row
 
-from app.db import SqliteConnectionFactory
 from app.services.base import DatabaseService
 
 _DEFAULT_USER_ID = "active"
