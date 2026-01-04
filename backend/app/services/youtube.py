@@ -623,77 +623,69 @@ class YoutubeService:
                 video_ids.append(video_id)
         return video_ids
 
-    def _extract_durations_from_payload(
-        self, video_payload: dict[str, Any]
-    ) -> dict[str, str | None]:
-        """Extract video durations from a videos.list API response."""
-        durations: dict[str, str | None] = {}
+    def _extract_from_payload(
+        self,
+        video_payload: dict[str, Any],
+        parent_key: str,
+        child_key: str,
+        default: Any = None,
+    ) -> dict[str, Any]:
+        """Extract a nested field from each item in a videos.list API response.
+
+        Generic extractor that reduces duplication across extraction methods.
+
+        Args:
+            video_payload: The API response containing video items
+            parent_key: The parent object key (e.g., "contentDetails", "snippet", "status")
+            child_key: The child field key to extract (e.g., "duration", "liveBroadcastContent")
+            default: Default value if the field is missing
+
+        Returns:
+            Dict mapping video_id to extracted value
+        """
+        result: dict[str, Any] = {}
         video_items = video_payload.get("items", [])
         if not isinstance(video_items, list):
-            return durations
+            return result
 
         for video_item in video_items:
             if not isinstance(video_item, dict):
                 continue
             video_id = video_item.get("id")
-            content_details = video_item.get("contentDetails", {})
-            duration = (
-                content_details.get("duration")
-                if isinstance(content_details, dict)
-                else None
+            parent = video_item.get(parent_key, {})
+            value = (
+                parent.get(child_key, default)
+                if isinstance(parent, dict)
+                else default
             )
             if video_id:
-                durations[video_id] = duration
+                result[video_id] = value
 
-        return durations
+        return result
+
+    def _extract_durations_from_payload(
+        self, video_payload: dict[str, Any]
+    ) -> dict[str, str | None]:
+        """Extract video durations from a videos.list API response."""
+        return self._extract_from_payload(
+            video_payload, "contentDetails", "duration", default=None
+        )
 
     def _extract_live_broadcast_content_from_payload(
         self, video_payload: dict[str, Any]
     ) -> dict[str, str]:
         """Extract liveBroadcastContent from a videos.list API response."""
-        live_content: dict[str, str] = {}
-        video_items = video_payload.get("items", [])
-        if not isinstance(video_items, list):
-            return live_content
-
-        for video_item in video_items:
-            if not isinstance(video_item, dict):
-                continue
-            video_id = video_item.get("id")
-            snippet = video_item.get("snippet", {})
-            live_broadcast_content = (
-                snippet.get("liveBroadcastContent", "none")
-                if isinstance(snippet, dict)
-                else "none"
-            )
-            if video_id:
-                live_content[video_id] = live_broadcast_content
-
-        return live_content
+        return self._extract_from_payload(
+            video_payload, "snippet", "liveBroadcastContent", default="none"
+        )
 
     def _extract_privacy_status_from_payload(
         self, video_payload: dict[str, Any]
     ) -> dict[str, str]:
         """Extract privacyStatus from a videos.list API response."""
-        privacy_status: dict[str, str] = {}
-        video_items = video_payload.get("items", [])
-        if not isinstance(video_items, list):
-            return privacy_status
-
-        for video_item in video_items:
-            if not isinstance(video_item, dict):
-                continue
-            video_id = video_item.get("id")
-            status = video_item.get("status", {})
-            privacy = (
-                status.get("privacyStatus", "public")
-                if isinstance(status, dict)
-                else "public"
-            )
-            if video_id:
-                privacy_status[video_id] = privacy
-
-        return privacy_status
+        return self._extract_from_payload(
+            video_payload, "status", "privacyStatus", default="public"
+        )
 
     async def _fetch_video_details(
         self, client: httpx.AsyncClient, video_ids: list[str]
