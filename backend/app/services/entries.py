@@ -9,6 +9,7 @@ from sqlite3 import Row
 from typing import Iterable, Sequence
 
 from app.db import SqliteConnectionFactory
+from app.services.base import DatabaseService
 
 
 @dataclass(slots=True)
@@ -73,11 +74,8 @@ def _record_to_values(record: EntryRecord) -> tuple:
     )
 
 
-class EntryService:
+class EntryService(DatabaseService):
     """High-level operations for persisting Storyloop entries."""
-
-    def __init__(self, connection_factory: SqliteConnectionFactory) -> None:
-        self._connection_factory = connection_factory
 
     def ensure_schema(self) -> None:
         """Create the entries table if it does not already exist."""
