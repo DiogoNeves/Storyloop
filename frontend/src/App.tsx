@@ -129,8 +129,7 @@ function JournalPage() {
       defaultValue: "all",
     });
 
-  const { publicOnly, setPublicOnly } = useSettings();
-  void setPublicOnly;
+  const { publicOnly } = useSettings();
   const [searchQuery, setSearchQuery] = useState("");
 
   // Determine videoType filter for API calls: null if "all", otherwise the type
