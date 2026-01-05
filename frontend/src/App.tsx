@@ -472,8 +472,9 @@ function JournalPage() {
           value={contentTypeFilter}
           onChange={setContentTypeFilter}
         />
-        <div className="w-full sm:max-w-[260px]">
+        <div className="w-full p-4 sm:max-w-[260px] md:p-1">
           <Input
+            className="text-base sm:text-sm"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             placeholder="Search activity"
