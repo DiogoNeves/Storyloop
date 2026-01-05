@@ -13,7 +13,7 @@ description: Commit changes, push to remote, and create PR
 
 Based on git status above:
 
-0. **If current branch is main** create a new branch for the changes.
+0. **If current branch is main** ask the user if they want to create a new branch, using the tool `AskUserQuestionTool` or create a new branch for the changes if not an interactive console.
 1. **Stage and commit** changes with a descriptive message.
 2. **Push** to the remote repository.
 3. **Create PR** with:

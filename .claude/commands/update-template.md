@@ -1,11 +1,11 @@
 ---
-description: Update Claude commands from template
+description: Update the Claude setup for the current project.
 ---
 
-Review files from the project template at `https://github.com/DiogoNeves/claude-template` that should be added to your `.claude/` directory.
+!`tree .claude/`
 
-Check which files already exist in the current project's `.claude/` folder.
+Based on files list above:
 
-For any files that already exist, use the `AskUserQuestion` tool to ask the user if they want to replace them.
-
-If the user approves, copy all remaining files from the template. If they decline, stop.
+1. **Copy new files** from the project template `https://github.com/DiogoNeves/claude-template` `.claude` folder, into the current project `.claude` folder.
+2. **If any files already exist** ask the user if they want to override using the `AskUserQuestionTool`.
+3. **If the user decides to override** copy the remaining files, otherwise we're done.
