@@ -2,7 +2,6 @@
 
 from .models import (
     ChannelMetrics,
-    GrowthScoreResult,
     JournalEntry,
     JournalEntryAttachment,
     VideoCountResult,
@@ -21,7 +20,6 @@ from .repositories import (
 
 __all__ = [
     "ChannelMetrics",
-    "GrowthScoreResult",
     "JournalEntry",
     "JournalEntryAttachment",
     "VideoCountResult",
