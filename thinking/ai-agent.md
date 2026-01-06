@@ -4,7 +4,7 @@
 > - ✅ SSE streaming conversations with PydanticAI
 > - ✅ Conversation persistence in SQLite
 > - ✅ Basic system prompt for YouTube creator assistance
-> - 🔄 Future: Context awareness, data fluency, insight tracking (see sections below)
+> - 🔄 Future: Context awareness, data fluency (see sections below)
 
 ## Overview
 
@@ -34,9 +34,9 @@ When a creator asks a question, the agent receives structured context from the f
 
 ```typescript
 {
-  currentPage: "dashboard" | "video-detail" | "insights" | ...,
-  visibleItems: Video[] | Entry[] | Insight[],
-  selectedItem?: Video | Entry | Insight,
+  currentPage: "dashboard" | "video-detail" | "loopie" | ...,
+  visibleItems: Video[] | Entry[],
+  selectedItem?: Video | Entry,
   filters: {
     dateRange?: { start: Date; end: Date };
     contentType?: string[];
@@ -55,17 +55,14 @@ The agent references this capsule explicitly (“You’re looking at ‘Advanced
 
 ### Readonly API Surface
 
-- **Growth Metrics** – `/api/growth/*` for SGI scores, component breakdowns, and trends.
 - **Entries** – `/api/entries/*` for journals, production notes, and tagged content.
 - **YouTube Data** – `/api/youtube/*` for video metrics, channel stats, and historical views.
-- **Insights** – Generated insights, tracking definitions, and alert history.
 
 ### Exploration Patterns
 
-- Query ranges (“Show me videos from the last 3 months with retention above 60%”).
-- Compare cohorts (“Compare Discovery scores from Q1 vs Q2”).
-- Spot behavioral rhythms (“Which upload days drive the highest early views?”).
-- Trace deltas (“How has Loyalty changed over the past 6 months?”).
+- Query ranges ("Show me videos from the last 3 months with retention above 60%").
+- Spot behavioral rhythms ("Which upload days drive the highest early views?").
+- Compare video performance across time periods.
 
 ### Knowledge Curation
 
@@ -74,34 +71,17 @@ The agent references this capsule explicitly (“You’re looking at ‘Advanced
 - **Growth stages** (early, growing, established) to adapt tone and ambition.
 - **Expert review loop** so recommendations stay aligned with current YouTube trends.
 
-## Insight Tracking & Delivery
-
-Creators can request tracking in natural language (“Track if mentioning the next video improves subscriber conversion”).
-
-1. **Intent understanding** – Identify the metric, cohort, and comparison baseline.
-2. **Feasibility check** – Confirm required signals exist; offer alternatives if not.
-3. **Parameter shaping** – Suggest cadence, thresholds, and scopes.
-4. **Background monitoring** – Schedule periodic checks, anomaly detection, and comparisons.
-5. **Insight delivery** – Post synthesized findings to the conversation, the insights feed, and optional alerts.
-
-When an insight lands, the agent explains what changed, why it matters, and how to act (“Hook retention improved 15% when you led with a question—want to pin this as a weekly check?”).
-
 ## Conversation Patterns
 
 ### Contextual Comparison
 
-- **User**: “Why did this video outperform the previous one?”
-- **Agent**: Highlights the current and prior videos, quantifies Discovery, Retention, and Loyalty shifts, and proposes tracking hook performance.
+- **User**: "Why did this video outperform the previous one?"
+- **Agent**: Highlights the current and prior videos, compares key metrics, and suggests what might have contributed to the difference.
 
 ### Exploratory Query
 
-- **User**: “Show me uploads with retention above 70%.”
-- **Agent**: Returns the qualifying list, names timing patterns, and offers to monitor upload schedules.
-
-### Habit Formation
-
-- **User**: “Track if subscriber conversion improves when I tease the next video.”
-- **Agent**: Confirms the cohort definition, sets weekly analysis, and reports back with the delta and suggested experiments.
+- **User**: "Show me uploads with retention above 70%."
+- **Agent**: Returns the qualifying list and names timing patterns.
 
 ## Technical Architecture Overview
 
@@ -117,10 +97,9 @@ When an insight lands, the agent explains what changed, why it matters, and how 
 **Future Enhancements:**
 
 - Ingests chat requests with bundled context (structured context capsule from frontend)
-- Orchestrates readonly API queries (`/api/growth/*`, `/api/entries/*`, `/api/youtube/*`)
+- Orchestrates readonly API queries (`/api/entries/*`, `/api/youtube/*`)
 - Knowledge retrieval and specialist libraries
 - Emits responses with natural language, suggested actions, and logged data access
-- Schedules background checks for active tracking commitments
 - Context-aware responses using frontend-provided context capsule
 
 ### Agent Tools & Dependencies

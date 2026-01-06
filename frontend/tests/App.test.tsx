@@ -17,10 +17,10 @@ const mockEntries = vi.hoisted<Entry[]>(() => [
   },
   {
     id: "entry-002",
-    title: "Audience insight: hero alignment",
+    title: "Audience feedback: hero alignment",
     summary: "Comments highlight appreciation for behind-the-scenes vulnerability.",
     date: "2024-05-10T18:05:00.000Z",
-    category: "insight",
+    category: "journal",
     linkUrl: null,
     thumbnailUrl: null,
   },
@@ -96,50 +96,18 @@ vi.mock("@/api/entries", () => {
   };
 });
 
-vi.mock("@/api/growth", () => {
-  const scoreResponse = {
-    totalScore: 68.3,
-    scoreDelta: 18.3,
-    updatedAt: "2024-01-02T12:00:00.000Z",
-    isEarlyChannel: false,
-    breakdown: {
-      discovery: { rawValue: 48_250, score: 56.7, weight: 0.4 },
-      retention: { rawValue: 67.8, score: 68.1, weight: 0.45 },
-      loyalty: { rawValue: 6.56, score: 100.0, weight: 0.15 },
-    },
-  };
-
-  const scoreQueryFn = vi.fn().mockResolvedValue(scoreResponse);
-
-  return {
-    growthQueries: {
-      score: (channelId?: string | null) => ({
-        queryKey: ["growth", "score", channelId ?? "unlinked"],
-        queryFn: scoreQueryFn,
-      }),
-    },
-    growthApi: {
-      fetchGrowthScore: scoreQueryFn,
-    },
-  };
-});
-
 describe("App", () => {
-  it("renders the dashboard with mock entries and growth score", async () => {
+  it("renders the dashboard with mock entries", async () => {
     render(<App />);
 
-    expect(screen.getByText(/Storyloop Score/i)).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /\+ entry/i }),
     ).toBeInTheDocument();
 
-    await waitFor(() => expect(screen.getByText("68.3")).toBeInTheDocument());
-    expect(
-      screen.getByText(/Momentum across discovery, retention, loyalty/i),
-    ).toBeInTheDocument();
-
-    expect(
-      screen.getByText(/Published the season premiere/i),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Published the season premiere/i),
+      ).toBeInTheDocument(),
+    );
   });
 });

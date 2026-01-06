@@ -926,10 +926,6 @@ class YoutubeService:
             return tuple(value)
         return value
 
-    def sync_latest_metrics(self) -> None:
-        """Log a placeholder sync until real metrics synchronization is wired in."""
-        logger.info("Pretending to sync latest YouTube metrics.")
-
     async def fetch_authenticated_channel_videos(
         self,
         user_service: "UserService",
