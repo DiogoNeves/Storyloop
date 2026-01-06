@@ -55,30 +55,13 @@ context_str = json.dumps(body.context) if body.context else ""
 prompt = f"Context: {context_str}\n\nUser: {body.text}"
 ```
 
-### 3. Data Fluent 🔄 (Ready for Extension)
-**Vision:** Agent queries readonly APIs (`/api/growth/*`, `/api/entries/*`, `/api/youtube/*`).
+### 3. Data Fluent ✅ (Implemented)
+**Vision:** Agent queries readonly APIs (`/api/entries/*`, `/api/youtube/*`).
 
 **v1 Foundation:**
-- PydanticAI supports tools/functions for API calls
-- Existing readonly API endpoints available
-- Agent can be extended with PydanticAI tools
-
-**Extension Path:**
-```python
-from pydantic_ai.tools import tool
-
-@tool
-async def query_growth_metrics(channel_id: str) -> dict:
-    """Query growth metrics for a channel."""
-    # Call /api/growth endpoint
-    ...
-
-agent = Agent(
-    model=model,
-    system_prompt=system_prompt,
-    tools=[query_growth_metrics, query_entries, query_youtube_data]
-)
-```
+- PydanticAI tools implemented for journal and YouTube data access
+- `JournalRepository` and `YouTubeRepository` provide data access
+- Agent tools: `load_journal_entries`, `list_recent_videos`, `get_video_details`, `get_video_metrics`
 
 ### 4. Action-Forward ✅ (Partially Implemented)
 **Vision:** Every response nudges toward experiments, habits, or trackable signals.
@@ -92,18 +75,16 @@ agent = Agent(
 - Refine system prompt with more specific action-oriented language
 - Add structured response format for suggested actions
 
-### 5. Proactively Insightful 🔄 (Ready for Extension)
-**Vision:** Background monitoring, pattern detection, automated insights.
+### 5. Proactively Insightful 🔄 (Future)
+**Vision:** Pattern detection and proactive guidance.
 
 **v1 Foundation:**
-- APScheduler already integrated for background jobs
-- Conversation persistence enables insight delivery
-- Database schema can be extended for tracking definitions
+- Conversation persistence enables follow-up tracking
+- Agent can surface patterns through conversation
 
-**Extension Path:**
-- Add `insight_tracking` table for tracking definitions
-- Use scheduler to run periodic checks
-- Deliver insights via conversation updates
+**Future Path:**
+- Pattern detection in agent responses
+- Proactive suggestions based on conversation history
 
 ## Architecture Readiness
 
@@ -140,14 +121,9 @@ Current tables support conversation context:
 - Frontend integration with context gathering
 
 **Phase 3 (Future):**
-- Add PydanticAI tools for API queries
-- Implement insight tracking schema
-- Background monitoring via scheduler
-
-**Phase 4 (Future):**
 - Suggested action chips
 - Multi-turn conversation patterns
-- Proactive insight delivery
+- Enhanced context awareness
 
 ## Conclusion
 

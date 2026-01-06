@@ -287,9 +287,9 @@ App State
 │   ├── Health status (cached, 60s stale)
 │   ├── Entries (journal + content)
 │   ├── Conversations + turns
-│   └── YouTube feed + growth summary
+│   └── YouTube feed
 └── Local State (useState)
-    ├── activityItems[] (content, journal, insight, conversation)
+    ├── activityItems[] (content, journal, conversation)
     ├── draft (current entry being edited)
     └── filters + search query
 ```
@@ -320,7 +320,7 @@ FastAPI App State
   title: string
   summary: string
   date: string (ISO timestamp)
-  category: "content" | "insight" | "journal" | "conversation"
+  category: "content" | "journal" | "conversation"
   linkUrl?: string
   thumbnailUrl?: string
   videoId?: string
@@ -332,7 +332,6 @@ FastAPI App State
 
 - **Content** (`content`): Synced from YouTube
 - **Journal Entries** (`journal`): User-created entries
-- **Insights** (`insight`): AI-generated insights (not yet available)
 - **Conversations** (`conversation`): Loopie conversation summaries
 
 **HealthResponse (Backend):**
@@ -351,7 +350,7 @@ class Entry:
     title: str
     summary: str  # markdown, may include /assets/{id}
     date: datetime
-    category: Literal["content", "insight", "journal"]
+    category: Literal["content", "journal"]
     link_url: Optional[str]
     thumbnail_url: Optional[str]
     video_id: Optional[str]

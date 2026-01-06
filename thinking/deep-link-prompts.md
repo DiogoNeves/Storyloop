@@ -8,7 +8,6 @@ Use this guide when generating markdown links to in-app pages. Always present li
 - **Journal detail:** `/journals/{journalId}` loads a specific journal entry.
 - **Conversation detail:** `/conversations/{conversationId}` opens a saved Loopie conversation thread.
 - **Video detail:** `/videos/{videoId}` shows the Storyloop video detail view (use this when sharing video links).
-- **Insights dashboard:** `/insights` opens the insights view inside the application.
 - **Loopie workspace:** `/loopie` opens the dedicated Loopie canvas.
 
 ## Prompting rules for links

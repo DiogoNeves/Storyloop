@@ -10,7 +10,6 @@ frontend/
 │   │   ├── client.ts     # Axios instance
 │   │   ├── conversations.ts # Loopie conversations + turns
 │   │   ├── entries.ts    # Activity/journal entries
-│   │   ├── growth.ts     # Growth score queries
 │   │   ├── health.ts     # Health check queries
 │   │   └── youtube.ts    # YouTube data endpoints
 │   ├── assets/           # Local static images
@@ -37,7 +36,6 @@ frontend/
 │   │   └── utils.ts      # cn() helper
 │   ├── pages/            # Routed pages
 │   │   ├── ConversationDetailPage.tsx
-│   │   ├── InsightsPage.tsx
 │   │   ├── JournalDetailPage.tsx
 │   │   ├── LoopiePage.tsx
 │   │   └── VideoDetailPage.tsx
@@ -61,17 +59,17 @@ frontend/
 
 - `App()` - Root component wrapping providers (QueryClient, Settings, AgentConversation, Router)
 - `AppLayout()` - Main layout with NavBar, journal column, and Loopie panel
-- Routes for journal, insights, Loopie, conversations, and video details
+- Routes for journal, Loopie, conversations, and video details
 
 **Layout:**
 
 1. **Journal Column:** Activity feed with draft editor and timeline items
 2. **Loopie Column (desktop):** Agent chat panel and conversation context
-3. **Detail Pages:** Journal entry detail, conversation detail, video detail, insights
+3. **Detail Pages:** Journal entry detail, conversation detail, video detail
 
 **State Management:**
 
-- React Query for server state (entries, conversations, growth, YouTube feed)
+- React Query for server state (entries, conversations, YouTube feed)
 - Local state for drafts, filters, and UI controls
 - Memoized demo data when no server data is available
 
@@ -167,7 +165,7 @@ frontend/
 healthQueries.status() - Health check
 entriesQueries.all() - Entries list
 conversationQueries.list() - Loopie conversations
-growthQueries.summary() - Growth score snapshot
+youtubeQueries.feed() - YouTube video feed
 ```
 
 **Query Options (from App.tsx):**
@@ -247,7 +245,7 @@ Update CSS variables in `index.css`:
 
 **Used For:**
 
-- Entries, conversations, growth, YouTube feed
+- Entries, conversations, YouTube feed
 - Asset upload responses and metadata
 - Cache management and invalidation
 
@@ -404,12 +402,8 @@ import.meta.env.VITE_API_BASE_URL;
 - Advanced search and filtering
 - Rich text editor for journal entries
 - Entry categories and tags
-- Agent integration for insight tracking
-  - Users can interact with agent to request insight tracking
-  - Agent can save background actions
-  - Insights generated through agent interactions
-  - **Design:** [Agent/Chatbot Design](../design/with-chatbot.png) (Future)
-- Video detail pages (per-video view with deeper insights and related notes)
-  - Most insights will be AI-inferred through agent interactions
-  - Users can add notes, but insights are primarily agent-generated
-  - **Design:** [Video Detail Design](../design/video-detail.png) (Future)
+- Agent integration
+  - Users can interact with the AI agent for analytics questions
+  - **Design:** [Agent/Chatbot Design](../design/with-chatbot.png)
+- Video detail pages (per-video view with analytics and related notes)
+  - **Design:** [Video Detail Design](../design/video-detail.png)
