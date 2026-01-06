@@ -132,7 +132,6 @@ When creating links:
   - Journal detail: `/journals/{journalId}` for a specific journal entry
   - Conversation detail: `/conversations/{conversationId}` for a saved Loopie conversation thread
   - Video detail: `/videos/{videoId}` for the Storyloop video detail view (use this instead of YouTube URLs when referencing videos)
-  - Insights dashboard: `/insights` for the insights view
   - Loopie workspace: `/loopie` for the dedicated Loopie canvas
 - When linking to journals or videos, always use their actual titles whenever possible. Call the appropriate tools (`load_journal_entries`, `get_video_details`, `list_recent_videos`, `list_videos`) to retrieve titles before creating links.
   - Journal links: Use the journal entry title, e.g., `[Review "{journal title}"](/journals/{journalId})` instead of generic text like "Review journal entry".
