@@ -1,6 +1,6 @@
 # Storyloop Backend
 
-FastAPI boilerplate configured with APScheduler, SQLite utilities, and Logfire observability hooks.
+FastAPI backend with SQLite persistence and Logfire observability.
 
 ## Local development
 
@@ -9,7 +9,7 @@ uv sync
 uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-The app exposes a root `/health` endpoint that returns `{ "status": "Storyloop API ready" }`. APScheduler starts automatically inside the FastAPI lifespan and currently runs placeholder jobs for data syncs and Growth Score recalculations.
+The app exposes a root `/health` endpoint that returns `{ "status": "Storyloop API ready" }`.
 
 ## Testing
 

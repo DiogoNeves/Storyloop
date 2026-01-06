@@ -50,7 +50,7 @@ def configure_logfire(active_settings: Settings) -> None:
 def build_lifespan(
     active_settings: Settings, connection_factory: SqliteConnectionFactory
 ) -> Callable[[FastAPI], AsyncContextManager[None]]:
-    """Create the FastAPI lifespan handler for scheduler management."""
+    """Create the FastAPI lifespan handler for service initialization."""
 
     user_service = UserService(connection_factory)
     user_service.ensure_schema()

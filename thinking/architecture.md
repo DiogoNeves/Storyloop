@@ -125,13 +125,13 @@ Settings are managed through `backend/app/config.py` using Pydantic:
 2. System checks for saved channel preference
 3. If no channel found, prompt user to select YouTube channel to track
 4. Save channel selection to backend
-5. Load dashboard with score chart and timeline
+5. Load dashboard with timeline
 
 **Subsequent Logins:**
 
 1. User opens application
 2. System loads saved channel preference automatically
-3. Display dashboard with score chart and timeline for that channel
+3. Display dashboard with timeline for that channel
 
 **Dashboard Layout:**
 
