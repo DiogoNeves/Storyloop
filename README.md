@@ -105,7 +105,7 @@ For development and testing without YouTube API credentials, enable demo mode by
 
 ```
 Storyloop/
-├── backend/          # FastAPI application, APScheduler, pytest config
+├── backend/          # FastAPI application, pytest config
 ├── frontend/         # Vite + React + Tailwind/Shadcn UI scaffold with Vitest
 ├── scripts/          # Helper utilities (dev runner, seed data)
 ├── design/           # Product sketches and references
@@ -136,18 +136,16 @@ Storyloop/
 
 ## Next steps
 
-The PLAN outlines the roadmap toward ingesting YouTube data, calculating the Storyloop Growth Score, and integrating a journaling workflow. See [thinking/insights.md](thinking/insights.md) for the full scoring and insights logic.
+The PLAN outlines the roadmap toward ingesting YouTube data and integrating a journaling workflow.
 
 **Current Features:**
 
 - ✅ AI agent with SSE streaming conversations
 - ✅ Conversation persistence in SQLite
 - ✅ YouTube OAuth integration
-- ✅ Growth score calculation framework
 
 **Future Enhancements:**
 
-- Enhanced agent capabilities for insight tracking
+- Enhanced agent capabilities
 - Context-aware agent responses using Storyloop analytics
-- Video detail pages with deeper insights
-- Background action scheduling for pattern detection
+- Video detail pages with deeper analysis

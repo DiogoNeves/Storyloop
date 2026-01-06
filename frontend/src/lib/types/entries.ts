@@ -13,7 +13,7 @@ export interface Entry {
   title: string;
   summary: string;
   date: string;
-  category: "content" | "insight" | "journal";
+  category: "content" | "journal";
   linkUrl?: string | null;
   thumbnailUrl?: string | null;
   videoId?: string | null;
@@ -29,7 +29,7 @@ export interface ActivityItem {
   title: string;
   summary: string;
   date: string;
-  category: "content" | "insight" | "journal" | "conversation";
+  category: "content" | "journal" | "conversation";
   linkUrl?: string;
   thumbnailUrl?: string;
   videoId?: string;

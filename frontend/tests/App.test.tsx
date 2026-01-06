@@ -17,10 +17,10 @@ const mockEntries = vi.hoisted<Entry[]>(() => [
   },
   {
     id: "entry-002",
-    title: "Audience insight: hero alignment",
+    title: "Audience feedback: hero alignment",
     summary: "Comments highlight appreciation for behind-the-scenes vulnerability.",
     date: "2024-05-10T18:05:00.000Z",
-    category: "insight",
+    category: "journal",
     linkUrl: null,
     thumbnailUrl: null,
   },
