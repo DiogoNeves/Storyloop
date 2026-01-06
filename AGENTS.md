@@ -4,12 +4,12 @@ Storyloop combines a FastAPI backend with a Vite/React frontend. Follow the guid
 
 ## Project Structure & Module Organization
 
-- `backend/app/` holds FastAPI code: `main.py` configures routers, `routers/` exposes HTTP endpoints, and `services/` wraps scheduler and data helpers.
+- `backend/app/` holds FastAPI code: `main.py` configures routers, `routers/` exposes HTTP endpoints, and `services/` contains business logic helpers.
 - `backend/tests/` mirrors the app layout; keep fixtures close to the modules they exercise.
 - `frontend/src/` contains React features; colocate component-specific styles and hooks.
 - `frontend/tests/` stores Vitest suites; prefer feature-focused directories over a flat test root.
 - `scripts/` provides automation (`dev.py` to launch both stacks, `seed_demo_data.py` for sample records); `design/` tracks product references.
-- `thinking/` stores project documentation and architecture explanations: `architecture.md` covers system overview, `backend-structure.md` and `frontend-structure.md` detail component organization, `data-flow.md` explains request/response patterns, `story.md` provides a prose narrative of the project, and `system-diagram.md` contains visual architecture diagrams. Use `@understand-project` command to generate or update these files.
+- `thinking/` stores project documentation and architecture explanations: `architecture.md` covers system overview, `backend-structure.md` and `frontend-structure.md` detail component organization, `data-flow.md` explains request/response patterns, and `system-diagram.md` contains visual architecture diagrams.
 
 ## Build, Test, and Development Commands
 

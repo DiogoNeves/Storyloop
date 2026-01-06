@@ -116,8 +116,8 @@ def test_update_entry_persists_changes(memory_connection_factory: SqliteConnecti
         title="Updated title",
         summary="Updated summary.",
         occurred_at=now + timedelta(days=1),
-        category="insight",
-        link_url="https://example.com/insight",
+        category="content",
+        link_url="https://example.com/content",
         video_id="vid-99",
     )
 
@@ -126,8 +126,8 @@ def test_update_entry_persists_changes(memory_connection_factory: SqliteConnecti
     reloaded = service.get_entry("entry-update")
     assert reloaded is not None
     assert reloaded.title == "Updated title"
-    assert reloaded.category == "insight"
-    assert reloaded.link_url == "https://example.com/insight"
+    assert reloaded.category == "content"
+    assert reloaded.link_url == "https://example.com/content"
     assert reloaded.video_id == "vid-99"
 
 

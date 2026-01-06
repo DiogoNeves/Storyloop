@@ -13,9 +13,6 @@ export function ActivityFeedInfo() {
             progress
           </li>
           <li>
-            <strong>Insights</strong> - Key moments and reflections
-          </li>
-          <li>
             <strong>Journal entries</strong> - Personal notes and thoughts
           </li>
           <li>

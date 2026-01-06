@@ -11,7 +11,6 @@ import { DeleteConversationDialog } from "@/components/DeleteConversationDialog"
 // eslint-disable-next-line react-refresh/only-export-components
 export const categoryBadgeClass: Record<ActivityItem["category"], string> = {
   content: "bg-accent text-accent-foreground",
-  insight: "",
   journal: "bg-primary/10 text-primary",
   conversation: "bg-primary/10 text-primary",
 };

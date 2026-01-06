@@ -15,12 +15,6 @@ graph TB
         Router[Routers]
         Service[Services]
         DB_Factory[DB Factory]
-        Scheduler[APScheduler]
-    end
-
-    subgraph "Background Jobs"
-        YT_Job[YouTube Sync<br/>Sunday 3am]
-        GS_Job[Growth Score<br/>Daily 1am]
     end
 
     subgraph "External Services"
@@ -42,19 +36,12 @@ graph TB
     DB_Factory --> SQLite
     Service --> AssetsDir
 
-    FastAPI --> Scheduler
-    Scheduler --> YT_Job
-    Scheduler --> GS_Job
-    YT_Job --> Service
-    GS_Job --> Service
-
     Service -.->|Future| YT_API
     FastAPI -.->|Optional| Logfire
 
     style UI fill:#61dafb
     style FastAPI fill:#009485
     style SQLite fill:#003B57
-    style Scheduler fill:#FFB347
 ```
 
 ## Request Flow Sequence
@@ -82,28 +69,6 @@ sequenceDiagram
     Q-->>UI: Re-render
     UI-->>U: Display update
 ```
-
-## Background Job Sequence
-
-```mermaid
-sequenceDiagram
-    participant APS as APScheduler
-    participant YT as YouTubeService
-    participant GS as GrowthScoreService
-    participant DB as SQLite DB
-
-    Note over APS: Cron trigger (Sun 3am)
-    APS->>YT: sync_latest_metrics()
-    YT->>DB: Store metrics
-    DB-->>YT: Confirm
-
-    Note over APS: Cron trigger (Daily 1am)
-    APS->>GS: recalculate_growth_score()
-    GS->>DB: Store scores
-    DB-->>GS: Confirm
-```
-
-See [thinking/insights.md](insights.md) for the full scoring and insights logic that GrowthScoreService follows.
 
 ## Data Flow Overview
 
@@ -203,15 +168,9 @@ FastAPI Application
 ├── Database (db.py)
 │   └── Connection factory
 │
-├── Scheduler (scheduler.py)
-│   ├── YouTube sync job
-│   └── Growth score job
-│
 ├── Services
 │   ├── YoutubeService
 │   │   └── YouTube API integration
-│   ├── GrowthScoreService
-│   │   └── Score calculations
 │   ├── EntryService
 │   │   └── Journal + timeline entries
 │   ├── AssetService
@@ -247,17 +206,9 @@ FastAPI Application
 │                    DASHBOARD LAYOUT                         │
 ├─────────────────────────────────────────────────────────────┤
 │ ┌───────────────────────────────────────────────────────┐  │
-│ │         TOP SECTION: Score & Chart                   │  │
-│ │  - Growth Score display                               │  │
-│ │  - Simple score chart visualization                   │  │
-│ └───────────────────────────────────────────────────────┘  │
-│                           │                                  │
-│                           ▼                                  │
-│ ┌───────────────────────────────────────────────────────┐  │
 │ │         TIMELINE SECTION                              │  │
 │ │  - Content (videos, lives, shorts, posts, etc.)       │  │
 │ │  - Journal entries (simple user-created entries)     │  │
-│ │  - Insights (AI-generated from agent interactions)    │  │
 │ │  All displayed chronologically                         │  │
 │ └───────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
@@ -268,7 +219,7 @@ FastAPI Application
 ├─────────────────────────────────────────────────────────────┤
 │ 1. User opens application                                   │
 │ 2. System automatically loads saved channel preference     │
-│ 3. Display dashboard with score chart and timeline         │
+│ 3. Display dashboard with timeline                         │
 │ 4. No prompt needed unless user changes settings            │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -291,8 +242,8 @@ FastAPI Application
 │           BACKEND STACK                      │
 ├─────────────────────────────────────────────┤
 │ FastAPI          │ Python 3.11              │
-│ APScheduler      │ SQLite                   │
-│ Pydantic         │ Logfire                  │
+│ Pydantic         │ SQLite                   │
+│ PydanticAI       │ Logfire                  │
 │ Uvicorn          │ pytest                   │
 └─────────────────────────────────────────────┘
 ```

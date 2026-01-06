@@ -25,7 +25,7 @@ class EntryCreate(BaseModel):
     title: str = Field(min_length=1)
     summary: str = Field(default="")
     occurred_at: datetime = Field(alias="date")
-    category: Literal["content", "insight", "journal"] = "journal"
+    category: Literal["content", "journal"] = "journal"
     link_url: str | None = Field(default=None, alias="linkUrl")
     thumbnail_url: str | None = Field(default=None, alias="thumbnailUrl")
     video_id: str | None = Field(default=None, alias="videoId")
@@ -53,7 +53,7 @@ class EntryResponse(BaseModel):
     title: str
     summary: str
     occurred_at: datetime = Field(alias="date")
-    category: Literal["content", "insight", "journal"]
+    category: Literal["content", "journal"]
     link_url: str | None = Field(default=None, alias="linkUrl")
     thumbnail_url: str | None = Field(default=None, alias="thumbnailUrl")
     video_id: str | None = Field(default=None, alias="videoId")
@@ -82,7 +82,7 @@ class EntryUpdate(BaseModel):
     title: str | None = None
     summary: str | None = None
     occurred_at: datetime | None = Field(default=None, alias="date")
-    category: Literal["content", "insight", "journal"] | None = None
+    category: Literal["content", "journal"] | None = None
     link_url: str | None = Field(default=None, alias="linkUrl")
     thumbnail_url: str | None = Field(default=None, alias="thumbnailUrl")
     video_id: str | None = Field(default=None, alias="videoId")

@@ -10,7 +10,6 @@ Storyloop is a creator analytics journal that combines a FastAPI backend with a 
 
 - **FastAPI** - Modern async Python web framework
 - **SQLite** - Local database for persistence
-- **APScheduler** - Background job scheduling for recurring tasks
 - **Logfire** - Observability and logging
 - **Pydantic** - Settings and data validation
 - **PydanticAI** - AI agent framework for conversational interactions
@@ -36,8 +35,7 @@ Storyloop is a creator analytics journal that combines a FastAPI backend with a 
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │              React Frontend (Vite)                    │   │
 │  │  - App.tsx (Main dashboard)                           │   │
-│  │  - ScorePlaceholder (Growth score & chart at top)     │   │
-│  │  - ActivityFeed (Timeline: content, journal, insights)│   │
+│  │  - ActivityFeed (Timeline: content, journal)          │   │
 │  │  - Channel Selection (First-time login)               │   │
 │  │  - API Client (Axios)                                 │   │
 │  │  - TanStack Query (Data fetching)                     │   │
@@ -49,15 +47,9 @@ Storyloop is a creator analytics journal that combines a FastAPI backend with a 
 │              FastAPI Backend (Uvicorn)                      │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │  Routers (/health, /entries, /assets, /conversations) │   │
-│  │  Services (YouTube, Growth Score, Assets, Entries)    │   │
+│  │  Services (YouTube, Assets, Entries)                  │   │
 │  │  Storage Layer (SQLite + assets on disk)              │   │
-│  └──────────────────┬───────────────────────────────────┘   │
-│                     │                                        │
-│  ┌──────────────────▼───────────────────────────────────┐   │
-│  │         APScheduler (Background Jobs)                 │   │
-│  │  - Weekly YouTube sync (Sun 3am)                      │   │
-│  │  - Daily growth score recalculation (1am)            │   │
-│  └───────────────────────────────────────────────────────┘   │
+│  └──────────────────────────────────────────────────────┘   │
 └──────────────────┬───────────────────────────────────────────┘
                    │
                    ▼
@@ -73,7 +65,7 @@ Storyloop is a creator analytics journal that combines a FastAPI backend with a 
 
    - Backend handles business logic, data persistence, and external API integration
    - Frontend focuses on UI rendering and user interaction
-   - Services encapsulate domain logic (YouTube metrics, growth scoring)
+   - Services encapsulate domain logic (YouTube integration, agent conversations)
 
 2. **Observability**
 
@@ -89,15 +81,12 @@ Storyloop is a creator analytics journal that combines a FastAPI backend with a 
 
 4. **Scalability**
    - Async/await throughout for concurrent request handling
-   - Background jobs don't block request handling
-   - Environment-based scheduler configuration
 
 ### Component Boundaries
 
 **Backend Services:**
 
-- `YoutubeService` - Handles YouTube API integration and metric syncing
-- `GrowthScoreService` - Calculates and maintains growth score metrics. See [thinking/insights.md](insights.md) for the full scoring and insights logic.
+- `YoutubeService` - Handles YouTube API integration
 - `EntryService` - Persists journal and content entries for the activity feed and agent tools
 - `AssetService` - Stores uploads on disk, keeps metadata in SQLite, and extracts PDF text for agent context
 - `build_agent()` - Creates and configures PydanticAI agent for conversational interactions
@@ -136,24 +125,21 @@ Settings are managed through `backend/app/config.py` using Pydantic:
 2. System checks for saved channel preference
 3. If no channel found, prompt user to select YouTube channel to track
 4. Save channel selection to backend
-5. Load dashboard with score chart and timeline
+5. Load dashboard with timeline
 
 **Subsequent Logins:**
 
 1. User opens application
 2. System loads saved channel preference automatically
-3. Display dashboard with score chart and timeline for that channel
+3. Display dashboard with timeline for that channel
 
 **Dashboard Layout:**
 
 **Design:** [Main Screen Design](../design/main-screen.png)
 
-- **Top Section:** Growth Score and simple score chart visualization
-  - **Insights Card:** When relevant timely insights are available, an insights card will be displayed in the top header alongside the time series chart with the score. This card surfaces actionable insights derived from recent performance patterns (e.g., hook improvements, content length patterns, upload timing optimizations, conversion efficiency trends). See [Insights Card Design](../design/insights-card.png) and [Insights Full Design](../design/insights-full.png).
 - **Timeline Section:** Unified chronological feed showing:
   - Content items (videos, lives, shorts, posts, etc.)
-  - Journal entries (simple user-created entries, no automatic parsing)
-  - Insights (AI-generated from agent interactions)
+  - Journal entries (simple user-created entries)
 
 **Agent Integration:**
 
@@ -166,7 +152,6 @@ Settings are managed through `backend/app/config.py` using Pydantic:
 - Streaming responses enable real-time token-by-token generation
 - Agent endpoints return error message if agent unavailable (similar to YouTube OAuth handling)
 - Basic system prompt configured for YouTube creator assistance
-- Insights will be generated through agent interactions, not automatic parsing of journal entries
 - Journal entries remain simple and user-focused
 - Image/PDF attachments are included as data URLs or extracted text in agent context when available
 
@@ -174,21 +159,18 @@ Settings are managed through `backend/app/config.py` using Pydantic:
 
 - See [AI Agent Design](ai-agent.md) for comprehensive design details and future capabilities
 - Context-aware responses using structured context from frontend (current page, selected items, filters)
-- Data-fluent agent that queries readonly APIs (`/api/growth/*`, `/api/entries/*`, `/api/youtube/*`)
-- Insight tracking with background monitoring and automated pattern detection
+- Data-fluent agent that queries readonly APIs (`/api/entries/*`, `/api/youtube/*`)
 - Suggested action chips and conversation patterns for exploratory queries
 - **Design:** [Agent/Chatbot Design](../design/with-chatbot.png)
 
 ### Future Extensions
 
-- Enhanced agent capabilities for insight tracking
+- Enhanced agent capabilities
   - **Design:** [Agent/Chatbot Design](../design/with-chatbot.png)
   - **Detailed Design:** [AI Agent Design](ai-agent.md)
-- Agent can save background actions to monitor patterns over time
 - Context-aware agent responses using Storyloop's analytics data
-- Video detail pages (per-video view with deeper insights and related notes)
+- Video detail pages (per-video view with related notes)
   - **Design:** [Video Detail Design](../design/video-detail.png) (Future)
 - Additional content platform integrations
 - User authentication and multi-tenancy
 - Real-time updates via WebSockets
-- More sophisticated growth score algorithms

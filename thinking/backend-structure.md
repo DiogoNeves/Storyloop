@@ -13,13 +13,11 @@ backend/
 │   ├── db_helpers/        # Database helper modules
 │   │   ├── __init__.py
 │   │   └── conversations.py  # Conversation/turn persistence
-│   ├── scheduler.py       # Background job configuration
 │   ├── routers/           # HTTP endpoints
 │   │   ├── __init__.py
 │   │   ├── assets.py      # Asset upload + retrieval
 │   │   ├── conversations.py  # Conversation streaming endpoints
 │   │   ├── entries.py     # Journal/timeline entries CRUD
-│   │   ├── growth.py      # Growth score endpoints
 │   │   ├── health.py      # Health check endpoint
 │   │   ├── youtube.py     # YouTube data endpoints
 │   │   └── youtube_auth.py  # YouTube OAuth endpoints
@@ -29,8 +27,6 @@ backend/
 │       ├── agent_tools/   # Agent tool adapters + models
 │       ├── assets.py      # Asset storage + metadata
 │       ├── entries.py     # Entry persistence
-│       ├── growth.py      # Growth score calculations
-│       ├── sgi.py         # Storyloop Growth Index helpers
 │       ├── users.py       # Active user/channel state
 │       ├── youtube.py     # YouTube API integration
 │       ├── youtube_analytics.py # YouTube analytics helpers
@@ -66,9 +62,8 @@ Key functions:
 - `app.state.asset_service` - Asset persistence and metadata helpers
 - `app.state.user_service` - Active user/channel state
 - `app.state.youtube_service` - YouTube API service
-- `app.state.growth_score_service` - Growth score service
+- `app.state.youtube_analytics_service` - YouTube Analytics API service
 - `app.state.assistant_agent` - PydanticAI agent instance
-- `app.state.scheduler` - Background job scheduler (if enabled)
 
 ### 2. Configuration (`config.py`)
 
@@ -82,13 +77,11 @@ Centralized settings management using Pydantic:
 - `openai_api_key` - Optional AI agent key (agent disabled if not set, similar to YouTube OAuth)
 - `youtube_api_key` - Optional YouTube API key
 - `cors_origins` - Allowed frontend origins
-- `enable_scheduler` - Override scheduler auto-detection
 
 **Features:**
 
 - Environment variable loading from `.env`
 - Type validation and defaults
-- Computed properties (e.g., `scheduler_enabled`)
 - Factory method `Settings.load()` for instantiation
 
 ### 3. Database Layer (`db.py`)
@@ -110,46 +103,13 @@ conn = get_db()
 conn.close()
 ```
 
-### 4. Scheduler (`scheduler.py`)
-
-APScheduler configuration for recurring jobs:
-
-**Configured Jobs:**
-
-1. **Weekly YouTube Sync** - Sundays at 3:00 AM UTC
-
-   - Calls `youtube_service.sync_latest_metrics()`
-   - Syncs creator metrics from YouTube API
-
-2. **Daily Growth Score** - Daily at 1:00 AM UTC
-
-   - Calls `growth_score_service.recalculate_growth_score()`
-   - Recalculates aggregate growth metrics
-
-3. **Agent Background Actions** (Future) - Periodic (triggered by agent-saved actions)
-   - Executes actions saved by agent interactions
-   - Analyzes patterns based on agent-configured tracking
-   - Generates and inserts insights into timeline
-
-**Activation:**
-
-- Enabled by default in production environment
-- Disabled in development (can be overridden via `ENABLE_SCHEDULER`)
-- Gracefully handles startup/shutdown
-
-### 5. Services
+### 4. Services
 
 #### YoutubeService (`services/youtube.py`)
 
-**Current State:** Placeholder implementation
+**Purpose:** YouTube API integration
 
-**Purpose:** Sync creator metrics from YouTube API
-
-**Methods:**
-
-- `sync_latest_metrics()` - Fetches and stores latest YouTube metrics
-
-**Future Implementation:**
+**Implementation:**
 
 - Authenticate with YouTube Data API v3 using OAuth 2.0 for installed applications
   - See: [Google OAuth 2.0 for Installed Applications](https://googleapis.github.io/google-api-python-client/docs/oauth-installed.html)
@@ -159,25 +119,7 @@ APScheduler configuration for recurring jobs:
   - Supports both `run_local_server()` (recommended) and `run_console()` authentication flows
 - Use saved channel preference to fetch channel-specific data
 - Fetch video performance metrics for tracked channel
-- Store CTR, view duration, retention curves
 - Handle rate limiting and pagination
-
-#### GrowthScoreService (`services/growth.py`)
-
-**Current State:** Placeholder implementation
-
-**Purpose:** Calculate Storyloop Growth Score. See [thinking/insights.md](insights.md) for the full scoring and insights logic.
-
-**Methods:**
-
-- `recalculate_growth_score()` - Updates growth score aggregates
-
-**Future Implementation:**
-
-- Calculate CTR × (Avg View Duration ÷ Video Length)
-- Track trends over time
-- Generate insights and recommendations
-- Store calculated metrics in database
 
 #### EntryService (`services/entries.py`)
 
@@ -220,11 +162,9 @@ APScheduler configuration for recurring jobs:
 **Future Extensions:**
 
 - Context-aware responses using Storyloop analytics data
-- Background action saving for insight tracking
-- Pattern detection based on agent-configured tracking
 - Integration with readonly API surface for data queries
 
-### 6. Routers
+### 5. Routers
 
 #### Health Router (`routers/health.py`)
 
@@ -318,14 +258,6 @@ markdown links to `/assets/{id}` for attachments.
 5. **Service Layer** interacts with database/external APIs
 6. **Response** serialized and returned
 
-## Background Job Flow
-
-1. **Scheduler Start** - During application lifespan startup
-2. **Job Trigger** - At configured cron schedule
-3. **Service Method** - Execute business logic
-4. **Database Update** - Persist results
-5. **Logging** - Record job completion/failure
-
 ## Testing Strategy
 
 **Test Structure:**
@@ -356,7 +288,6 @@ Optional:
 LOGFIRE_API_KEY=your_logfire_token
 OPENAI_API_KEY=your_openai_key  # Optional: enables agent functionality
 YOUTUBE_API_KEY=your_youtube_key
-ENABLE_SCHEDULER=true  # Override auto-detection
 ```
 
 ## Development Commands

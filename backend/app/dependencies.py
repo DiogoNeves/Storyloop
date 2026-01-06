@@ -11,7 +11,6 @@ from fastapi import Depends, HTTPException, Request
 
 from app.services import (
     EntryService,
-    GrowthScoreService,
     UserService,
     YoutubeOAuthService,
     YoutubeService,
@@ -49,15 +48,6 @@ def get_user_service(request: Request) -> UserService:
     if demo_mode:
         return DemoUserService(real_service)
     return real_service
-
-
-def get_growth_score_service(request: Request) -> GrowthScoreService:
-    """Extract GrowthScoreService from application state."""
-    service = getattr(request.app.state, "growth_score_service", None)
-    if service is None:
-        service = GrowthScoreService()
-        request.app.state.growth_score_service = service
-    return service
 
 
 def get_youtube_oauth_service(request: Request) -> YoutubeOAuthService:

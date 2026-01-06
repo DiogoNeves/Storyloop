@@ -4,23 +4,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Tech Stack
 
-- Backend: Python 3.11, FastAPI, APScheduler, SQLite, PydanticAI
+- Backend: Python 3.11, FastAPI, SQLite, PydanticAI
 - Frontend: React 19, Vite, TypeScript, Tailwind CSS, shadcn/ui, TanStack Query
 - Package managers: uv (Python), pnpm (Node)
 - Icons: Lucide React
 
 ## Architecture
 
-Creator analytics journal with FastAPI backend + React frontend. Data flows: user actions → frontend → API → services → SQLite. Background jobs (APScheduler) sync YouTube metrics weekly and recalculate growth scores daily.
+Creator analytics journal with FastAPI backend + React frontend. Data flows: user actions → frontend → API → services → SQLite.
 
-Key services: `YoutubeService` (API integration), `GrowthScoreService` (scoring logic), PydanticAI agent (SSE streaming conversations). See `thinking/` for detailed architecture docs.
+Key services: `YoutubeService` (API integration), PydanticAI agent (SSE streaming conversations). See `thinking/` for detailed architecture docs.
 
 ## Project Structure
 
 - `backend/app/` - FastAPI app: `main.py` (entry), `routers/` (endpoints), `services/` (business logic), `db_helpers/` (persistence)
 - `frontend/src/` - React app: `api/` (TanStack Query + Axios), `components/` (UI), `App.tsx` (dashboard)
 - `scripts/` - automation (`dev.py` launcher, `seed_demo_data.py`)
-- `thinking/` - architecture docs (architecture.md, backend-structure.md, frontend-structure.md, data-flow.md, insights.md)
+- `thinking/` - architecture docs (architecture.md, backend-structure.md, frontend-structure.md, data-flow.md)
 
 ## Development Commands
 
