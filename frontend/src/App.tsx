@@ -31,16 +31,13 @@ import {
   type Entry,
 } from "@/api/entries";
 import { conversationQueries, deleteConversation } from "@/api/conversations";
-import { growthQueries } from "@/api/growth";
 import { type ActivityItem, entryToActivityItem } from "@/lib/types/entries";
 import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
 import { YoutubeAuthCallback } from "@/pages/YoutubeAuthCallback";
 import { VideoDetailPage } from "@/pages/VideoDetailPage";
 import { JournalDetailPage } from "@/pages/JournalDetailPage";
-import { InsightsPage } from "@/pages/InsightsPage";
 import { ConversationDetailPage } from "@/pages/ConversationDetailPage";
 import { LoopiePage } from "@/pages/LoopiePage";
-import { JournalSummaryCards } from "@/components/JournalSummaryCards";
 import { Input } from "@/components/ui/input";
 import {
   AgentConversationProvider,
@@ -260,16 +257,6 @@ function JournalPage() {
   // Fetch YouTube videos with filter
   const youtubeState = useYouTubeFeed(videoTypeFilter);
 
-  const growthScoreQuery = useQuery({
-    ...growthQueries.score(youtubeState.channelId ?? null),
-  });
-
-  const scoreErrorMessage = growthScoreQuery.isError
-    ? growthScoreQuery.error instanceof Error
-      ? growthScoreQuery.error.message
-      : "We couldn't calculate your growth score."
-    : null;
-
   // Build the activity list from conversations, entries, and YouTube videos
   const activityItems = useMemo<ActivityItem[]>(() => {
     const baseItems = [...conversationActivityItems, ...storedActivityItems];
@@ -459,14 +446,6 @@ function JournalPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 sm:gap-4">
-      <div className="hidden sm:block">
-        <JournalSummaryCards
-          score={growthScoreQuery.data ?? null}
-          isLoading={growthScoreQuery.isPending}
-          error={scoreErrorMessage}
-        />
-      </div>
-
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <ContentTypeTabs
           value={contentTypeFilter}
@@ -518,7 +497,6 @@ export function App() {
               <Route path="/" element={<AppLayout />}>
                 <Route index element={<JournalPage />} />
                 <Route path="journal" element={<JournalPage />} />
-                <Route path="insights" element={<InsightsPage />} />
                 <Route path="loopie" element={<LoopiePage />} />
               </Route>
               <Route path="/videos/:videoId" element={<VideoDetailPage />} />

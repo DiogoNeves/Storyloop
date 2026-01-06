@@ -68,7 +68,7 @@ class ChannelMetrics(BaseModel):
 
 
 class VideoAnalyticsMetrics(BaseModel):
-    """Analytics metrics from YouTube Analytics API for SGI calculation."""
+    """Analytics metrics from YouTube Analytics API."""
 
     video_id: str
     average_view_percentage: float | None = None
@@ -76,14 +76,3 @@ class VideoAnalyticsMetrics(BaseModel):
     subscribers_lost: int | None = None
     views_7d: int | None = None
     views_28d: int | None = None
-
-
-class GrowthScoreResult(BaseModel):
-    """Growth score result for agent consumption."""
-
-    total_score: float
-    score_delta: float
-    is_early_channel: bool
-    discovery_score: float
-    retention_score: float
-    loyalty_score: float

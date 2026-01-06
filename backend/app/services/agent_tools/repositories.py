@@ -11,7 +11,6 @@ from app.services.users import UserService
 from app.services.youtube import YoutubeService
 from app.services.agent_tools.models import (
     ChannelMetrics,
-    GrowthScoreResult,
     JournalEntry,
     JournalEntryAttachment,
     VideoCountResult,
@@ -415,37 +414,6 @@ class YouTubeRepository:
             views_28d=analytics.views_28d,
         )
 
-    async def get_channel_growth_score(self) -> GrowthScoreResult:
-        """Return the current Storyloop Growth Index for the active channel."""
-        from app.services.growth import GrowthScoreService
-
-        active_user = await self._get_active_user()
-        channel_id = active_user.channel_id if active_user else None
-        if channel_id is None:
-            raise RuntimeError("No active channel configured")
-
-        if self._analytics_service is None:
-            raise RuntimeError("Analytics service not configured")
-
-        growth_service = GrowthScoreService()
-        computation = await growth_service.load_latest_score(
-            channel_id=channel_id,
-            video_type=None,
-            youtube_service=self._youtube_service,
-            analytics_service=self._analytics_service,
-            user_service=self._user_service,
-            oauth_service=self._oauth_service,
-        )
-
-        return GrowthScoreResult(
-            total_score=computation.total_score,
-            score_delta=computation.score_delta,
-            is_early_channel=computation.is_early_channel,
-            discovery_score=computation.breakdown.discovery.score,
-            retention_score=computation.breakdown.retention.score,
-            loyalty_score=computation.breakdown.loyalty.score,
-        )
-
 
 @runtime_checkable
 class BaseYouTubeRepository(Protocol):
@@ -488,9 +456,6 @@ class BaseYouTubeRepository(Protocol):
 
     async def get_video_analytics(self, video_id: str) -> VideoAnalyticsMetrics:
         """Return analytics metrics for a specific video."""
-
-    async def get_channel_growth_score(self) -> GrowthScoreResult:
-        """Return the growth score for the active channel."""
 
 
 class EmptyYouTubeRepository:
@@ -539,9 +504,6 @@ class EmptyYouTubeRepository:
         raise RuntimeError("YouTube service not configured")
 
     async def get_video_analytics(self, video_id: str) -> VideoAnalyticsMetrics:
-        raise RuntimeError("YouTube service not configured")
-
-    async def get_channel_growth_score(self) -> GrowthScoreResult:
         raise RuntimeError("YouTube service not configured")
 
 

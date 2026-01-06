@@ -85,11 +85,11 @@ frontend/
 
 ### ActivityFeed Component
 
-**Purpose:** Display and manage the timeline of content, journal entries, and insights. See [thinking/insights.md](insights.md) for the full scoring and insights logic that powers these summaries.
+**Purpose:** Display and manage the timeline of content and journal entries.
 
 **Props:**
 
-- `items` - Array of activity items (content, journal entries, insights)
+- `items` - Array of activity items (content, journal entries)
 - `draft` - Currently editing draft entry
 - `onStartDraft()` - Initiate new entry
 - `onDraftChange()` - Update draft state
@@ -100,15 +100,7 @@ frontend/
 
 - **Content** - Videos from YouTube sync
 - **Journal Entries** - User-created entries (markdown summary supports `/assets/{id}` links)
-- **Insights** - AI-generated insights from agent interactions
 - **Conversations** - Loopie chat threads surfaced in the feed
-
-**Agent Integration:**
-
-- Users interact with an AI agent to request insight tracking
-- Agent can save actions to run in the background
-- Insights are generated through agent interactions, not automatic parsing of journal entries
-- Journal entries remain simple and user-focused
 
 **Features:**
 
