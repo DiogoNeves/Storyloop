@@ -57,15 +57,23 @@ export class IdbSyncStore implements SyncStore {
     return entry;
   }
 
+  /**
+   * Update a pending entry atomically using a transaction.
+   * Prevents race conditions from concurrent read-modify-write operations.
+   */
   async updatePending(
     id: string,
     updates: Partial<PendingEntry>,
   ): Promise<void> {
     const db = this.ensureDb();
-    const existing = (await db.get(STORE_NAME, id)) as PendingEntry | undefined;
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+
+    const existing = (await store.get(id)) as PendingEntry | undefined;
     if (existing) {
-      await db.put(STORE_NAME, { ...existing, ...updates });
+      await store.put({ ...existing, ...updates });
     }
+    await tx.done;
   }
 
   async removePending(id: string): Promise<void> {

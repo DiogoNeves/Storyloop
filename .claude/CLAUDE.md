@@ -34,13 +34,16 @@ make prod
 # Backend only
 make backend
 
-# Run all tests
+# Run all tests (non-interactive, CI-friendly)
 make test-backend              # pytest
-make test-frontend             # Vitest once (remove `-- --run` for watch mode)
+make test-frontend             # Vitest once with --run flag
 
-# Run single test
+# Run single test (IMPORTANT: use --run to avoid watch mode)
 cd backend && uv run pytest tests/test_health.py::test_health_returns_healthy -v
-cd frontend && pnpm test -- tests/setup.test.ts
+cd frontend && pnpm vitest run tests/setup.test.ts   # --run prevents watch mode
+
+# Watch mode (interactive development)
+cd frontend && pnpm test       # Starts vitest in watch mode (will hang in CI/scripts)
 
 # Type checking and linting
 uv run ruff check backend && uv run mypy backend
@@ -50,6 +53,10 @@ npx tsc --noEmit                # Frontend type check
 # Seed demo data
 make seed
 ```
+
+## Mobile Testing
+
+Tailscale is configured with HTTPS for testing PWA on phone. Access via Tailscale hostname.
 
 ## Code Style
 

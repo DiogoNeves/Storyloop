@@ -19,7 +19,7 @@ import {
 import { SyncContext, type SyncContextValue } from "./SyncContext";
 
 const HEALTH_CHECK_INTERVAL = 10_000; // 10 seconds
-const HEALTH_CHECK_URL = "/api/health";
+const HEALTH_CHECK_URL = "/health";
 
 export function SyncProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
@@ -44,10 +44,16 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const [pendingEntries, setPendingEntries] = useState<PendingEntry[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncResult, setLastSyncResult] = useState<SyncResult | undefined>();
+  const [lastSyncError, setLastSyncError] = useState<Error | undefined>();
 
   // Mark server as unreachable (called by API consumers on network errors)
   const markServerUnreachable = useCallback(() => {
     setIsServerReachable(false);
+  }, []);
+
+  // Clear sync error (called by UI after user acknowledges)
+  const clearSyncError = useCallback(() => {
+    setLastSyncError(undefined);
   }, []);
 
   // Use ref for refreshPending to avoid stale closures in SyncService callbacks
@@ -83,13 +89,19 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     const service = new SyncService({
       store,
       queryClient,
-      onSyncStart: () => setIsSyncing(true),
+      onSyncStart: () => {
+        setIsSyncing(true);
+        setLastSyncError(undefined); // Clear previous error on new sync
+      },
       onSyncComplete: (result) => {
         setIsSyncing(false);
         setLastSyncResult(result);
         void refreshPendingRef.current?.();
       },
-      onSyncError: () => setIsSyncing(false),
+      onSyncError: (error) => {
+        setIsSyncing(false);
+        setLastSyncError(error);
+      },
     });
     serviceRef.current = service;
 
@@ -143,18 +155,25 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const controller = new AbortController();
+
     const checkHealth = async () => {
       try {
         const response = await fetch(HEALTH_CHECK_URL, {
           method: "GET",
           cache: "no-store",
+          signal: controller.signal,
         });
         if (response.ok) {
           setIsServerReachable(true);
           // Sync pending entries now that server is back
           void serviceRef.current?.syncAll();
         }
-      } catch {
+      } catch (error) {
+        // Ignore abort errors (expected on cleanup)
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
         // Still unreachable, will retry
       }
     };
@@ -165,13 +184,18 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     // Then check periodically
     const intervalId = setInterval(checkHealth, HEALTH_CHECK_INTERVAL);
 
-    return () => clearInterval(intervalId);
+    return () => {
+      controller.abort();
+      clearInterval(intervalId);
+    };
   }, [isBrowserOnline, isServerReachable]);
 
   // Sync on focus/visibility (iOS PWA workaround - no Background Sync API)
+  // Uses combined online state (browser online + server reachable)
   useEffect(() => {
     const handleSync = () => {
-      if (navigator.onLine && serviceRef.current && isInitialized) {
+      // Use combined online state instead of just navigator.onLine
+      if (isBrowserOnline && isServerReachable && serviceRef.current && isInitialized) {
         void serviceRef.current.syncAll();
       }
     };
@@ -189,7 +213,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("focus", handleSync);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [isInitialized]);
+  }, [isInitialized, isBrowserOnline, isServerReachable]);
 
   // Manual sync trigger
   const syncNow = useCallback(async () => {
@@ -216,9 +240,11 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       pendingEntries,
       isSyncing,
       lastSyncResult,
+      lastSyncError,
       syncNow,
       queueEntry,
       markServerUnreachable,
+      clearSyncError,
     }),
     [
       isOnline,
@@ -227,9 +253,11 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       pendingEntries,
       isSyncing,
       lastSyncResult,
+      lastSyncError,
       syncNow,
       queueEntry,
       markServerUnreachable,
+      clearSyncError,
     ],
   );
 

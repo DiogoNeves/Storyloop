@@ -19,7 +19,8 @@ export default defineConfig({
         runtimeCaching: [
           {
             // Cache API GET /entries (stale-while-revalidate)
-            urlPattern: /\/entries$/,
+            // Matches /entries and /entries?query=params
+            urlPattern: /\/entries(\?.*)?$/,
             handler: "StaleWhileRevalidate",
             options: {
               cacheName: "entries-cache",

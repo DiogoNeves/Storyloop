@@ -428,14 +428,19 @@ function JournalPage() {
       if (!isOnline) {
         // Offline: queue for later sync
         await queueEntry(entryInput);
-        // Optimistically add to cache
+        // Optimistically add to cache with proper Entry shape
+        const optimisticEntry: Entry = {
+          ...entryInput,
+          videoId: null,
+          videoType: null,
+        };
         queryClient.setQueryData<Entry[]>(
           entriesListQuery.queryKey,
           (current) => {
             const next = (current ?? []).filter(
               (entry) => entry.id !== entryInput.id,
             );
-            next.push(entryInput as Entry);
+            next.push(optimisticEntry);
             next.sort(
               (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
             );
@@ -466,13 +471,18 @@ function JournalPage() {
         markServerUnreachable();
         // Silent fallback: queue entry + optimistic UI
         await queueEntry(entryInput);
+        const optimisticEntry: Entry = {
+          ...entryInput,
+          videoId: null,
+          videoType: null,
+        };
         queryClient.setQueryData<Entry[]>(
           entriesListQuery.queryKey,
           (current) => {
             const next = (current ?? []).filter(
               (entry) => entry.id !== entryInput.id,
             );
-            next.push(entryInput as Entry);
+            next.push(optimisticEntry);
             next.sort(
               (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
             );
