@@ -4,6 +4,7 @@ import {
   type AgentConversationAdapter,
   type AgentConversationState,
   type AgentMessage,
+  type AgentMessageAttachment,
 } from "@/lib/types/agent";
 
 interface UseAgentDemoOptions {
@@ -124,7 +125,7 @@ export function useAgentDemo({ enabled = true }: UseAgentDemoOptions = {}) {
   }, [clearTimers, enabled]);
 
   const sendMessage = useCallback(
-    async (input: string, attachments = []) => {
+    async (input: string, attachments: AgentMessageAttachment[] = []) => {
       if (!enabled) {
         return;
       }

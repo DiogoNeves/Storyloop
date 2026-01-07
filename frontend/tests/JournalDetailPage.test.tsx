@@ -8,6 +8,8 @@ import { type Entry } from "@/api/entries";
 import type { useYouTubeFeed as useYouTubeFeedHook } from "@/hooks/useYouTubeFeed";
 import { JournalDetailPage } from "@/pages/JournalDetailPage";
 import { SettingsProvider } from "@/context/SettingsProvider";
+import { SyncProvider } from "@/context/SyncProvider";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const useYouTubeFeedMock = vi.fn<
   (videoType?: "short" | "video" | "live" | null) =>
@@ -52,13 +54,17 @@ function renderPage(ui: ReactElement) {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[`/journals/${sampleEntry.id}`]}>
-        <SettingsProvider>
-          <Routes>
-            <Route path="/journals/:journalId" element={ui} />
-          </Routes>
-        </SettingsProvider>
-      </MemoryRouter>
+      <SyncProvider>
+        <TooltipProvider>
+          <MemoryRouter initialEntries={[`/journals/${sampleEntry.id}`]}>
+            <SettingsProvider>
+              <Routes>
+                <Route path="/journals/:journalId" element={ui} />
+              </Routes>
+            </SettingsProvider>
+          </MemoryRouter>
+        </TooltipProvider>
+      </SyncProvider>
     </QueryClientProvider>,
   );
 }

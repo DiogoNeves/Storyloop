@@ -1,12 +1,21 @@
 import { NavLink } from "react-router-dom";
+import { WifiOff } from "lucide-react";
 
+import { useSync } from "@/hooks/useSync";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface NavBarProps {
   onOpenSettings?: () => void;
 }
 
 export function NavBar({ onOpenSettings }: NavBarProps) {
+  const { isOnline } = useSync();
+
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b bg-background/95 backdrop-blur">
       <div className="mx-auto flex h-16 w-full items-center justify-between px-6 lg:px-10 xl:px-16">
@@ -20,6 +29,20 @@ export function NavBar({ onOpenSettings }: NavBarProps) {
           <span className="hidden text-sm text-muted-foreground sm:inline">
             Content journal
           </span>
+          {!isOnline && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="ml-1 flex items-center">
+                  <WifiOff
+                    className="h-4 w-4 text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  <span className="sr-only">You are offline</span>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>You are offline</TooltipContent>
+            </Tooltip>
+          )}
         </div>
         <nav className="flex items-center gap-2 text-sm text-muted-foreground">
           <NavLink

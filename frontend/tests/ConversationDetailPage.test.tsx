@@ -15,6 +15,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ConversationDetailPage } from "@/pages/ConversationDetailPage";
 import type { AgentMessage } from "@/lib/types/agent";
+import { SyncProvider } from "@/context/SyncProvider";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { mockDeleteConversation } from "./mocks/conversationApi";
 
 const mockSetActiveConversation = vi.fn().mockResolvedValue(undefined);
@@ -52,14 +54,18 @@ function renderPage(ui: ReactElement, initialPath: string) {
 
   render(
     <QueryClientProvider client={queryClient}>
-      <SettingsContext.Provider value={mockSettings}>
-        <MemoryRouter initialEntries={[initialPath]}>
-          <Routes>
-            <Route path="/conversations/:conversationId" element={ui} />
-            <Route path="/" element={<div data-testid="activity-feed" />} />
-          </Routes>
-        </MemoryRouter>
-      </SettingsContext.Provider>
+      <SyncProvider>
+        <TooltipProvider>
+          <SettingsContext.Provider value={mockSettings}>
+            <MemoryRouter initialEntries={[initialPath]}>
+              <Routes>
+                <Route path="/conversations/:conversationId" element={ui} />
+                <Route path="/" element={<div data-testid="activity-feed" />} />
+              </Routes>
+            </MemoryRouter>
+          </SettingsContext.Provider>
+        </TooltipProvider>
+      </SyncProvider>
     </QueryClientProvider>,
   );
 }

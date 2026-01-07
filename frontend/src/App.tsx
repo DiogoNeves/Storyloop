@@ -44,13 +44,19 @@ import {
   useAgentConversationContext,
 } from "@/context/AgentConversationContext";
 import { SettingsProvider } from "@/context/SettingsProvider";
+import { SyncProvider } from "@/context/SyncProvider";
 import { useSettings } from "@/context/useSettings";
+import { useSync } from "@/hooks/useSync";
+import { SyncStatusBanner } from "@/components/SyncStatusBanner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 0,
       staleTime: 60_000,
+      // Prevent refetch spam when offline - keeps showing cached/stale data
+      refetchOnWindowFocus: false,
     },
   },
 });
@@ -90,6 +96,7 @@ function AppLayout() {
   return (
     <div className="to-muted/12 relative min-h-screen bg-gradient-to-br from-background text-foreground sm:flex sm:h-screen sm:flex-col sm:overflow-hidden">
       <NavBar onOpenSettings={() => setIsSettingsOpen(true)} />
+      <SyncStatusBanner />
       <div className="hidden h-16 flex-shrink-0 sm:block" aria-hidden="true" />
       <main className="relative flex min-h-[calc(100vh-4rem)] flex-1 overflow-y-auto pt-16 sm:min-h-0 sm:flex-1 sm:overflow-hidden sm:pt-0">
         <div className="from-primary/8 pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b via-transparent to-transparent" />
@@ -393,6 +400,8 @@ function JournalPage() {
     setDraftError(null);
   }, []);
 
+  const { isOnline, queueEntry, markServerUnreachable } = useSync();
+
   const handleSubmitDraft = useCallback(async () => {
     if (!draft) {
       return;
@@ -415,6 +424,34 @@ function JournalPage() {
 
     try {
       setDraftError(null);
+
+      if (!isOnline) {
+        // Offline: queue for later sync
+        await queueEntry(entryInput);
+        // Optimistically add to cache with proper Entry shape
+        const optimisticEntry: Entry = {
+          ...entryInput,
+          videoId: null,
+          videoType: null,
+        };
+        queryClient.setQueryData<Entry[]>(
+          entriesListQuery.queryKey,
+          (current) => {
+            const next = (current ?? []).filter(
+              (entry) => entry.id !== entryInput.id,
+            );
+            next.push(optimisticEntry);
+            next.sort(
+              (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+            );
+            return next;
+          },
+        );
+        setDraft(null);
+        return;
+      }
+
+      // Online: normal API call
       const savedEntry = await saveEntry(entryInput);
       if (savedEntry) {
         setDraft(null);
@@ -422,13 +459,48 @@ function JournalPage() {
         setDraftError("This entry was already saved.");
       }
     } catch (error) {
+      // Check if this is a network error (server unreachable)
+      const isNetworkError =
+        error instanceof Error &&
+        (error.message === "Network Error" ||
+          error.message.includes("Failed to fetch") ||
+          error.message.includes("NetworkError"));
+
+      if (isNetworkError) {
+        // Mark server as unreachable so UI shows offline indicator
+        markServerUnreachable();
+        // Silent fallback: queue entry + optimistic UI
+        await queueEntry(entryInput);
+        const optimisticEntry: Entry = {
+          ...entryInput,
+          videoId: null,
+          videoType: null,
+        };
+        queryClient.setQueryData<Entry[]>(
+          entriesListQuery.queryKey,
+          (current) => {
+            const next = (current ?? []).filter(
+              (entry) => entry.id !== entryInput.id,
+            );
+            next.push(optimisticEntry);
+            next.sort(
+              (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+            );
+            return next;
+          },
+        );
+        setDraft(null);
+        return;
+      }
+
+      // Non-network errors: show error message
       const message =
         error instanceof Error
           ? error.message
           : "We couldn't save your entry. Please try again.";
       setDraftError(message);
     }
-  }, [draft, saveEntry]);
+  }, [draft, saveEntry, isOnline, queueEntry, markServerUnreachable, queryClient, entriesListQuery.queryKey]);
 
   const handleDraftSubmit = useCallback(() => {
     void handleSubmitDraft();
@@ -491,27 +563,31 @@ export function App() {
   return (
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
-        <SettingsProvider>
-          <AgentConversationProvider>
-            <Routes>
-              <Route path="/" element={<AppLayout />}>
-                <Route index element={<JournalPage />} />
-                <Route path="journal" element={<JournalPage />} />
-                <Route path="loopie" element={<LoopiePage />} />
-              </Route>
-              <Route path="/videos/:videoId" element={<VideoDetailPage />} />
-              <Route
-                path="/journals/:journalId"
-                element={<JournalDetailPage />}
-              />
-              <Route
-                path="/conversations/:conversationId"
-                element={<ConversationDetailPage />}
-              />
-              <Route path="/auth/callback" element={<YoutubeAuthCallback />} />
-            </Routes>
-          </AgentConversationProvider>
-        </SettingsProvider>
+        <TooltipProvider>
+          <SettingsProvider>
+            <SyncProvider>
+              <AgentConversationProvider>
+                <Routes>
+                  <Route path="/" element={<AppLayout />}>
+                    <Route index element={<JournalPage />} />
+                    <Route path="journal" element={<JournalPage />} />
+                    <Route path="loopie" element={<LoopiePage />} />
+                  </Route>
+                  <Route path="/videos/:videoId" element={<VideoDetailPage />} />
+                  <Route
+                    path="/journals/:journalId"
+                    element={<JournalDetailPage />}
+                  />
+                  <Route
+                    path="/conversations/:conversationId"
+                    element={<ConversationDetailPage />}
+                  />
+                  <Route path="/auth/callback" element={<YoutubeAuthCallback />} />
+                </Routes>
+              </AgentConversationProvider>
+            </SyncProvider>
+          </SettingsProvider>
+        </TooltipProvider>
       </QueryClientProvider>
     </BrowserRouter>
   );
