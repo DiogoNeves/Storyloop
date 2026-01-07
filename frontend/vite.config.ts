@@ -11,9 +11,6 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["storyloop.svg"],
       manifest: false, // Use existing manifest.json in public/
-      devOptions: {
-        enabled: true, // Enable service worker in dev mode for testing
-      },
       workbox: {
         // Cache static assets
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
