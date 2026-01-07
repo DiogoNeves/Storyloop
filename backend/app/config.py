@@ -68,6 +68,8 @@ class Settings(BaseModel):
         default_factory=lambda: [
             "http://127.0.0.1:5173",
             "http://localhost:5173",
+            "http://127.0.0.1:4173",
+            "http://localhost:4173",
             "https://macbook.tailaef54e.ts.net:443",
         ],
         alias="CORS_ORIGINS",
