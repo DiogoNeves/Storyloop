@@ -116,7 +116,9 @@ Storyloop/
 
 ## Useful commands
 
-- `python scripts/dev.py` – start backend (uvicorn) and frontend (Vite) together.
+- `make dev` – start backend and frontend in development mode (hot reload).
+- `make prod` – build frontend and start both servers in production mode (offline PWA support).
+- `make build` – build the frontend for production.
 - `make test-backend` – run the FastAPI pytest suite.
 - `make test-frontend` – execute Vitest in run-once mode.
 - `make lint-frontend` – lint the React project with ESLint flat config.

@@ -25,8 +25,11 @@ Key services: `YoutubeService` (API integration), PydanticAI agent (SSE streamin
 ## Development Commands
 
 ```bash
-# Start both servers (FastAPI :8000, Vite :5173)
-python scripts/dev.py
+# Start both servers in dev mode (FastAPI :8000, Vite :5173)
+make dev
+
+# Start both servers in prod mode (FastAPI :8000, preview :4173, offline PWA support)
+make prod
 
 # Backend only
 make backend
