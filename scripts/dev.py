@@ -1,10 +1,17 @@
-"""Launch the backend and frontend development servers in tandem."""
+"""Launch the backend and frontend servers in tandem.
+
+Usage:
+    python scripts/dev.py          # Development mode (hot reload)
+    python scripts/dev.py --prod   # Production mode (builds frontend, no reload)
+"""
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import os
 import signal
+import subprocess
 import sys
 from pathlib import Path
 from typing import Sequence
@@ -26,28 +33,57 @@ async def run_process(command: Sequence[str], cwd: Path) -> int:
             process.terminate()
 
 
-async def main() -> int:
+def build_frontend() -> int:
+    """Build the frontend for production."""
+    print("Building frontend...")
+    result = subprocess.run(["pnpm", "build"], cwd=str(FRONTEND_DIR))
+    return result.returncode
+
+
+async def main(prod: bool = False) -> int:
+    if prod:
+        # Build frontend first
+        build_result = build_frontend()
+        if build_result != 0:
+            print("Frontend build failed!", file=sys.stderr)
+            return build_result
+        print("Frontend built successfully.\n")
+
     backend_cmd = [
         "uv",
         "run",
         "uvicorn",
         "app.main:app",
-        "--reload",
         "--host",
         "127.0.0.1",
         "--port",
         "8000",
     ]
-    frontend_cmd = [
-        "pnpm",
-        "run",
-        "dev",
-        "--",
-        "--host",
-        "127.0.0.1",
-        "--port",
-        "5173",
-    ]
+    if not prod:
+        backend_cmd.append("--reload")
+
+    if prod:
+        frontend_cmd = [
+            "pnpm",
+            "run",
+            "preview",
+            "--",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "4173",
+        ]
+    else:
+        frontend_cmd = [
+            "pnpm",
+            "run",
+            "dev",
+            "--",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "5173",
+        ]
 
     stop_event = asyncio.Event()
     loop = asyncio.get_running_loop()
@@ -104,8 +140,16 @@ async def main() -> int:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Launch backend and frontend servers")
+    parser.add_argument(
+        "--prod",
+        action="store_true",
+        help="Run in production mode (builds frontend, no hot reload)",
+    )
+    args = parser.parse_args()
+
     os.chdir(ROOT_DIR)
     try:
-        raise SystemExit(asyncio.run(main()))
+        raise SystemExit(asyncio.run(main(prod=args.prod)))
     except KeyboardInterrupt:
         raise SystemExit(0)
