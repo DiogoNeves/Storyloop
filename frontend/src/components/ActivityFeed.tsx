@@ -6,6 +6,7 @@ import type {
   YoutubeLinkStatusResponse,
 } from "@/api/youtube";
 import { useEntryEditing } from "@/hooks/useEntryEditing";
+import { useSync } from "@/hooks/useSync";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -69,7 +70,14 @@ export function ActivityFeed({
   className,
 }: ActivityFeedProps) {
   const editingState = useEntryEditing();
+  const { pendingEntries } = useSync();
   const [thumbnailError, setThumbnailError] = useState(false);
+
+  // Create a set of pending entry IDs for O(1) lookup
+  const pendingEntryIds = useMemo(
+    () => new Set(pendingEntries.map((e) => e.id)),
+    [pendingEntries],
+  );
 
   const channelThumbnailUrl = youtubeFeed?.channelThumbnailUrl?.trim() ?? null;
   const isValidUrl =
@@ -226,6 +234,7 @@ export function ActivityFeed({
             <ActivityFeedItem
               key={item.id}
               item={item}
+              isPendingSync={pendingEntryIds.has(item.id)}
               onConversationClick={onConversationClick}
               onConversationDelete={
                 isConversation && onConversationDelete

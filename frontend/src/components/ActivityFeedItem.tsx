@@ -4,9 +4,16 @@ import { Bot } from "lucide-react";
 
 import { type ActivityItem } from "@/lib/types/entries";
 import { getActivityDetailPath } from "@/lib/activity-helpers";
+import { useSync } from "@/hooks/useSync";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { PendingSyncBadge } from "@/components/ui/pending-sync-badge";
 import { DeleteConversationDialog } from "@/components/DeleteConversationDialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const categoryBadgeClass: Record<ActivityItem["category"], string> = {
@@ -23,6 +30,8 @@ interface ActivityFeedItemProps {
   onConversationClick?: (conversationId: string) => Promise<void>;
   onConversationDelete?: () => void;
   isConversationDeleting?: boolean;
+  /** Whether this entry is pending sync (created offline) */
+  isPendingSync?: boolean;
 }
 
 export function ActivityFeedItem({
@@ -33,8 +42,14 @@ export function ActivityFeedItem({
   onConversationClick,
   onConversationDelete,
   isConversationDeleting,
+  isPendingSync,
 }: ActivityFeedItemProps) {
+  const { isOnline } = useSync();
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+
+  // Disable edit/delete when offline
+  const isEditDisabled = !isOnline;
+  const isDeleteDisabled = !isOnline || isDeleting;
   const formattedDate = new Date(item.date).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
@@ -86,6 +101,7 @@ export function ActivityFeedItem({
             ) : null}
           </div>
           <div className="flex items-center gap-2">
+            {isPendingSync && <PendingSyncBadge />}
             <time
               className="text-xs text-muted-foreground"
               dateTime={item.date}
@@ -196,27 +212,50 @@ export function ActivityFeedItem({
         (item.category === "conversation" && onConversationDelete) ? (
           <div className="absolute bottom-2 right-4 hidden items-center gap-2 group-hover:flex">
             {onEdit ? (
-              <button
-                type="button"
-                className="text-xs text-muted-foreground transition-colors hover:text-foreground"
-                onClick={() => {
-                  onEdit();
-                }}
-              >
-                Edit
-              </button>
+              isEditDisabled ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="cursor-not-allowed text-xs text-muted-foreground opacity-50">
+                      Edit
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>You are offline</TooltipContent>
+                </Tooltip>
+              ) : (
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+                  onClick={() => {
+                    onEdit();
+                  }}
+                >
+                  Edit
+                </button>
+              )
             ) : null}
             {onDelete ? (
-              <button
-                type="button"
-                className="text-xs text-muted-foreground transition-colors hover:text-destructive disabled:opacity-50"
-                onClick={() => {
-                  onDelete();
-                }}
-                disabled={isDeleting}
-              >
-                {isDeleting ? "Deleting…" : "Delete"}
-              </button>
+              isDeleteDisabled ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="cursor-not-allowed text-xs text-muted-foreground opacity-50">
+                      {isDeleting ? "Deleting…" : "Delete"}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {!isOnline ? "You are offline" : "Deleting..."}
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground transition-colors hover:text-destructive"
+                  onClick={() => {
+                    onDelete();
+                  }}
+                >
+                  Delete
+                </button>
+              )
             ) : null}
             {item.category === "conversation" && onConversationDelete ? (
               <button
