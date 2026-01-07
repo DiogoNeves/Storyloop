@@ -49,6 +49,7 @@ import { useSettings } from "@/context/useSettings";
 import { useSync } from "@/hooks/useSync";
 import { SyncStatusBanner } from "@/components/SyncStatusBanner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -92,13 +93,22 @@ function AppLayout() {
   const location = useLocation();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const isLoopieRoute = location.pathname.startsWith("/loopie");
+  const { pendingCount } = useSync();
+
+  // On mobile, when the sync banner is visible (fixed at top-16), main needs extra padding
+  const hasPendingSync = pendingCount > 0;
 
   return (
     <div className="to-muted/12 relative min-h-screen bg-gradient-to-br from-background text-foreground sm:flex sm:h-screen sm:flex-col sm:overflow-hidden">
       <NavBar onOpenSettings={() => setIsSettingsOpen(true)} />
       <SyncStatusBanner />
       <div className="hidden h-16 flex-shrink-0 sm:block" aria-hidden="true" />
-      <main className="relative flex min-h-[calc(100vh-4rem)] flex-1 overflow-y-auto pt-16 sm:min-h-0 sm:flex-1 sm:overflow-hidden sm:pt-0">
+      <main
+        className={cn(
+          "relative flex min-h-[calc(100vh-4rem)] flex-1 overflow-y-auto sm:min-h-0 sm:flex-1 sm:overflow-hidden sm:pt-0",
+          hasPendingSync ? "pt-[6.5rem]" : "pt-16",
+        )}
+      >
         <div className="from-primary/8 pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b via-transparent to-transparent" />
         <div className="relative grid h-full min-h-[calc(100vh-4rem)] w-full grid-cols-1 gap-6 px-2 py-6 sm:min-h-0 sm:py-12 lg:grid-cols-3 lg:overflow-hidden lg:px-10 xl:px-16">
           <div className="scrollbar-hide col-span-2 flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-hidden">
