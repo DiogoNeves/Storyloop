@@ -11,7 +11,7 @@ export function PendingSyncBadge() {
       variant="secondary"
       className="gap-1 bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200"
     >
-      <CloudOff className="h-3 w-3" />
+      <CloudOff className="h-3 w-3" aria-hidden="true" />
       Pending sync
     </Badge>
   );
