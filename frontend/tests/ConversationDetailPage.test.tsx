@@ -54,7 +54,7 @@ function renderPage(ui: ReactElement, initialPath: string) {
 
   render(
     <QueryClientProvider client={queryClient}>
-      <SyncProvider queryClient={queryClient}>
+      <SyncProvider>
         <TooltipProvider>
           <SettingsContext.Provider value={mockSettings}>
             <MemoryRouter initialEntries={[initialPath]}>

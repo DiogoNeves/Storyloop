@@ -54,7 +54,7 @@ function renderPage(ui: ReactElement) {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <SyncProvider queryClient={queryClient}>
+      <SyncProvider>
         <TooltipProvider>
           <MemoryRouter initialEntries={[`/journals/${sampleEntry.id}`]}>
             <SettingsProvider>
