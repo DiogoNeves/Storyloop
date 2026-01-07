@@ -33,17 +33,22 @@ async def run_process(command: Sequence[str], cwd: Path) -> int:
             process.terminate()
 
 
-def build_frontend() -> int:
+def build_frontend(prod: bool = False) -> int:
     """Build the frontend for production."""
     print("Building frontend...")
-    result = subprocess.run(["pnpm", "build"], cwd=str(FRONTEND_DIR))
+    cmd = ["pnpm", "build"]
+    if prod:
+        cmd.extend(["--", "--mode", "prod"])
+    result = subprocess.run(cmd, cwd=str(FRONTEND_DIR))
     return result.returncode
 
 
 async def main(prod: bool = False) -> int:
     if prod:
-        # Build frontend first
-        build_result = build_frontend()
+        # Set env file path for backend
+        os.environ["DOTENV_PATH"] = ".env.prod"
+        # Build frontend with prod mode (uses .env.prod)
+        build_result = build_frontend(prod=True)
         if build_result != 0:
             print("Frontend build failed!", file=sys.stderr)
             return build_result
