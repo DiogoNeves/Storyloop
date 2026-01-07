@@ -25,6 +25,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const storeRef = useRef<IdbSyncStore | null>(null);
   const serviceRef = useRef<SyncService | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isOfflineSyncAvailable, setIsOfflineSyncAvailable] = useState(true);
 
   // State
   const [isOnline, setIsOnline] = useState(
@@ -64,10 +65,18 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     });
     serviceRef.current = service;
 
-    void store.init().then(() => {
-      setIsInitialized(true);
-      void refreshPending();
-    });
+    store
+      .init()
+      .then(() => {
+        setIsInitialized(true);
+        void refreshPending();
+      })
+      .catch((error: unknown) => {
+        console.warn("IndexedDB unavailable, offline sync disabled:", error);
+        setIsOfflineSyncAvailable(false);
+        // Still mark as initialized so app can work without offline sync
+        setIsInitialized(true);
+      });
   }, [queryClient, refreshPending]);
 
   // Online/offline detection
@@ -134,6 +143,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const value = useMemo<SyncContextValue>(
     () => ({
       isOnline,
+      isOfflineSyncAvailable,
       pendingCount,
       pendingEntries,
       isSyncing,
@@ -143,6 +153,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     }),
     [
       isOnline,
+      isOfflineSyncAvailable,
       pendingCount,
       pendingEntries,
       isSyncing,

@@ -71,15 +71,14 @@ class Settings(BaseModel):
         alias="YOUTUBE_DEMO_SCENARIO",
         description="Optional fixture scenario to load when demo mode is enabled",
     )
+    # Default CORS origins for local development (Vite dev server and preview).
+    # Add custom origins via CORS_ORIGINS env var (comma-separated list).
     cors_origins: list[str] = Field(
         default_factory=lambda: [
             "http://127.0.0.1:5173",
             "http://localhost:5173",
             "http://127.0.0.1:4173",
             "http://localhost:4173",
-            "https://macbook.tailaef54e.ts.net:442",
-            "https://macbook.tailaef54e.ts.net:443",
-            "https://macbook.tailaef54e.ts.net:444",
         ],
         alias="CORS_ORIGINS",
     )

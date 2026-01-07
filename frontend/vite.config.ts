@@ -63,4 +63,21 @@ export default defineConfig({
     allowedHosts: true,
   },
   envDir: resolve(__dirname, ".."), // Load .env from project root
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-react": ["react", "react-dom"],
+          "vendor-tanstack": ["@tanstack/react-query"],
+          "vendor-ui": [
+            "@radix-ui/react-dialog",
+            "@radix-ui/react-label",
+            "@radix-ui/react-slot",
+            "@radix-ui/react-switch",
+            "@radix-ui/react-tooltip",
+          ],
+        },
+      },
+    },
+  },
 });

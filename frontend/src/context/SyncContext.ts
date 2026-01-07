@@ -6,6 +6,8 @@ import type { PendingEntry, SyncResult } from "@/lib/sync";
 export interface SyncContextValue {
   /** Whether the browser is currently online */
   isOnline: boolean;
+  /** Whether IndexedDB is available for offline sync */
+  isOfflineSyncAvailable: boolean;
   /** Number of entries pending sync */
   pendingCount: number;
   /** List of pending entries */
