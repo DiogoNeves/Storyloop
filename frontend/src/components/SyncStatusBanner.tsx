@@ -26,7 +26,7 @@ export function SyncStatusBanner() {
       aria-live="polite"
     >
       <div className="flex items-center gap-2">
-        <CloudOff className="h-4 w-4 shrink-0" />
+        <CloudOff className="h-4 w-4 shrink-0" aria-hidden="true" />
         <span>
           {pendingCount} pending {pendingCount === 1 ? "entry" : "entries"} to
           sync
@@ -41,6 +41,7 @@ export function SyncStatusBanner() {
         >
           <RefreshCw
             className={cn("h-4 w-4", isSyncing && "animate-spin")}
+            aria-hidden="true"
           />
           {isSyncing ? "Syncing..." : "Sync now"}
         </button>

@@ -33,7 +33,11 @@ export function NavBar({ onOpenSettings }: NavBarProps) {
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="ml-1 flex items-center">
-                  <WifiOff className="h-4 w-4 text-muted-foreground" />
+                  <WifiOff
+                    className="h-4 w-4 text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  <span className="sr-only">You are offline</span>
                 </span>
               </TooltipTrigger>
               <TooltipContent>You are offline</TooltipContent>
