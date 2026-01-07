@@ -109,7 +109,7 @@ describe("SyncService", () => {
 
       const result = await syncService.syncAll();
 
-      expect(result).toEqual({ success: 0, failed: 0 });
+      expect(result).toEqual({ success: 0, failed: 0, skippedMaxRetries: 0, abortedOffline: 0 });
       expect(mockStore.getAllPending).not.toHaveBeenCalled();
     });
 
@@ -120,13 +120,13 @@ describe("SyncService", () => {
 
       const result = await syncService.syncAll();
 
-      expect(result).toEqual({ success: 1, failed: 0 });
+      expect(result).toEqual({ success: 1, failed: 0, skippedMaxRetries: 0, abortedOffline: 0 });
       expect(mockStore.updatePending).toHaveBeenCalledWith("test-1", {
         status: "syncing",
       });
       expect(mockStore.removePending).toHaveBeenCalledWith("test-1");
       expect(onSyncStart).toHaveBeenCalled();
-      expect(onSyncComplete).toHaveBeenCalledWith({ success: 1, failed: 0 });
+      expect(onSyncComplete).toHaveBeenCalledWith({ success: 1, failed: 0, skippedMaxRetries: 0, abortedOffline: 0 });
     });
 
     it("should handle API errors and increment attempts", async () => {
@@ -136,9 +136,10 @@ describe("SyncService", () => {
 
       const result = await syncService.syncAll();
 
-      expect(result).toEqual({ success: 0, failed: 1 });
+      expect(result).toEqual({ success: 0, failed: 1, skippedMaxRetries: 0, abortedOffline: 0 });
+      // Status is "pending" (not "failed") so entry can be retried
       expect(mockStore.updatePending).toHaveBeenCalledWith("test-1", {
-        status: "failed",
+        status: "pending",
         attempts: 1,
         lastError: "Network error",
       });
@@ -151,7 +152,8 @@ describe("SyncService", () => {
 
       const result = await syncService.syncAll();
 
-      expect(result).toEqual({ success: 0, failed: 1 });
+      // Max retries entries are tracked in skippedMaxRetries, not failed
+      expect(result).toEqual({ success: 0, failed: 0, skippedMaxRetries: 1, abortedOffline: 0 });
       expect(createEntry).not.toHaveBeenCalled();
     });
 
@@ -166,7 +168,7 @@ describe("SyncService", () => {
 
       const result = await syncService.syncAll();
 
-      expect(result).toEqual({ success: 3, failed: 0 });
+      expect(result).toEqual({ success: 3, failed: 0, skippedMaxRetries: 0, abortedOffline: 0 });
       expect(createEntry).toHaveBeenCalledTimes(3);
     });
 
@@ -177,7 +179,7 @@ describe("SyncService", () => {
 
       const result = await syncService.syncAll();
 
-      expect(result).toEqual({ success: 1, failed: 0 });
+      expect(result).toEqual({ success: 1, failed: 0, skippedMaxRetries: 0, abortedOffline: 0 });
       expect(mockStore.removePending).toHaveBeenCalledWith("test-1");
     });
   });
@@ -204,7 +206,7 @@ describe("SyncService", () => {
   });
 
   describe("sync lock (isSyncing)", () => {
-    it("should return early if sync is already in progress", async () => {
+    it("should return same promise if sync is already in progress", async () => {
       const entry = createPendingEntry("test-1");
       (mockStore.getAllPending as Mock).mockResolvedValue([entry]);
 
@@ -223,18 +225,19 @@ describe("SyncService", () => {
       // Start first sync (will be in progress)
       const firstSync = syncService.syncAll();
 
-      // Attempt second sync while first is in progress
-      const secondResult = await syncService.syncAll();
+      // Attempt second sync while first is in progress - should return same promise
+      const secondSync = syncService.syncAll();
 
-      // Second sync should return immediately with zeros
-      expect(secondResult).toEqual({ success: 0, failed: 0 });
       expect(syncService.getIsSyncing()).toBe(true);
 
       // Complete the first sync
       resolveFirstSync!();
       const firstResult = await firstSync;
+      const secondResult = await secondSync;
 
-      expect(firstResult).toEqual({ success: 1, failed: 0 });
+      // Both should return the same result (from the same promise)
+      expect(firstResult).toEqual({ success: 1, failed: 0, skippedMaxRetries: 0, abortedOffline: 0 });
+      expect(secondResult).toEqual({ success: 1, failed: 0, skippedMaxRetries: 0, abortedOffline: 0 });
       expect(syncService.getIsSyncing()).toBe(false);
     });
 
@@ -262,7 +265,7 @@ describe("SyncService", () => {
   });
 
   describe("network failure scenarios", () => {
-    it("should handle 500 server error and mark entry as failed", async () => {
+    it("should handle 500 server error and mark entry as pending for retry", async () => {
       const entry = createPendingEntry("test-1");
       (mockStore.getAllPending as Mock).mockResolvedValue([entry]);
       (createEntry as Mock).mockRejectedValue(
@@ -271,9 +274,10 @@ describe("SyncService", () => {
 
       const result = await syncService.syncAll();
 
-      expect(result).toEqual({ success: 0, failed: 1 });
+      expect(result).toEqual({ success: 0, failed: 1, skippedMaxRetries: 0, abortedOffline: 0 });
+      // Status is "pending" so entry can be retried
       expect(mockStore.updatePending).toHaveBeenCalledWith("test-1", {
-        status: "failed",
+        status: "pending",
         attempts: 1,
         lastError: "Request failed with status code 500",
       });
@@ -288,9 +292,9 @@ describe("SyncService", () => {
 
       const result = await syncService.syncAll();
 
-      expect(result).toEqual({ success: 0, failed: 1 });
+      expect(result).toEqual({ success: 0, failed: 1, skippedMaxRetries: 0, abortedOffline: 0 });
       expect(mockStore.updatePending).toHaveBeenCalledWith("test-1", {
-        status: "failed",
+        status: "pending",
         attempts: 1,
         lastError: "Request failed with status code 404",
       });
@@ -303,9 +307,9 @@ describe("SyncService", () => {
 
       const result = await syncService.syncAll();
 
-      expect(result).toEqual({ success: 0, failed: 1 });
+      expect(result).toEqual({ success: 0, failed: 1, skippedMaxRetries: 0, abortedOffline: 0 });
       expect(mockStore.updatePending).toHaveBeenCalledWith("test-1", {
-        status: "failed",
+        status: "pending",
         attempts: 1,
         lastError: "Network timeout",
       });
@@ -325,7 +329,7 @@ describe("SyncService", () => {
 
       const result = await syncService.syncAll();
 
-      expect(result).toEqual({ success: 2, failed: 1 });
+      expect(result).toEqual({ success: 2, failed: 1, skippedMaxRetries: 0, abortedOffline: 0 });
       expect(mockStore.removePending).toHaveBeenCalledWith("test-1");
       expect(mockStore.removePending).toHaveBeenCalledWith("test-3");
       expect(mockStore.removePending).not.toHaveBeenCalledWith("test-2");
@@ -341,56 +345,59 @@ describe("SyncService", () => {
 
       await syncService.syncAll();
 
+      // Status stays "pending" so entry can be retried
       expect(mockStore.updatePending).toHaveBeenCalledWith("test-1", {
-        status: "failed",
+        status: "pending",
         attempts: 1,
         lastError: "Attempt 1 failed",
       });
 
       // Second sync attempt - entry now has 1 attempt
-      const entryAttempt1 = createPendingEntry("test-1", 1, "failed");
+      const entryAttempt1 = createPendingEntry("test-1", 1, "pending");
       (mockStore.getAllPending as Mock).mockResolvedValueOnce([entryAttempt1]);
       (createEntry as Mock).mockRejectedValueOnce(new Error("Attempt 2 failed"));
 
       await syncService.syncAll();
 
       expect(mockStore.updatePending).toHaveBeenCalledWith("test-1", {
-        status: "failed",
+        status: "pending",
         attempts: 2,
         lastError: "Attempt 2 failed",
       });
 
       // Third sync attempt - entry now has 2 attempts
-      const entryAttempt2 = createPendingEntry("test-1", 2, "failed");
+      const entryAttempt2 = createPendingEntry("test-1", 2, "pending");
       (mockStore.getAllPending as Mock).mockResolvedValueOnce([entryAttempt2]);
       (createEntry as Mock).mockRejectedValueOnce(new Error("Attempt 3 failed"));
 
       await syncService.syncAll();
 
       expect(mockStore.updatePending).toHaveBeenCalledWith("test-1", {
-        status: "failed",
+        status: "pending",
         attempts: 3,
         lastError: "Attempt 3 failed",
       });
 
       // Fourth sync attempt - entry has 3 attempts, should be skipped
-      const entryAttempt3 = createPendingEntry("test-1", 3, "failed");
+      const entryAttempt3 = createPendingEntry("test-1", 3, "pending");
       (mockStore.getAllPending as Mock).mockResolvedValueOnce([entryAttempt3]);
 
       const result = await syncService.syncAll();
 
-      expect(result).toEqual({ success: 0, failed: 1 });
+      // Entry is tracked in skippedMaxRetries, not failed
+      expect(result).toEqual({ success: 0, failed: 0, skippedMaxRetries: 1, abortedOffline: 0 });
       // createEntry should not be called for this entry
       expect(createEntry).toHaveBeenCalledTimes(3); // Only 3 times total from previous attempts
     });
 
-    it("should mark entry with max attempts as failed and not retry", async () => {
-      const maxRetriesEntry = createPendingEntry("test-1", 3, "failed");
+    it("should skip entry with max attempts and not retry", async () => {
+      const maxRetriesEntry = createPendingEntry("test-1", 3, "pending");
       (mockStore.getAllPending as Mock).mockResolvedValue([maxRetriesEntry]);
 
       const result = await syncService.syncAll();
 
-      expect(result).toEqual({ success: 0, failed: 1 });
+      // Max retries entries are tracked separately
+      expect(result).toEqual({ success: 0, failed: 0, skippedMaxRetries: 1, abortedOffline: 0 });
       expect(createEntry).not.toHaveBeenCalled();
       expect(mockStore.updatePending).not.toHaveBeenCalled();
       expect(mockStore.removePending).not.toHaveBeenCalled();
@@ -398,9 +405,9 @@ describe("SyncService", () => {
 
     it("should handle mixed entries with some at max retries", async () => {
       const entries = [
-        createPendingEntry("test-1", 3, "failed"), // Max retries - should skip
+        createPendingEntry("test-1", 3, "pending"), // Max retries - should skip
         createPendingEntry("test-2", 0, "pending"), // Fresh - should sync
-        createPendingEntry("test-3", 2, "failed"), // 2 attempts - should try once more
+        createPendingEntry("test-3", 2, "pending"), // 2 attempts - should try once more
       ];
       (mockStore.getAllPending as Mock).mockResolvedValue(entries);
       (createEntry as Mock)
@@ -409,11 +416,12 @@ describe("SyncService", () => {
 
       const result = await syncService.syncAll();
 
-      expect(result).toEqual({ success: 1, failed: 2 });
+      // 1 skipped (max retries), 1 success, 1 failed
+      expect(result).toEqual({ success: 1, failed: 1, skippedMaxRetries: 1, abortedOffline: 0 });
       expect(createEntry).toHaveBeenCalledTimes(2); // Only test-2 and test-3
       expect(mockStore.removePending).toHaveBeenCalledWith("test-2");
       expect(mockStore.updatePending).toHaveBeenCalledWith("test-3", {
-        status: "failed",
+        status: "pending",
         attempts: 3,
         lastError: "Failed again",
       });

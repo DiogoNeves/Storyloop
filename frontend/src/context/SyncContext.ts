@@ -16,12 +16,16 @@ export interface SyncContextValue {
   isSyncing: boolean;
   /** Result of the last sync operation */
   lastSyncResult?: SyncResult;
+  /** Error from the last sync operation, if any */
+  lastSyncError?: Error;
   /** Manually trigger sync */
   syncNow: () => Promise<void>;
   /** Queue an entry for offline sync */
   queueEntry: (input: CreateEntryInput) => Promise<void>;
   /** Mark server as unreachable (call on network errors) */
   markServerUnreachable: () => void;
+  /** Clear the last sync error */
+  clearSyncError: () => void;
 }
 
 export const SyncContext = createContext<SyncContextValue | null>(null);
