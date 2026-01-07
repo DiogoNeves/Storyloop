@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowUp, Bot, ImagePlus, RotateCcw, Square } from "lucide-react";
+import { ArrowUp, Bot, ImagePlus, RotateCcw, Square, WifiOff } from "lucide-react";
 
 import { useAgentConversationContext } from "@/context/AgentConversationContext";
 import {
@@ -9,6 +9,7 @@ import {
 } from "@/lib/types/agent";
 import { cn } from "@/lib/utils";
 import { useAssetUpload } from "@/hooks/useAssetUpload";
+import { useSync } from "@/hooks/useSync";
 import { AssetAttachmentList } from "@/components/chat/AssetAttachmentList";
 
 import { Button } from "./ui/button";
@@ -58,6 +59,7 @@ export function LoopieConversationContent({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const { isOnline } = useSync();
 
   const isTextareaDisabled = disabled || state.composer.status === "responding";
   const isSendDisabled =
@@ -190,6 +192,12 @@ export function LoopieConversationContent({
           {uploadError ? (
             <p className="text-xs text-destructive">{uploadError}</p>
           ) : null}
+          {!isOnline && (
+            <div className="flex items-center gap-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+              <WifiOff className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>You're offline. Messages can't be sent right now.</span>
+            </div>
+          )}
           <input
             ref={fileInputRef}
             type="file"

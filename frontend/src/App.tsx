@@ -55,6 +55,8 @@ const queryClient = new QueryClient({
     queries: {
       retry: 0,
       staleTime: 60_000,
+      // Prevent refetch spam when offline - keeps showing cached/stale data
+      refetchOnWindowFocus: false,
     },
   },
 });
