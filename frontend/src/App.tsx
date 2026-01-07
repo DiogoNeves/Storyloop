@@ -400,7 +400,7 @@ function JournalPage() {
     setDraftError(null);
   }, []);
 
-  const { isOnline, queueEntry } = useSync();
+  const { isOnline, queueEntry, markServerUnreachable } = useSync();
 
   const handleSubmitDraft = useCallback(async () => {
     if (!draft) {
@@ -454,13 +454,43 @@ function JournalPage() {
         setDraftError("This entry was already saved.");
       }
     } catch (error) {
+      // Check if this is a network error (server unreachable)
+      const isNetworkError =
+        error instanceof Error &&
+        (error.message === "Network Error" ||
+          error.message.includes("Failed to fetch") ||
+          error.message.includes("NetworkError"));
+
+      if (isNetworkError) {
+        // Mark server as unreachable so UI shows offline indicator
+        markServerUnreachable();
+        // Silent fallback: queue entry + optimistic UI
+        await queueEntry(entryInput);
+        queryClient.setQueryData<Entry[]>(
+          entriesListQuery.queryKey,
+          (current) => {
+            const next = (current ?? []).filter(
+              (entry) => entry.id !== entryInput.id,
+            );
+            next.push(entryInput as Entry);
+            next.sort(
+              (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+            );
+            return next;
+          },
+        );
+        setDraft(null);
+        return;
+      }
+
+      // Non-network errors: show error message
       const message =
         error instanceof Error
           ? error.message
           : "We couldn't save your entry. Please try again.";
       setDraftError(message);
     }
-  }, [draft, saveEntry, isOnline, queueEntry, queryClient, entriesListQuery.queryKey]);
+  }, [draft, saveEntry, isOnline, queueEntry, markServerUnreachable, queryClient, entriesListQuery.queryKey]);
 
   const handleDraftSubmit = useCallback(() => {
     void handleSubmitDraft();
