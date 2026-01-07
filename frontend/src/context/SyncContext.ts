@@ -4,7 +4,7 @@ import type { CreateEntryInput } from "@/api/entries";
 import type { PendingEntry, SyncResult } from "@/lib/sync";
 
 export interface SyncContextValue {
-  /** Whether the browser is currently online */
+  /** Whether the app can reach the server (navigator.onLine AND server reachable) */
   isOnline: boolean;
   /** Whether IndexedDB is available for offline sync */
   isOfflineSyncAvailable: boolean;
@@ -20,6 +20,8 @@ export interface SyncContextValue {
   syncNow: () => Promise<void>;
   /** Queue an entry for offline sync */
   queueEntry: (input: CreateEntryInput) => Promise<void>;
+  /** Mark server as unreachable (call on network errors) */
+  markServerUnreachable: () => void;
 }
 
 export const SyncContext = createContext<SyncContextValue | null>(null);
