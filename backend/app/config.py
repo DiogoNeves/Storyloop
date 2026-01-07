@@ -16,8 +16,15 @@ DEFAULT_DEMO_DATABASE_PATH = (BASE_DIR / "data" / "storyloop-demo.db").resolve()
 
 
 def _load_dotenv() -> None:
-    """Load environment variables from the project's .env file if present."""
-    env_path = ROOT_DIR / ".env"
+    """Load environment variables from the project's .env file if present.
+
+    Supports DOTENV_PATH env var to specify an alternative file (e.g., .env.prod).
+    """
+    dotenv_path = os.getenv("DOTENV_PATH")
+    if dotenv_path:
+        env_path = ROOT_DIR / dotenv_path
+    else:
+        env_path = ROOT_DIR / ".env"
     if env_path.exists():
         load_dotenv(env_path)
 
@@ -64,11 +71,14 @@ class Settings(BaseModel):
         alias="YOUTUBE_DEMO_SCENARIO",
         description="Optional fixture scenario to load when demo mode is enabled",
     )
+    # Default CORS origins for local development (Vite dev server and preview).
+    # Add custom origins via CORS_ORIGINS env var (comma-separated list).
     cors_origins: list[str] = Field(
         default_factory=lambda: [
             "http://127.0.0.1:5173",
             "http://localhost:5173",
-            "https://macbook.tailaef54e.ts.net:443",
+            "http://127.0.0.1:4173",
+            "http://localhost:4173",
         ],
         alias="CORS_ORIGINS",
     )
