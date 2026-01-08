@@ -57,7 +57,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Use ref for refreshPending to avoid stale closures in SyncService callbacks
-  const refreshPendingRef = useRef<() => Promise<void>>();
+  const refreshPendingRef = useRef<(() => Promise<void>) | undefined>(undefined);
 
   // Refresh pending state from store
   const refreshPending = useCallback(async () => {
