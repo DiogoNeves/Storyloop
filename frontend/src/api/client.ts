@@ -5,7 +5,7 @@ const defaultProtocol =
   typeof window === "undefined" ? "http:" : window.location.protocol;
 const defaultBackendHost =
   typeof window === "undefined" ? "localhost" : window.location.hostname;
-const DEFAULT_BASE_URL = `${defaultProtocol}//${defaultBackendHost}:8000`;
+const DEFAULT_BASE_URL = `${defaultProtocol}//${defaultBackendHost}:8001`;
 
 const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL;
 

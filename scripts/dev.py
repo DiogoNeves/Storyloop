@@ -54,6 +54,7 @@ async def main(prod: bool = False) -> int:
             return build_result
         print("Frontend built successfully.\n")
 
+    backend_port = "8000" if prod else "8001"
     backend_cmd = [
         "uv",
         "run",
@@ -62,7 +63,7 @@ async def main(prod: bool = False) -> int:
         "--host",
         "127.0.0.1",
         "--port",
-        "8000",
+        backend_port,
     ]
     if not prod:
         backend_cmd.append("--reload")

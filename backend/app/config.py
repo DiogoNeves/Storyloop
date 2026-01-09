@@ -72,6 +72,7 @@ class Settings(BaseModel):
         description="Optional fixture scenario to load when demo mode is enabled",
     )
     # Default CORS origins for local development (Vite dev server and preview).
+    # Dev backend runs on 8001, prod on 8000.
     # Add custom origins via CORS_ORIGINS env var (comma-separated list).
     cors_origins: list[str] = Field(
         default_factory=lambda: [
