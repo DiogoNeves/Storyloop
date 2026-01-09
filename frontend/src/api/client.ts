@@ -11,6 +11,14 @@ const DEFAULT_TIMEOUT = 10_000;
  * 2. If accessing via localhost, use localhost backend:
  *    8001 for dev (port 5173), 8000 for prod (port 4173 or MODE=prod)
  * 3. VITE_API_BASE_URL is only used as a fallback for other hostnames
+ *
+ * IMPORTANT: Tailscale Setup Required
+ * - Port 442 must proxy to localhost:8001 (dev backend)
+ * - Port 444 must proxy to localhost:8000 (prod backend)
+ * - Frontend needs its own Tailscale proxy:
+ *   - Dev: Default Tailscale port → localhost:5173
+ *   - Prod: Port 445 (or another) → localhost:4173
+ * - Access frontend via its Tailscale port, API calls will route to backend ports
  */
 const resolveBaseUrl = (): string => {
   const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL;
@@ -21,17 +29,41 @@ const resolveBaseUrl = (): string => {
     return "http://localhost:8001";
   }
 
-  const { protocol, hostname, port } = window.location;
+  const { protocol, hostname, port, href } = window.location;
+  // Extract port from full URL if port is empty (common with HTTPS)
+  // For Tailscale, check for specific ports :442 or :444 in the URL
+  let fullPort = port;
+  if (!fullPort && hostname.endsWith(".ts.net")) {
+    if (href.includes(":442")) fullPort = "442";
+    else if (href.includes(":444")) fullPort = "444";
+    else fullPort = ""; // Will use default based on mode
+  }
 
-  // Tailscale access: use same protocol/hostname, pick backend port by mode
+  // Tailscale access: route API calls to backend ports
+  // Port 442 = dev backend, Port 444 = prod backend
+  // Port 445 (or default) = frontend preview, routes API to 444
+  // Default Tailscale port = frontend dev, routes API to 442
   if (hostname.endsWith(".ts.net")) {
-    const backendPort = isProd ? "444" : "442";
+    let backendPort: string;
+
+    // Determine backend port based on frontend access port
+    if (fullPort === "445" || (isProd && !fullPort)) {
+      // Frontend preview port (445) or prod mode default → backend port 444
+      backendPort = "444";
+    } else if (fullPort === "444" || fullPort === "442") {
+      // Direct backend access → use same port
+      backendPort = fullPort;
+    } else {
+      // Default/dev frontend → backend port 442
+      backendPort = "442";
+    }
+
     return `${protocol}//${hostname}:${backendPort}`;
   }
 
   // Localhost access: pick backend port by mode/frontend port
   if (hostname === "localhost" || hostname === "127.0.0.1") {
-    const backendPort = isProd || port === "4173" ? "8000" : "8001";
+    const backendPort = isProd || fullPort === "4173" ? "8000" : "8001";
     return `${protocol}//${hostname}:${backendPort}`;
   }
 
