@@ -114,6 +114,27 @@ Storyloop/
 └── PLAN.md           # Implementation blueprint
 ```
 
+## Tailscale Setup (Optional)
+
+If you want to access Storyloop via Tailscale, configure the following proxies:
+
+**Backend:**
+
+- Port `442` → `http://localhost:8001` (dev backend)
+- Port `444` → `http://localhost:8000` (prod backend)
+
+**Frontend:**
+
+- Default Tailscale port → `http://localhost:5173` (dev frontend)
+- Port `445` (or another) → `http://localhost:4173` (prod frontend preview)
+
+**Usage:**
+
+- Dev: Access frontend via default Tailscale port, API calls route to port 442
+- Prod: Access frontend via port 445, API calls route to port 444
+
+The frontend automatically detects Tailscale access and routes API calls to the correct backend port.
+
 ## Useful commands
 
 - `make dev` – start backend and frontend in development mode (hot reload).
