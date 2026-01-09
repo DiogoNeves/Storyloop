@@ -114,26 +114,37 @@ Storyloop/
 └── PLAN.md           # Implementation blueprint
 ```
 
-## Tailscale Setup (Optional)
+## Remote Access / Tailscale Setup (Optional)
 
-If you want to access Storyloop via Tailscale, configure the following proxies:
+The frontend uses `/api` as the base path for all API requests. In development, Vite proxies `/api/*` to the backend automatically. For production or remote access, use a reverse proxy (Caddy, nginx, etc.) to route requests.
 
-**Backend:**
+**Recommended: Single Reverse Proxy (Caddy example)**
 
-- Port `442` → `http://localhost:8001` (dev backend)
-- Port `444` → `http://localhost:8000` (prod backend)
+```
+your-domain.ts.net {
+  handle /api/* {
+    uri strip_prefix /api
+    reverse_proxy localhost:8000
+  }
+  handle {
+    root * /path/to/frontend/dist
+    file_server
+    try_files {path} /index.html
+  }
+}
+```
 
-**Frontend:**
+This serves the frontend and proxies `/api/*` to the backend on a single port—no CORS configuration needed.
 
-- Default Tailscale port → `http://localhost:5173` (dev frontend)
-- Port `445` (or another) → `http://localhost:4173` (prod frontend preview)
+**Alternative: Build-time Configuration**
 
-**Usage:**
+If you can't use a reverse proxy, set `VITE_API_BASE_URL` at build time:
 
-- Dev: Access frontend via default Tailscale port, API calls route to port 442
-- Prod: Access frontend via port 445, API calls route to port 444
+```bash
+VITE_API_BASE_URL=https://api.example.com pnpm build
+```
 
-The frontend automatically detects Tailscale access and routes API calls to the correct backend port.
+This embeds the full backend URL into the frontend bundle.
 
 ## Useful commands
 

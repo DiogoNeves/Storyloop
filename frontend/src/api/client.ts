@@ -3,76 +3,36 @@ import axios, { AxiosError } from "axios";
 const DEFAULT_TIMEOUT = 10_000;
 
 /**
- * Determine the backend API URL based on environment and access context.
+ * Determine the backend API URL.
  *
  * Priority:
- * 1. If accessing via Tailscale (ts.net hostname), use Tailscale backend URL
- *    with port based on mode: 442 for dev, 444 for prod
- * 2. If accessing via localhost, use localhost backend:
- *    8001 for dev (port 5173), 8000 for prod (port 4173 or MODE=prod)
- * 3. VITE_API_BASE_URL is only used as a fallback for other hostnames
+ * 1. VITE_API_BASE_URL environment variable (for production or custom deployments)
+ * 2. Vite preview mode (port 4173) → direct connection to prod backend (port 8000)
+ * 3. /api path (works with Vite dev proxy and reverse-proxy setups like Caddy/nginx)
  *
- * IMPORTANT: Tailscale Setup Required
- * - Port 442 must proxy to localhost:8001 (dev backend)
- * - Port 444 must proxy to localhost:8000 (prod backend)
- * - Frontend needs its own Tailscale proxy:
- *   - Dev: Default Tailscale port → localhost:5173
- *   - Prod: Port 445 (or another) → localhost:4173
- * - Access frontend via its Tailscale port, API calls will route to backend ports
+ * In development, Vite proxies /api/* requests to the backend.
+ * In production, configure a reverse proxy to route /api/* to the backend,
+ * or set VITE_API_BASE_URL to the full backend URL at build time.
  */
 const resolveBaseUrl = (): string => {
-  const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL;
-  const mode = import.meta.env.MODE;
-  const isProd = mode === "prod" || mode === "production";
-
-  if (typeof window === "undefined") {
-    return "http://localhost:8001";
+  const configured = import.meta.env.VITE_API_BASE_URL;
+  if (typeof configured === "string" && configured.length > 0) {
+    return configured.replace(/\/$/, "");
   }
 
-  const { protocol, hostname, port, href } = window.location;
-  // Extract port from full URL if port is empty (common with HTTPS)
-  // For Tailscale, check for specific ports :442 or :444 in the URL
-  let fullPort = port;
-  if (!fullPort && hostname.endsWith(".ts.net")) {
-    if (href.includes(":442")) fullPort = "442";
-    else if (href.includes(":444")) fullPort = "444";
-    else fullPort = ""; // Will use default based on mode
-  }
-
-  // Tailscale access: route API calls to backend ports
-  // Port 442 = dev backend, Port 444 = prod backend
-  // Port 445 (or default) = frontend preview, routes API to 444
-  // Default Tailscale port = frontend dev, routes API to 442
-  if (hostname.endsWith(".ts.net")) {
-    let backendPort: string;
-
-    // Determine backend port based on frontend access port
-    if (fullPort === "445" || (isProd && !fullPort)) {
-      // Frontend preview port (445) or prod mode default → backend port 444
-      backendPort = "444";
-    } else if (fullPort === "444" || fullPort === "442") {
-      // Direct backend access → use same port
-      backendPort = fullPort;
-    } else {
-      // Default/dev frontend → backend port 442
-      backendPort = "442";
+  // Vite preview mode (port 4173) has no proxy - connect directly to prod backend
+  if (typeof window !== "undefined") {
+    const { port, hostname } = window.location;
+    if (
+      port === "4173" &&
+      (hostname === "localhost" || hostname === "127.0.0.1")
+    ) {
+      return "http://localhost:8000";
     }
-
-    return `${protocol}//${hostname}:${backendPort}`;
   }
 
-  // Localhost access: pick backend port by mode/frontend port
-  if (hostname === "localhost" || hostname === "127.0.0.1") {
-    const backendPort = isProd || fullPort === "4173" ? "8000" : "8001";
-    return `${protocol}//${hostname}:${backendPort}`;
-  }
-
-  // Other hostnames: use configured URL or fallback to prod backend
-  if (typeof configuredBaseUrl === "string" && configuredBaseUrl.length > 0) {
-    return configuredBaseUrl.replace(/\/$/, "");
-  }
-
-  return `${protocol}//${hostname}:8000`;
+  // Dev mode uses Vite proxy; prod with reverse proxy uses same-origin
+  return "/api";
 };
 
 const baseURL = resolveBaseUrl();

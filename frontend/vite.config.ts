@@ -3,6 +3,9 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import { resolve } from "path";
 
+// Backend port for dev proxy (configurable via VITE_BACKEND_PORT env var)
+const backendPort = process.env.VITE_BACKEND_PORT || "8001";
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -18,9 +21,9 @@ export default defineConfig({
         // Runtime caching strategies
         runtimeCaching: [
           {
-            // Cache API GET /entries (stale-while-revalidate)
-            // Matches /entries and /entries?query=params
-            urlPattern: /\/entries(\?.*)?$/,
+            // Cache API GET entries (stale-while-revalidate)
+            // Matches /api/entries (proxy) and /entries (direct) with optional query params
+            urlPattern: /\/(api\/)?entries(\?.*)?$/,
             handler: "StaleWhileRevalidate",
             options: {
               cacheName: "entries-cache",
@@ -62,6 +65,13 @@ export default defineConfig({
   },
   server: {
     allowedHosts: true,
+    proxy: {
+      "/api": {
+        target: `http://localhost:${backendPort}`,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ""),
+      },
+    },
   },
   envDir: resolve(__dirname, ".."), // Load .env from project root
   build: {
