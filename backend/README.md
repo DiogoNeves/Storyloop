@@ -6,7 +6,7 @@ FastAPI backend with SQLite persistence and Logfire observability.
 
 ```bash
 uv sync
-uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8001
 ```
 
 The app exposes a root `/health` endpoint that returns `{ "status": "Storyloop API ready" }`.
