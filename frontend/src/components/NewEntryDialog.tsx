@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { DateTimeButton } from "@/components/ui/date-time-button";
 
 interface NewEntryDialogProps {
   onCreate: (input: { title: string; summary: string; date: string }) => void;
@@ -114,19 +115,16 @@ export function NewEntryDialog({ onCreate, children }: NewEntryDialogProps) {
                 Capture a quick journal note to keep momentum on your narrative.
               </DialogDescription>
             </div>
-            <div className="w-full max-w-[200px] text-left text-sm sm:w-auto">
-              <Label htmlFor="new-entry-date" className="mb-2 block text-xs uppercase text-muted-foreground">
-                Date & time
-              </Label>
-              <Input
-                id="new-entry-date"
-                type="datetime-local"
-                value={formState.date}
-                onChange={(event) =>
-                  setFormState((prev) => ({ ...prev, date: event.target.value }))
-                }
-              />
-            </div>
+            <DateTimeButton
+              id="new-entry-date"
+              name="new-entry-date"
+              value={formState.date}
+              onChange={(nextDate) =>
+                setFormState((prev) => ({ ...prev, date: nextDate }))
+              }
+              wrapperClassName="w-full max-w-[220px] sm:w-auto"
+              buttonClassName="w-full justify-between sm:w-auto"
+            />
           </div>
         </DialogHeader>
 
