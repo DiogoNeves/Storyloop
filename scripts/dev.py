@@ -53,6 +53,9 @@ async def main(prod: bool = False) -> int:
             print("Frontend build failed!", file=sys.stderr)
             return build_result
         print("Frontend built successfully.\n")
+    else:
+        # Ensure dev runs do not inherit a prod DOTENV_PATH from a prior session
+        os.environ.pop("DOTENV_PATH", None)
 
     backend_port = "8000" if prod else "8001"
     backend_cmd = [
@@ -146,7 +149,9 @@ async def main(prod: bool = False) -> int:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Launch backend and frontend servers")
+    parser = argparse.ArgumentParser(
+        description="Launch backend and frontend servers"
+    )
     parser.add_argument(
         "--prod",
         action="store_true",

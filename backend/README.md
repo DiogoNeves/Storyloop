@@ -23,7 +23,7 @@ The pytest suite includes an async health-check test that exercises the ASGI app
 
 Environment variables are loaded via `.env` and `python-dotenv`. Default values are defined in `app/config.py`:
 
-- `DATABASE_URL` (`sqlite:///backend/.data/storyloop.db` by default)
+- `DATABASE_URL` (defaults to `sqlite:///backend/data/dev-storyloop.db` when `ENV` is not set, `sqlite:///backend/data/storyloop.db` when `ENV=production`)
 - `LOGFIRE_API_KEY`
 - `OPENAI_API_KEY`
 - `YOUTUBE_API_KEY`
