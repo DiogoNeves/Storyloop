@@ -5,33 +5,40 @@ const DEFAULT_TIMEOUT = 10_000;
 /**
  * Determine the backend API URL.
  *
- * Priority:
- * 1. VITE_API_BASE_URL environment variable (for production or custom deployments)
- * 2. Vite preview mode (port 4173) → direct connection to prod backend (port 8000)
- * 3. /api path (works with Vite dev proxy and reverse-proxy setups like Caddy/nginx)
+ * Localhost access (dev/preview testing):
+ * - Port 4173 (vite preview) → http://localhost:8000 (prod backend)
+ * - Port 5173 (vite dev) → /api (proxied to dev backend)
  *
- * In development, Vite proxies /api/* requests to the backend.
- * In production, configure a reverse proxy to route /api/* to the backend,
- * or set VITE_API_BASE_URL to the full backend URL at build time.
+ * Remote access (Tailscale/production):
+ * - Uses VITE_API_BASE_URL if configured
+ * - Falls back to /api for reverse proxy setups
  */
 const resolveBaseUrl = (): string => {
   const configured = import.meta.env.VITE_API_BASE_URL;
+  const isLocalhost =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1");
+
+  // For localhost, use local detection (ignore VITE_API_BASE_URL which is for remote access)
+  if (isLocalhost) {
+    const { port } = window.location;
+
+    // Vite preview mode (port 4173) has no proxy - connect directly to prod backend
+    if (port === "4173") {
+      return "http://localhost:8000";
+    }
+
+    // Dev mode (port 5173) uses Vite proxy
+    return "/api";
+  }
+
+  // Non-localhost: use VITE_API_BASE_URL if configured (for Tailscale/remote access)
   if (typeof configured === "string" && configured.length > 0) {
     return configured.replace(/\/$/, "");
   }
 
-  // Vite preview mode (port 4173) has no proxy - connect directly to prod backend
-  if (typeof window !== "undefined") {
-    const { port, hostname } = window.location;
-    if (
-      port === "4173" &&
-      (hostname === "localhost" || hostname === "127.0.0.1")
-    ) {
-      return "http://localhost:8000";
-    }
-  }
-
-  // Dev mode uses Vite proxy; prod with reverse proxy uses same-origin
+  // Fallback: same-origin /api (for reverse proxy setups)
   return "/api";
 };
 
