@@ -11,8 +11,23 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 ROOT_DIR = BASE_DIR.parent
-DEFAULT_DATABASE_PATH = (BASE_DIR / "data" / "storyloop.db").resolve()
 DEFAULT_DEMO_DATABASE_PATH = (BASE_DIR / "data" / "storyloop-demo.db").resolve()
+
+
+def _default_database_filename() -> str:
+    """Choose a default database filename based on the environment."""
+
+    environment = os.getenv("ENV", "development").lower()
+    if environment in {"production", "prod"}:
+        return "storyloop.db"
+    return "dev-storyloop.db"
+
+
+def _default_database_url() -> str:
+    """Build the default SQLite URL with environment-specific file selection."""
+
+    database_path = (BASE_DIR / "data" / _default_database_filename()).resolve()
+    return f"sqlite:///{database_path}"
 
 
 def _load_dotenv() -> None:
@@ -36,7 +51,7 @@ class Settings(BaseModel):
 
     environment: str = Field(default="development", alias="ENV")
     database_url: str = Field(
-        default=f"sqlite:///{DEFAULT_DATABASE_PATH}", alias="DATABASE_URL"
+        default_factory=_default_database_url, alias="DATABASE_URL"
     )
     demo_database_url: str | None = Field(
         default=f"sqlite:///{DEFAULT_DEMO_DATABASE_PATH}",
