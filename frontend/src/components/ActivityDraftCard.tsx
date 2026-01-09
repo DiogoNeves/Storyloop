@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAssetUpload } from "@/hooks/useAssetUpload";
 import { StatusMessage } from "@/components/ui/status-message";
 import { FormField } from "@/components/ui/form-field";
+import { DateTimeButton } from "@/components/ui/date-time-button";
 
 export interface ActivityDraftCardProps {
   draft: ActivityDraft;
@@ -168,29 +169,21 @@ export function ActivityDraftCard({
           }}
           onKeyDown={handleEscapeToCancel}
         >
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Badge
               variant="secondary"
               className={cn(categoryBadgeClass[category], "w-fit")}
             >
               {category}
             </Badge>
-            <div className="w-full max-w-[220px] space-y-2 text-left text-xs sm:w-auto">
-              <Label
-                htmlFor={dateInputId}
-                className="text-xs uppercase tracking-wide text-muted-foreground"
-              >
-                Date & time
-              </Label>
-              <Input
-                id={dateInputId}
-                type="datetime-local"
-                value={draft.date}
-                onChange={(event) =>
-                  onChange({ ...draft, date: event.target.value })
-                }
-              />
-            </div>
+            <DateTimeButton
+              id={dateInputId}
+              name={dateInputId}
+              value={draft.date}
+              onChange={(nextDate) => onChange({ ...draft, date: nextDate })}
+              wrapperClassName="w-full max-w-[240px] sm:w-auto"
+              buttonClassName="w-full justify-between sm:w-auto"
+            />
           </div>
 
           <FormField id={titleInputId} label="Title">
