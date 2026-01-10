@@ -12,6 +12,21 @@ interface ChatMessageProps {
 }
 
 function ChatMessageComponent({ message }: ChatMessageProps) {
+  if (message.role === "tool") {
+    return (
+      <div className="space-y-2 pl-1">
+        <div className="flex items-center gap-2 rounded-xl border border-dashed border-primary/30 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+          <div className="flex flex-col leading-tight">
+            <span className="text-xs text-muted-foreground">
+              {message.content}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const tone = resolveTone(message.role);
   const toneLayout = getToneLayout(tone);
 

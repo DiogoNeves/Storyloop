@@ -29,12 +29,6 @@ export interface AgentComposerState {
   error?: string | null;
 }
 
-export interface AgentToolSignal {
-  id: string;
-  message: string;
-  receivedAt: string;
-}
-
 export type AgentFocusCategory = "content" | "journal";
 
 export interface AgentFocus {
@@ -48,7 +42,6 @@ export interface AgentConversationState {
   conversationId: string;
   messages: AgentMessage[];
   composer: AgentComposerState;
-  toolSignals: AgentToolSignal[];
 }
 
 export interface AgentConversationAdapter {
