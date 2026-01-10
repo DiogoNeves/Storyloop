@@ -215,6 +215,11 @@ Your mission: help creators grow their channels and unlock creativity without ge
 
         ``content_hash`` must come from the most recent ``read_journal_entry``.
         If the hash mismatches, you must read the entry again before editing.
+
+        Write the journal content in Markdown. Use tables if they clarify details.
+        Ask 1-2 concise disambiguation questions only if necessary. Otherwise,
+        apply the requested changes directly without asking for confirmation.
+        Journal entries can be edited, so be proactive when writing new content.
         """
 
         if ctx.deps.tool_call_notifier:
@@ -235,6 +240,10 @@ Your mission: help creators grow their channels and unlock creativity without ge
         """Create a new journal entry.
 
         Provide a title and summary; the title should be explicitly set by the model.
+        Write the journal content in Markdown and use tables when it helps.
+        Ask 1-2 concise disambiguation questions only when necessary. Otherwise,
+        create the entry directly without asking for confirmation. Journal entries
+        can be edited later, so be proactive when creating new content.
         """
 
         if ctx.deps.tool_call_notifier:
