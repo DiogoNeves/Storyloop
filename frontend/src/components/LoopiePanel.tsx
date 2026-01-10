@@ -5,8 +5,10 @@ import { useAgentConversationContext } from "@/context/AgentConversationContext"
 import {
   type AgentConversationAdapter,
   type AgentConversationState,
+  type AgentFocus,
   type AgentMessageAttachment,
 } from "@/lib/types/agent";
+import { getActivityCategoryLabel } from "@/lib/activity-helpers";
 import { cn } from "@/lib/utils";
 import { useAssetUpload } from "@/hooks/useAssetUpload";
 import { useSync } from "@/hooks/useSync";
@@ -15,11 +17,17 @@ import { AssetAttachmentList } from "@/components/chat/AssetAttachmentList";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { ChatMessage } from "./chat/ChatMessage";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { type AgentToolSignal } from "@/lib/types/agent";
 
 interface LoopieConversationContentProps {
   state: AgentConversationState;
   adapter: AgentConversationAdapter;
+  focus?: AgentFocus | null;
   className?: string;
   surfaceVariant?: "panel" | "page";
   composerPlaceholder?: string;
@@ -31,6 +39,7 @@ interface LoopieConversationContentProps {
 interface LoopiePanelViewProps {
   state: AgentConversationState;
   adapter: AgentConversationAdapter;
+  focus?: AgentFocus | null;
   isDemo?: boolean;
   isInitializing?: boolean;
   variant?: "panel" | "page";
@@ -47,6 +56,7 @@ interface LoopiePanelProps {
 export function LoopieConversationContent({
   state,
   adapter,
+  focus,
   className,
   surfaceVariant = "panel",
   composerPlaceholder = "Ask about your content, growth, or next video idea…",
@@ -146,6 +156,11 @@ export function LoopieConversationContent({
       ? (respondingHelperText ?? "Loopie is synthesizing a tailored suggestion")
       : (idleHelperText ?? composerLabel);
 
+  const focusLabel = focus ? getActivityCategoryLabel(focus.category) : null;
+  const focusTooltip = focus
+    ? `${getActivityCategoryLabel(focus.category)} · ${focus.title ? String(focus.title) : focus.id}`
+    : null;
+
   return (
     <div
       className={cn("flex min-h-0 flex-1 flex-col overflow-hidden", className)}
@@ -238,7 +253,21 @@ export function LoopieConversationContent({
               <ImagePlus className="h-4 w-4" />
               Add image or PDF
             </Button>
-            {isUploading ? <span>Uploading…</span> : null}
+            <div className="flex items-center gap-2">
+              {isUploading ? <span>Uploading…</span> : null}
+              {focusLabel ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-[10px] text-muted-foreground/60">
+                      👀 {focusLabel}
+                    </span>
+                  </TooltipTrigger>
+                  {focusTooltip ? (
+                    <TooltipContent>{focusTooltip}</TooltipContent>
+                  ) : null}
+                </Tooltip>
+              ) : null}
+            </div>
           </div>
           <div className="relative flex select-none items-end rounded-2xl border border-border/50 bg-muted/30 shadow-sm focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20">
             <Textarea
@@ -311,6 +340,7 @@ export function LoopieConversationContent({
 export function LoopiePanelView({
   state,
   adapter,
+  focus,
   isDemo,
   isInitializing,
   variant = "panel",
@@ -374,6 +404,7 @@ export function LoopiePanelView({
         <LoopieConversationContent
           state={state}
           adapter={adapter}
+          focus={focus}
           surfaceVariant={variant}
           disabled={isInitializing}
         />
@@ -386,12 +417,13 @@ export function LoopiePanel({
   variant = "panel",
   className,
 }: LoopiePanelProps) {
-  const { state, adapter, isDemo, isInitializing } =
+  const { state, adapter, focus, isDemo, isInitializing } =
     useAgentConversationContext();
   return (
     <LoopiePanelView
       state={state}
       adapter={adapter}
+      focus={focus}
       isDemo={isDemo}
       isInitializing={isInitializing}
       variant={variant}

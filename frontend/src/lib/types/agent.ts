@@ -35,6 +35,15 @@ export interface AgentToolSignal {
   receivedAt: string;
 }
 
+export type AgentFocusCategory = "content" | "journal";
+
+export interface AgentFocus {
+  category: AgentFocusCategory;
+  id: string;
+  title?: string | null;
+  route?: string | null;
+}
+
 export interface AgentConversationState {
   conversationId: string;
   messages: AgentMessage[];

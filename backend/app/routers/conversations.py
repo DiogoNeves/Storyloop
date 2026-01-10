@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Iterable
+from typing import Iterable, Literal
 from contextlib import suppress
 from uuid import uuid4
 
@@ -118,14 +118,30 @@ class TurnAttachmentOut(BaseModel):
     height: int | None = None
 
 
+class TurnFocus(BaseModel):
+    """Optional focus metadata for a turn."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    category: Literal["content", "journal"]
+    id: str
+    title: str | None = None
+    route: str | None = None
+
+
 class TurnInput(BaseModel):
     """Request model for a turn input."""
 
     text: str
     attachments: list[str] = Field(default_factory=list)
+    focus: TurnFocus | None = None
 
 
-def render_history_prompt(turns: list[TurnRow], latest_user_turn: str) -> str:
+def render_history_prompt(
+    turns: list[TurnRow],
+    latest_user_turn: str,
+    focus: TurnFocus | None = None,
+) -> str:
     """Render a prompt with the full conversation history and latest user turn."""
 
     if not turns:
@@ -134,9 +150,24 @@ def render_history_prompt(turns: list[TurnRow], latest_user_turn: str) -> str:
         history_lines = [f"{turn['role'].upper()}: {turn['text']}" for turn in turns]
         history_block = "\n".join(history_lines)
 
+    focus_block = ""
+    if focus is not None:
+        focus_lines = [
+            "## Current focus (optional)",
+            "Use only if relevant to the latest user turn.",
+            f"- Category: {focus.category}",
+            f"- Item ID: {focus.id}",
+        ]
+        if focus.title:
+            focus_lines.append(f"- Title: {focus.title}")
+        if focus.route:
+            focus_lines.append(f"- Route: {focus.route}")
+        focus_block = "\n".join(focus_lines) + "\n\n"
+
     return (
         "## Conversation history (oldest to newest)\n"
         f"{history_block}\n\n"
+        f"{focus_block}"
         "## Latest user turn\n"
         f"{latest_user_turn}"
     )
@@ -349,7 +380,7 @@ async def stream_turn(
                 turn for turn in prior_turns if turn["id"] != user_turn_id
             ]
             prompt_with_history = render_history_prompt(
-                conversation_history, body.text
+                conversation_history, body.text, body.focus
             )
             user_prompt_parts = await asyncio.to_thread(
                 _build_user_prompt_parts,

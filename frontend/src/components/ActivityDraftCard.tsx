@@ -63,9 +63,7 @@ export function ActivityDraftCard({
 
   useEffect(() => {
     // Capture the initial title on first render
-    if (initialTitleRef.current === undefined) {
-      initialTitleRef.current = draft.title;
-    }
+    initialTitleRef.current ??= draft.title;
 
     // Focus only once when editing starts
     if (hasFocusedRef.current) {

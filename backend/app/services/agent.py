@@ -12,11 +12,15 @@ from pydantic_ai.models.openai import OpenAIChatModel
 
 from app.config import Settings
 from app.services.agent_tools import (
+    BaseEntryRepository,
     BaseJournalRepository,
     BaseYouTubeRepository,
     ChannelMetrics,
+    EmptyEntryRepository,
     EmptyJournalRepository,
     EmptyYouTubeRepository,
+    EntryDetails,
+    EntryRepository,
     JournalEntry,
     JournalRepository,
     VideoCountResult,
@@ -32,6 +36,7 @@ class LoopieDeps(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     user_id: str
+    entry_repo: BaseEntryRepository
     journal_repo: BaseJournalRepository
     youtube_repo: BaseYouTubeRepository
     tool_call_notifier: Callable[[str], Awaitable[None]] | None = None
@@ -59,6 +64,12 @@ async def build_loopie_deps(
         if active_user is not None:
             user_id = active_user.id
 
+    entry_repo: BaseEntryRepository
+    if entry_service is None:
+        entry_repo = EmptyEntryRepository()
+    else:
+        entry_repo = EntryRepository(entry_service)
+
     journal_repo: BaseJournalRepository
     if entry_service is None:
         journal_repo = EmptyJournalRepository()
@@ -75,6 +86,7 @@ async def build_loopie_deps(
 
     return LoopieDeps(
         user_id=user_id,
+        entry_repo=entry_repo,
         journal_repo=journal_repo,
         youtube_repo=youtube_repo,
         tool_call_notifier=tool_call_notifier,
@@ -172,6 +184,21 @@ Your mission: help creators grow their channels and unlock creativity without ge
         return await ctx.deps.journal_repo.load_entries(
             user_id=ctx.deps.user_id, limit=limit, before=before_iso
         )
+
+    @assistant_agent.tool
+    async def get_entry_details(
+        ctx: RunContext[LoopieDeps], entry_id: str
+    ) -> EntryDetails:
+        """Load details for a specific Storyloop entry.
+
+        Use this when the user references a journal entry or content item by ID
+        and you need its title, summary, or category.
+        """
+
+        if ctx.deps.tool_call_notifier:
+            await ctx.deps.tool_call_notifier("🧾 entry details")
+
+        return await ctx.deps.entry_repo.get_entry(entry_id)
 
     @assistant_agent.tool
     async def list_recent_videos(

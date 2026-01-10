@@ -137,7 +137,9 @@ describe("useAgentConversation", () => {
     });
 
     await waitFor(() => {
-      const cachedConversations = queryClient.getQueryData(["conversations"]);
+      const cachedConversations = queryClient.getQueryData<Conversation[]>([
+        "conversations",
+      ]);
       expect(cachedConversations?.[0]).toMatchObject({
         id: "conversation-mock",
         lastTurnText: "Hello!",

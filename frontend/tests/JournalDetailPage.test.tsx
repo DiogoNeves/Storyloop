@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type Entry } from "@/api/entries";
 import type { useYouTubeFeed as useYouTubeFeedHook } from "@/hooks/useYouTubeFeed";
 import { JournalDetailPage } from "@/pages/JournalDetailPage";
+import { AgentConversationProvider } from "@/context/AgentConversationContext";
 import { SettingsProvider } from "@/context/SettingsProvider";
 import { SyncProvider } from "@/context/SyncProvider";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -56,13 +57,15 @@ function renderPage(ui: ReactElement) {
     <QueryClientProvider client={queryClient}>
       <SyncProvider>
         <TooltipProvider>
-          <MemoryRouter initialEntries={[`/journals/${sampleEntry.id}`]}>
-            <SettingsProvider>
-              <Routes>
-                <Route path="/journals/:journalId" element={ui} />
-              </Routes>
-            </SettingsProvider>
-          </MemoryRouter>
+          <AgentConversationProvider>
+            <MemoryRouter initialEntries={[`/journals/${sampleEntry.id}`]}>
+              <SettingsProvider>
+                <Routes>
+                  <Route path="/journals/:journalId" element={ui} />
+                </Routes>
+              </SettingsProvider>
+            </MemoryRouter>
+          </AgentConversationProvider>
         </TooltipProvider>
       </SyncProvider>
     </QueryClientProvider>,

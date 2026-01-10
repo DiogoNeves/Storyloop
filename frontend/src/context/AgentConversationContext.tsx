@@ -1,4 +1,11 @@
-import { type ReactNode, useCallback, useMemo, useContext, createContext } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useMemo,
+  useContext,
+  createContext,
+  useState,
+} from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { healthQueries } from "@/api/health";
@@ -6,11 +13,14 @@ import { useAgentConversation, useAgentDemo } from "@/hooks";
 import type {
   AgentConversationAdapter,
   AgentConversationState,
+  AgentFocus,
 } from "@/lib/types/agent";
 
 interface AgentConversationContextValue {
   state: AgentConversationState;
   adapter: AgentConversationAdapter;
+  focus: AgentFocus | null;
+  setFocus: (focus: AgentFocus | null) => void;
   setActiveConversation: (conversationId?: string | null) => Promise<void>;
   isDemo: boolean;
   isInitializing: boolean;
@@ -31,12 +41,13 @@ export function AgentConversationProvider({
     healthQuery.data?.youtubeDemoMode === true || healthQuery.isError;
 
   const demo = useAgentDemo({ enabled: isDemoMode });
+  const [focus, setFocus] = useState<AgentFocus | null>(null);
   const {
     state: conversationState,
     adapter: conversationAdapter,
     setActiveConversation: baseSetActiveConversation,
     isInitializing,
-  } = useAgentConversation({ enabled: !isDemoMode });
+  } = useAgentConversation({ enabled: !isDemoMode, focus });
 
   const setActiveConversation = useCallback(
     async (conversationId?: string | null) => {
@@ -52,6 +63,8 @@ export function AgentConversationProvider({
     () => ({
       state: isDemoMode ? demo.state : conversationState,
       adapter: isDemoMode ? demo.adapter : conversationAdapter,
+      focus: isDemoMode ? null : focus,
+      setFocus: isDemoMode ? () => undefined : setFocus,
       setActiveConversation,
       isDemo: isDemoMode,
       isInitializing: !isDemoMode && isInitializing,
@@ -61,9 +74,11 @@ export function AgentConversationProvider({
       conversationState,
       demo.adapter,
       demo.state,
+      focus,
       isInitializing,
       isDemoMode,
       setActiveConversation,
+      setFocus,
     ],
   );
 
