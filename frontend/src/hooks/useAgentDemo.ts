@@ -64,12 +64,10 @@ export function useAgentDemo({ enabled = true }: UseAgentDemoOptions = {}) {
     conversationId: crypto.randomUUID(),
     messages: demoIntroMessages,
     composer: { status: "idle", error: null },
-    toolSignals: [],
   }));
 
   const typingTimersRef = useRef(new Set<ReturnType<typeof setTimeout>>());
   const responseTimersRef = useRef(new Set<ReturnType<typeof setTimeout>>());
-  const toolSignalTimersRef = useRef(new Set<ReturnType<typeof setTimeout>>());
 
   const clearTimers = useCallback(() => {
     typingTimersRef.current.forEach((timerId) => {
@@ -82,10 +80,6 @@ export function useAgentDemo({ enabled = true }: UseAgentDemoOptions = {}) {
     });
     responseTimersRef.current.clear();
 
-    toolSignalTimersRef.current.forEach((timerId) => {
-      clearTimeout(timerId);
-    });
-    toolSignalTimersRef.current.clear();
   }, []);
 
   useEffect(() => clearTimers, [clearTimers]);
@@ -119,7 +113,6 @@ export function useAgentDemo({ enabled = true }: UseAgentDemoOptions = {}) {
               },
             ],
         composer: { status: "idle", error: null },
-        toolSignals: [],
       };
     });
   }, [clearTimers, enabled]);
@@ -147,7 +140,6 @@ export function useAgentDemo({ enabled = true }: UseAgentDemoOptions = {}) {
         ...previous,
         messages: [...previous.messages, userMessage],
         composer: { status: "sending", error: null },
-        toolSignals: [],
       }));
 
       await new Promise<void>((resolve) => {
@@ -158,21 +150,22 @@ export function useAgentDemo({ enabled = true }: UseAgentDemoOptions = {}) {
             composer: { status: "responding", error: null },
           }));
 
-          const toolSignalTimer = setTimeout(() => {
-            toolSignalTimersRef.current.delete(toolSignalTimer);
+          const toolMessageTimer = setTimeout(() => {
+            responseTimersRef.current.delete(toolMessageTimer);
             setState((previous) => ({
               ...previous,
-              toolSignals: [
-                ...previous.toolSignals,
+              messages: [
+                ...previous.messages,
                 {
                   id: crypto.randomUUID(),
-                  message: "👀 your latest journal entries",
-                  receivedAt: new Date().toISOString(),
+                  role: "tool",
+                  content: "👀 your latest journal entries",
+                  createdAt: new Date().toISOString(),
                 },
               ],
             }));
           }, 120);
-          toolSignalTimersRef.current.add(toolSignalTimer);
+          responseTimersRef.current.add(toolMessageTimer);
 
           const responseTimer = setTimeout(() => {
             responseTimersRef.current.delete(responseTimer);
@@ -183,7 +176,6 @@ export function useAgentDemo({ enabled = true }: UseAgentDemoOptions = {}) {
                 buildAssistantReply(trimmed, previous.messages),
               ],
               composer: { status: "idle", error: null },
-              toolSignals: [],
             }));
             resolve();
           }, 900);
@@ -204,7 +196,6 @@ export function useAgentDemo({ enabled = true }: UseAgentDemoOptions = {}) {
       conversationId: crypto.randomUUID(),
       messages: demoIntroMessages,
       composer: { status: "idle", error: null },
-      toolSignals: [],
     });
   }, [clearTimers, enabled]);
 

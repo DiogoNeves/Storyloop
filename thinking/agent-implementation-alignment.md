@@ -62,7 +62,7 @@ prompt = f"Context: {context_str}\n\nUser: {body.text}"
 **v1 Foundation:**
 - PydanticAI tools implemented for journal and YouTube data access
 - `JournalRepository` and `YouTubeRepository` provide data access
-- Agent tools: `load_journal_entries`, `list_recent_videos`, `get_video_details`, `get_video_metrics`
+- Agent tools: `load_journal_entries`, `read_journal_entry`, `edit_journal_entry`, `create_journal_entry`, `list_recent_videos`, `get_video_details`, `get_video_metrics`
 
 ### 4. Action-Forward ✅ (Partially Implemented)
 **Vision:** Every response nudges toward experiments, habits, or trackable signals.
