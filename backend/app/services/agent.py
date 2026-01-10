@@ -259,7 +259,10 @@ Your mission: help creators grow their channels and unlock creativity without ge
 
         occurred_at = None
         if occurred_at_iso:
-            occurred_at = datetime.fromisoformat(occurred_at_iso)
+            normalized_iso = occurred_at_iso
+            if normalized_iso.endswith("Z"):
+                normalized_iso = f"{normalized_iso[:-1]}+00:00"
+            occurred_at = datetime.fromisoformat(normalized_iso)
 
         payload = JournalEntryInput(title=title, content_markdown=content_markdown)
         return await ctx.deps.journal_repo.create_entry(payload, occurred_at)

@@ -468,11 +468,17 @@ export function useAgentConversation({
 
       let messageBuffer = [...state.messages, userMessage];
 
-      setState(() => ({
-        conversationId,
-        messages: messageBuffer,
-        composer: { status: "sending", error: null },
-      }));
+      setState((previous) => {
+        if (previous.conversationId !== conversationId) {
+          return previous;
+        }
+
+        return {
+          ...previous,
+          messages: messageBuffer,
+          composer: { status: "sending", error: null },
+        };
+      });
 
       upsertConversationSummary(
         conversationId,
@@ -629,6 +635,7 @@ export function useAgentConversation({
       conversationListQuery.queryKey,
       upsertConversationSummary,
       state.composer.status,
+      state.messages,
     ],
   );
 
