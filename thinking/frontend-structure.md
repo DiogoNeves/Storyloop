@@ -24,11 +24,14 @@ frontend/
 │   │   └── ui/                   # shadcn components
 │   ├── context/          # Shared state providers
 │   │   ├── AgentConversationContext.tsx
-│   │   └── SettingsProvider.tsx
+│   │   ├── SettingsProvider.tsx
+│   │   ├── SyncContext.ts
+│   │   └── SyncProvider.tsx
 │   ├── hooks/            # Feature hooks
 │   │   ├── useAgentConversation.ts
 │   │   ├── useAssetUpload.ts
 │   │   ├── useEntryEditing.ts
+│   │   ├── useSync.ts
 │   │   └── useYouTubeFeed.ts
 │   ├── lib/              # Utilities and types
 │   │   ├── assets.ts     # Asset URL helpers
@@ -269,6 +272,20 @@ Update CSS variables in `index.css`:
 - Fast, no network calls
 - Simple for ephemeral data
 - Immediate updates
+
+## Offline Sync (Journal Entries)
+
+**Core Pieces:**
+
+- `SyncProvider` supplies online status, pending count, and sync actions
+- `SyncService` orchestrates retries + cache invalidation
+- `IdbSyncStore` persists pending entries in IndexedDB
+
+**Behavior:**
+
+- When offline, new journal entries are queued and shown with pending status
+- Sync triggers on `online`, `focus`, and `visibilitychange` events
+- Service worker caches `/entries` responses (stale-while-revalidate) for offline viewing
 
 ## Component Composition
 

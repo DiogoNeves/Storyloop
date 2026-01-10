@@ -31,6 +31,7 @@ The Storyloop AI agent is a creative partner for YouTube storytellers. It combin
 ## Context Awareness
 
 When a creator asks a question, the agent receives structured context from the frontend so its replies feel specific.
+Optional focus metadata (category, id, title, route) tags the currently open item to ground replies without persisting the context.
 
 ```typescript
 {
@@ -136,6 +137,12 @@ The agent references this capsule explicitly (“You’re looking at ‘Advanced
 - User prompt bundles the latest message, recent conversation summary, and context capsule.
 - Responses are parsed JSON (text, suggested actions, follow-up queries, citations) for deterministic rendering.
 - Long threads are summarized to respect token limits while preserving key decisions.
+
+### Multimodal Attachments (Journal + Chat)
+
+- Images are loaded from disk and sent as base64 data URLs for private multimodal input.
+- PDFs contribute extracted text to avoid uploading full binary payloads.
+- Only the latest user turn’s attachments are sent to manage token/cost budgets.
 
 ## Forward-Looking Concepts
 
