@@ -173,6 +173,7 @@ def create_app(active_settings: Settings | None = None) -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
     application.include_router(api_router)
     return application
 
