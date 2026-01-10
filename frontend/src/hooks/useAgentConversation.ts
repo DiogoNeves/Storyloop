@@ -9,6 +9,7 @@ import {
   type Conversation,
   type ConversationTurn,
 } from "@/api/conversations";
+import { entriesQueries } from "@/api/entries";
 import { isNotFoundError } from "@/api/client";
 import type {
   AgentConversationAdapter,
@@ -30,7 +31,6 @@ const INITIAL_STATE: AgentConversationState = {
   conversationId: "",
   messages: [],
   composer: { status: "idle", error: null },
-  toolSignals: [],
 };
 
 const STORAGE_KEY = "storyloop.loopieConversationId";
@@ -175,8 +175,7 @@ export function useAgentConversation({
         conversationId: "",
         messages: [],
         composer: { status: "idle", error: null },
-        toolSignals: [],
-      });
+              });
 
       try {
         if (forceNew && persistConversationId) {
@@ -224,8 +223,7 @@ export function useAgentConversation({
           conversationId: conversationId ?? "",
           messages: existingTurns.map(mapTurnToMessage),
           composer: { status: "idle", error: null },
-          toolSignals: [],
-        });
+                  });
       } catch (error) {
         if (initializeTokenRef.current !== initializeToken) {
           return;
@@ -238,8 +236,7 @@ export function useAgentConversation({
           conversationId: "",
           messages: [],
           composer: { status: "idle", error: message },
-          toolSignals: [],
-        });
+                  });
       }
       if (initializeTokenRef.current === initializeToken) {
         setIsInitializing(false);
@@ -333,102 +330,116 @@ export function useAgentConversation({
         }
       }
 
-      const streamingMessageId = crypto.randomUUID();
-      const streamingMessageCreatedAt = new Date().toISOString();
+      let streamingMessageId = crypto.randomUUID();
+      let streamingMessageCreatedAt = new Date().toISOString();
 
       const upsertAssistantMessage = (
         content: string,
         overrides?: Partial<AgentMessage>,
         composerOverride?: AgentConversationState["composer"],
       ) => {
+        const existingIndex = messageBuffer.findIndex(
+          (message) => message.id === streamingMessageId,
+        );
+
+        const baseMessage: AgentMessage =
+          existingIndex === -1
+            ? {
+              id: streamingMessageId,
+              role: "assistant",
+              content: "",
+              createdAt: streamingMessageCreatedAt,
+            }
+            : messageBuffer[existingIndex];
+
+        const updatedMessage: AgentMessage = {
+          ...baseMessage,
+          ...overrides,
+          content,
+        };
+
+        messageBuffer =
+          existingIndex === -1
+            ? [...messageBuffer, updatedMessage]
+            : messageBuffer.map((message, index) =>
+              index === existingIndex ? updatedMessage : message,
+            );
+
         setState((previous) => {
           if (previous.conversationId !== conversationId) {
             return previous;
           }
 
-          const existingIndex = previous.messages.findIndex(
-            (message) => message.id === streamingMessageId,
-          );
-
-          const baseMessage: AgentMessage =
-            existingIndex === -1
-              ? {
-                id: streamingMessageId,
-                role: "assistant",
-                content: "",
-                createdAt: streamingMessageCreatedAt,
-              }
-              : previous.messages[existingIndex];
-
-          const updatedMessage: AgentMessage = {
-            ...baseMessage,
-            ...overrides,
-            content,
-          };
-
-          const messages =
-            existingIndex === -1
-              ? [...previous.messages, updatedMessage]
-              : previous.messages.map((message, index) =>
-                index === existingIndex ? updatedMessage : message,
-              );
-
-          if (composerOverride) {
-            return {
-              ...previous,
-              messages,
-              composer: composerOverride,
-            };
-          }
-
           return {
             ...previous,
-            messages,
+            messages: messageBuffer,
+            composer: composerOverride ?? previous.composer,
           };
         });
       };
 
       const removeAssistantMessage = () => {
+        const messages = messageBuffer.filter(
+          (message) => message.id !== streamingMessageId,
+        );
+        if (messages.length === messageBuffer.length) {
+          return;
+        }
+        messageBuffer = messages;
         setState((previous) => {
           if (previous.conversationId !== conversationId) {
             return previous;
           }
-          const messages = previous.messages.filter(
-            (message) => message.id !== streamingMessageId,
-          );
-          if (messages.length === previous.messages.length) {
-            return previous;
-          }
           return {
             ...previous,
-            messages,
+            messages: messageBuffer,
           };
         });
       };
 
-      const clearToolSignals = () => {
-        setState((previous) => {
-          if (previous.conversationId !== conversationId) {
-            return previous;
-          }
-
-          if (previous.toolSignals.length === 0) {
-            return previous;
-          }
-
-          return {
-            ...previous,
-            toolSignals: [],
-          };
-        });
-      };
-
-      const addToolSignal = (message: string) => {
-        const toolSignal = {
+      const appendToolCall = (message: string) => {
+        const toolMessage: AgentMessage = {
           id: crypto.randomUUID(),
-          message,
-          receivedAt: new Date().toISOString(),
-        } as const;
+          role: "tool",
+          content: message,
+          createdAt: new Date().toISOString(),
+        };
+        const normalizedMessage = message.toLowerCase();
+        if (
+          normalizedMessage.includes("journal entry") &&
+          (normalizedMessage.includes("updating") ||
+            normalizedMessage.includes("creating"))
+        ) {
+          shouldInvalidateEntries = true;
+        }
+        const nextMessageId = crypto.randomUUID();
+        const nextCreatedAt = new Date().toISOString();
+        const currentMessageId = streamingMessageId;
+        const currentCreatedAt = streamingMessageCreatedAt;
+        const currentSegmentText = segmentText;
+
+        const messages = messageBuffer.filter(
+          (message) => message.id !== currentMessageId,
+        );
+        if (currentSegmentText) {
+          messages.push({
+            id: currentMessageId,
+            role: "assistant",
+            content: currentSegmentText,
+            createdAt: currentCreatedAt,
+          });
+        }
+
+        messageBuffer = [
+          ...messages,
+          toolMessage,
+          {
+            id: nextMessageId,
+            role: "assistant",
+            content: "",
+            createdAt: nextCreatedAt,
+          },
+        ];
 
         setState((previous) => {
           if (previous.conversationId !== conversationId) {
@@ -437,9 +448,14 @@ export function useAgentConversation({
 
           return {
             ...previous,
-            toolSignals: [...previous.toolSignals, toolSignal],
+            messages: messageBuffer,
           };
         });
+
+        streamingMessageId = nextMessageId;
+        streamingMessageCreatedAt = nextCreatedAt;
+        segmentText = "";
+        hasToolSplit = true;
       };
 
       const userMessage: AgentMessage = {
@@ -450,12 +466,19 @@ export function useAgentConversation({
         attachments,
       };
 
-      setState((previous) => ({
-        conversationId,
-        messages: [...previous.messages, userMessage],
-        toolSignals: [],
-        composer: { status: "sending", error: null },
-      }));
+      let messageBuffer = [...state.messages, userMessage];
+
+      setState((previous) => {
+        if (previous.conversationId !== conversationId) {
+          return previous;
+        }
+
+        return {
+          ...previous,
+          messages: messageBuffer,
+          composer: { status: "sending", error: null },
+        };
+      });
 
       upsertConversationSummary(
         conversationId,
@@ -472,7 +495,10 @@ export function useAgentConversation({
       abortControllerRef.current = controller;
 
       let accumulatedText = "";
+      let segmentText = "";
       let hasStreamedToken = false;
+      let hasToolSplit = false;
+      let shouldInvalidateEntries = false;
 
       try {
         await streamConversationTurn({
@@ -491,13 +517,12 @@ export function useAgentConversation({
             onToken: (token) => {
               if (!hasStreamedToken) {
                 hasStreamedToken = true;
-                clearToolSignals();
               }
               accumulatedText += token;
-              upsertAssistantMessage(accumulatedText);
+              segmentText += token;
+              upsertAssistantMessage(segmentText);
             },
             onDone: ({ turnId, text }) => {
-              clearToolSignals();
               const finalText = text ?? accumulatedText;
               if (!finalText) {
                 setState((previous) => ({
@@ -515,11 +540,16 @@ export function useAgentConversation({
               if (turnId) {
                 overrides.id = turnId;
               }
-              upsertAssistantMessage(
-                finalText,
-                overrides,
-                { status: "idle", error: null },
-              );
+              const displayText = hasToolSplit ? segmentText : finalText;
+              if (hasToolSplit && !displayText) {
+                removeAssistantMessage();
+              } else {
+                upsertAssistantMessage(
+                  displayText,
+                  overrides,
+                  { status: "idle", error: null },
+                );
+              }
               if (!conversationIdPersistedRef.current) {
                 conversationIdPersistedRef.current = true;
                 if (persistConversationId) {
@@ -536,12 +566,18 @@ export function useAgentConversation({
                 { incrementTurnCount: false },
               );
 
+              if (shouldInvalidateEntries) {
+                const entriesListQuery = entriesQueries.all();
+                void queryClient.invalidateQueries({
+                  queryKey: entriesListQuery.queryKey,
+                });
+              }
+
               void queryClient.invalidateQueries({
                 queryKey: conversationListQuery.queryKey,
               });
             },
             onError: (message) => {
-              clearToolSignals();
               setState((previous) => ({
                 ...previous,
                 composer: {
@@ -553,7 +589,9 @@ export function useAgentConversation({
                 removeAssistantMessage();
               }
             },
-            onToolCall: addToolSignal,
+            onToolCall: (message) => {
+              appendToolCall(message);
+            },
           },
         });
       } catch (error) {
@@ -597,6 +635,7 @@ export function useAgentConversation({
       conversationListQuery.queryKey,
       upsertConversationSummary,
       state.composer.status,
+      state.messages,
     ],
   );
 
@@ -630,8 +669,7 @@ export function useAgentConversation({
             },
           ],
         composer: { status: "idle", error: null },
-        toolSignals: [],
-      };
+              };
     });
   }, [abortActiveStream]);
 

@@ -1,10 +1,11 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { type ReactNode } from "react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useAgentConversation } from "@/hooks";
 import { type Conversation, type StreamTurnOptions } from "@/api/conversations";
+import { entriesQueries } from "@/api/entries";
 import {
   mockCreateConversation,
   mockListConversationTurns,
@@ -105,6 +106,98 @@ describe("useAgentConversation", () => {
     expect(mockStreamConversationTurn).toHaveBeenCalledWith(
       expect.objectContaining({ conversationId: "conversation-abc" }),
     );
+  });
+
+  it("inserts tool calls inline while streaming", async () => {
+    mockListConversationTurns.mockResolvedValue([]);
+    mockStreamConversationTurn.mockImplementation(
+      ({ callbacks }: StreamTurnOptions) => {
+        callbacks?.onOpen?.();
+        callbacks?.onToken?.("Reading entry.");
+        callbacks?.onToolCall?.("🧾 journal entry details");
+        callbacks?.onToken?.("Update ready.");
+        callbacks?.onDone?.({
+          turnId: "assistant-2",
+          text: "Reading entry.Update ready.",
+        });
+        return Promise.resolve();
+      },
+    );
+
+    const { result } = renderHook(
+      () =>
+        useAgentConversation({
+          conversationId: "conversation-tools",
+          allowCreate: false,
+          persistConversationId: false,
+        }),
+      { wrapper: createQueryClientWrapper() },
+    );
+
+    await waitFor(() => {
+      expect(result.current.isInitializing).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.adapter.sendMessage("Check my journal");
+    });
+
+    await waitFor(() => {
+      expect(result.current.state.messages).toEqual([
+        expect.objectContaining({ role: "user", content: "Check my journal" }),
+        expect.objectContaining({ role: "assistant", content: "Reading entry." }),
+        expect.objectContaining({ role: "tool", content: "🧾 journal entry details" }),
+        expect.objectContaining({
+          id: "assistant-2",
+          role: "assistant",
+          content: "Update ready.",
+        }),
+      ]);
+    });
+  });
+
+  it("invalidates entries after journal mutation tools", async () => {
+    mockListConversationTurns.mockResolvedValue([]);
+    mockStreamConversationTurn.mockImplementation(
+      ({ callbacks }: StreamTurnOptions) => {
+        callbacks?.onOpen?.();
+        callbacks?.onToken?.("Creating entry.");
+        callbacks?.onToolCall?.("📝 creating a journal entry");
+        callbacks?.onToken?.("Done.");
+        callbacks?.onDone?.({
+          turnId: "assistant-3",
+          text: "Creating entry.Done.",
+        });
+        return Promise.resolve();
+      },
+    );
+
+    const { result } = renderHook(
+      () =>
+        useAgentConversation({
+          conversationId: "conversation-journal-mutation",
+          allowCreate: false,
+          persistConversationId: false,
+        }),
+      { wrapper: createQueryClientWrapper() },
+    );
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    await waitFor(() => {
+      expect(result.current.isInitializing).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.adapter.sendMessage("Create a journal entry");
+    });
+
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queryKey: entriesQueries.all().queryKey,
+        }),
+      );
+    });
   });
 
   it("populates the conversation list cache when starting a new conversation", async () => {

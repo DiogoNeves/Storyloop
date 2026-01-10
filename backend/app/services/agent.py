@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Awaitable, Callable
 
 import anyio
@@ -19,9 +20,10 @@ from app.services.agent_tools import (
     EmptyEntryRepository,
     EmptyJournalRepository,
     EmptyYouTubeRepository,
-    EntryDetails,
     EntryRepository,
     JournalEntry,
+    JournalEntryDetails,
+    JournalEntryInput,
     JournalRepository,
     VideoCountResult,
     VideoDetails,
@@ -122,6 +124,9 @@ When responding, you must:
 3) Deliver grounded, concise guidance with clear next steps, keeping a supportive and action-focused tone.
 4) Note that future versions will store tone and preferences in persistent user memory; today you infer from provided context.
 5) Be explicit about any gaps in knowledge or access—say what you don't know instead of guessing.
+6) Use ``read_journal_entry`` before ``edit_journal_entry`` and pass along the returned ``content_hash``. Tool calls can appear mid-response and will render inline.
+7) When creating or editing a journal entry, never ask for confirmation or a title. Generate a strong title and write the full Markdown document inside the tool arguments (do not write the journal content outside the tool call or use placeholders). After the tool call, suggest improvements or clarifications the user can follow up on.
+8) When creating a journal entry, include a link to `/journals/{entry_id}` after creation.
 
 Most Storyloop users are early-stage creators, so explain metrics simply and briefly, focusing on why they matter.
 If the user demonstrates deeper knowledge, match their level and keep explanations tight.
@@ -186,19 +191,81 @@ Your mission: help creators grow their channels and unlock creativity without ge
         )
 
     @assistant_agent.tool
-    async def get_entry_details(
+    async def read_journal_entry(
         ctx: RunContext[LoopieDeps], entry_id: str
-    ) -> EntryDetails:
-        """Load details for a specific Storyloop entry.
+    ) -> JournalEntryDetails:
+        """Load a journal entry for editing or quoting.
 
-        Use this when the user references a journal entry or content item by ID
-        and you need its title, summary, or category.
+        This tool returns a short ``content_hash``. Pass that hash into
+        ``edit_journal_entry`` to guarantee you are editing the latest content.
         """
 
         if ctx.deps.tool_call_notifier:
-            await ctx.deps.tool_call_notifier("🧾 entry details")
+            await ctx.deps.tool_call_notifier("🧾 journal entry details")
 
-        return await ctx.deps.entry_repo.get_entry(entry_id)
+        return await ctx.deps.journal_repo.get_entry(entry_id)
+
+    @assistant_agent.tool
+    async def edit_journal_entry(
+        ctx: RunContext[LoopieDeps],
+        entry_id: str,
+        content_hash: str,
+        title: str,
+        content_markdown: str,
+    ) -> JournalEntryDetails:
+        """Edit a journal entry after reading it.
+
+        ``content_hash`` must come from the most recent ``read_journal_entry``.
+        If the hash mismatches, you must read the entry again before editing.
+
+        Put the full Markdown document in ``content_markdown``. Do not write the
+        entry content outside the tool call or use placeholders. Do not ask for
+        confirmation; make the best-guess edit and then suggest improvements or
+        clarifications in the follow-up response.
+        """
+
+        if ctx.deps.tool_call_notifier:
+            await ctx.deps.tool_call_notifier("✏️ updating a journal entry")
+
+        payload = JournalEntryInput(title=title, content_markdown=content_markdown)
+        return await ctx.deps.journal_repo.update_entry(
+            entry_id, payload, content_hash
+        )
+
+    @assistant_agent.tool
+    async def create_journal_entry(
+        ctx: RunContext[LoopieDeps],
+        title: str,
+        content_markdown: str,
+        occurred_at_iso: str | None = None,
+    ) -> JournalEntryDetails:
+        """Create a new journal entry.
+
+        Generate a strong title and put the full Markdown document in
+        ``content_markdown``. Do not write the entry content outside the tool call
+        or use placeholders. Do not ask for confirmation; make the best-guess
+        entry and then suggest improvements or clarifications in the follow-up.
+        After creating the entry, return a link to `/journals/{entry_id}`.
+
+        Example tool call:
+        create_journal_entry(
+            title="Channel Performance Snapshot — Oct 2024",
+            content_markdown="## Overview\n- Views: 120k\n\n| Metric | Value |\n| --- | --- |\n| Views | 120k |\n| Subs | +320 |",
+        )
+        """
+
+        if ctx.deps.tool_call_notifier:
+            await ctx.deps.tool_call_notifier("📝 creating a journal entry")
+
+        occurred_at = None
+        if occurred_at_iso:
+            normalized_iso = occurred_at_iso
+            if normalized_iso.endswith("Z"):
+                normalized_iso = f"{normalized_iso[:-1]}+00:00"
+            occurred_at = datetime.fromisoformat(normalized_iso)
+
+        payload = JournalEntryInput(title=title, content_markdown=content_markdown)
+        return await ctx.deps.journal_repo.create_entry(payload, occurred_at)
 
     @assistant_agent.tool
     async def list_recent_videos(
