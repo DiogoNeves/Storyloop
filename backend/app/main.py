@@ -28,12 +28,13 @@ from app.services.youtube_analytics import YoutubeAnalyticsService
 logger = logging.getLogger(__name__)
 
 
+DemoYoutubeService: Callable[..., YoutubeService] | None
 try:  # pragma: no cover - optional dependency until demo mode ships
-    from app.services.youtube_demo import DemoYoutubeService
+    from app.services.youtube_demo import DemoYoutubeService as DemoYoutubeService
 except (
     ImportError
 ):  # pragma: no cover - fallback when demo service not yet available
-    DemoYoutubeService = None  # type: ignore[assignment]
+    DemoYoutubeService = None
 
 
 def configure_logfire(active_settings: Settings) -> None:
@@ -68,7 +69,8 @@ def build_lifespan(
         init_conversation_tables(connection)
 
     youtube_service: YoutubeService | None = None
-    demo_youtube_service = None
+    demo_youtube_service: YoutubeService | None = None
+    resolved_youtube_service: YoutubeService
     if active_settings.youtube_demo_mode:
         if DemoYoutubeService is None:
             raise RuntimeError(

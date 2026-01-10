@@ -58,7 +58,6 @@ def test_save_entries_returns_only_new_records(
             "summary": "Compared hook experiments.",
             "date": (now + timedelta(hours=2)).isoformat(),
             "category": "journal",
-            "videoId": None,
         }
     )
 

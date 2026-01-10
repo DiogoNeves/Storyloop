@@ -9,7 +9,9 @@ from app.main import create_app
 
 
 def test_create_app_requires_youtube_api_key_when_demo_disabled() -> None:
-    settings = Settings(database_url="sqlite:///:memory:", youtube_demo_mode=False)
+    settings = Settings.model_validate(
+        {"DATABASE_URL": "sqlite:///:memory:", "YOUTUBE_DEMO_MODE": False}
+    )
 
     with pytest.raises(RuntimeError, match="YouTube API key is required"):
         create_app(settings)
