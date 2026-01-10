@@ -16,18 +16,15 @@ class FakeCredentials(Credentials):
     def __init__(self, *, expired: bool = False) -> None:
         # Initialize with minimal required parameters
         super().__init__(token="fake-token")
-        self._expired = expired
+        now = datetime.now(tz=UTC)
+        self.expiry = now - timedelta(hours=1) if expired else now + timedelta(hours=1)
         self._refresh_token = "refresh-token"
-
-    @property
-    def expired(self) -> bool:
-        return self._expired
 
     @property
     def refresh_token(self) -> str:
         return self._refresh_token
 
-    def to_json(self) -> str:  # pragma: no cover - simple passthrough
+    def to_json(self, strip: Any = None) -> Any:  # pragma: no cover - simple passthrough
         return '{"token": "abc"}'
 
 
@@ -71,7 +68,7 @@ class FakeOAuthService:
         return self._credentials
 
     def refresh_credentials(self, credentials: FakeCredentials) -> None:
-        credentials._expired = False
+        credentials.expiry = datetime.now(tz=UTC) + timedelta(hours=1)
         self.refreshed = True
 
 
@@ -112,13 +109,15 @@ class FakeYoutubeService:
 
 
 def create_test_app() -> tuple[Any, FakeOAuthService, FakeYoutubeService]:
-    settings = Settings(
-        DATABASE_URL="sqlite:///:memory:",
-        YOUTUBE_API_KEY="test-key",
-        YOUTUBE_OAUTH_CLIENT_ID="client-id",
-        YOUTUBE_OAUTH_CLIENT_SECRET="client-secret",
-        YOUTUBE_REDIRECT_URI="http://localhost:8000/youtube/auth/callback",
-        CORS_ORIGINS="http://frontend.test",
+    settings = Settings.model_validate(
+        {
+            "DATABASE_URL": "sqlite:///:memory:",
+            "YOUTUBE_API_KEY": "test-key",
+            "YOUTUBE_OAUTH_CLIENT_ID": "client-id",
+            "YOUTUBE_OAUTH_CLIENT_SECRET": "client-secret",
+            "YOUTUBE_REDIRECT_URI": "http://localhost:8000/youtube/auth/callback",
+            "CORS_ORIGINS": ["http://frontend.test"],
+        }
     )
     app = create_app(settings)
     fake_oauth = FakeOAuthService()
@@ -172,7 +171,8 @@ async def test_start_returns_authorization_url_and_persists_state() -> None:
     assert response.status_code == 200
     payload = response.json()
     assert "authorizationUrl" in payload
-    assert payload["state"] == fake_oauth.latest_flow._state  # type: ignore[attr-defined]
+    assert fake_oauth.latest_flow is not None
+    assert payload["state"] == fake_oauth.latest_flow._state
     assert record is not None
     assert record.oauth_state == payload["state"]
 

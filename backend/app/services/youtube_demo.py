@@ -335,9 +335,7 @@ class DemoYoutubeService(YoutubeService):
         super().__init__(
             api_key=api_key or "demo", transport=transport, client=client
         )
-        selected_scenario = scenario or os.getenv(
-            "YOUTUBE_DEMO_SCENARIO", "baseline"
-        )
+        selected_scenario = scenario or os.getenv("YOUTUBE_DEMO_SCENARIO") or "baseline"
         try:
             self._fixture_loader = FixtureLoader(selected_scenario)
         except (

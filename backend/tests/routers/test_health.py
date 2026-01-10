@@ -7,8 +7,8 @@ from app.main import create_app
 
 @pytest.mark.asyncio
 async def test_health_endpoint_returns_ready_status() -> None:
-    settings = Settings(
-        database_url="sqlite:///:memory:", youtube_api_key="test-key"
+    settings = Settings.model_validate(
+        {"DATABASE_URL": "sqlite:///:memory:", "YOUTUBE_API_KEY": "test-key"}
     )
     app = create_app(settings)
     transport = ASGITransport(app=app)
