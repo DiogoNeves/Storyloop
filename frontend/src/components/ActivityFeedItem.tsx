@@ -3,7 +3,10 @@ import { Link } from "react-router-dom";
 import { Bot } from "lucide-react";
 
 import { type ActivityItem } from "@/lib/types/entries";
-import { getActivityDetailPath } from "@/lib/activity-helpers";
+import {
+  getActivityCategoryLabel,
+  getActivityDetailPath,
+} from "@/lib/activity-helpers";
 import { useSync } from "@/hooks/useSync";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -62,6 +65,7 @@ export function ActivityFeedItem({
   const showThumbnail =
     item.category === "content" && Boolean(item.thumbnailUrl);
   const detailPath = getActivityDetailPath(item);
+  const categoryLabel = getActivityCategoryLabel(item.category);
 
   const handleDetailClick = () => {
     if (item.category === "conversation" && onConversationClick) {
@@ -91,7 +95,7 @@ export function ActivityFeedItem({
                   <span className="sr-only">Conversation</span>
                 </>
               ) : (
-                item.category
+                categoryLabel
               )}
             </Badge>
             {item.videoType ? (

@@ -7,6 +7,7 @@ import { entriesQueries, type Entry } from "@/api/entries";
 import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
 import { useEntryEditing } from "@/hooks/useEntryEditing";
 import { entryToActivityItem } from "@/lib/types/entries";
+import { useAgentConversationContext } from "@/context/AgentConversationContext";
 import { NavBar } from "@/components/NavBar";
 import { VideoLinkCard } from "@/components/VideoLinkCard";
 import { ActivityDraftCard } from "@/components/ActivityDraftCard";
@@ -23,6 +24,7 @@ export function JournalDetailPage() {
   const { journalId } = useParams<{ journalId: string }>();
   const navigate = useNavigate();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const { setFocus } = useAgentConversationContext();
 
   const entryQuery = useQuery({
     ...(journalId
@@ -32,6 +34,34 @@ export function JournalDetailPage() {
   });
 
   const currentEntry: Entry | null = entryQuery.data ?? null;
+
+  useEffect(() => {
+    if (!journalId) {
+      setFocus(null);
+      return;
+    }
+    if (typeof window === "undefined") {
+      return;
+    }
+    if (typeof window.matchMedia !== "function") {
+      setFocus(null);
+      return;
+    }
+    const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
+    if (!isDesktop) {
+      setFocus(null);
+      return;
+    }
+    setFocus({
+      category: currentEntry?.category ?? "journal",
+      id: currentEntry?.id ?? journalId,
+      title: currentEntry?.title ?? null,
+      route: `/journals/${journalId}`,
+    });
+    return () => {
+      setFocus(null);
+    };
+  }, [currentEntry?.category, currentEntry?.id, currentEntry?.title, journalId, setFocus]);
 
   // Set up editing state
   const editingState = useEntryEditing();
