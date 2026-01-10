@@ -131,7 +131,27 @@ ActivityFeed Re-renders
 
 - Journal summaries are markdown strings that can include `/assets/{id}` links for attachments.
 
-### 3. Asset Upload Flow (Journal + Loopie)
+### 3. Offline Entry Creation Flow (PWA)
+
+```
+User submits journal entry
+    │
+    ├─► navigator.onLine?
+    │   ├─► Yes: POST /entries (normal flow)
+    │   └─► No: queue entry in IndexedDB via SyncStore
+    │           ├─► mark entry as pending in UI
+    │           ├─► SyncContext updates pendingCount
+    │           └─► SyncService retries on online/focus/visibility
+    │
+    └─► On sync success: remove from queue + invalidate entries query
+```
+
+**Notes:**
+
+- iOS Safari lacks Background Sync; syncing relies on online/focus/visibility events.
+- Cached entries from last session are served while offline (service worker SWR).
+
+### 4. Asset Upload Flow (Journal + Loopie)
 
 ```
 User adds image/PDF
@@ -151,9 +171,10 @@ api/assets.ts
 Backend Router (routers/assets.py)
     │
     │ AssetService.create_asset()
-    │ - Resize images
+    │ - Resize images (max 2000px edge)
     │ - Extract PDF text
-    │ - Save file to disk
+    │ - Hash bytes (post-resize) for dedupe
+    │ - Save file to disk under db_dir/assets/{hash}
     │ - Store metadata in SQLite
     │
     ▼
