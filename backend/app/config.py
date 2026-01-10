@@ -112,7 +112,7 @@ class Settings(BaseModel):
     def effective_database_url(self) -> str:
         """Return the database URL to use, switching to demo DB when demo mode is enabled."""
         if self.youtube_demo_mode:
-            return self.demo_database_url
+            return self.demo_database_url or self.database_url
         return self.database_url
 
     @classmethod

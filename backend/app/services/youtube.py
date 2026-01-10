@@ -1352,6 +1352,8 @@ class YoutubeService:
         """
         if self._can_use_authenticated(user_service, oauth_service):
             try:
+                assert user_service is not None
+                assert oauth_service is not None
                 return await anyio.to_thread.run_sync(
                     self._fetch_channel_statistics_authenticated,
                     channel_id,

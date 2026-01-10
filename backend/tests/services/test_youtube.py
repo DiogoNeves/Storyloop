@@ -1,7 +1,8 @@
 import httpx
 import pytest
+from typing import cast
 
-from app.services.users import UserRecord
+from app.services.users import UserRecord, UserService
 from app.services.youtube import (
     YoutubeFeed,
     YoutubeAPIRequestError,
@@ -9,6 +10,7 @@ from app.services.youtube import (
     YoutubeConfigurationError,
     YoutubeService,
 )
+from app.services.youtube_oauth import YoutubeOAuthService
 
 
 @pytest.mark.asyncio
@@ -244,14 +246,16 @@ async def test_fetch_channel_feed_uses_authenticated_when_credentials_exist():
     class RecordingYoutubeService(YoutubeService):
         def __init__(self, *args, **kwargs) -> None:
             super().__init__(*args, **kwargs)
-            self.calls: list[tuple[object, object, str, int, str | None]] = []
+            self.calls: list[
+                tuple[UserService, YoutubeOAuthService, str | None, int, str | None]
+            ] = []
 
         async def fetch_authenticated_channel_videos(
             self,
-            user_service: object,
-            oauth_service: object,
+            user_service: UserService,
+            oauth_service: YoutubeOAuthService,
+            channel_id: str | None = None,
             *,
-            channel_id: str,
             max_results: int = 50,
             video_type: str | None = None,
         ) -> YoutubeFeed:
@@ -261,8 +265,8 @@ async def test_fetch_channel_feed_uses_authenticated_when_credentials_exist():
             return sentinel_feed
 
     service = RecordingYoutubeService(api_key="test-key")
-    user_service = DummyUserService()
-    oauth_service = DummyOAuthService()
+    user_service = cast(UserService, DummyUserService())
+    oauth_service = cast(YoutubeOAuthService, DummyOAuthService())
 
     feed = await service.fetch_channel_feed(
         "@storyloop",
@@ -319,10 +323,10 @@ async def test_fetch_channel_feed_falls_back_when_authentication_fails():
 
         async def fetch_authenticated_channel_videos(
             self,
-            user_service: object,
-            oauth_service: object,
+            user_service: UserService,
+            oauth_service: YoutubeOAuthService,
+            channel_id: str | None = None,
             *,
-            channel_id: str,
             max_results: int = 50,
             video_type: str | None = None,
         ) -> YoutubeFeed:
@@ -330,15 +334,19 @@ async def test_fetch_channel_feed_falls_back_when_authentication_fails():
             raise YoutubeConfigurationError("bad credentials")
 
         async def fetch_channel_videos(
-            self, channel: str, *, max_results: int = 50, video_type: str | None = None
+            self,
+            identifier: str,
+            *,
+            max_results: int = 50,
+            video_type: str | None = None,
         ) -> YoutubeFeed:
             self.fallback_calls += 1
-            self.fallback_args = (channel, max_results, video_type)
+            self.fallback_args = (identifier, max_results, video_type)
             return fallback_feed
 
     service = FallbackYoutubeService(api_key="test-key")
-    user_service = DummyUserService()
-    oauth_service = DummyOAuthService()
+    user_service = cast(UserService, DummyUserService())
+    oauth_service = cast(YoutubeOAuthService, DummyOAuthService())
 
     feed = await service.fetch_channel_feed(
         "@storyloop",
@@ -404,13 +412,15 @@ def test_build_authenticated_client_clears_credentials_on_refresh_failure():
             return "{}"
 
     service = YoutubeService(api_key="test-key")
-    user_service = DummyUserService()
-    oauth_service = DummyOAuthService()
+    dummy_user_service = DummyUserService()
+    dummy_oauth_service = DummyOAuthService()
+    user_service = cast(UserService, dummy_user_service)
+    oauth_service = cast(YoutubeOAuthService, dummy_oauth_service)
 
     with pytest.raises(YoutubeConfigurationError):
         service.build_authenticated_client(user_service, oauth_service)
 
-    assert user_service.upsert_calls == [(None, None, "invalid credentials")]
+    assert dummy_user_service.upsert_calls == [(None, None, "invalid credentials")]
 
 
 @pytest.mark.asyncio
