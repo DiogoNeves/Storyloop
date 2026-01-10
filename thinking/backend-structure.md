@@ -138,10 +138,13 @@ conn.close()
 
 **Features:**
 
-- Resizes images to a max edge length
+- Resizes images to a max edge length (2000px)
+- Hashes stored bytes (post-resize) to create SHA-256 IDs and dedupe uploads
 - Extracts text from PDFs for agent context
 - Stores files under `db_dir/assets/` derived from the database path
 - Provides metadata (`sizeBytes`, `width`, `height`) on demand
+- No reference counting or cleanup in v1
+- Demo mode blocks writes to disk
 
 #### Agent Service (`services/agent.py`)
 

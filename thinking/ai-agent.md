@@ -138,6 +138,12 @@ The agent references this capsule explicitly (“You’re looking at ‘Advanced
 - Responses are parsed JSON (text, suggested actions, follow-up queries, citations) for deterministic rendering.
 - Long threads are summarized to respect token limits while preserving key decisions.
 
+### Multimodal Attachments (Journal + Chat)
+
+- Images are loaded from disk and sent as base64 data URLs for private multimodal input.
+- PDFs contribute extracted text to avoid uploading full binary payloads.
+- Only the latest user turn’s attachments are sent to manage token/cost budgets.
+
 ## Forward-Looking Concepts
 
 The design leaves space for richer storytelling artifacts—pulse-style daily briefings, multi-channel comparisons, or voice-driven check-ins. These modules should feel like natural extensions of the core loop of question → insight → action, reusing the same context capsule and response contract.
