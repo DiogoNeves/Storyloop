@@ -3,6 +3,12 @@ import { createContext } from "react";
 import type { CreateEntryInput } from "@/api/entries";
 import type { PendingEntry, SyncResult } from "@/lib/sync";
 
+/**
+ * Shared offline-sync state for the UI.
+ *
+ * isOnline reflects browser connectivity plus a reachable backend.
+ * Offline sync is only enabled when IndexedDB is available.
+ */
 export interface SyncContextValue {
   /** Whether the app can reach the server (navigator.onLine AND server reachable) */
   isOnline: boolean;

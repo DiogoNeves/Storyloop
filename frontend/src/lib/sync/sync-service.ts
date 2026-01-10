@@ -29,6 +29,9 @@ export interface SyncServiceOptions {
  * - Sync pending entries when online
  * - Retry failed syncs (max 3 attempts)
  * - Invalidate TanStack Query cache on successful sync
+ *
+ * Sync triggers are event-based (online/focus/visibility) because iOS Safari
+ * does not support the Background Sync API.
  */
 export class SyncService {
   private store: SyncStore;

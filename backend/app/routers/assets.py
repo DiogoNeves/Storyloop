@@ -1,4 +1,8 @@
-"""Asset upload and retrieval endpoints."""
+"""Asset upload and retrieval endpoints.
+
+Accepts images and PDFs, supports optional client-provided SHA-256 IDs for dedupe,
+returns derived metadata, and streams stored bytes from disk.
+"""
 
 from __future__ import annotations
 

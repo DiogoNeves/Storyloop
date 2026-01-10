@@ -88,7 +88,7 @@ Storyloop is a creator analytics journal that combines a FastAPI backend with a 
 
 - `YoutubeService` - Handles YouTube API integration
 - `EntryService` - Persists journal and content entries for the activity feed and agent tools
-- `AssetService` - Stores uploads on disk, keeps metadata in SQLite, and extracts PDF text for agent context
+- `AssetService` - Stores uploads on disk using SHA-256 IDs, keeps metadata in SQLite, resizes images (max 2000px edge), and extracts PDF text for agent context
 - `build_agent()` - Creates and configures PydanticAI agent for conversational interactions
 - Database abstraction through `SqliteConnectionFactory`
 
@@ -96,6 +96,7 @@ Storyloop is a creator analytics journal that combines a FastAPI backend with a 
 
 - API layer (`src/api/`) - Centralized HTTP client and query definitions
 - Asset uploads (`src/api/assets.ts`, `src/hooks/useAssetUpload.ts`) - Handles image/PDF uploads and inserts markdown or attachments
+- Offline entry sync (`src/context/SyncContext`, `src/lib/sync`) - Queues journal entries in IndexedDB and syncs on reconnect
 - Components (`src/components/`) - Reusable UI components
 - Pages (`src/App.tsx`) - Main application view
 - Markdown rendering (`src/components/chat/MarkdownMessage.tsx`) - Rewrites `/assets/` URLs to `API_BASE_URL` and renders asset previews

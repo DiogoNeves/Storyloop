@@ -12,6 +12,7 @@ This document explains how the current v1 implementation (`pydantic-agent` branc
 - ✅ Optional initialization (graceful degradation without API key)
 - ✅ Proper async/await patterns with non-blocking database operations
 - ✅ Resource management (connections properly closed)
+- ✅ Multimodal attachments support (latest user turn only, images as data URLs, PDFs as extracted text)
 - ✅ Comprehensive test suite (9 tests, all passing)
 
 **API Endpoints:**

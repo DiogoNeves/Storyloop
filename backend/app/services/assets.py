@@ -47,7 +47,12 @@ class AssetMeta:
 
 
 class AssetService(DatabaseService):
-    """Manage asset persistence on disk and metadata in SQLite."""
+    """Manage asset persistence on disk and metadata in SQLite.
+
+    Stores files under `db_dir/assets/` using SHA-256 IDs derived from the stored bytes.
+    Images are resized before hashing to keep storage bounded; PDFs keep original bytes
+    but provide extracted text for agent context. Demo mode blocks file writes.
+    """
 
     def __init__(
         self,
