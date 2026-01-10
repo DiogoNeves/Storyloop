@@ -18,7 +18,7 @@ class JournalEntryDetails(BaseModel):
 
     id: str
     title: str
-    summary: str
+    content_markdown: str
     occurred_at: str
     content_hash: str
 
@@ -27,7 +27,7 @@ class JournalEntryInput(BaseModel):
     """Validated journal entry text for create/edit tools."""
 
     title: str
-    summary: str
+    content_markdown: str
 
     @field_validator("title", mode="after")
     @classmethod
@@ -37,9 +37,9 @@ class JournalEntryInput(BaseModel):
             raise ValueError("must not be empty or whitespace")
         return stripped
 
-    @field_validator("summary", mode="after")
+    @field_validator("content_markdown", mode="after")
     @classmethod
-    def _strip_summary(cls, value: str) -> str:
+    def _strip_content(cls, value: str) -> str:
         return value.strip()
 
 

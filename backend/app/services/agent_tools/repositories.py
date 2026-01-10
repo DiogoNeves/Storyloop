@@ -31,14 +31,14 @@ def _normalize_title(title: str) -> str:
     return title.strip()
 
 
-def _normalize_summary(summary: str) -> str:
-    return summary.strip()
+def _normalize_content(content_markdown: str) -> str:
+    return content_markdown.strip()
 
 
-def _calculate_content_hash(title: str, summary: str) -> str:
+def _calculate_content_hash(title: str, content_markdown: str) -> str:
     normalized_title = _normalize_title(title)
-    normalized_summary = _normalize_summary(summary)
-    payload = f"{normalized_title}\n{normalized_summary}".encode("utf-8")
+    normalized_content = _normalize_content(content_markdown)
+    payload = f"{normalized_title}\n{normalized_content}".encode("utf-8")
     return blake2s(payload).hexdigest()[:12]
 
 
@@ -46,7 +46,7 @@ def _to_journal_details(record: EntryRecord) -> JournalEntryDetails:
     return JournalEntryDetails(
         id=record.id,
         title=record.title,
-        summary=record.summary,
+        content_markdown=record.summary,
         occurred_at=record.occurred_at.isoformat(),
         content_hash=_calculate_content_hash(record.title, record.summary),
     )
@@ -144,7 +144,7 @@ class JournalRepository:
             updated_record = EntryRecord(
                 id=record.id,
                 title=payload.title,
-                summary=payload.summary,
+                summary=payload.content_markdown,
                 occurred_at=record.occurred_at,
                 category=record.category,
                 link_url=record.link_url,
@@ -169,7 +169,7 @@ class JournalRepository:
             entry = EntryRecord(
                 id=str(uuid4()),
                 title=payload.title,
-                summary=payload.summary,
+                summary=payload.content_markdown,
                 occurred_at=occurred_at or datetime.now(tz=UTC),
                 category="journal",
             )

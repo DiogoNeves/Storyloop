@@ -25,12 +25,12 @@ Enable Loopie to create and edit journal entries via tools, with strict read-bef
 **Outputs**
 - `id: str`
 - `title: str`
-- `summary: str`
+- `content_markdown: str`
 - `occurred_at: str` (ISO)
 - `content_hash: str` (blake2s, truncated to 12 hex chars)
 
 **Notes**
-- Hash is computed over `title + "\n" + summary` after trimming (same normalization as validation).
+- Hash is computed over `title + "\n" + content_markdown` after trimming (same normalization as validation).
 - The hash is a short-lived concurrency token, not a security feature.
 
 ### `edit_journal_entry`
@@ -40,10 +40,10 @@ Enable Loopie to create and edit journal entries via tools, with strict read-bef
 - `entry_id: str`
 - `content_hash: str` (must match current entry content)
 - `title: str`
-- `summary: str`
+- `content_markdown: str`
 
 **Behavior**
-- Validate `title` and `summary` via Pydantic (same rules as existing entry update).
+- Validate `title` and `content_markdown` via Pydantic (same rules as existing entry update).
 - If the hash mismatches, return a clear error: "Entry changed since last read. Please read again before editing."
 - On success, return updated entry (same shape as `read_journal_entry`, with a new `content_hash`).
 
@@ -52,17 +52,17 @@ Enable Loopie to create and edit journal entries via tools, with strict read-bef
 
 **Inputs**
 - `title: str`
-- `summary: str`
+- `content_markdown: str`
 - `occurred_at: str` (ISO; optional — default to now)
 
 **Behavior**
-- Validate `title` and `summary` via Pydantic.
+- Validate `title` and `content_markdown` via Pydantic.
 - Create a new entry record and return the entry with `content_hash`.
 
 ## Hashing Details
 - Algorithm: `blake2s`
 - Output: first 12 hex characters
-- Input string: `normalized_title + "\n" + normalized_summary`
+- Input string: `normalized_title + "\n" + normalized_content`
 - Normalization: identical to Pydantic validators (trim whitespace, reject empty title).
 
 ## Streaming + UX Requirements
