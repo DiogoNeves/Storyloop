@@ -9,6 +9,7 @@ import {
   type Conversation,
   type ConversationTurn,
 } from "@/api/conversations";
+import { entriesQueries } from "@/api/entries";
 import { isNotFoundError } from "@/api/client";
 import type {
   AgentConversationAdapter,
@@ -403,6 +404,14 @@ export function useAgentConversation({
           content: message,
           createdAt: new Date().toISOString(),
         };
+        const normalizedMessage = message.toLowerCase();
+        if (
+          normalizedMessage.includes("journal entry") &&
+          (normalizedMessage.includes("updating") ||
+            normalizedMessage.includes("creating"))
+        ) {
+          shouldInvalidateEntries = true;
+        }
         const nextMessageId = crypto.randomUUID();
         const nextCreatedAt = new Date().toISOString();
         const currentMessageId = streamingMessageId;
@@ -483,6 +492,7 @@ export function useAgentConversation({
       let segmentText = "";
       let hasStreamedToken = false;
       let hasToolSplit = false;
+      let shouldInvalidateEntries = false;
 
       try {
         await streamConversationTurn({
@@ -549,6 +559,13 @@ export function useAgentConversation({
                 },
                 { incrementTurnCount: false },
               );
+
+              if (shouldInvalidateEntries) {
+                const entriesListQuery = entriesQueries.all();
+                void queryClient.invalidateQueries({
+                  queryKey: entriesListQuery.queryKey,
+                });
+              }
 
               void queryClient.invalidateQueries({
                 queryKey: conversationListQuery.queryKey,
