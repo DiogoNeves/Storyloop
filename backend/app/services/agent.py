@@ -125,7 +125,8 @@ When responding, you must:
 4) Note that future versions will store tone and preferences in persistent user memory; today you infer from provided context.
 5) Be explicit about any gaps in knowledge or access—say what you don't know instead of guessing.
 6) Use ``read_journal_entry`` before ``edit_journal_entry`` and pass along the returned ``content_hash``. Tool calls can appear mid-response and will render inline.
-7) When the user wants to create a journal entry, be proactive and create it without asking for confirmation because entries can be edited. Write full Markdown documents for new entries and include a link to `/journals/{entry_id}` after creation.
+7) When creating or editing a journal entry, never ask for confirmation or a title. Generate a strong title and write the full Markdown document inside the tool arguments (do not write the journal content outside the tool call or use placeholders). After the tool call, suggest improvements or clarifications the user can follow up on.
+8) When creating a journal entry, include a link to `/journals/{entry_id}` after creation.
 
 Most Storyloop users are early-stage creators, so explain metrics simply and briefly, focusing on why they matter.
 If the user demonstrates deeper knowledge, match their level and keep explanations tight.
@@ -210,23 +211,23 @@ Your mission: help creators grow their channels and unlock creativity without ge
         entry_id: str,
         content_hash: str,
         title: str,
-        summary: str,
+        content_markdown: str,
     ) -> JournalEntryDetails:
         """Edit a journal entry after reading it.
 
         ``content_hash`` must come from the most recent ``read_journal_entry``.
         If the hash mismatches, you must read the entry again before editing.
 
-        Write the journal content in Markdown. Use tables if they clarify details.
-        Ask 1-2 concise disambiguation questions only if necessary. Otherwise,
-        apply the requested changes directly without asking for confirmation.
-        Journal entries can be edited, so be proactive when writing new content.
+        Put the full Markdown document in ``content_markdown``. Do not write the
+        entry content outside the tool call or use placeholders. Do not ask for
+        confirmation; make the best-guess edit and then suggest improvements or
+        clarifications in the follow-up response.
         """
 
         if ctx.deps.tool_call_notifier:
             await ctx.deps.tool_call_notifier("✏️ updating a journal entry")
 
-        payload = JournalEntryInput(title=title, summary=summary)
+        payload = JournalEntryInput(title=title, content_markdown=content_markdown)
         return await ctx.deps.journal_repo.update_entry(
             entry_id, payload, content_hash
         )
@@ -235,17 +236,22 @@ Your mission: help creators grow their channels and unlock creativity without ge
     async def create_journal_entry(
         ctx: RunContext[LoopieDeps],
         title: str,
-        summary: str,
+        content_markdown: str,
         occurred_at_iso: str | None = None,
     ) -> JournalEntryDetails:
         """Create a new journal entry.
 
-        Provide a title and summary; the title should be explicitly set by the model.
-        Write a full Markdown document for the entry and use tables when it helps.
-        Ask 1-2 concise disambiguation questions only when necessary. Otherwise,
-        create the entry directly without asking for confirmation. Journal entries
-        can be edited later, so be proactive when creating new content.
+        Generate a strong title and put the full Markdown document in
+        ``content_markdown``. Do not write the entry content outside the tool call
+        or use placeholders. Do not ask for confirmation; make the best-guess
+        entry and then suggest improvements or clarifications in the follow-up.
         After creating the entry, return a link to `/journals/{entry_id}`.
+
+        Example tool call:
+        create_journal_entry(
+            title="Channel Performance Snapshot — Oct 2024",
+            content_markdown="## Overview\n- Views: 120k\n\n| Metric | Value |\n| --- | --- |\n| Views | 120k |\n| Subs | +320 |",
+        )
         """
 
         if ctx.deps.tool_call_notifier:
@@ -255,7 +261,7 @@ Your mission: help creators grow their channels and unlock creativity without ge
         if occurred_at_iso:
             occurred_at = datetime.fromisoformat(occurred_at_iso)
 
-        payload = JournalEntryInput(title=title, summary=summary)
+        payload = JournalEntryInput(title=title, content_markdown=content_markdown)
         return await ctx.deps.journal_repo.create_entry(payload, occurred_at)
 
     @assistant_agent.tool

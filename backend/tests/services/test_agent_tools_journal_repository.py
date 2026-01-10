@@ -53,7 +53,10 @@ async def test_edit_journal_entry_requires_matching_hash(
     service.save_new_entries([record])
 
     repo = JournalRepository(service)
-    payload = JournalEntryInput(title="Updated", summary="Updated summary")
+    payload = JournalEntryInput(
+        title="Updated",
+        content_markdown="Updated summary",
+    )
 
     with pytest.raises(RuntimeError, match="must read again before editing"):
         await repo.update_entry("entry-2", payload, content_hash="deadbeef")
@@ -76,11 +79,14 @@ async def test_edit_journal_entry_updates_content_and_hash(
 
     repo = JournalRepository(service)
     current = await repo.get_entry("entry-3")
-    payload = JournalEntryInput(title="Updated", summary="Updated summary")
+    payload = JournalEntryInput(
+        title="Updated",
+        content_markdown="Updated summary",
+    )
     updated = await repo.update_entry("entry-3", payload, current.content_hash)
 
     assert updated.title == "Updated"
-    assert updated.summary == "Updated summary"
+    assert updated.content_markdown == "Updated summary"
     assert updated.content_hash != current.content_hash
 
 
@@ -92,8 +98,11 @@ async def test_create_journal_entry_strips_text(
     service.ensure_schema()
 
     repo = JournalRepository(service)
-    payload = JournalEntryInput(title="  New title  ", summary="  New summary  ")
+    payload = JournalEntryInput(
+        title="  New title  ",
+        content_markdown="  New summary  ",
+    )
     entry = await repo.create_entry(payload)
 
     assert entry.title == "New title"
-    assert entry.summary == "New summary"
+    assert entry.content_markdown == "New summary"
