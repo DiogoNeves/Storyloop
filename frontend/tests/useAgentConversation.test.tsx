@@ -107,6 +107,54 @@ describe("useAgentConversation", () => {
     );
   });
 
+  it("inserts tool calls inline while streaming", async () => {
+    mockListConversationTurns.mockResolvedValue([]);
+    mockStreamConversationTurn.mockImplementation(
+      ({ callbacks }: StreamTurnOptions) => {
+        callbacks?.onOpen?.();
+        callbacks?.onToken?.("Reading entry.");
+        callbacks?.onToolCall?.("🧾 journal entry details");
+        callbacks?.onToken?.("Update ready.");
+        callbacks?.onDone?.({
+          turnId: "assistant-2",
+          text: "Reading entry.Update ready.",
+        });
+        return Promise.resolve();
+      },
+    );
+
+    const { result } = renderHook(
+      () =>
+        useAgentConversation({
+          conversationId: "conversation-tools",
+          allowCreate: false,
+          persistConversationId: false,
+        }),
+      { wrapper: createQueryClientWrapper() },
+    );
+
+    await waitFor(() => {
+      expect(result.current.isInitializing).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.adapter.sendMessage("Check my journal");
+    });
+
+    await waitFor(() => {
+      expect(result.current.state.messages).toEqual([
+        expect.objectContaining({ role: "user", content: "Check my journal" }),
+        expect.objectContaining({ role: "assistant", content: "Reading entry." }),
+        expect.objectContaining({ role: "tool", content: "🧾 journal entry details" }),
+        expect.objectContaining({
+          id: "assistant-2",
+          role: "assistant",
+          content: "Update ready.",
+        }),
+      ]);
+    });
+  });
+
   it("populates the conversation list cache when starting a new conversation", async () => {
     mockListConversationTurns.mockResolvedValue([]);
     mockStreamConversationTurn.mockImplementation(

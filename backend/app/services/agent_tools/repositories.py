@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
+from hashlib import blake2s
 from typing import Any, Protocol, runtime_checkable
+from uuid import uuid4
 
 import anyio
 
 from app.services.assets import AssetService, extract_asset_ids
-from app.services.entries import EntryService
+from app.services.entries import EntryRecord, EntryService
 from app.services.users import UserService
 from app.services.youtube import YoutubeService
 from app.services.agent_tools.models import (
@@ -14,6 +16,8 @@ from app.services.agent_tools.models import (
     EntryDetails,
     JournalEntry,
     JournalEntryAttachment,
+    JournalEntryDetails,
+    JournalEntryInput,
     VideoCountResult,
     VideoAnalyticsMetrics,
     VideoDetails,
@@ -21,6 +25,31 @@ from app.services.agent_tools.models import (
 )
 from app.services.youtube_analytics import YoutubeAnalyticsService
 from app.services.youtube_oauth import YoutubeOAuthService
+
+
+def _normalize_title(title: str) -> str:
+    return title.strip()
+
+
+def _normalize_summary(summary: str) -> str:
+    return summary.strip()
+
+
+def _calculate_content_hash(title: str, summary: str) -> str:
+    normalized_title = _normalize_title(title)
+    normalized_summary = _normalize_summary(summary)
+    payload = f"{normalized_title}\n{normalized_summary}".encode("utf-8")
+    return blake2s(payload).hexdigest()[:12]
+
+
+def _to_journal_details(record: EntryRecord) -> JournalEntryDetails:
+    return JournalEntryDetails(
+        id=record.id,
+        title=record.title,
+        summary=record.summary,
+        occurred_at=record.occurred_at.isoformat(),
+        content_hash=_calculate_content_hash(record.title, record.summary),
+    )
 
 
 class JournalRepository:
@@ -80,6 +109,77 @@ class JournalRepository:
 
         return await anyio.to_thread.run_sync(_fetch)
 
+    async def get_entry(self, entry_id: str) -> JournalEntryDetails:
+        """Return a journal entry by identifier."""
+
+        def _fetch() -> JournalEntryDetails:
+            record = self._entry_service.get_entry(entry_id)
+            if record is None:
+                raise RuntimeError("Entry not found")
+            if record.category != "journal":
+                raise RuntimeError("Entry is not a journal entry")
+            return _to_journal_details(record)
+
+        return await anyio.to_thread.run_sync(_fetch)
+
+    async def update_entry(
+        self,
+        entry_id: str,
+        payload: JournalEntryInput,
+        content_hash: str,
+    ) -> JournalEntryDetails:
+        """Update a journal entry if the content hash matches."""
+
+        def _update() -> JournalEntryDetails:
+            record = self._entry_service.get_entry(entry_id)
+            if record is None:
+                raise RuntimeError("Entry not found")
+            if record.category != "journal":
+                raise RuntimeError("Entry is not a journal entry")
+            current_hash = _calculate_content_hash(record.title, record.summary)
+            if current_hash != content_hash:
+                raise RuntimeError(
+                    "Entry changed since last read; you must read again before editing."
+                )
+            updated_record = EntryRecord(
+                id=record.id,
+                title=payload.title,
+                summary=payload.summary,
+                occurred_at=record.occurred_at,
+                category=record.category,
+                link_url=record.link_url,
+                thumbnail_url=record.thumbnail_url,
+                video_id=record.video_id,
+            )
+            updated = self._entry_service.update_entry(updated_record)
+            if not updated:
+                raise RuntimeError("Entry not found")
+            return _to_journal_details(updated_record)
+
+        return await anyio.to_thread.run_sync(_update)
+
+    async def create_entry(
+        self,
+        payload: JournalEntryInput,
+        occurred_at: datetime | None = None,
+    ) -> JournalEntryDetails:
+        """Create and return a new journal entry."""
+
+        def _create() -> JournalEntryDetails:
+            entry = EntryRecord(
+                id=str(uuid4()),
+                title=payload.title,
+                summary=payload.summary,
+                occurred_at=occurred_at or datetime.now(tz=UTC),
+                category="journal",
+            )
+            saved = self._entry_service.save_new_entries([entry])
+            if not saved:
+                raise RuntimeError("Entry already exists")
+            return _to_journal_details(entry)
+
+        return await anyio.to_thread.run_sync(_create)
+
 
 @runtime_checkable
 class BaseJournalRepository(Protocol):
@@ -90,6 +190,24 @@ class BaseJournalRepository(Protocol):
     ) -> list[JournalEntry]:
         """Return journal entries ordered by recency."""
 
+    async def get_entry(self, entry_id: str) -> JournalEntryDetails:
+        """Return a journal entry by identifier."""
+
+    async def update_entry(
+        self,
+        entry_id: str,
+        payload: JournalEntryInput,
+        content_hash: str,
+    ) -> JournalEntryDetails:
+        """Update a journal entry if the content hash matches."""
+
+    async def create_entry(
+        self,
+        payload: JournalEntryInput,
+        occurred_at: datetime | None = None,
+    ) -> JournalEntryDetails:
+        """Create and return a new journal entry."""
+
 
 class EmptyJournalRepository:
     """Fallback repository returning no journal entries."""
@@ -98,6 +216,24 @@ class EmptyJournalRepository:
         self, *, user_id: str, limit: int, before: str | None
     ) -> list[JournalEntry]:
         return []
+
+    async def get_entry(self, entry_id: str) -> JournalEntryDetails:
+        raise RuntimeError("Entry service not configured")
+
+    async def update_entry(
+        self,
+        entry_id: str,
+        payload: JournalEntryInput,
+        content_hash: str,
+    ) -> JournalEntryDetails:
+        raise RuntimeError("Entry service not configured")
+
+    async def create_entry(
+        self,
+        payload: JournalEntryInput,
+        occurred_at: datetime | None = None,
+    ) -> JournalEntryDetails:
+        raise RuntimeError("Entry service not configured")
 
 
 class EntryRepository:

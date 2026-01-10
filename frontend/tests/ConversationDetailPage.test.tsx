@@ -25,8 +25,7 @@ const mockUseAgentConversationContext = vi.fn(() => ({
     conversationId: "",
     messages: [] as AgentMessage[],
     composer: { status: "idle", error: null },
-    toolSignals: [],
-  },
+      },
   adapter: {
     sendMessage: vi.fn(),
     resetConversation: vi.fn(),
@@ -96,8 +95,7 @@ describe("ConversationDetailPage", () => {
           },
         ],
         composer: { status: "idle", error: null },
-        toolSignals: [],
-      },
+              },
       adapter: {
         sendMessage: vi.fn(),
         resetConversation: vi.fn(),
@@ -130,8 +128,7 @@ describe("ConversationDetailPage", () => {
           },
         ],
         composer: { status: "idle", error: null },
-        toolSignals: [],
-      },
+              },
       adapter: {
         sendMessage: vi.fn(),
         resetConversation: vi.fn(),

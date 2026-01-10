@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class JournalEntry(BaseModel):
@@ -11,6 +11,36 @@ class JournalEntry(BaseModel):
     created_at: str
     text: str
     attachments: list["JournalEntryAttachment"] = Field(default_factory=list)
+
+
+class JournalEntryDetails(BaseModel):
+    """Full journal entry details for edit flows."""
+
+    id: str
+    title: str
+    summary: str
+    occurred_at: str
+    content_hash: str
+
+
+class JournalEntryInput(BaseModel):
+    """Validated journal entry text for create/edit tools."""
+
+    title: str
+    summary: str
+
+    @field_validator("title", mode="after")
+    @classmethod
+    def _strip_and_validate_title(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("must not be empty or whitespace")
+        return stripped
+
+    @field_validator("summary", mode="after")
+    @classmethod
+    def _strip_summary(cls, value: str) -> str:
+        return value.strip()
 
 
 class EntryDetails(BaseModel):
