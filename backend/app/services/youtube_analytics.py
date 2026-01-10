@@ -258,7 +258,9 @@ class YoutubeAnalyticsService:
                 # Update stored credentials
                 serialized = self._oauth_service.serialize_credentials(credentials)
                 await anyio.to_thread.run_sync(
-                    lambda: self._user_service.upsert_credentials(user.id, serialized)
+                    lambda: self._user_service.upsert_credentials(
+                        serialized, datetime.now(tz=UTC)
+                    )
                 )
             return credentials
         except Exception as e:

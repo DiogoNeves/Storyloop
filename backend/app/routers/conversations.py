@@ -193,7 +193,7 @@ def _build_turn_attachments(
                 id=record.id,
                 url=asset_service.resolve_url(record.id),
                 filename=record.original_filename,
-                mime_type=record.mime_type,
+                mimeType=record.mime_type,
                 width=meta.width if meta else None,
                 height=meta.height if meta else None,
             )

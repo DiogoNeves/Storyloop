@@ -290,7 +290,8 @@ def _sha256_hex(data: bytes) -> str:
 
 
 def _process_image(data: bytes) -> _ProcessedImage:
-    with Image.open(io.BytesIO(data)) as image:
+    with Image.open(io.BytesIO(data)) as opened_image:
+        image: Image.Image = opened_image
         original_format = image.format or "PNG"
         width, height = image.size
         if max(width, height) > MAX_IMAGE_EDGE_PX:
