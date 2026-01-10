@@ -41,6 +41,7 @@ export function AgentConversationProvider({
     healthQuery.data?.youtubeDemoMode === true || healthQuery.isError;
 
   const demo = useAgentDemo({ enabled: isDemoMode });
+  // Focus stays in-memory to ground the current turn only.
   const [focus, setFocus] = useState<AgentFocus | null>(null);
   const {
     state: conversationState,

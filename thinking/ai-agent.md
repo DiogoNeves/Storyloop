@@ -31,6 +31,7 @@ The Storyloop AI agent is a creative partner for YouTube storytellers. It combin
 ## Context Awareness
 
 When a creator asks a question, the agent receives structured context from the frontend so its replies feel specific.
+Optional focus metadata (category, id, title, route) tags the currently open item to ground replies without persisting the context.
 
 ```typescript
 {

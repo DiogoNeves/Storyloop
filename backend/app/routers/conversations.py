@@ -151,6 +151,7 @@ def render_history_prompt(
         history_block = "\n".join(history_lines)
 
     focus_block = ""
+    # Focus is ephemeral context for the current turn only.
     if focus is not None:
         focus_lines = [
             "## Current focus (optional)",
