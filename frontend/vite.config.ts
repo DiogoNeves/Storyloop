@@ -4,7 +4,7 @@ import { VitePWA } from "vite-plugin-pwa";
 import { resolve } from "path";
 
 // Backend port for dev proxy (configurable via VITE_BACKEND_PORT env var)
-const backendPort = process.env.VITE_BACKEND_PORT || "8001";
+const backendPort = process.env.VITE_BACKEND_PORT ?? "8001";
 
 // https://vite.dev/config/
 export default defineConfig({

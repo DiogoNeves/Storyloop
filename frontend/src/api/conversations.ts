@@ -2,7 +2,7 @@ import { createQueryKeys } from "@lukemorales/query-key-factory";
 
 
 import { API_BASE_URL, apiClient } from "@/api/client";
-import type { AgentMessageRole } from "@/lib/types/agent";
+import type { AgentFocus, AgentMessageRole } from "@/lib/types/agent";
 
 interface ConversationRecord {
   id: string;
@@ -123,6 +123,7 @@ export interface StreamTurnOptions {
   conversationId: string;
   text: string;
   attachments?: string[];
+  focus?: AgentFocus | null;
   signal?: AbortSignal;
   callbacks?: ConversationStreamCallbacks;
 }
@@ -235,7 +236,11 @@ export async function streamConversationTurn(
         Accept: "text/event-stream",
         "Cache-Control": "no-cache",
       },
-      body: JSON.stringify({ text, attachments: options.attachments ?? [] }),
+      body: JSON.stringify({
+        text,
+        attachments: options.attachments ?? [],
+        focus: options.focus ?? undefined,
+      }),
       signal,
       mode: "cors",
     },
