@@ -21,6 +21,21 @@ BACKEND_DIR = ROOT_DIR / "backend"
 FRONTEND_DIR = ROOT_DIR / "frontend"
 
 
+def load_env_file(path: Path) -> None:
+    if not path.exists():
+        return
+    for line in path.read_text().splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if "=" not in stripped:
+            continue
+        key, value = stripped.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip("\"")
+        os.environ.setdefault(key, value)
+
+
 async def run_process(command: Sequence[str], cwd: Path) -> int:
     process = await asyncio.create_subprocess_exec(
         *command,
@@ -47,6 +62,8 @@ async def main(prod: bool = False) -> int:
     if prod:
         # Set env file path for backend
         os.environ["DOTENV_PATH"] = ".env.prod"
+        # Load shared env so frontend build sees VITE_* values
+        load_env_file(ROOT_DIR / ".env.prod")
         # Build frontend with prod mode (uses .env.prod)
         build_result = build_frontend(prod=True)
         if build_result != 0:
