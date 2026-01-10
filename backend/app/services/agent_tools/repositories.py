@@ -11,6 +11,7 @@ from app.services.users import UserService
 from app.services.youtube import YoutubeService
 from app.services.agent_tools.models import (
     ChannelMetrics,
+    EntryDetails,
     JournalEntry,
     JournalEntryAttachment,
     VideoCountResult,
@@ -97,6 +98,48 @@ class EmptyJournalRepository:
         self, *, user_id: str, limit: int, before: str | None
     ) -> list[JournalEntry]:
         return []
+
+
+class EntryRepository:
+    """Readonly accessors for Storyloop entries by ID."""
+
+    def __init__(self, entry_service: EntryService) -> None:
+        self._entry_service = entry_service
+
+    async def get_entry(self, entry_id: str) -> EntryDetails:
+        """Return a single entry by identifier."""
+
+        def _fetch() -> EntryDetails:
+            record = self._entry_service.get_entry(entry_id)
+            if record is None:
+                raise RuntimeError("Entry not found")
+            return EntryDetails(
+                id=record.id,
+                title=record.title,
+                summary=record.summary,
+                occurred_at=record.occurred_at.isoformat(),
+                category=record.category,
+                link_url=record.link_url,
+                thumbnail_url=record.thumbnail_url,
+                video_id=record.video_id,
+            )
+
+        return await anyio.to_thread.run_sync(_fetch)
+
+
+@runtime_checkable
+class BaseEntryRepository(Protocol):
+    """Interface for entry repositories consumed by the agent."""
+
+    async def get_entry(self, entry_id: str) -> EntryDetails:
+        """Return a single entry by identifier."""
+
+
+class EmptyEntryRepository:
+    """Fallback repository returning no entry data."""
+
+    async def get_entry(self, entry_id: str) -> EntryDetails:
+        raise RuntimeError("Entry service not configured")
 
 
 def _collect_attachments(

@@ -1,5 +1,9 @@
 from app.services.agent import LoopieDeps
-from app.services.agent_tools.repositories import JournalRepository, YouTubeRepository
+from app.services.agent_tools.repositories import (
+    EntryRepository,
+    JournalRepository,
+    YouTubeRepository,
+)
 
 
 class _EntryService:
@@ -27,6 +31,7 @@ class _OAuthService:
 def test_loopie_deps_accepts_repository_instances():
     deps = LoopieDeps(
         user_id="user-123",
+        entry_repo=EntryRepository(_EntryService()),
         journal_repo=JournalRepository(_EntryService()),
         youtube_repo=YouTubeRepository(
             _YoutubeService(),

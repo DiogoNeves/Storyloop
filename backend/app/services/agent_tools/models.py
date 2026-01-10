@@ -13,6 +13,19 @@ class JournalEntry(BaseModel):
     attachments: list["JournalEntryAttachment"] = Field(default_factory=list)
 
 
+class EntryDetails(BaseModel):
+    """Entry details for a specific Storyloop item."""
+
+    id: str
+    title: str
+    summary: str
+    occurred_at: str
+    category: str
+    link_url: str | None = None
+    thumbnail_url: str | None = None
+    video_id: str | None = None
+
+
 class JournalEntryAttachment(BaseModel):
     """Attachment metadata for journal entries."""
 

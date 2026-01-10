@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   fetchVideoDetail,
@@ -11,6 +11,7 @@ import { SettingsDialog } from "@/components/SettingsDialog";
 import { VideoStatCards } from "@/components/VideoStatCards";
 import { TwoColumnDetailLayout } from "@/components/TwoColumnDetailLayout";
 import { StickyHeaderScrollableCard } from "@/components/StickyHeaderScrollableCard";
+import { useAgentConversationContext } from "@/context/AgentConversationContext";
 
 export function VideoDetailPage() {
   const { videoId } = useParams<{ videoId: string }>();
@@ -19,6 +20,7 @@ export function VideoDetailPage() {
     start: number | null;
     nonce: number;
   }>({ start: null, nonce: 0 });
+  const { setFocus } = useAgentConversationContext();
 
   const videoDetailQueryKey = [
     "youtube",
@@ -45,6 +47,35 @@ export function VideoDetailPage() {
   });
 
   const video = videoDetailQuery.data;
+
+  useEffect(() => {
+    if (!videoId) {
+      setFocus(null);
+      return;
+    }
+    if (typeof window === "undefined") {
+      return;
+    }
+    if (typeof window.matchMedia !== "function") {
+      setFocus(null);
+      return;
+    }
+    const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
+    if (!isDesktop) {
+      setFocus(null);
+      return;
+    }
+    setFocus({
+      category: "content",
+      id: videoId,
+      title: video?.title ? String(video.title) : null,
+      route: `/videos/${videoId}`,
+    });
+    return () => {
+      setFocus(null);
+    };
+  }, [setFocus, video?.title, videoId]);
+
   const publishedDate = video?.publishedAt
     ? new Date(String(video.publishedAt)).toLocaleString(undefined, {
         dateStyle: "long",
@@ -258,9 +289,11 @@ function parseDescriptionLines(descriptionText: string): DescriptionLine[] {
     return [];
   }
 
+  const chapterPattern = /^((?:\d{1,2}:)?\d{1,2}:\d{2})\s+(.+)$/;
+
   return descriptionText.split(/\r?\n/).map((line, index) => {
     const trimmed = line.trim();
-    const chapterMatch = trimmed.match(/^((?:\d{1,2}:)?\d{1,2}:\d{2})\s+(.+)$/);
+    const chapterMatch = chapterPattern.exec(trimmed);
     if (!chapterMatch) {
       return {
         type: "text",

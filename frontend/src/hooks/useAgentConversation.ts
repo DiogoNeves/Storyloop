@@ -15,6 +15,7 @@ import type {
   AgentConversationState,
   AgentMessage,
   AgentMessageAttachment,
+  AgentFocus,
 } from "@/lib/types/agent";
 
 interface UseAgentConversationOptions {
@@ -22,6 +23,7 @@ interface UseAgentConversationOptions {
   conversationId?: string | null;
   allowCreate?: boolean;
   persistConversationId?: boolean;
+  focus?: AgentFocus | null;
 }
 
 const INITIAL_STATE: AgentConversationState = {
@@ -74,6 +76,7 @@ export function useAgentConversation({
   conversationId: initialConversationId,
   allowCreate = true,
   persistConversationId = true,
+  focus = null,
 }: UseAgentConversationOptions = {}) {
   const [state, setState] = useState<AgentConversationState>(INITIAL_STATE);
   const [isInitializing, setIsInitializing] = useState(false);
@@ -135,6 +138,7 @@ export function useAgentConversation({
   const abortControllerRef = useRef<AbortController | null>(null);
   const initializeTokenRef = useRef(0);
   const conversationIdPersistedRef = useRef(false);
+  const focusRef = useRef<AgentFocus | null>(focus);
 
   const abortActiveStream = useCallback(() => {
     if (abortControllerRef.current) {
@@ -142,6 +146,10 @@ export function useAgentConversation({
       abortControllerRef.current = null;
     }
   }, []);
+
+  useEffect(() => {
+    focusRef.current = focus;
+  }, [focus]);
 
   const initializeConversation = useCallback(
     async ({
@@ -471,6 +479,7 @@ export function useAgentConversation({
           conversationId,
           text: trimmed,
           attachments: attachments.map((attachment) => attachment.id),
+          focus: focusRef.current ?? undefined,
           signal: controller.signal,
           callbacks: {
             onOpen: () => {
