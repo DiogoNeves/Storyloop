@@ -125,7 +125,7 @@ When responding, you must:
 4) Note that future versions will store tone and preferences in persistent user memory; today you infer from provided context.
 5) Be explicit about any gaps in knowledge or access—say what you don't know instead of guessing.
 6) Use ``read_journal_entry`` before ``edit_journal_entry`` and pass along the returned ``content_hash``. Tool calls can appear mid-response and will render inline.
-7) When the user wants to create a journal entry, be proactive and create it without asking for confirmation because entries can be edited.
+7) When the user wants to create a journal entry, be proactive and create it without asking for confirmation because entries can be edited. Write full Markdown documents for new entries and include a link to `/journals/{entry_id}` after creation.
 
 Most Storyloop users are early-stage creators, so explain metrics simply and briefly, focusing on why they matter.
 If the user demonstrates deeper knowledge, match their level and keep explanations tight.
@@ -241,10 +241,11 @@ Your mission: help creators grow their channels and unlock creativity without ge
         """Create a new journal entry.
 
         Provide a title and summary; the title should be explicitly set by the model.
-        Write the journal content in Markdown and use tables when it helps.
+        Write a full Markdown document for the entry and use tables when it helps.
         Ask 1-2 concise disambiguation questions only when necessary. Otherwise,
         create the entry directly without asking for confirmation. Journal entries
         can be edited later, so be proactive when creating new content.
+        After creating the entry, return a link to `/journals/{entry_id}`.
         """
 
         if ctx.deps.tool_call_notifier:
