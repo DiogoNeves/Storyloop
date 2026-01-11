@@ -61,6 +61,7 @@ def test_list_entries_returns_records_in_reverse_chronological_order(
         summary="Initial narrative beats.",
         occurred_at=now - timedelta(hours=1),
         category="journal",
+        pinned=True,
     )
     entry_latest = EntryRecord(
         id="entry-late",
@@ -73,8 +74,8 @@ def test_list_entries_returns_records_in_reverse_chronological_order(
     service.save_new_entries([entry_earlier, entry_latest])
 
     entries = service.list_entries()
-    assert [entry.id for entry in entries] == ["entry-late", "entry-early"]
-    assert entries[0].video_id is None
+    assert [entry.id for entry in entries] == ["entry-early", "entry-late"]
+    assert entries[0].pinned is True
 
 
 def test_get_entry_returns_record(memory_connection_factory: SqliteConnectionFactory) -> None:
@@ -119,6 +120,7 @@ def test_update_entry_persists_changes(memory_connection_factory: SqliteConnecti
         category="content",
         link_url="https://example.com/content",
         video_id="vid-99",
+        pinned=True,
     )
 
     assert service.update_entry(updated) is True
@@ -129,6 +131,7 @@ def test_update_entry_persists_changes(memory_connection_factory: SqliteConnecti
     assert reloaded.category == "content"
     assert reloaded.link_url == "https://example.com/content"
     assert reloaded.video_id == "vid-99"
+    assert reloaded.pinned is True
 
 
 def test_delete_entry_removes_record(memory_connection_factory: SqliteConnectionFactory) -> None:

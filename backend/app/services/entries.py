@@ -23,6 +23,7 @@ class EntryRecord:
     link_url: str | None = None
     thumbnail_url: str | None = None
     video_id: str | None = None
+    pinned: bool = False
 
 
 # Column definitions - single source of truth
@@ -35,6 +36,7 @@ ENTRY_COLUMNS = (
     "link_url",
     "thumbnail_url",
     "video_id",
+    "pinned",
 )
 
 
@@ -53,6 +55,7 @@ def _row_to_record(row: Row) -> EntryRecord:
         link_url=row["link_url"],
         thumbnail_url=row["thumbnail_url"],
         video_id=row["video_id"],
+        pinned=bool(row["pinned"]),
     )
 
 
@@ -70,6 +73,7 @@ def _record_to_values(record: EntryRecord) -> tuple:
         record.link_url,
         record.thumbnail_url,
         record.video_id,
+        int(record.pinned),
     )
 
 
@@ -89,7 +93,8 @@ class EntryService(DatabaseService):
                     category TEXT NOT NULL,
                     link_url TEXT,
                     thumbnail_url TEXT,
-                    video_id TEXT
+                    video_id TEXT,
+                    pinned INTEGER NOT NULL DEFAULT 0
                 )
                 """
             )
@@ -102,6 +107,10 @@ class EntryService(DatabaseService):
             if "video_id" not in columns:
                 connection.execute(
                     "ALTER TABLE entries ADD COLUMN video_id TEXT"
+                )
+            if "pinned" not in columns:
+                connection.execute(
+                    "ALTER TABLE entries ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0"
                 )
             connection.commit()
 
@@ -138,7 +147,7 @@ class EntryService(DatabaseService):
                 f"""
                 SELECT {columns_str}
                 FROM entries
-                ORDER BY datetime(occurred_at) DESC
+                ORDER BY pinned DESC, datetime(occurred_at) DESC
                 """
             ).fetchall()
 

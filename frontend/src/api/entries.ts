@@ -5,7 +5,7 @@ import {
 } from "@tanstack/react-query";
 
 import { apiClient } from "@/api/client";
-import { type Entry } from "@/lib/types/entries";
+import { compareEntriesByPinnedDate, type Entry } from "@/lib/types/entries";
 
 /**
  * Entry API helpers aligned with the currently implemented backend routes.
@@ -28,6 +28,7 @@ export interface CreateEntryInput {
   category: Entry["category"];
   linkUrl?: string | null;
   thumbnailUrl?: string | null;
+  pinned?: boolean;
 }
 
 export interface UpdateEntryInput extends Partial<CreateEntryInput> {
@@ -151,12 +152,16 @@ export const entriesMutations = {
               ...("title" in input ? { title: input.title! } : {}),
               ...("summary" in input ? { summary: input.summary! } : {}),
               ...("date" in input ? { date: input.date! } : {}),
+              ...("pinned" in input ? { pinned: input.pinned! } : {}),
             }
           : entry,
       );
 
       if (previousEntries) {
-        queryClient.setQueryData<Entry[]>(listKey, nextEntries);
+        queryClient.setQueryData<Entry[]>(
+          listKey,
+          [...nextEntries].sort(compareEntriesByPinnedDate),
+        );
       }
 
       if (previousById) {
@@ -165,6 +170,7 @@ export const entriesMutations = {
           ...("title" in input ? { title: input.title! } : {}),
           ...("summary" in input ? { summary: input.summary! } : {}),
           ...("date" in input ? { date: input.date! } : {}),
+          ...("pinned" in input ? { pinned: input.pinned! } : {}),
         });
       }
 
@@ -199,9 +205,10 @@ export const entriesMutations = {
             return previousEntries;
           }
 
-          return previousEntries.map((entry) =>
+          const nextEntries = previousEntries.map((entry) =>
             entry.id === data.id ? data : entry,
           );
+          return [...nextEntries].sort(compareEntriesByPinnedDate);
         },
       );
 

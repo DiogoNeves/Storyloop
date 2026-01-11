@@ -29,6 +29,7 @@ class EntryCreate(BaseModel):
     link_url: str | None = Field(default=None, alias="linkUrl")
     thumbnail_url: str | None = Field(default=None, alias="thumbnailUrl")
     video_id: str | None = Field(default=None, alias="videoId")
+    pinned: bool = False
 
     @field_validator("title", mode="after")
     @classmethod
@@ -57,6 +58,7 @@ class EntryResponse(BaseModel):
     link_url: str | None = Field(default=None, alias="linkUrl")
     thumbnail_url: str | None = Field(default=None, alias="thumbnailUrl")
     video_id: str | None = Field(default=None, alias="videoId")
+    pinned: bool = False
 
     @classmethod
     def from_record(cls, record: EntryRecord) -> "EntryResponse":
@@ -70,6 +72,7 @@ class EntryResponse(BaseModel):
                 "link_url": record.link_url,
                 "thumbnail_url": record.thumbnail_url,
                 "video_id": record.video_id,
+                "pinned": record.pinned,
             }
         )
 
@@ -86,6 +89,7 @@ class EntryUpdate(BaseModel):
     link_url: str | None = Field(default=None, alias="linkUrl")
     thumbnail_url: str | None = Field(default=None, alias="thumbnailUrl")
     video_id: str | None = Field(default=None, alias="videoId")
+    pinned: bool | None = None
 
     @field_validator("title", mode="after")
     @classmethod
@@ -119,6 +123,7 @@ def _create_to_record(entry: EntryCreate) -> EntryRecord:
         link_url=entry.link_url,
         thumbnail_url=entry.thumbnail_url,
         video_id=entry.video_id,
+        pinned=entry.pinned,
     )
 
 
@@ -127,7 +132,7 @@ def _update_record(current: EntryRecord, updates: EntryUpdate) -> EntryRecord:
 
     Pure function that combines current record with partial updates.
     """
-    update_dict = updates.model_dump(exclude_unset=True)
+    update_dict = updates.model_dump(exclude_unset=True, exclude_none=True)
     return EntryRecord(
         id=current.id,
         title=update_dict.get("title", current.title),
@@ -137,6 +142,7 @@ def _update_record(current: EntryRecord, updates: EntryUpdate) -> EntryRecord:
         link_url=update_dict.get("link_url", current.link_url),
         thumbnail_url=update_dict.get("thumbnail_url", current.thumbnail_url),
         video_id=update_dict.get("video_id", current.video_id),
+        pinned=update_dict.get("pinned", current.pinned),
     )
 
 
