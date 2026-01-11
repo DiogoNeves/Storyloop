@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager, closing
+from datetime import UTC, datetime
 from typing import AsyncContextManager, AsyncIterator, Callable, Literal
 
 import logfire
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -20,8 +22,10 @@ from app.services import (
     YoutubeOAuthService,
     YoutubeService,
     build_agent,
+    build_smart_entry_agent,
 )
 from app.services.assets import AssetService
+from app.services.smart_entries import SmartEntryUpdateManager
 from app.services.youtube import YoutubeConfigurationError
 from app.services.youtube_analytics import YoutubeAnalyticsService
 
@@ -95,6 +99,7 @@ def build_lifespan(
 
     # Initialize AI agent (optional, returns None if OPENAI_API_KEY not set)
     assistant_agent = build_agent(active_settings)
+    smart_entry_agent = build_smart_entry_agent(active_settings)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -120,6 +125,24 @@ def build_lifespan(
             oauth_service=app.state.youtube_oauth_service,
         )
         app.state.assistant_agent = assistant_agent
+        app.state.smart_entry_agent = smart_entry_agent
+        smart_entry_manager = SmartEntryUpdateManager(app, entry_service)
+        app.state.smart_entry_manager = smart_entry_manager
+        smart_entry_scheduler: AsyncIOScheduler | None = None
+        if active_settings.smart_entries_scheduler_enabled:
+            smart_entry_scheduler = AsyncIOScheduler()
+            smart_entry_scheduler.add_job(
+                smart_entry_manager.run_due_updates,
+                "interval",
+                hours=1,
+                id="smart-entry-refresh",
+                replace_existing=True,
+                max_instances=1,
+                coalesce=True,
+                next_run_time=datetime.now(tz=UTC),
+            )
+            smart_entry_scheduler.start()
+        app.state.smart_entry_scheduler = smart_entry_scheduler
 
         demo_mode_enabled = active_settings.youtube_demo_mode
         demo_mode_details = "disabled"
@@ -148,6 +171,9 @@ def build_lifespan(
         )
 
         yield
+
+        if smart_entry_scheduler is not None:
+            smart_entry_scheduler.shutdown(wait=False)
 
     return lifespan
 

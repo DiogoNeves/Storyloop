@@ -66,9 +66,16 @@ export function ActivityFeedItem({
     year: "numeric",
   });
   const titleText = item.title.trim();
+  const isSmartJournal = item.category === "journal" && Boolean(item.promptBody);
   const summary = item.summary.trim();
+  const isSmartSummaryPlaceholder = isSmartJournal && summary.length === 0;
+  const summaryText = isSmartSummaryPlaceholder
+    ? "Loopie is preparing the first update…"
+    : summary;
   const truncatedSummary =
-    summary.length > 280 ? `${summary.slice(0, 277).trimEnd()}…` : summary;
+    summaryText.length > 280
+      ? `${summaryText.slice(0, 277).trimEnd()}…`
+      : summaryText;
   const showThumbnail =
     item.category === "content" && Boolean(item.thumbnailUrl);
   const detailPath = getActivityDetailPath(item);
@@ -104,6 +111,11 @@ export function ActivityFeedItem({
                 <>
                   <Bot className="h-4 w-4" aria-hidden="true" />
                   <span className="sr-only">Conversation</span>
+                </>
+              ) : isSmartJournal ? (
+                <>
+                  <Bot className="h-4 w-4" aria-hidden="true" />
+                  <span>journal</span>
                 </>
               ) : (
                 categoryLabel
@@ -156,8 +168,11 @@ export function ActivityFeedItem({
                 </span>
               )}
             </h3>
-            {summary.length > 0 ? (
-              <p className="text-sm text-muted-foreground">
+            {summaryText.length > 0 ? (
+              <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                {isSmartSummaryPlaceholder ? (
+                  <span className="h-2 w-2 animate-ping rounded-full bg-primary" />
+                ) : null}
                 {truncatedSummary}
               </p>
             ) : null}

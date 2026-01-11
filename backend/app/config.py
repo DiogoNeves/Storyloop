@@ -86,6 +86,11 @@ class Settings(BaseModel):
         alias="YOUTUBE_DEMO_SCENARIO",
         description="Optional fixture scenario to load when demo mode is enabled",
     )
+    smart_entries_scheduler_enabled: bool = Field(
+        default=True,
+        alias="SMART_ENTRIES_SCHEDULER_ENABLED",
+        description="Enable background smart journal updates.",
+    )
     # Default CORS origins for local development (Vite dev server and preview).
     # Dev backend runs on 8001, prod on 8000.
     # Add custom origins via CORS_ORIGINS env var (comma-separated list).

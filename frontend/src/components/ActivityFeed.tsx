@@ -10,9 +10,12 @@ import { useSync } from "@/hooks/useSync";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { LinkYouTubeAccountCard } from "@/components/LinkYouTubeAccountCard";
 import { ActivityFeedItem } from "./ActivityFeedItem";
 import { ActivityDraftCard } from "./ActivityDraftCard";
+import { SmartEntryDraftCard } from "./SmartEntryDraftCard";
 import { InfoModal } from "./InfoModal";
 import { ActivityFeedInfo } from "./ActivityFeedInfo";
 import { isActivityEditable } from "@/lib/activity-helpers";
@@ -20,10 +23,15 @@ import { filterActivityItems } from "@/lib/activity-search";
 
 export type { ActivityItem };
 
+export type EntryDraftMode = "standard" | "smart";
+
 export interface ActivityDraft {
   title: string;
   summary: string;
   date: string; // datetime-local string
+  promptBody?: string;
+  promptFormat?: string;
+  mode: EntryDraftMode;
 }
 
 interface ActivityFeedProps {
@@ -33,6 +41,8 @@ interface ActivityFeedProps {
   linkStatus?: YoutubeLinkStatusResponse | null;
   youtubeError?: string | null;
   draft?: ActivityDraft | null;
+  draftMode?: EntryDraftMode;
+  onDraftModeChange?: (mode: EntryDraftMode) => void;
   onStartDraft?: () => void;
   onDraftChange?: (draft: ActivityDraft) => void;
   onCancelDraft?: () => void;
@@ -55,6 +65,8 @@ export function ActivityFeed({
   linkStatus,
   youtubeError,
   draft,
+  draftMode = "standard",
+  onDraftModeChange,
   onStartDraft,
   onDraftChange,
   onCancelDraft,
@@ -149,6 +161,22 @@ export function ActivityFeed({
           </div>
         </div>
         <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+          <div className="flex items-center gap-2">
+            <Label
+              htmlFor="smart-entry-toggle"
+              className="text-xs font-medium text-muted-foreground"
+            >
+              Smart
+            </Label>
+            <Switch
+              id="smart-entry-toggle"
+              checked={draftMode === "smart"}
+              onCheckedChange={(checked) =>
+                onDraftModeChange?.(checked ? "smart" : "standard")
+              }
+              disabled={Boolean(draft)}
+            />
+          </div>
           <Button
             type="button"
             onClick={onStartDraft}
@@ -177,17 +205,30 @@ export function ActivityFeed({
           </p>
         ) : null}
         {draft && onDraftChange ? (
-          <ActivityDraftCard
-            draft={draft}
-            onChange={onDraftChange}
-            onCancel={onCancelDraft}
-            onSubmit={onSubmitDraft}
-            isSubmitting={isSubmittingDraft}
-            errorMessage={draftError}
-            submitLabel="Create entry"
-            category="journal"
-            idPrefix="new-entry"
-          />
+          draft.mode === "smart" ? (
+            <SmartEntryDraftCard
+              draft={draft}
+              onChange={onDraftChange}
+              onCancel={onCancelDraft}
+              onSubmit={onSubmitDraft}
+              isSubmitting={isSubmittingDraft}
+              errorMessage={draftError}
+              submitLabel="Create smart entry"
+              idPrefix="new-smart-entry"
+            />
+          ) : (
+            <ActivityDraftCard
+              draft={draft}
+              onChange={onDraftChange}
+              onCancel={onCancelDraft}
+              onSubmit={onSubmitDraft}
+              isSubmitting={isSubmittingDraft}
+              errorMessage={draftError}
+              submitLabel="Create entry"
+              category="journal"
+              idPrefix="new-entry"
+            />
+          )
         ) : null}
         {filteredItems.length === 0 && searchQuery ? (
           <p className="text-sm text-muted-foreground" role="status">

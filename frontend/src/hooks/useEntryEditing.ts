@@ -80,7 +80,8 @@ export function useEntryEditing() {
     setEditingDraft({
       title: item.title,
       summary: item.summary,
-      date: toDateTimeLocalInput(item.date),
+      date: toDateTimeLocalInput(item.createdAt ?? item.date),
+      mode: "standard",
     });
     setEditingError(null);
   }, []);

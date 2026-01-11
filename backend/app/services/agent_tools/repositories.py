@@ -94,7 +94,7 @@ class JournalRepository:
                     # Ignore malformed timestamps; return unfiltered results.
                     pass
             filtered.sort(
-                key=lambda record: (record.pinned, record.occurred_at),
+                key=lambda record: (record.pinned, record.updated_at),
                 reverse=True,
             )
             limited = filtered[:limit]
@@ -150,7 +150,11 @@ class JournalRepository:
                 id=record.id,
                 title=payload.title,
                 summary=payload.content_markdown,
+                prompt_body=record.prompt_body,
+                prompt_format=record.prompt_format,
                 occurred_at=record.occurred_at,
+                updated_at=datetime.now(tz=UTC),
+                last_smart_update_at=record.last_smart_update_at,
                 category=record.category,
                 link_url=record.link_url,
                 thumbnail_url=record.thumbnail_url,
@@ -176,7 +180,11 @@ class JournalRepository:
                 id=str(uuid4()),
                 title=payload.title,
                 summary=payload.content_markdown,
+                prompt_body=None,
+                prompt_format=None,
                 occurred_at=occurred_at or datetime.now(tz=UTC),
+                updated_at=datetime.now(tz=UTC),
+                last_smart_update_at=None,
                 category="journal",
                 pinned=payload.pinned if payload.pinned is not None else False,
             )

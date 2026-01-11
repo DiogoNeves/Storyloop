@@ -9,6 +9,7 @@ description = "Storyloop FastAPI backend boilerplate"
 readme = "README.md"
 requires-python = ">=3.11.8"
 dependencies = [
+    "apscheduler>=3.11.0",
     "asyncache>=0.3.1",
     "cachetools>=5.3.3",
     "fastapi>=0.120.0",
@@ -43,6 +44,7 @@ python_version = "3.11"
 
 [[tool.mypy.overrides]]
 module = [
+    "apscheduler.*",
     "asyncache",
     "cachetools",
     "googleapiclient.*",
