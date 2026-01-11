@@ -10,8 +10,6 @@ import { useSync } from "@/hooks/useSync";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { LinkYouTubeAccountCard } from "@/components/LinkYouTubeAccountCard";
 import { ActivityFeedItem } from "./ActivityFeedItem";
 import { ActivityDraftCard } from "./ActivityDraftCard";
@@ -41,9 +39,7 @@ interface ActivityFeedProps {
   linkStatus?: YoutubeLinkStatusResponse | null;
   youtubeError?: string | null;
   draft?: ActivityDraft | null;
-  draftMode?: EntryDraftMode;
-  onDraftModeChange?: (mode: EntryDraftMode) => void;
-  onStartDraft?: () => void;
+  onStartDraft?: (mode: EntryDraftMode) => void;
   onDraftChange?: (draft: ActivityDraft) => void;
   onCancelDraft?: () => void;
   onSubmitDraft?: () => void;
@@ -65,8 +61,6 @@ export function ActivityFeed({
   linkStatus,
   youtubeError,
   draft,
-  draftMode = "standard",
-  onDraftModeChange,
   onStartDraft,
   onDraftChange,
   onCancelDraft,
@@ -161,30 +155,25 @@ export function ActivityFeed({
           </div>
         </div>
         <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
-          <div className="flex items-center gap-2">
-            <Label
-              htmlFor="smart-entry-toggle"
-              className="text-xs font-medium text-muted-foreground"
-            >
-              Smart
-            </Label>
-            <Switch
-              id="smart-entry-toggle"
-              checked={draftMode === "smart"}
-              onCheckedChange={(checked) =>
-                onDraftModeChange?.(checked ? "smart" : "standard")
-              }
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onStartDraft?.("smart")}
               disabled={Boolean(draft)}
-            />
+              className="self-start sm:self-auto"
+            >
+              + smart entry
+            </Button>
+            <Button
+              type="button"
+              onClick={() => onStartDraft?.("standard")}
+              disabled={Boolean(draft)}
+              className="self-start sm:self-auto"
+            >
+              + entry
+            </Button>
           </div>
-          <Button
-            type="button"
-            onClick={onStartDraft}
-            disabled={Boolean(draft)}
-            className="self-start sm:self-auto"
-          >
-            + entry
-          </Button>
         </div>
       </CardHeader>
       <CardContent className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-6 pt-0 sm:px-6 sm:pr-2">
