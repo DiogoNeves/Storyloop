@@ -79,7 +79,7 @@ frontend/
 **Key Features:**
 
 - Activity feed driven by persisted entries + YouTube content + Loopie conversations
-- Journal entry creation and editing (title, summary, date)
+- Journal entry creation and editing (title, summary, date, pinned)
 - Image/PDF attachments inserted into markdown summaries via uploads
 - Loopie chat panel with attachment support
 - Conversation and detail routes for deeper inspection
@@ -105,8 +105,8 @@ frontend/
 
 **Features:**
 
-- Chronological sorting (newest first)
-- Category badges and inline edit/delete
+- Pinned-first sorting (journals only), newest first within groups
+- Category badges and inline edit/delete/pin actions
 - Draft entry UI with attachment uploads
 - Search filtering and YouTube link status
 
@@ -146,6 +146,12 @@ frontend/
 - Branding with Storyloop logo
 - Navigation links (Dashboard, Library, Settings)
 - Responsive design
+
+## Entry Sorting
+
+**Shared Helpers:**
+
+- `compareEntriesByPinnedDate` and `compareActivityItemsByPinnedDate` in `src/lib/types/entries.ts` keep the feed and cache ordering consistent.
 
 ## API Layer
 

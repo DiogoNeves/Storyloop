@@ -98,14 +98,14 @@ onSubmitDraft()
     │ handleSubmitDraft()
     │   - Validate title
     │   - Generate UUID
-    │   - Build CreateEntryInput
+    │   - Build CreateEntryInput (includes pinned=false)
     │   - mutateAsync(createEntry)
     │
     ▼
 api/entries.ts
     │
     │ POST /entries
-    │ body: [{ id, title, summary, date, category }]
+    │ body: [{ id, title, summary, date, category, pinned }]
     │
     ▼
 Backend Router (routers/entries.py)
@@ -130,6 +130,7 @@ ActivityFeed Re-renders
 **Notes:**
 
 - Journal summaries are markdown strings that can include `/assets/{id}` links for attachments.
+- Entries are sorted by pinned then date (newest first within each group).
 
 ### 3. Offline Entry Creation Flow (PWA)
 

@@ -8,7 +8,7 @@
 - Design an abstraction layer that enables future migration to sync engines (RxDB, PowerSync).
 
 ## Non-goals (for now)
-- Editing or deleting entries while offline.
+- Editing, deleting, or pinning entries while offline.
 - Offline support for conversations/Loopie.
 - Background Sync API (not supported on iOS Safari).
 - Conflict resolution for concurrent edits.
@@ -167,10 +167,10 @@ syncAll():
 - Content: "Pending sync" with CloudOff icon
 - Visibility: When entry.id is in pendingEntries list
 
-### Edit/Delete Buttons (Offline)
+### Edit/Delete/Pin Buttons (Offline)
 - State: Disabled (greyed out)
 - Tooltip: "You are offline"
-- Applies to: Edit and Delete buttons in ActivityFeedItem
+- Applies to: Edit, Delete, and Pin buttons in ActivityFeedItem and journal detail header
 
 ## Entry Creation Flow
 

@@ -28,6 +28,7 @@ Enable Loopie to create and edit journal entries via tools, with strict read-bef
 - `content_markdown: str`
 - `occurred_at: str` (ISO)
 - `content_hash: str` (blake2s, truncated to 12 hex chars)
+- `pinned: bool`
 
 **Notes**
 - Hash is computed over `title + "\n" + content_markdown` after trimming (same normalization as validation).
@@ -41,9 +42,11 @@ Enable Loopie to create and edit journal entries via tools, with strict read-bef
 - `content_hash: str` (must match current entry content)
 - `title: str`
 - `content_markdown: str`
+- `pinned: bool | null` (only set when explicitly requested)
 
 **Behavior**
 - Validate `title` and `content_markdown` via Pydantic (same rules as existing entry update).
+- Only apply `pinned` when explicitly provided (do not infer pin intent).
 - If the hash mismatches, return a clear error: "Entry changed since last read. Please read again before editing."
 - On success, return updated entry (same shape as `read_journal_entry`, with a new `content_hash`).
 
