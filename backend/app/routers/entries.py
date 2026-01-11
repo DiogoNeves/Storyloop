@@ -132,7 +132,7 @@ def _update_record(current: EntryRecord, updates: EntryUpdate) -> EntryRecord:
 
     Pure function that combines current record with partial updates.
     """
-    update_dict = updates.model_dump(exclude_unset=True)
+    update_dict = updates.model_dump(exclude_unset=True, exclude_none=True)
     return EntryRecord(
         id=current.id,
         title=update_dict.get("title", current.title),
