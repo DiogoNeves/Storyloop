@@ -59,6 +59,13 @@ make seed
 
 Tailscale is configured with HTTPS for testing PWA on phone. Access via Tailscale hostname.
 
+## Master Plan
+
+- Break problems into falsifiable steps and validate early
+- Keep the end goal and current TODOs visible
+- Work in short horizons, backtrack quickly on dead ends
+- Confirm each step before expanding scope
+
 ## Code Style
 
 ### Python
