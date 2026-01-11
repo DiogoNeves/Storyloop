@@ -396,23 +396,27 @@ function JournalPage() {
     return adjusted.toISOString().slice(0, 16);
   }, []);
 
-  const handleStartDraft = useCallback(() => {
-    if (draft) {
-      return;
-    }
-    const baseDraft: ActivityDraft = {
-      title: "",
-      summary: "",
-      date: formatNowAsDateTimeLocal(),
-      mode: draftMode,
-    };
-    setDraft(
-      draftMode === "smart"
-        ? { ...baseDraft, promptBody: "", promptFormat: "" }
-        : baseDraft,
-    );
-    setDraftError(null);
-  }, [draft, draftMode, formatNowAsDateTimeLocal]);
+  const handleStartDraft = useCallback(
+    (mode: EntryDraftMode) => {
+      if (draft) {
+        return;
+      }
+      setDraftMode(mode);
+      const baseDraft: ActivityDraft = {
+        title: "",
+        summary: "",
+        date: formatNowAsDateTimeLocal(),
+        mode,
+      };
+      setDraft(
+        mode === "smart"
+          ? { ...baseDraft, promptBody: "", promptFormat: "" }
+          : baseDraft,
+      );
+      setDraftError(null);
+    },
+    [draft, formatNowAsDateTimeLocal],
+  );
 
   const handleDraftChange = useCallback((nextDraft: ActivityDraft) => {
     setDraft(nextDraft);
@@ -584,8 +588,6 @@ function JournalPage() {
           linkStatus={youtubeState.linkStatus}
           youtubeError={youtubeState.youtubeError}
           draft={draft}
-          draftMode={draftMode}
-          onDraftModeChange={setDraftMode}
           onStartDraft={handleStartDraft}
           onDraftChange={handleDraftChange}
           onCancelDraft={handleCancelDraft}
