@@ -31,7 +31,12 @@ import {
   type Entry,
 } from "@/api/entries";
 import { conversationQueries, deleteConversation } from "@/api/conversations";
-import { type ActivityItem, entryToActivityItem } from "@/lib/types/entries";
+import {
+  compareActivityItemsByPinnedDate,
+  compareEntriesByPinnedDate,
+  type ActivityItem,
+  entryToActivityItem,
+} from "@/lib/types/entries";
 import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
 import { YoutubeAuthCallback } from "@/pages/YoutubeAuthCallback";
 import { VideoDetailPage } from "@/pages/VideoDetailPage";
@@ -332,7 +337,7 @@ function JournalPage() {
     // Sort by date (newest first) and limit to 50
     // Create a new array to avoid mutating the original
     return [...baseItems]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .sort(compareActivityItemsByPinnedDate)
       .slice(0, 50);
   }, [
     conversationActivityItems,
@@ -369,9 +374,7 @@ function JournalPage() {
               (entry) => entry.id !== savedEntry.id,
             );
             next.push(savedEntry);
-            next.sort(
-              (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-            );
+            next.sort(compareEntriesByPinnedDate);
             return next;
           },
         );
@@ -430,6 +433,7 @@ function JournalPage() {
       summary: trimmedSummary,
       date: new Date(draft.date).toISOString(),
       category: "journal",
+      pinned: false,
     };
 
     try {
@@ -441,6 +445,7 @@ function JournalPage() {
         // Optimistically add to cache with proper Entry shape
         const optimisticEntry: Entry = {
           ...entryInput,
+          pinned: entryInput.pinned ?? false,
           videoId: null,
           videoType: null,
         };
@@ -451,9 +456,7 @@ function JournalPage() {
               (entry) => entry.id !== entryInput.id,
             );
             next.push(optimisticEntry);
-            next.sort(
-              (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-            );
+            next.sort(compareEntriesByPinnedDate);
             return next;
           },
         );
@@ -483,6 +486,7 @@ function JournalPage() {
         await queueEntry(entryInput);
         const optimisticEntry: Entry = {
           ...entryInput,
+          pinned: entryInput.pinned ?? false,
           videoId: null,
           videoType: null,
         };
@@ -493,9 +497,7 @@ function JournalPage() {
               (entry) => entry.id !== entryInput.id,
             );
             next.push(optimisticEntry);
-            next.sort(
-              (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-            );
+            next.sort(compareEntriesByPinnedDate);
             return next;
           },
         );

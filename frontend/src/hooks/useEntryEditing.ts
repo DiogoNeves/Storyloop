@@ -15,9 +15,10 @@ export function useEntryEditing() {
   const [editingDraft, setEditingDraft] = useState<ActivityDraft | null>(null);
   const [editingError, setEditingError] = useState<string | null>(null);
   const [deletingEntryId, setDeletingEntryId] = useState<string | null>(null);
+  const [pinningEntryId, setPinningEntryId] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
-  
+
   const updateEntryMutation = useMutation(
     entriesMutations.update(queryClient, {
       onError: (error) => {
@@ -31,6 +32,21 @@ export function useEntryEditing() {
         setEditingEntryId(null);
         setEditingDraft(null);
         setEditingError(null);
+      },
+    }),
+  );
+
+  const pinEntryMutation = useMutation(
+    entriesMutations.update(queryClient, {
+      onError: (error) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "We couldn't update this entry. Please try again.";
+        setEditingError(message);
+      },
+      onSettled: () => {
+        setPinningEntryId(null);
       },
     }),
   );
@@ -128,18 +144,38 @@ export function useEntryEditing() {
     [deleteEntryMutation, deletingEntryId],
   );
 
+  const togglePin = useCallback(
+    async (id: string, nextPinned: boolean) => {
+      if (pinningEntryId) {
+        return;
+      }
+      setPinningEntryId(id);
+      setEditingError(null);
+      try {
+        await pinEntryMutation.mutateAsync({ id, pinned: nextPinned });
+      } catch {
+        // handled in the mutation onError callback
+      }
+    },
+    [pinEntryMutation, pinningEntryId],
+  );
+
   return {
     editingEntryId,
     editingDraft,
     editingError,
     deletingEntryId,
     isUpdating: updateEntryMutation.isPending,
-    isDeleting: (id: string) => deletingEntryId === id && deleteEntryMutation.isPending,
+    isDeleting: (id: string) =>
+      deletingEntryId === id && deleteEntryMutation.isPending,
+    isPinning: (id: string) =>
+      pinningEntryId === id && pinEntryMutation.isPending,
     startEdit,
     handleEditDraftChange,
     cancelEdit,
     submitEdit,
     deleteEntry,
+    togglePin,
   };
 }
 

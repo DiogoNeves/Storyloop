@@ -14,6 +14,7 @@ const mockEntries = vi.hoisted<Entry[]>(() => [
     linkUrl: "https://youtube.com/watch?v=storyloop-premiere",
     thumbnailUrl: "https://img.youtube.com/storyloop-premiere/hqdefault.jpg",
     videoId: "storyloop-premiere",
+    pinned: false,
   },
   {
     id: "entry-002",
@@ -23,6 +24,7 @@ const mockEntries = vi.hoisted<Entry[]>(() => [
     category: "journal",
     linkUrl: null,
     thumbnailUrl: null,
+    pinned: true,
   },
 ]);
 
@@ -43,6 +45,7 @@ vi.mock("@/api/entries", () => {
       ...input,
       linkUrl: input.linkUrl ?? null,
       thumbnailUrl: input.thumbnailUrl ?? null,
+      pinned: input.pinned ?? false,
     });
   }
 

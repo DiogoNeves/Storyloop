@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Bot } from "lucide-react";
+import { Bot, Pin } from "lucide-react";
 
 import { type ActivityItem } from "@/lib/types/entries";
 import {
@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { PendingSyncBadge } from "@/components/ui/pending-sync-badge";
 import { DeleteConversationDialog } from "@/components/DeleteConversationDialog";
+import { cn } from "@/lib/utils";
 import {
   Tooltip,
   TooltipContent,
@@ -33,6 +34,8 @@ interface ActivityFeedItemProps {
   onConversationClick?: (conversationId: string) => Promise<void>;
   onConversationDelete?: () => void;
   isConversationDeleting?: boolean;
+  onPinToggle?: () => void;
+  isPinning?: boolean;
   /** Whether this entry is pending sync (created offline) */
   isPendingSync?: boolean;
 }
@@ -45,6 +48,8 @@ export function ActivityFeedItem({
   onConversationClick,
   onConversationDelete,
   isConversationDeleting,
+  onPinToggle,
+  isPinning = false,
   isPendingSync,
 }: ActivityFeedItemProps) {
   const { isOnline } = useSync();
@@ -53,6 +58,8 @@ export function ActivityFeedItem({
   // Disable edit/delete when offline
   const isEditDisabled = !isOnline;
   const isDeleteDisabled = !isOnline || isDeleting;
+  const isPinned = item.category === "journal" && Boolean(item.pinned);
+  const isPinDisabled = !isOnline || isPinning;
   const formattedDate = new Date(item.date).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
@@ -66,6 +73,10 @@ export function ActivityFeedItem({
     item.category === "content" && Boolean(item.thumbnailUrl);
   const detailPath = getActivityDetailPath(item);
   const categoryLabel = getActivityCategoryLabel(item.category);
+  const pinLabel = isPinned ? "Unpin" : "Pin";
+  const pinIcon = (
+    <Pin className="h-4 w-4" fill={isPinned ? "currentColor" : "none"} />
+  );
 
   const handleDetailClick = () => {
     if (item.category === "conversation" && onConversationClick) {
@@ -211,10 +222,43 @@ export function ActivityFeedItem({
             )
           ) : null}
         </div>
+        {isPinned ? (
+          <span
+            className="absolute bottom-2 right-4 text-primary opacity-90 transition-opacity group-hover:opacity-0"
+            aria-hidden="true"
+          >
+            <Pin className="h-4 w-4" fill="currentColor" />
+          </span>
+        ) : null}
         {onEdit ||
         onDelete ||
+        onPinToggle ||
         (item.category === "conversation" && onConversationDelete) ? (
           <div className="absolute bottom-2 right-4 hidden items-center gap-2 group-hover:flex">
+            {onDelete ? (
+              isDeleteDisabled ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="cursor-not-allowed text-xs text-muted-foreground opacity-50">
+                      {isDeleting ? "Deleting…" : "Delete"}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {!isOnline ? "You are offline" : "Deleting..."}
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground transition-colors hover:text-destructive"
+                  onClick={() => {
+                    onDelete();
+                  }}
+                >
+                  Delete
+                </button>
+              )
+            ) : null}
             {onEdit ? (
               isEditDisabled ? (
                 <Tooltip>
@@ -237,27 +281,31 @@ export function ActivityFeedItem({
                 </button>
               )
             ) : null}
-            {onDelete ? (
-              isDeleteDisabled ? (
+            {onPinToggle ? (
+              isPinDisabled ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="cursor-not-allowed text-xs text-muted-foreground opacity-50">
-                      {isDeleting ? "Deleting…" : "Delete"}
+                    <span className="cursor-not-allowed text-muted-foreground opacity-50">
+                      {pinIcon}
                     </span>
                   </TooltipTrigger>
                   <TooltipContent>
-                    {!isOnline ? "You are offline" : "Deleting..."}
+                    {!isOnline ? "You are offline" : "Updating..."}
                   </TooltipContent>
                 </Tooltip>
               ) : (
                 <button
                   type="button"
-                  className="text-xs text-muted-foreground transition-colors hover:text-destructive"
+                  className={cn(
+                    "transition-colors hover:text-foreground",
+                    isPinned ? "text-primary" : "text-muted-foreground",
+                  )}
                   onClick={() => {
-                    onDelete();
+                    onPinToggle();
                   }}
+                  aria-label={pinLabel}
                 >
-                  Delete
+                  {pinIcon}
                 </button>
               )
             ) : null}

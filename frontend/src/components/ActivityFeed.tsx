@@ -71,6 +71,7 @@ export function ActivityFeed({
 }: ActivityFeedProps) {
   const editingState = useEntryEditing();
   const { pendingEntries } = useSync();
+  const { togglePin, isPinning } = editingState;
   const [thumbnailError, setThumbnailError] = useState(false);
 
   // Create a set of pending entry IDs for O(1) lookup
@@ -239,28 +240,41 @@ export function ActivityFeed({
               onConversationDelete={
                 isConversation && onConversationDelete
                   ? () => {
-                    void onConversationDelete(item.id);
-                  }
+                      void onConversationDelete(item.id);
+                    }
                   : undefined
               }
               isConversationDeleting={isConversationDeleting}
               onEdit={
                 isEditable
                   ? () => {
-                    editingState.startEdit(item);
-                  }
+                      editingState.startEdit(item);
+                    }
                   : undefined
               }
               onDelete={
                 isEditable
                   ? () => {
-                    void editingState.deleteEntry(item.id);
-                  }
+                      void editingState.deleteEntry(item.id);
+                    }
                   : undefined
               }
               isDeleting={editingState.isDeleting(item.id)}
+              onPinToggle={
+                isEditable && item.category === "journal"
+                  ? () => {
+                      void togglePin(item.id, !item.pinned);
+                    }
+                  : undefined
+              }
+              isPinning={
+                isEditable && item.category === "journal"
+                  ? isPinning(item.id)
+                  : false
+              }
             />
           );
+
         })}
       </CardContent>
     </Card>
