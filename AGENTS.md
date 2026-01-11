@@ -85,6 +85,7 @@ Tailscale is configured with HTTPS for testing PWA on phone. Access via Tailscal
 - Place private helpers after public code that uses them (keep helpers close to last usage)
 - Maintainable code = obvious interface, type-safe, allows only correct values
 - Tests cover ambiguous cases
+- When planning work, research what needs changing thoroughly first
 
 ## Testing
 
