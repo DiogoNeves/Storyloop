@@ -18,6 +18,7 @@ export interface Entry {
   thumbnailUrl?: string | null;
   videoId?: string | null;
   videoType?: "short" | "live" | "video" | null;
+  pinned: boolean;
 }
 
 /**
@@ -35,6 +36,7 @@ export interface ActivityItem {
   videoId?: string;
   videoType?: "short" | "live" | "video";
   privacyStatus?: "public" | "unlisted" | "private";
+  pinned?: boolean;
 }
 
 /**
@@ -54,5 +56,32 @@ export function entryToActivityItem(entry: Entry): ActivityItem {
     thumbnailUrl: entry.thumbnailUrl ?? undefined,
     videoId: entry.videoId ?? undefined,
     videoType: entry.videoType ?? undefined,
+    pinned: entry.pinned,
   };
+}
+
+export function compareEntriesByPinnedDate(a: Entry, b: Entry): number {
+  const pinnedDelta = Number(b.pinned) - Number(a.pinned);
+  if (pinnedDelta !== 0) {
+    return pinnedDelta;
+  }
+  return toTimestamp(b.date) - toTimestamp(a.date);
+}
+
+export function compareActivityItemsByPinnedDate(
+  a: ActivityItem,
+  b: ActivityItem,
+): number {
+  const aPinned = a.category === "journal" && Boolean(a.pinned);
+  const bPinned = b.category === "journal" && Boolean(b.pinned);
+  const pinnedDelta = Number(bPinned) - Number(aPinned);
+  if (pinnedDelta !== 0) {
+    return pinnedDelta;
+  }
+  return toTimestamp(b.date) - toTimestamp(a.date);
+}
+
+function toTimestamp(value: string): number {
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
 }
