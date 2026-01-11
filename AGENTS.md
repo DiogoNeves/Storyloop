@@ -17,6 +17,7 @@ Key services: `YoutubeService` (API integration), PydanticAI agent (SSE streamin
 
 ## Project Structure
 
+- Python project root lives in `backend/` (run `uv` commands there or use `uv --project backend`)
 - `backend/app/` - FastAPI app: `main.py` (entry), `routers/` (endpoints), `services/` (business logic), `db_helpers/` (persistence)
 - `frontend/src/` - React app: `api/` (TanStack Query + Axios), `components/` (UI), `App.tsx` (dashboard)
 - `scripts/` - automation (`dev.py` launcher, `seed_demo_data.py`)
@@ -45,9 +46,8 @@ cd frontend && pnpm vitest run tests/setup.test.ts   # --run prevents watch mode
 # Watch mode (interactive development)
 cd frontend && pnpm test       # Starts vitest in watch mode (will hang in CI/scripts)
 
-# Type checking and linting (activate backend venv first)
-source backend/.venv/bin/activate
-ruff check backend && mypy backend
+# Type checking and linting
+uv run ruff check backend && uv run mypy backend
 cd frontend && pnpm run lint
 npx tsc --noEmit                # Frontend type check
 
@@ -64,7 +64,7 @@ Tailscale is configured with HTTPS for testing PWA on phone. Access via Tailscal
 ### Python
 
 - Target Python 3.11, 4-space indentation
-- Keep modules typed, run `ruff check backend` and `mypy backend` before review (activate `backend/.venv` first)
+- Keep modules typed, run `uv run ruff check backend` and `uv run mypy backend` before review
 - Group business logic in `services/`
 - Prototype substantial features in standalone scripts first (minimal deps, no Logfire)
 - Reference `.env` via `backend/config.py`, never hard-code
@@ -86,12 +86,15 @@ Tailscale is configured with HTTPS for testing PWA on phone. Access via Tailscal
 - Maintainable code = obvious interface, type-safe, allows only correct values
 - Tests cover ambiguous cases
 - When planning work, research what needs changing thoroughly first
+- After big code changes, refactor to simplify
 
 ## Testing
 
 - Backend: `test_*.py` files, assert public API, use `asyncio_mode=auto`
 - Frontend: colocate tests or use `frontend/tests/`, Testing Library matchers from `@testing-library/jest-dom`
 - Cover new endpoints, hooks, stateful components
+- Create tests when developing new features
+- Always run tests after implementing new features
 - Document test gaps in PR description
 
 ## Repository Workflow
