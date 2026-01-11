@@ -123,14 +123,19 @@ conn.close()
 
 #### EntryService (`services/entries.py`)
 
-**Purpose:** Persist timeline and journal entries in SQLite.
+**Purpose:** Persist timeline and journal entries in SQLite (includes pinned state).
 
 **Methods:**
 
-- `ensure_schema()` - Creates and migrates the entries table
+- `ensure_schema()` - Creates and migrates the entries table (including pinned flag)
 - `save_new_entries()` - Insert new entries from the frontend
-- `list_entries()` - Return entries ordered by recency
+- `list_entries()` - Return entries ordered by pinned then recency
 - `update_entry()` / `delete_entry()` - Edit and remove entries
+
+**Schema Notes:**
+
+- `entries.pinned` is stored as `INTEGER NOT NULL DEFAULT 0` and added in `ensure_schema()` if missing.
+
 
 #### AssetService (`services/assets.py`)
 
