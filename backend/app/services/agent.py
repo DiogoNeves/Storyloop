@@ -212,11 +212,13 @@ Your mission: help creators grow their channels and unlock creativity without ge
         content_hash: str,
         title: str,
         content_markdown: str,
+        pinned: bool | None = None,
     ) -> JournalEntryDetails:
         """Edit a journal entry after reading it.
 
         ``content_hash`` must come from the most recent ``read_journal_entry``.
         If the hash mismatches, you must read the entry again before editing.
+        Only set ``pinned`` if the user explicitly asks to pin or unpin the entry.
 
         Put the full Markdown document in ``content_markdown``. Do not write the
         entry content outside the tool call or use placeholders. Do not ask for
@@ -227,7 +229,11 @@ Your mission: help creators grow their channels and unlock creativity without ge
         if ctx.deps.tool_call_notifier:
             await ctx.deps.tool_call_notifier("✏️ updating a journal entry")
 
-        payload = JournalEntryInput(title=title, content_markdown=content_markdown)
+        payload = JournalEntryInput(
+            title=title,
+            content_markdown=content_markdown,
+            pinned=pinned,
+        )
         return await ctx.deps.journal_repo.update_entry(
             entry_id, payload, content_hash
         )

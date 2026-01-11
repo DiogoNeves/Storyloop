@@ -1,11 +1,13 @@
 import { useMemo, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Pin } from "lucide-react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import useLocalStorageState from "use-local-storage-state";
 
 import { entriesQueries, type Entry } from "@/api/entries";
 import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
 import { useEntryEditing } from "@/hooks/useEntryEditing";
+import { useSync } from "@/hooks/useSync";
 import { entryToActivityItem } from "@/lib/types/entries";
 import { useAgentConversationContext } from "@/context/AgentConversationContext";
 import { NavBar } from "@/components/NavBar";
@@ -19,6 +21,11 @@ import { SettingsDialog } from "@/components/SettingsDialog";
 import { MarkdownMessage } from "@/components/chat/MarkdownMessage";
 import { TwoColumnDetailLayout } from "@/components/TwoColumnDetailLayout";
 import { StickyHeaderScrollableCard } from "@/components/StickyHeaderScrollableCard";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export function JournalDetailPage() {
   const { journalId } = useParams<{ journalId: string }>();
@@ -65,6 +72,7 @@ export function JournalDetailPage() {
 
   // Set up editing state
   const editingState = useEntryEditing();
+  const { isOnline } = useSync();
   const {
     editingEntryId,
     editingDraft,
@@ -77,10 +85,16 @@ export function JournalDetailPage() {
     cancelEdit,
     submitEdit,
     deleteEntry,
+    togglePin,
+    isPinning,
   } = editingState;
 
   const isEditing = currentEntry?.id === editingEntryId;
   const activityItem = currentEntry ? entryToActivityItem(currentEntry) : null;
+  const isPinned = Boolean(currentEntry?.pinned);
+  const pinLabel = isPinned ? "Unpin entry" : "Pin entry";
+  const isPinDisabled =
+    !isOnline || (currentEntry ? isPinning(currentEntry.id) : false);
   const deletionInitiatedRef = useRef(false);
 
   // Track when deletion is initiated
@@ -349,18 +363,61 @@ export function JournalDetailPage() {
           <h1 className="text-2xl font-semibold text-foreground">
             {currentEntry.title}
           </h1>
-          {activityItem && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                startEdit(activityItem);
-              }}
-            >
-              Edit entry
-            </Button>
-          )}
+          {activityItem ? (
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  startEdit(activityItem);
+                }}
+              >
+                Edit entry
+              </Button>
+              {isPinDisabled ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      disabled={true}
+                      aria-label={pinLabel}
+                      className={isPinned ? "text-primary" : "text-muted-foreground"}
+                    >
+                      <Pin
+                        className="h-4 w-4"
+                        fill={isPinned ? "currentColor" : "none"}
+                      />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {!isOnline ? "You are offline" : "Updating..."}
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    if (!currentEntry) {
+                      return;
+                    }
+                    void togglePin(currentEntry.id, !isPinned);
+                  }}
+                  aria-label={pinLabel}
+                  className={isPinned ? "text-primary" : "text-muted-foreground"}
+                >
+                  <Pin
+                    className="h-4 w-4"
+                    fill={isPinned ? "currentColor" : "none"}
+                  />
+                </Button>
+              )}
+            </div>
+          ) : null}
         </div>
         <div className="flex flex-col gap-2 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
           <span>{formattedDate ?? "Entry date unavailable"}</span>

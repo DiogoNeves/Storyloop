@@ -42,6 +42,7 @@ const sampleEntry: Entry = {
   category: "journal",
   linkUrl: null,
   thumbnailUrl: null,
+  pinned: false,
 };
 
 function renderPage(ui: ReactElement) {

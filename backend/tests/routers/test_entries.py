@@ -104,6 +104,7 @@ def test_list_entries_returns_persisted_records(
             "summary": "Analyzed thumbnail variations.",
             "date": (now - timedelta(hours=1)).isoformat(),
             "category": "journal",
+            "pinned": True,
         },
         {
             "id": "entry-2",
@@ -121,8 +122,8 @@ def test_list_entries_returns_persisted_records(
     response = client.get("/entries/")
     assert response.status_code == 200
     body = response.json()
-    assert [item["id"] for item in body] == ["entry-2", "entry-1"]
-    assert body[0]["videoId"] == "linked-video"
+    assert [item["id"] for item in body] == ["entry-1", "entry-2"]
+    assert body[0]["pinned"] is True
 
 
 def test_get_entry_returns_single_record(
@@ -208,6 +209,7 @@ def test_update_entry_modifies_record(
         "title": "Updated title",
         "summary": "Updated summary.",
         "videoId": "video-123",
+        "pinned": True,
     }
 
     response = client.put("/entries/entry-1", json=update_payload)
@@ -216,6 +218,7 @@ def test_update_entry_modifies_record(
     assert body["title"] == "Updated title"
     assert body["summary"] == "Updated summary."
     assert body["videoId"] == "video-123"
+    assert body["pinned"] is True
 
 
 def test_delete_entry_removes_record(

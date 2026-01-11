@@ -49,6 +49,7 @@ def _to_journal_details(record: EntryRecord) -> JournalEntryDetails:
         content_markdown=record.summary,
         occurred_at=record.occurred_at.isoformat(),
         content_hash=_calculate_content_hash(record.title, record.summary),
+        pinned=record.pinned,
     )
 
 
@@ -92,7 +93,10 @@ class JournalRepository:
                 except ValueError:
                     # Ignore malformed timestamps; return unfiltered results.
                     pass
-            filtered.sort(key=lambda record: record.occurred_at, reverse=True)
+            filtered.sort(
+                key=lambda record: (record.pinned, record.occurred_at),
+                reverse=True,
+            )
             limited = filtered[:limit]
             return [
                 JournalEntry(
@@ -100,6 +104,7 @@ class JournalRepository:
                     title=record.title,
                     created_at=record.occurred_at.isoformat(),
                     text=record.summary,
+                    pinned=record.pinned,
                     attachments=_collect_attachments(
                         self._asset_service, record.summary
                     ),
@@ -150,6 +155,7 @@ class JournalRepository:
                 link_url=record.link_url,
                 thumbnail_url=record.thumbnail_url,
                 video_id=record.video_id,
+                pinned=payload.pinned if payload.pinned is not None else record.pinned,
             )
             updated = self._entry_service.update_entry(updated_record)
             if not updated:
@@ -172,6 +178,7 @@ class JournalRepository:
                 summary=payload.content_markdown,
                 occurred_at=occurred_at or datetime.now(tz=UTC),
                 category="journal",
+                pinned=payload.pinned if payload.pinned is not None else False,
             )
             saved = self._entry_service.save_new_entries([entry])
             if not saved:
@@ -258,6 +265,7 @@ class EntryRepository:
                 link_url=record.link_url,
                 thumbnail_url=record.thumbnail_url,
                 video_id=record.video_id,
+                pinned=record.pinned,
             )
 
         return await anyio.to_thread.run_sync(_fetch)

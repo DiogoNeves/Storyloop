@@ -10,6 +10,7 @@ class JournalEntry(BaseModel):
     title: str
     created_at: str
     text: str
+    pinned: bool = False
     attachments: list["JournalEntryAttachment"] = Field(default_factory=list)
 
 
@@ -21,6 +22,7 @@ class JournalEntryDetails(BaseModel):
     content_markdown: str
     occurred_at: str
     content_hash: str
+    pinned: bool = False
 
 
 class JournalEntryInput(BaseModel):
@@ -28,6 +30,7 @@ class JournalEntryInput(BaseModel):
 
     title: str
     content_markdown: str
+    pinned: bool | None = None
 
     @field_validator("title", mode="after")
     @classmethod
@@ -54,6 +57,7 @@ class EntryDetails(BaseModel):
     link_url: str | None = None
     thumbnail_url: str | None = None
     video_id: str | None = None
+    pinned: bool = False
 
 
 class JournalEntryAttachment(BaseModel):
