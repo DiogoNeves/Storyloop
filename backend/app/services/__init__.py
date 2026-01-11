@@ -1,6 +1,6 @@
 """Service layer modules."""
 
-from app.services.agent import build_agent, build_loopie_deps
+from app.services.agent import build_agent, build_loopie_deps, build_smart_entry_agent
 from app.services.assets import AssetService
 from app.services.entries import EntryRecord, EntryService
 from app.services.youtube import YoutubeService
@@ -17,6 +17,7 @@ from app.services.users import UserRecord, UserService
 __all__ = [
     "build_agent",
     "build_loopie_deps",
+    "build_smart_entry_agent",
     "AssetService",
     "EntryRecord",
     "EntryService",

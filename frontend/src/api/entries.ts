@@ -4,7 +4,7 @@ import {
   type UseMutationOptions,
 } from "@tanstack/react-query";
 
-import { apiClient } from "@/api/client";
+import { API_BASE_URL, apiClient } from "@/api/client";
 import { compareEntriesByPinnedDate, type Entry } from "@/lib/types/entries";
 
 /**
@@ -26,6 +26,8 @@ export interface CreateEntryInput {
   summary: string;
   date: string;
   category: Entry["category"];
+  promptBody?: string | null;
+  promptFormat?: string | null;
   linkUrl?: string | null;
   thumbnailUrl?: string | null;
   pinned?: boolean;
@@ -144,6 +146,7 @@ export const entriesMutations = {
       const byIdQuery = entriesQueries.byId(input.id);
       await queryClient.cancelQueries({ queryKey: byIdQuery.queryKey });
       const previousById = queryClient.getQueryData<Entry>(byIdQuery.queryKey);
+      const optimisticUpdatedAt = new Date().toISOString();
 
       const nextEntries = (previousEntries ?? []).map((entry) =>
         entry.id === input.id
@@ -152,7 +155,14 @@ export const entriesMutations = {
               ...("title" in input ? { title: input.title! } : {}),
               ...("summary" in input ? { summary: input.summary! } : {}),
               ...("date" in input ? { date: input.date! } : {}),
+              ...("promptBody" in input
+                ? { promptBody: input.promptBody ?? null }
+                : {}),
+              ...("promptFormat" in input
+                ? { promptFormat: input.promptFormat ?? null }
+                : {}),
               ...("pinned" in input ? { pinned: input.pinned! } : {}),
+              updatedAt: optimisticUpdatedAt,
             }
           : entry,
       );
@@ -170,7 +180,14 @@ export const entriesMutations = {
           ...("title" in input ? { title: input.title! } : {}),
           ...("summary" in input ? { summary: input.summary! } : {}),
           ...("date" in input ? { date: input.date! } : {}),
+          ...("promptBody" in input
+            ? { promptBody: input.promptBody ?? null }
+            : {}),
+          ...("promptFormat" in input
+            ? { promptFormat: input.promptFormat ?? null }
+            : {}),
           ...("pinned" in input ? { pinned: input.pinned! } : {}),
+          updatedAt: optimisticUpdatedAt,
         });
       }
 
@@ -293,3 +310,197 @@ export const entriesMutations = {
     },
   }),
 };
+
+export interface SmartEntryStreamCallbacks {
+  onOpen?: () => void;
+  onToken?: (token: string) => void;
+  onDone?: (payload: { entryId?: string; text?: string }) => void;
+  onError?: (message: string) => void;
+  onToolCall?: (message: string) => void;
+}
+
+export interface StreamSmartEntryOptions {
+  entryId: string;
+  signal?: AbortSignal;
+  callbacks?: SmartEntryStreamCallbacks;
+}
+
+interface ParsedSseEvent {
+  event: string | null;
+  data: unknown;
+}
+
+function parseSseEvent(rawEvent: string): ParsedSseEvent | null {
+  const lines = rawEvent.split(/\r?\n/);
+  let eventName: string | null = null;
+  const dataLines: string[] = [];
+
+  for (const rawLine of lines) {
+    if (!rawLine) {
+      continue;
+    }
+    if (rawLine.startsWith("event:")) {
+      eventName = rawLine.slice(6).trim();
+      continue;
+    }
+    if (rawLine.startsWith("data:")) {
+      dataLines.push(rawLine.slice(5).trim());
+    }
+  }
+
+  if (!eventName && dataLines.length === 0) {
+    return null;
+  }
+
+  const dataPayload = dataLines.join("\n");
+  let parsedData: unknown = dataPayload;
+  if (dataPayload.length > 0) {
+    try {
+      parsedData = JSON.parse(dataPayload);
+    } catch {
+      parsedData = dataPayload;
+    }
+  }
+
+  return { event: eventName, data: parsedData };
+}
+
+function handleSmartEntryEvent(
+  parsed: ParsedSseEvent,
+  callbacks: SmartEntryStreamCallbacks | undefined,
+): boolean {
+  const { onToken, onDone, onError } = callbacks ?? {};
+
+  switch (parsed.event) {
+    case "token": {
+      const token =
+        typeof parsed.data === "object" && parsed.data !== null
+          ? (parsed.data as Record<string, unknown>).token
+          : undefined;
+      if (typeof token === "string") {
+        onToken?.(token);
+      }
+      return false;
+    }
+    case "done": {
+      const record =
+        typeof parsed.data === "object" && parsed.data !== null
+          ? (parsed.data as Record<string, unknown>)
+          : {};
+      const entryId =
+        typeof record.entry_id === "string" ? record.entry_id : undefined;
+      const text = typeof record.text === "string" ? record.text : undefined;
+      onDone?.({ entryId, text });
+      return true;
+    }
+    case "error": {
+      const message =
+        typeof parsed.data === "object" && parsed.data !== null
+          ? (parsed.data as Record<string, unknown>).message
+          : undefined;
+      const resolvedMessage =
+        typeof message === "string"
+          ? message
+          : "Loopie couldn't update this smart entry.";
+      onError?.(resolvedMessage);
+      return true;
+    }
+    case "tool_call": {
+      const message =
+        typeof parsed.data === "object" && parsed.data !== null
+          ? (parsed.data as Record<string, unknown>).message
+          : undefined;
+      if (typeof message === "string") {
+        callbacks?.onToolCall?.(message);
+      }
+      return false;
+    }
+    default:
+      return false;
+  }
+}
+
+export async function streamSmartEntryUpdate(
+  options: StreamSmartEntryOptions,
+): Promise<void> {
+  const { entryId, signal, callbacks } = options;
+  const response = await fetch(`${API_BASE_URL}/entries/${entryId}/smart/stream`, {
+    method: "POST",
+    headers: {
+      Accept: "text/event-stream",
+      "Cache-Control": "no-cache",
+    },
+    signal,
+    mode: "cors",
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    const error = new Error(
+      errorText || `Failed to stream smart entry update (status ${response.status}).`,
+    ) as Error & { status?: number };
+    error.status = response.status;
+    throw error;
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new Error("Streaming is not supported in this environment.");
+  }
+
+  callbacks?.onOpen?.();
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let shouldStop = false;
+
+  const boundaryPattern = /\r?\n\r?\n/g;
+
+  const findBoundary = (input: string) => {
+    boundaryPattern.lastIndex = 0;
+    return boundaryPattern.exec(input);
+  };
+
+  try {
+    while (!shouldStop) {
+      const { value, done } = await reader.read();
+      if (done) {
+        break;
+      }
+      buffer += decoder.decode(value, { stream: true });
+
+      let match = findBoundary(buffer);
+      while (match) {
+        const boundaryIndex = match.index ?? -1;
+        if (boundaryIndex === -1) {
+          break;
+        }
+
+        const rawEvent = buffer.slice(0, boundaryIndex);
+        buffer = buffer.slice(boundaryIndex + match[0].length);
+
+        const parsed = parseSseEvent(rawEvent);
+        if (parsed) {
+          shouldStop = handleSmartEntryEvent(parsed, callbacks) || shouldStop;
+        }
+
+        match = findBoundary(buffer);
+      }
+    }
+
+    if (!shouldStop && buffer.trim().length > 0) {
+      const parsed = parseSseEvent(buffer);
+      if (parsed) {
+        shouldStop = handleSmartEntryEvent(parsed, callbacks) || shouldStop;
+      }
+    }
+  } finally {
+    if (shouldStop) {
+      try {
+        await reader.cancel();
+      } catch {
+        // Ignore cancellation errors
+      }
+    }
+  }
+}

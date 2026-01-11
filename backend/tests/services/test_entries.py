@@ -20,6 +20,7 @@ def test_save_new_entries_inserts_only_fresh_records(
         title="First journal entry",
         summary="Reflections on editing workflow.",
         occurred_at=now,
+        updated_at=now,
         category="journal",
         video_id="video-123",
     )
@@ -28,6 +29,7 @@ def test_save_new_entries_inserts_only_fresh_records(
         title="Second journal entry",
         summary="Analyzed thumbnails and hooks.",
         occurred_at=now + timedelta(hours=1),
+        updated_at=now + timedelta(hours=1),
         category="journal",
         link_url="https://example.com",
         thumbnail_url="https://example.com/thumb.jpg",
@@ -60,6 +62,7 @@ def test_list_entries_returns_records_in_reverse_chronological_order(
         title="Earlier entry",
         summary="Initial narrative beats.",
         occurred_at=now - timedelta(hours=1),
+        updated_at=now - timedelta(hours=1),
         category="journal",
         pinned=True,
     )
@@ -68,6 +71,7 @@ def test_list_entries_returns_records_in_reverse_chronological_order(
         title="Latest entry",
         summary="Final retention insights.",
         occurred_at=now,
+        updated_at=now,
         category="journal",
     )
 
@@ -88,6 +92,7 @@ def test_get_entry_returns_record(memory_connection_factory: SqliteConnectionFac
         title="Entry to fetch",
         summary="Context for lookup.",
         occurred_at=now,
+        updated_at=now,
         category="journal",
         video_id="linked-video",
     )
@@ -108,6 +113,7 @@ def test_update_entry_persists_changes(memory_connection_factory: SqliteConnecti
         title="Original",
         summary="Original summary.",
         occurred_at=now,
+        updated_at=now,
         category="journal",
     )
     service.save_new_entries([original])
@@ -117,6 +123,7 @@ def test_update_entry_persists_changes(memory_connection_factory: SqliteConnecti
         title="Updated title",
         summary="Updated summary.",
         occurred_at=now + timedelta(days=1),
+        updated_at=now + timedelta(days=1),
         category="content",
         link_url="https://example.com/content",
         video_id="vid-99",
@@ -144,6 +151,7 @@ def test_delete_entry_removes_record(memory_connection_factory: SqliteConnection
         title="Delete me",
         summary="To be deleted.",
         occurred_at=now,
+        updated_at=now,
         category="journal",
     )
     service.save_new_entries([record])

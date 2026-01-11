@@ -13,6 +13,10 @@ export interface Entry {
   title: string;
   summary: string;
   date: string;
+  updatedAt: string;
+  lastSmartUpdateAt?: string | null;
+  promptBody?: string | null;
+  promptFormat?: string | null;
   category: "content" | "journal";
   linkUrl?: string | null;
   thumbnailUrl?: string | null;
@@ -30,6 +34,11 @@ export interface ActivityItem {
   title: string;
   summary: string;
   date: string;
+  createdAt?: string;
+  updatedAt?: string;
+  lastSmartUpdateAt?: string | null;
+  promptBody?: string;
+  promptFormat?: string;
   category: "content" | "journal" | "conversation";
   linkUrl?: string;
   thumbnailUrl?: string;
@@ -46,11 +55,17 @@ export interface ActivityItem {
  * @returns ActivityItem for use in frontend components
  */
 export function entryToActivityItem(entry: Entry): ActivityItem {
+  const updatedAt = entry.updatedAt ?? entry.date;
   return {
     id: entry.id,
     title: entry.title,
     summary: entry.summary,
-    date: entry.date,
+    date: updatedAt,
+    createdAt: entry.date,
+    updatedAt,
+    lastSmartUpdateAt: entry.lastSmartUpdateAt ?? null,
+    promptBody: entry.promptBody ?? undefined,
+    promptFormat: entry.promptFormat ?? undefined,
     category: entry.category,
     linkUrl: entry.linkUrl ?? undefined,
     thumbnailUrl: entry.thumbnailUrl ?? undefined,
@@ -65,7 +80,7 @@ export function compareEntriesByPinnedDate(a: Entry, b: Entry): number {
   if (pinnedDelta !== 0) {
     return pinnedDelta;
   }
-  return toTimestamp(b.date) - toTimestamp(a.date);
+  return toTimestamp(b.updatedAt ?? b.date) - toTimestamp(a.updatedAt ?? a.date);
 }
 
 export function compareActivityItemsByPinnedDate(
@@ -78,7 +93,7 @@ export function compareActivityItemsByPinnedDate(
   if (pinnedDelta !== 0) {
     return pinnedDelta;
   }
-  return toTimestamp(b.date) - toTimestamp(a.date);
+  return toTimestamp(b.updatedAt ?? b.date) - toTimestamp(a.updatedAt ?? a.date);
 }
 
 function toTimestamp(value: string): number {

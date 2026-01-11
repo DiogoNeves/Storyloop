@@ -19,7 +19,11 @@ class EntryRecord:
     title: str
     summary: str
     occurred_at: datetime
+    updated_at: datetime
     category: str
+    prompt_body: str | None = None
+    prompt_format: str | None = None
+    last_smart_update_at: datetime | None = None
     link_url: str | None = None
     thumbnail_url: str | None = None
     video_id: str | None = None
@@ -31,7 +35,11 @@ ENTRY_COLUMNS = (
     "id",
     "title",
     "summary",
+    "prompt_body",
+    "prompt_format",
     "occurred_at",
+    "updated_at",
+    "last_smart_update_at",
     "category",
     "link_url",
     "thumbnail_url",
@@ -46,12 +54,21 @@ def _row_to_record(row: Row) -> EntryRecord:
     This is a pure function with no side effects. It handles the common
     pattern of converting database rows to domain objects.
     """
+    last_smart_update_at = (
+        datetime.fromisoformat(row["last_smart_update_at"])
+        if row["last_smart_update_at"]
+        else None
+    )
     return EntryRecord(
         id=row["id"],
         title=row["title"],
         summary=row["summary"],
         occurred_at=datetime.fromisoformat(row["occurred_at"]),
+        updated_at=datetime.fromisoformat(row["updated_at"]),
         category=row["category"],
+        prompt_body=row["prompt_body"],
+        prompt_format=row["prompt_format"],
+        last_smart_update_at=last_smart_update_at,
         link_url=row["link_url"],
         thumbnail_url=row["thumbnail_url"],
         video_id=row["video_id"],
@@ -68,7 +85,13 @@ def _record_to_values(record: EntryRecord) -> tuple:
         record.id,
         record.title,
         record.summary,
+        record.prompt_body,
+        record.prompt_format,
         record.occurred_at.isoformat(),
+        record.updated_at.isoformat(),
+        record.last_smart_update_at.isoformat()
+        if record.last_smart_update_at
+        else None,
         record.category,
         record.link_url,
         record.thumbnail_url,
@@ -89,7 +112,11 @@ class EntryService(DatabaseService):
                     id TEXT PRIMARY KEY,
                     title TEXT NOT NULL,
                     summary TEXT NOT NULL,
+                    prompt_body TEXT,
+                    prompt_format TEXT,
                     occurred_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    last_smart_update_at TEXT,
                     category TEXT NOT NULL,
                     link_url TEXT,
                     thumbnail_url TEXT,
@@ -104,6 +131,24 @@ class EntryService(DatabaseService):
                     "PRAGMA table_info(entries)"
                 ).fetchall()
             }
+            added_updated_at = False
+            if "prompt_body" not in columns:
+                connection.execute(
+                    "ALTER TABLE entries ADD COLUMN prompt_body TEXT"
+                )
+            if "prompt_format" not in columns:
+                connection.execute(
+                    "ALTER TABLE entries ADD COLUMN prompt_format TEXT"
+                )
+            if "updated_at" not in columns:
+                connection.execute(
+                    "ALTER TABLE entries ADD COLUMN updated_at TEXT"
+                )
+                added_updated_at = True
+            if "last_smart_update_at" not in columns:
+                connection.execute(
+                    "ALTER TABLE entries ADD COLUMN last_smart_update_at TEXT"
+                )
             if "video_id" not in columns:
                 connection.execute(
                     "ALTER TABLE entries ADD COLUMN video_id TEXT"
@@ -111,6 +156,10 @@ class EntryService(DatabaseService):
             if "pinned" not in columns:
                 connection.execute(
                     "ALTER TABLE entries ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0"
+                )
+            if "updated_at" in columns or added_updated_at:
+                connection.execute(
+                    "UPDATE entries SET updated_at = occurred_at WHERE updated_at IS NULL"
                 )
             connection.commit()
 
@@ -147,11 +196,43 @@ class EntryService(DatabaseService):
                 f"""
                 SELECT {columns_str}
                 FROM entries
-                ORDER BY pinned DESC, datetime(occurred_at) DESC
+                ORDER BY pinned DESC, datetime(updated_at) DESC
                 """
             ).fetchall()
 
         return [_row_to_record(row) for row in rows]
+
+    def list_smart_entries(self) -> list[EntryRecord]:
+        """Return entries that have smart journal prompts."""
+        with closing(self._connection_factory()) as connection:
+            columns_str = ", ".join(ENTRY_COLUMNS)
+            rows: Sequence[Row] = connection.execute(
+                f"""
+                SELECT {columns_str}
+                FROM entries
+                WHERE prompt_body IS NOT NULL
+                ORDER BY datetime(updated_at) DESC
+                """
+            ).fetchall()
+
+        return [_row_to_record(row) for row in rows]
+
+    def update_last_smart_update_at(
+        self, entry_id: str, updated_at: datetime
+    ) -> bool:
+        """Persist the last smart update timestamp for an entry."""
+        with closing(self._connection_factory()) as connection:
+            cursor = connection.execute(
+                """
+                UPDATE entries
+                SET last_smart_update_at = ?
+                WHERE id = ?
+                """,
+                (updated_at.isoformat(), entry_id),
+            )
+            connection.commit()
+
+        return cursor.rowcount == 1
 
     def get_entry(self, entry_id: str) -> EntryRecord | None:
         """Return the entry that matches the provided identifier."""
