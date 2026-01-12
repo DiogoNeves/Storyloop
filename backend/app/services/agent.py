@@ -201,7 +201,7 @@ def build_agent(
 
         Args:
             limit: number of entries, newest first
-            before_iso: only return entries strictly before this timestamp
+            before_iso: only return entries strictly before this updated_at timestamp
         """
 
         if ctx.deps.tool_call_notifier:

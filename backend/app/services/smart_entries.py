@@ -17,6 +17,9 @@ from app.services.agent import build_loopie_deps
 from app.services.entries import EntryRecord, EntryService
 
 
+NO_UPDATE_SENTINEL = "NO_UPDATE"
+
+
 @dataclass(slots=True)
 class SmartEntryUpdateState:
     entry_id: str
@@ -185,6 +188,8 @@ class SmartEntryUpdateManager:
                     )
 
                     assistant_text = ""
+                    pending_tokens = ""
+                    is_sentinel_candidate = True
                     try:
                         stream_context = assistant_agent.run_stream(
                             prompt, deps=deps
@@ -204,24 +209,54 @@ class SmartEntryUpdateManager:
                                 assistant_text += token
                             if not delta:
                                 continue
+                            if is_sentinel_candidate:
+                                pending_tokens += delta
+                                if not NO_UPDATE_SENTINEL.startswith(assistant_text):
+                                    is_sentinel_candidate = False
+                                    await self._publish(
+                                        state,
+                                        {
+                                            "event": "token",
+                                            "data": {"token": pending_tokens},
+                                        },
+                                    )
+                                    pending_tokens = ""
+                            else:
+                                await self._publish(
+                                    state,
+                                    {
+                                        "event": "token",
+                                        "data": {"token": delta},
+                                    },
+                                )
+
+                    if is_sentinel_candidate:
+                        if assistant_text == NO_UPDATE_SENTINEL:
+                            assistant_text = ""
+                            pending_tokens = ""
+                        elif pending_tokens:
                             await self._publish(
                                 state,
                                 {
                                     "event": "token",
-                                    "data": {"token": delta},
+                                    "data": {"token": pending_tokens},
                                 },
                             )
+                            pending_tokens = ""
 
                     await anyio.to_thread.run_sync(
                         self._entry_service.update_last_smart_update_at,
                         entry_id,
                         datetime.now(tz=UTC),
                     )
+                    done_payload = {"entry_id": entry_id}
+                    if assistant_text:
+                        done_payload["text"] = assistant_text
                     await self._publish(
                         state,
                         {
                             "event": "done",
-                            "data": {"entry_id": entry_id, "text": assistant_text},
+                            "data": done_payload,
                         },
                     )
                 except Exception as exc:  # noqa: BLE001

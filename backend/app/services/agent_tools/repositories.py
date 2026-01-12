@@ -72,7 +72,7 @@ class JournalRepository:
         Args:
             user_id: Identifier for the user requesting entries (currently informational).
             limit: Maximum number of entries to return.
-            before: ISO 8601 timestamp string that filters out newer entries.
+            before: ISO 8601 timestamp string that filters by updated_at.
         """
 
         def _fetch() -> list[JournalEntry]:
@@ -83,16 +83,13 @@ class JournalRepository:
                 if record.category == "journal"
             ]
             if before:
-                try:
-                    cutoff = datetime.fromisoformat(before)
+                cutoff = _parse_iso_datetime(before)
+                if cutoff is not None:
                     filtered = [
                         record
                         for record in filtered
-                        if record.occurred_at < cutoff
+                        if record.updated_at < cutoff
                     ]
-                except ValueError:
-                    # Ignore malformed timestamps; return unfiltered results.
-                    pass
             filtered.sort(
                 key=lambda record: (record.pinned, record.updated_at),
                 reverse=True,
@@ -103,6 +100,7 @@ class JournalRepository:
                     id=record.id,
                     title=record.title,
                     created_at=record.occurred_at.isoformat(),
+                    updated_at=record.updated_at.isoformat(),
                     text=record.summary,
                     pinned=record.pinned,
                     attachments=_collect_attachments(
