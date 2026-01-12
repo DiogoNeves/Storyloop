@@ -75,6 +75,7 @@ export default defineConfig({
   },
   envDir: resolve(__dirname, ".."), // Load .env from project root
   build: {
+    chunkSizeWarningLimit: 700,
     rollupOptions: {
       output: {
         manualChunks: {
