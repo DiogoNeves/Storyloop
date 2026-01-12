@@ -529,6 +529,8 @@ export function JournalDetailPage() {
       );
     }
 
+    const promptActionsDisabled = !isOnline || isPromptUpdating || isSmartUpdating;
+
     const editLabel =
       isSmartEntry && activeTab === "prompt" ? "Edit prompt" : "Edit entry";
     const editDisabledReason = !isOnline
@@ -576,6 +578,33 @@ export function JournalDetailPage() {
       </Button>
     );
 
+    const showStopSmartUpdates = isSmartEntry && activeTab === "prompt";
+    const stopSmartUpdatesButton = promptActionsDisabled ? (
+      editDisabledReason ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button type="button" variant="destructive" size="sm" disabled={true}>
+              Stop smart updates
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{editDisabledReason}</TooltipContent>
+        </Tooltip>
+      ) : (
+        <Button type="button" variant="destructive" size="sm" disabled={true}>
+          Stop smart updates
+        </Button>
+      )
+    ) : (
+      <Button
+        type="button"
+        variant="destructive"
+        size="sm"
+        onClick={() => setIsStopDialogOpen(true)}
+      >
+        Stop smart updates
+      </Button>
+    );
+
     const header = (
       <>
         <div className="space-y-2">
@@ -591,6 +620,7 @@ export function JournalDetailPage() {
             </h1>
             {activityItem ? (
               <div className="flex items-center gap-2">
+                {showStopSmartUpdates ? stopSmartUpdatesButton : null}
                 {editButton}
                 {isPinDisabled ? (
                   <Tooltip>
@@ -669,7 +699,13 @@ export function JournalDetailPage() {
       </>
     );
 
-    const promptActionsDisabled = !isOnline || isPromptUpdating || isSmartUpdating;
+    const promptMarkdown = (() => {
+      const promptBody = currentEntry.promptBody ?? "";
+      const promptFormat = currentEntry.promptFormat?.trim().length
+        ? currentEntry.promptFormat
+        : "No format guidance yet.";
+      return `## What to include\n\n${promptBody}\n\n## Format\n\n${promptFormat}`;
+    })();
 
     const promptTab = (
       <div className="space-y-4">
@@ -687,50 +723,14 @@ export function JournalDetailPage() {
             idPrefix={`edit-prompt-${currentEntry.id}`}
           />
         ) : (
-          <Card>
-            <CardContent className="space-y-4 p-4">
-              <div className="space-y-1">
-                <p className="text-xs font-semibold uppercase text-muted-foreground">
-                  What to include
-                </p>
-                <p className="whitespace-pre-line text-sm text-foreground">
-                  {currentEntry.promptBody}
-                </p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs font-semibold uppercase text-muted-foreground">
-                  Format
-                </p>
-                <p className="whitespace-pre-line text-sm text-foreground">
-                  {currentEntry.promptFormat?.trim().length
-                    ? currentEntry.promptFormat
-                    : "No format guidance yet."}
-                </p>
-              </div>
-              {promptError ? (
-                <p className="text-xs text-destructive">{promptError}</p>
-              ) : null}
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={startPromptEdit}
-                  disabled={promptActionsDisabled}
-                >
-                  Edit prompt
-                </Button>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  onClick={() => setIsStopDialogOpen(true)}
-                  disabled={promptActionsDisabled}
-                >
-                  Stop smart updates
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+          <MarkdownMessage
+            content={promptMarkdown}
+            className="text-muted-foreground"
+          />
+        )
+        {promptError ? (
+          <p className="text-xs text-destructive">{promptError}</p>
+        ) : null}
         <Dialog open={isStopDialogOpen} onOpenChange={setIsStopDialogOpen}>
           <DialogContent>
             <DialogHeader>
@@ -738,6 +738,7 @@ export function JournalDetailPage() {
               <DialogDescription>
                 This will remove the smart prompt and stop Loopie from updating
                 this journal. This action cannot be undone.
+
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="gap-2 sm:space-x-2">
@@ -835,10 +836,10 @@ export function JournalDetailPage() {
     ) : null;
 
     const body = (
-      <>
+      <div className="space-y-6 pt-4">
         {tabs}
         {isSmartEntry && activeTab === "prompt" ? promptTab : contentTab}
-      </>
+      </div>
     );
 
     const footer = (
