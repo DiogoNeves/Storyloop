@@ -672,22 +672,16 @@ export function JournalDetailPage() {
           </div>
         </div>
         <div className="flex flex-col gap-2 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
-          {formattedUpdatedDate ? (
-            formattedCreatedDate ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="cursor-default">
-                    Updated {formattedUpdatedDate}
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>Created: {formattedCreatedDate}</TooltipContent>
-              </Tooltip>
-            ) : (
+          <div className="flex flex-col gap-1">
+            {formattedUpdatedDate ? (
               <span>Updated {formattedUpdatedDate}</span>
-            )
-          ) : (
-            <span>Entry date unavailable</span>
-          )}
+            ) : (
+              <span>Entry date unavailable</span>
+            )}
+            {formattedCreatedDate ? (
+              <span>Created {formattedCreatedDate}</span>
+            ) : null}
+          </div>
           {isSmartEntry ? (
             <span className="text-xs text-muted-foreground">
               {formattedLastSmartUpdate
