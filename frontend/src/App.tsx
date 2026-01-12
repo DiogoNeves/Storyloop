@@ -16,7 +16,11 @@ import {
 } from "react-router-dom";
 import useLocalStorageState from "use-local-storage-state";
 
-import { ActivityFeed, type ActivityDraft } from "@/components/ActivityFeed";
+import {
+  ActivityFeed,
+  type ActivityDraft,
+  type EntryDraftMode,
+} from "@/components/ActivityFeed";
 import { NavBar } from "@/components/NavBar";
 import { LoopiePanel } from "@/components/LoopiePanel";
 import {
@@ -353,6 +357,7 @@ function JournalPage() {
   const displayItems = hasActivity ? activityItems : seedActivityItems;
 
   const [draft, setDraft] = useState<ActivityDraft | null>(null);
+  const [, setDraftMode] = useState<EntryDraftMode>("standard");
   const [draftError, setDraftError] = useState<string | null>(null);
   const [conversationDeleteError, setConversationDeleteError] = useState<
     string | null
@@ -391,17 +396,27 @@ function JournalPage() {
     return adjusted.toISOString().slice(0, 16);
   }, []);
 
-  const handleStartDraft = useCallback(() => {
-    if (draft) {
-      return;
-    }
-    setDraft({
-      title: "",
-      summary: "",
-      date: formatNowAsDateTimeLocal(),
-    });
-    setDraftError(null);
-  }, [draft, formatNowAsDateTimeLocal]);
+  const handleStartDraft = useCallback(
+    (mode: EntryDraftMode) => {
+      if (draft) {
+        return;
+      }
+      setDraftMode(mode);
+      const baseDraft: ActivityDraft = {
+        title: "",
+        summary: "",
+        date: formatNowAsDateTimeLocal(),
+        mode,
+      };
+      setDraft(
+        mode === "smart"
+          ? { ...baseDraft, promptBody: "", promptFormat: "" }
+          : baseDraft,
+      );
+      setDraftError(null);
+    },
+    [draft, formatNowAsDateTimeLocal],
+  );
 
   const handleDraftChange = useCallback((nextDraft: ActivityDraft) => {
     setDraft(nextDraft);
@@ -421,20 +436,35 @@ function JournalPage() {
     }
 
     const trimmedTitle = draft.title.trim();
-    const trimmedSummary = draft.summary.trim();
     if (trimmedTitle.length === 0) {
       setDraftError("Add a title before saving.");
+      return;
+    }
+
+    const isSmartDraft = draft.mode === "smart";
+    const trimmedPromptBody = (draft.promptBody ?? "").trim();
+    const trimmedPromptFormat = (draft.promptFormat ?? "").trim();
+    const trimmedSummary = draft.summary.trim();
+    if (isSmartDraft && trimmedPromptBody.length === 0) {
+      setDraftError("Describe what Loopie should include before saving.");
       return;
     }
 
     const entryInput: CreateEntryInput = {
       id: crypto.randomUUID(),
       title: trimmedTitle,
-      summary: trimmedSummary,
+      summary: isSmartDraft ? "" : trimmedSummary,
       date: new Date(draft.date).toISOString(),
       category: "journal",
       pinned: false,
+      ...(isSmartDraft
+        ? {
+            promptBody: trimmedPromptBody,
+            promptFormat: trimmedPromptFormat.length > 0 ? trimmedPromptFormat : null,
+          }
+        : {}),
     };
+    const optimisticUpdatedAt = new Date().toISOString();
 
     try {
       setDraftError(null);
@@ -448,6 +478,8 @@ function JournalPage() {
           pinned: entryInput.pinned ?? false,
           videoId: null,
           videoType: null,
+          updatedAt: optimisticUpdatedAt,
+          lastSmartUpdateAt: null,
         };
         queryClient.setQueryData<Entry[]>(
           entriesListQuery.queryKey,
@@ -489,6 +521,8 @@ function JournalPage() {
           pinned: entryInput.pinned ?? false,
           videoId: null,
           videoType: null,
+          updatedAt: optimisticUpdatedAt,
+          lastSmartUpdateAt: null,
         };
         queryClient.setQueryData<Entry[]>(
           entriesListQuery.queryKey,
@@ -546,27 +580,28 @@ function JournalPage() {
         </div>
       </div>
 
-      <ActivityFeed
-        className="flex-1"
-        items={displayItems}
-        youtubeFeed={youtubeState.youtubeFeed}
-        isLinked={youtubeState.isLinked}
-        linkStatus={youtubeState.linkStatus}
-        youtubeError={youtubeState.youtubeError}
-        draft={draft}
-        onStartDraft={handleStartDraft}
-        onDraftChange={handleDraftChange}
-        onCancelDraft={handleCancelDraft}
-        onSubmitDraft={handleDraftSubmit}
-        isSubmittingDraft={isSavingEntry}
-        draftError={draftError}
-        errorMessage={entriesErrorMessage}
-        conversationErrorMessage={conversationDeleteError}
-        onConversationClick={handleConversationClick}
-        onConversationDelete={isDemo ? undefined : handleConversationDelete}
-        deletingConversationIds={deletingConversationIds}
-        searchQuery={searchQuery}
-      />
+        <ActivityFeed
+          className="flex-1"
+          items={displayItems}
+          youtubeFeed={youtubeState.youtubeFeed}
+          isLinked={youtubeState.isLinked}
+          linkStatus={youtubeState.linkStatus}
+          youtubeError={youtubeState.youtubeError}
+          draft={draft}
+          onStartDraft={handleStartDraft}
+          onDraftChange={handleDraftChange}
+          onCancelDraft={handleCancelDraft}
+          onSubmitDraft={handleDraftSubmit}
+          isSubmittingDraft={isSavingEntry}
+          draftError={draftError}
+          errorMessage={entriesErrorMessage}
+          conversationErrorMessage={conversationDeleteError}
+          onConversationClick={handleConversationClick}
+          onConversationDelete={isDemo ? undefined : handleConversationDelete}
+          deletingConversationIds={deletingConversationIds}
+          searchQuery={searchQuery}
+        />
+
     </div>
   );
 }

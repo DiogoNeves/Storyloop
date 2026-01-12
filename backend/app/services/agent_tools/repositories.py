@@ -72,7 +72,7 @@ class JournalRepository:
         Args:
             user_id: Identifier for the user requesting entries (currently informational).
             limit: Maximum number of entries to return.
-            before: ISO 8601 timestamp string that filters out newer entries.
+            before: ISO 8601 timestamp string that filters by updated_at.
         """
 
         def _fetch() -> list[JournalEntry]:
@@ -83,18 +83,15 @@ class JournalRepository:
                 if record.category == "journal"
             ]
             if before:
-                try:
-                    cutoff = datetime.fromisoformat(before)
+                cutoff = _parse_iso_datetime(before)
+                if cutoff is not None:
                     filtered = [
                         record
                         for record in filtered
-                        if record.occurred_at < cutoff
+                        if record.updated_at < cutoff
                     ]
-                except ValueError:
-                    # Ignore malformed timestamps; return unfiltered results.
-                    pass
             filtered.sort(
-                key=lambda record: (record.pinned, record.occurred_at),
+                key=lambda record: (record.pinned, record.updated_at),
                 reverse=True,
             )
             limited = filtered[:limit]
@@ -103,6 +100,7 @@ class JournalRepository:
                     id=record.id,
                     title=record.title,
                     created_at=record.occurred_at.isoformat(),
+                    updated_at=record.updated_at.isoformat(),
                     text=record.summary,
                     pinned=record.pinned,
                     attachments=_collect_attachments(
@@ -150,7 +148,11 @@ class JournalRepository:
                 id=record.id,
                 title=payload.title,
                 summary=payload.content_markdown,
+                prompt_body=record.prompt_body,
+                prompt_format=record.prompt_format,
                 occurred_at=record.occurred_at,
+                updated_at=datetime.now(tz=UTC),
+                last_smart_update_at=record.last_smart_update_at,
                 category=record.category,
                 link_url=record.link_url,
                 thumbnail_url=record.thumbnail_url,
@@ -176,7 +178,11 @@ class JournalRepository:
                 id=str(uuid4()),
                 title=payload.title,
                 summary=payload.content_markdown,
+                prompt_body=None,
+                prompt_format=None,
                 occurred_at=occurred_at or datetime.now(tz=UTC),
+                updated_at=datetime.now(tz=UTC),
+                last_smart_update_at=None,
                 category="journal",
                 pinned=payload.pinned if payload.pinned is not None else False,
             )

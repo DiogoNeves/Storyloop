@@ -26,6 +26,7 @@ async def test_read_journal_entry_returns_content_hash(
         title="  Trimmed title  ",
         summary="  Trimmed summary  ",
         occurred_at=datetime.now(tz=UTC),
+        updated_at=datetime.now(tz=UTC),
         category="journal",
     )
     service.save_new_entries([record])
@@ -48,6 +49,7 @@ async def test_edit_journal_entry_requires_matching_hash(
         title="Original",
         summary="Original summary",
         occurred_at=datetime.now(tz=UTC),
+        updated_at=datetime.now(tz=UTC),
         category="journal",
     )
     service.save_new_entries([record])
@@ -73,6 +75,7 @@ async def test_edit_journal_entry_updates_content_and_hash(
         title="Original",
         summary="Original summary",
         occurred_at=datetime.now(tz=UTC),
+        updated_at=datetime.now(tz=UTC),
         category="journal",
     )
     service.save_new_entries([record])

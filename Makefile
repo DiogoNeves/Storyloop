@@ -1,4 +1,4 @@
-.PHONY: dev backend prod build test test-backend test-frontend lint-frontend seed
+.PHONY: dev backend prod build test test-backend test-frontend lint lint-backend lint-frontend seed
 
 backend:
 	cd backend && uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8001
@@ -21,6 +21,13 @@ test-backend:
 
 test-frontend:
 	cd frontend && pnpm run test -- --run
+
+lint:
+	make lint-backend
+	make lint-frontend
+
+lint-backend:
+	cd backend && uv run ruff check . && uv run mypy .
 
 lint-frontend:
 	cd frontend && pnpm run lint

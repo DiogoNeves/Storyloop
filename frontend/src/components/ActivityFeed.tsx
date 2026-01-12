@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { LinkYouTubeAccountCard } from "@/components/LinkYouTubeAccountCard";
 import { ActivityFeedItem } from "./ActivityFeedItem";
 import { ActivityDraftCard } from "./ActivityDraftCard";
+import { SmartEntryDraftCard } from "./SmartEntryDraftCard";
 import { InfoModal } from "./InfoModal";
 import { ActivityFeedInfo } from "./ActivityFeedInfo";
 import { isActivityEditable } from "@/lib/activity-helpers";
@@ -20,10 +21,15 @@ import { filterActivityItems } from "@/lib/activity-search";
 
 export type { ActivityItem };
 
+export type EntryDraftMode = "standard" | "smart";
+
 export interface ActivityDraft {
   title: string;
   summary: string;
   date: string; // datetime-local string
+  promptBody?: string;
+  promptFormat?: string;
+  mode: EntryDraftMode;
 }
 
 interface ActivityFeedProps {
@@ -33,7 +39,7 @@ interface ActivityFeedProps {
   linkStatus?: YoutubeLinkStatusResponse | null;
   youtubeError?: string | null;
   draft?: ActivityDraft | null;
-  onStartDraft?: () => void;
+  onStartDraft?: (mode: EntryDraftMode) => void;
   onDraftChange?: (draft: ActivityDraft) => void;
   onCancelDraft?: () => void;
   onSubmitDraft?: () => void;
@@ -149,14 +155,25 @@ export function ActivityFeed({
           </div>
         </div>
         <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
-          <Button
-            type="button"
-            onClick={onStartDraft}
-            disabled={Boolean(draft)}
-            className="self-start sm:self-auto"
-          >
-            + entry
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onStartDraft?.("smart")}
+              disabled={Boolean(draft)}
+              className="self-start sm:self-auto"
+            >
+              + smart entry
+            </Button>
+            <Button
+              type="button"
+              onClick={() => onStartDraft?.("standard")}
+              disabled={Boolean(draft)}
+              className="self-start sm:self-auto"
+            >
+              + entry
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-6 pt-0 sm:px-6 sm:pr-2">
@@ -177,17 +194,30 @@ export function ActivityFeed({
           </p>
         ) : null}
         {draft && onDraftChange ? (
-          <ActivityDraftCard
-            draft={draft}
-            onChange={onDraftChange}
-            onCancel={onCancelDraft}
-            onSubmit={onSubmitDraft}
-            isSubmitting={isSubmittingDraft}
-            errorMessage={draftError}
-            submitLabel="Create entry"
-            category="journal"
-            idPrefix="new-entry"
-          />
+          draft.mode === "smart" ? (
+            <SmartEntryDraftCard
+              draft={draft}
+              onChange={onDraftChange}
+              onCancel={onCancelDraft}
+              onSubmit={onSubmitDraft}
+              isSubmitting={isSubmittingDraft}
+              errorMessage={draftError}
+              submitLabel="Create smart entry"
+              idPrefix="new-smart-entry"
+            />
+          ) : (
+            <ActivityDraftCard
+              draft={draft}
+              onChange={onDraftChange}
+              onCancel={onCancelDraft}
+              onSubmit={onSubmitDraft}
+              isSubmitting={isSubmittingDraft}
+              errorMessage={draftError}
+              submitLabel="Create entry"
+              category="journal"
+              idPrefix="new-entry"
+            />
+          )
         ) : null}
         {filteredItems.length === 0 && searchQuery ? (
           <p className="text-sm text-muted-foreground" role="status">

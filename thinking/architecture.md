@@ -89,7 +89,9 @@ Storyloop is a creator analytics journal that combines a FastAPI backend with a 
 - `YoutubeService` - Handles YouTube API integration
 - `EntryService` - Persists journal and content entries for the activity feed and agent tools
 - `AssetService` - Stores uploads on disk using SHA-256 IDs, keeps metadata in SQLite, resizes images (max 2000px edge), and extracts PDF text for agent context
+- `SmartEntryUpdateManager` - Coordinates smart journal background updates, SSE streaming, and hourly refresh scheduling
 - `build_agent()` - Creates and configures PydanticAI agent for conversational interactions
+- `build_smart_entry_agent()` - Creates the background agent used for smart journal updates
 - Database abstraction through `SqliteConnectionFactory`
 
 **Frontend Modules:**
@@ -155,6 +157,13 @@ Settings are managed through `backend/app/config.py` using Pydantic:
 - Basic system prompt configured for YouTube creator assistance
 - Journal entries remain simple and user-focused
 - Image/PDF attachments are included as data URLs or extracted text in agent context when available
+
+**Smart Journal Updates:**
+
+- Smart journal entries store a prompt (`prompt_body`) plus optional format guidance (`prompt_format`)
+- Background updates run through `SmartEntryUpdateManager` on create/prompt edit and hourly via APScheduler
+- Updates stream to the UI over SSE (`POST /entries/{id}/smart/stream`) while persisting results in SQLite
+- Each smart entry tracks `last_smart_update_at` for refresh cadence and `updated_at` for ordering
 
 **Future Enhancements:**
 

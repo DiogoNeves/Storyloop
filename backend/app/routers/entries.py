@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Literal
+from datetime import UTC, datetime
+from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+import anyio
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from sse_starlette.sse import EventSourceResponse
 
 from app.routers.errors import ensure_exists
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.dependencies import get_entry_service
+from app.dependencies import get_entry_service, get_smart_entry_manager
 from app.services import EntryRecord, EntryService
+from app.services.smart_entries import SmartEntryUpdateManager
 
 router = APIRouter(prefix="/entries", tags=["entries"])
 
@@ -24,6 +27,8 @@ class EntryCreate(BaseModel):
     id: str = Field(min_length=1)
     title: str = Field(min_length=1)
     summary: str = Field(default="")
+    prompt_body: str | None = Field(default=None, alias="promptBody")
+    prompt_format: str | None = Field(default=None, alias="promptFormat")
     occurred_at: datetime = Field(alias="date")
     category: Literal["content", "journal"] = "journal"
     link_url: str | None = Field(default=None, alias="linkUrl")
@@ -44,6 +49,30 @@ class EntryCreate(BaseModel):
     def _strip_summary(cls, value: str) -> str:
         return value.strip()
 
+    @field_validator("prompt_body", mode="after")
+    @classmethod
+    def _strip_prompt_body(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("must not be empty or whitespace")
+        return stripped
+
+    @field_validator("prompt_format", mode="after")
+    @classmethod
+    def _strip_prompt_format(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        return stripped or None
+
+    @model_validator(mode="after")
+    def _validate_prompt_fields(self) -> "EntryCreate":
+        if self.prompt_format and not self.prompt_body:
+            raise ValueError("promptBody is required when promptFormat is provided")
+        return self
+
 
 class EntryResponse(BaseModel):
     """Serialized representation of an activity entry."""
@@ -53,7 +82,13 @@ class EntryResponse(BaseModel):
     id: str
     title: str
     summary: str
+    prompt_body: str | None = Field(default=None, alias="promptBody")
+    prompt_format: str | None = Field(default=None, alias="promptFormat")
     occurred_at: datetime = Field(alias="date")
+    updated_at: datetime = Field(alias="updatedAt")
+    last_smart_update_at: datetime | None = Field(
+        default=None, alias="lastSmartUpdateAt"
+    )
     category: Literal["content", "journal"]
     link_url: str | None = Field(default=None, alias="linkUrl")
     thumbnail_url: str | None = Field(default=None, alias="thumbnailUrl")
@@ -67,7 +102,11 @@ class EntryResponse(BaseModel):
                 "id": record.id,
                 "title": record.title,
                 "summary": record.summary,
+                "prompt_body": record.prompt_body,
+                "prompt_format": record.prompt_format,
                 "occurred_at": record.occurred_at,
+                "updated_at": record.updated_at,
+                "last_smart_update_at": record.last_smart_update_at,
                 "category": record.category,
                 "link_url": record.link_url,
                 "thumbnail_url": record.thumbnail_url,
@@ -84,6 +123,8 @@ class EntryUpdate(BaseModel):
 
     title: str | None = None
     summary: str | None = None
+    prompt_body: str | None = Field(default=None, alias="promptBody")
+    prompt_format: str | None = Field(default=None, alias="promptFormat")
     occurred_at: datetime | None = Field(default=None, alias="date")
     category: Literal["content", "journal"] | None = None
     link_url: str | None = Field(default=None, alias="linkUrl")
@@ -108,6 +149,33 @@ class EntryUpdate(BaseModel):
             return None
         return value.strip()
 
+    @field_validator("prompt_body", mode="after")
+    @classmethod
+    def _strip_optional_prompt_body(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("must not be empty or whitespace")
+        return stripped
+
+    @field_validator("prompt_format", mode="after")
+    @classmethod
+    def _strip_optional_prompt_format(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        return stripped or None
+
+    @model_validator(mode="after")
+    def _validate_prompt_update(self) -> "EntryUpdate":
+        if "prompt_body" in self.model_fields_set and self.prompt_body is None:
+            if "prompt_format" in self.model_fields_set and self.prompt_format:
+                raise ValueError(
+                    "promptFormat cannot be set when clearing promptBody"
+                )
+        return self
+
 
 def _create_to_record(entry: EntryCreate) -> EntryRecord:
     """Convert EntryCreate Pydantic model to EntryRecord.
@@ -118,8 +186,12 @@ def _create_to_record(entry: EntryCreate) -> EntryRecord:
         id=entry.id,
         title=entry.title,
         summary=entry.summary,
+        prompt_body=entry.prompt_body,
+        prompt_format=entry.prompt_format,
         occurred_at=entry.occurred_at,
+        updated_at=datetime.now(tz=UTC),
         category=entry.category,
+        last_smart_update_at=None,
         link_url=entry.link_url,
         thumbnail_url=entry.thumbnail_url,
         video_id=entry.video_id,
@@ -127,22 +199,65 @@ def _create_to_record(entry: EntryCreate) -> EntryRecord:
     )
 
 
+def _resolve_field(
+    update_dict: dict[str, Any],
+    field: str,
+    current_value: Any,
+    *,
+    allow_none: bool = False,
+) -> Any:
+    if field not in update_dict:
+        return current_value
+    value = update_dict[field]
+    if value is None and not allow_none:
+        return current_value
+    return value
+
+
 def _update_record(current: EntryRecord, updates: EntryUpdate) -> EntryRecord:
     """Merge EntryUpdate into EntryRecord, returning a new EntryRecord.
 
     Pure function that combines current record with partial updates.
     """
-    update_dict = updates.model_dump(exclude_unset=True, exclude_none=True)
+    update_dict = updates.model_dump(exclude_unset=True)
+    prompt_body = _resolve_field(
+        update_dict, "prompt_body", current.prompt_body, allow_none=True
+    )
+    prompt_format = _resolve_field(
+        update_dict, "prompt_format", current.prompt_format, allow_none=True
+    )
+
+    if "prompt_body" in update_dict and prompt_body is None:
+        prompt_format = None
+
+    if prompt_body is None:
+        prompt_format = None
+
+    title = _resolve_field(update_dict, "title", current.title)
+    summary = _resolve_field(update_dict, "summary", current.summary)
+    occurred_at = _resolve_field(update_dict, "occurred_at", current.occurred_at)
+    category = _resolve_field(update_dict, "category", current.category)
+    pinned = _resolve_field(update_dict, "pinned", current.pinned)
+    link_url = _resolve_field(update_dict, "link_url", current.link_url, allow_none=True)
+    thumbnail_url = _resolve_field(
+        update_dict, "thumbnail_url", current.thumbnail_url, allow_none=True
+    )
+    video_id = _resolve_field(update_dict, "video_id", current.video_id, allow_none=True)
+
     return EntryRecord(
         id=current.id,
-        title=update_dict.get("title", current.title),
-        summary=update_dict.get("summary", current.summary),
-        occurred_at=update_dict.get("occurred_at", current.occurred_at),
-        category=update_dict.get("category", current.category),
-        link_url=update_dict.get("link_url", current.link_url),
-        thumbnail_url=update_dict.get("thumbnail_url", current.thumbnail_url),
-        video_id=update_dict.get("video_id", current.video_id),
-        pinned=update_dict.get("pinned", current.pinned),
+        title=title,
+        summary=summary,
+        prompt_body=prompt_body,
+        prompt_format=prompt_format,
+        occurred_at=occurred_at,
+        updated_at=datetime.now(tz=UTC),
+        last_smart_update_at=current.last_smart_update_at,
+        category=category,
+        link_url=link_url,
+        thumbnail_url=thumbnail_url,
+        video_id=video_id,
+        pinned=pinned,
     )
 
 
@@ -156,13 +271,21 @@ def list_entries(
 
 
 @router.post("/", response_model=list[EntryResponse])
-def save_entries(
+async def save_entries(
     entries: list[EntryCreate],
+    request: Request,
     entry_service: EntryService = Depends(get_entry_service),
 ) -> list[EntryResponse]:
     """Persist provided entries, returning only the newly stored items."""
     records = [_create_to_record(entry) for entry in entries]
-    saved = entry_service.save_new_entries(records)
+    saved = await anyio.to_thread.run_sync(entry_service.save_new_entries, records)
+
+    smart_entry_manager = getattr(request.app.state, "smart_entry_manager", None)
+    if smart_entry_manager is not None:
+        for record in saved:
+            if record.prompt_body:
+                await smart_entry_manager.start_update(record.id)
+
     return [EntryResponse.from_record(record) for record in saved]
 
 
@@ -179,24 +302,58 @@ def get_entry(
 
 
 @router.put("/{entry_id}", response_model=EntryResponse)
-def update_entry(
+async def update_entry(
     entry_id: str,
     payload: EntryUpdate,
+    request: Request,
     entry_service: EntryService = Depends(get_entry_service),
 ) -> EntryResponse:
     """Persist updates for an existing entry."""
     current = ensure_exists(
-        entry_service.get_entry(entry_id),
+        await anyio.to_thread.run_sync(entry_service.get_entry, entry_id),
         entity_name="Entry",
     )
     updated_record = _update_record(current, payload)
 
-    updated = entry_service.update_entry(updated_record)
+    if updated_record.prompt_format and not updated_record.prompt_body:
+        raise HTTPException(
+            status_code=422,
+            detail="promptBody is required when promptFormat is provided",
+        )
+
+    updated = await anyio.to_thread.run_sync(entry_service.update_entry, updated_record)
     if not updated:
         # The record vanished between read and write.
         raise HTTPException(status_code=404, detail="Entry not found")
 
+    prompt_updated = (
+        "prompt_body" in payload.model_fields_set
+        or "prompt_format" in payload.model_fields_set
+    )
+    if prompt_updated and updated_record.prompt_body:
+        smart_entry_manager = getattr(request.app.state, "smart_entry_manager", None)
+        if smart_entry_manager is not None:
+            await smart_entry_manager.start_update(updated_record.id)
+
     return EntryResponse.from_record(updated_record)
+
+
+@router.post("/{entry_id}/smart/stream")
+async def stream_smart_entry_update(
+    entry_id: str,
+    smart_entry_manager: SmartEntryUpdateManager = Depends(get_smart_entry_manager),
+) -> EventSourceResponse:
+    """Stream smart journal updates for an entry."""
+
+    async def event_generator():
+        async for event in smart_entry_manager.stream_update(entry_id):
+            yield event
+
+    return EventSourceResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache"},
+    )
 
 
 @router.delete("/{entry_id}", status_code=204)
