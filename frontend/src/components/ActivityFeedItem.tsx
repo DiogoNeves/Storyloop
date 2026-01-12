@@ -65,6 +65,13 @@ export function ActivityFeedItem({
     day: "numeric",
     year: "numeric",
   });
+  const formattedCreatedDate = item.createdAt
+    ? new Date(item.createdAt).toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : null;
   const titleText = item.title.trim();
   const isSmartJournal = item.category === "journal" && Boolean(item.promptBody);
   const summary = item.summary.trim();
@@ -129,12 +136,26 @@ export function ActivityFeedItem({
           </div>
           <div className="flex items-center gap-2">
             {isPendingSync && <PendingSyncBadge />}
-            <time
-              className="text-xs text-muted-foreground"
-              dateTime={item.date}
-            >
-              {formattedDate}
-            </time>
+            {formattedCreatedDate ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <time
+                    className="cursor-default text-xs text-muted-foreground"
+                    dateTime={item.date}
+                  >
+                    {formattedDate}
+                  </time>
+                </TooltipTrigger>
+                <TooltipContent>Created: {formattedCreatedDate}</TooltipContent>
+              </Tooltip>
+            ) : (
+              <time
+                className="text-xs text-muted-foreground"
+                dateTime={item.date}
+              >
+                {formattedDate}
+              </time>
+            )}
           </div>
         </div>
         <div className="flex gap-4">
