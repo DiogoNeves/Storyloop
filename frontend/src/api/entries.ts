@@ -148,23 +148,10 @@ export const entriesMutations = {
       const previousById = queryClient.getQueryData<Entry>(byIdQuery.queryKey);
       const optimisticUpdatedAt = new Date().toISOString();
 
+      const applyPatch = (entry: Entry) =>
+        applyEntryPatch(entry, input, optimisticUpdatedAt);
       const nextEntries = (previousEntries ?? []).map((entry) =>
-        entry.id === input.id
-          ? {
-              ...entry,
-              ...("title" in input ? { title: input.title! } : {}),
-              ...("summary" in input ? { summary: input.summary! } : {}),
-              ...("date" in input ? { date: input.date! } : {}),
-              ...("promptBody" in input
-                ? { promptBody: input.promptBody ?? null }
-                : {}),
-              ...("promptFormat" in input
-                ? { promptFormat: input.promptFormat ?? null }
-                : {}),
-              ...("pinned" in input ? { pinned: input.pinned! } : {}),
-              updatedAt: optimisticUpdatedAt,
-            }
-          : entry,
+        entry.id === input.id ? applyPatch(entry) : entry,
       );
 
       if (previousEntries) {
@@ -175,20 +162,10 @@ export const entriesMutations = {
       }
 
       if (previousById) {
-        queryClient.setQueryData<Entry>(byIdQuery.queryKey, {
-          ...previousById,
-          ...("title" in input ? { title: input.title! } : {}),
-          ...("summary" in input ? { summary: input.summary! } : {}),
-          ...("date" in input ? { date: input.date! } : {}),
-          ...("promptBody" in input
-            ? { promptBody: input.promptBody ?? null }
-            : {}),
-          ...("promptFormat" in input
-            ? { promptFormat: input.promptFormat ?? null }
-            : {}),
-          ...("pinned" in input ? { pinned: input.pinned! } : {}),
-          updatedAt: optimisticUpdatedAt,
-        });
+        queryClient.setQueryData<Entry>(
+          byIdQuery.queryKey,
+          applyPatch(previousById),
+        );
       }
 
       return { previousEntries, previousById } satisfies EntriesMutationContext;
@@ -310,6 +287,27 @@ export const entriesMutations = {
     },
   }),
 };
+
+function applyEntryPatch(
+  entry: Entry,
+  input: UpdateEntryInput,
+  updatedAt: string,
+): Entry {
+  return {
+    ...entry,
+    ...("title" in input ? { title: input.title! } : {}),
+    ...("summary" in input ? { summary: input.summary! } : {}),
+    ...("date" in input ? { date: input.date! } : {}),
+    ...("promptBody" in input
+      ? { promptBody: input.promptBody ?? null }
+      : {}),
+    ...("promptFormat" in input
+      ? { promptFormat: input.promptFormat ?? null }
+      : {}),
+    ...("pinned" in input ? { pinned: input.pinned! } : {}),
+    updatedAt,
+  };
+}
 
 export interface SmartEntryStreamCallbacks {
   onOpen?: () => void;

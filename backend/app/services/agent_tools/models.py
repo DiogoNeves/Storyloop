@@ -9,6 +9,7 @@ class JournalEntry(BaseModel):
     id: str
     title: str
     created_at: str
+    updated_at: str
     text: str
     pinned: bool = False
     attachments: list["JournalEntryAttachment"] = Field(default_factory=list)

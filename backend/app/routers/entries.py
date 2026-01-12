@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Literal
+from typing import Any, Literal
 
 import anyio
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -199,41 +199,50 @@ def _create_to_record(entry: EntryCreate) -> EntryRecord:
     )
 
 
+def _resolve_field(
+    update_dict: dict[str, Any],
+    field: str,
+    current_value: Any,
+    *,
+    allow_none: bool = False,
+) -> Any:
+    if field not in update_dict:
+        return current_value
+    value = update_dict[field]
+    if value is None and not allow_none:
+        return current_value
+    return value
+
+
 def _update_record(current: EntryRecord, updates: EntryUpdate) -> EntryRecord:
     """Merge EntryUpdate into EntryRecord, returning a new EntryRecord.
 
     Pure function that combines current record with partial updates.
     """
     update_dict = updates.model_dump(exclude_unset=True)
-    prompt_body = current.prompt_body
-    prompt_format = current.prompt_format
+    prompt_body = _resolve_field(
+        update_dict, "prompt_body", current.prompt_body, allow_none=True
+    )
+    prompt_format = _resolve_field(
+        update_dict, "prompt_format", current.prompt_format, allow_none=True
+    )
 
-    if "prompt_body" in updates.model_fields_set:
-        prompt_body = updates.prompt_body
-        if prompt_body is None:
-            prompt_format = None
-
-    if "prompt_format" in updates.model_fields_set:
-        prompt_format = updates.prompt_format
+    if "prompt_body" in update_dict and prompt_body is None:
+        prompt_format = None
 
     if prompt_body is None:
         prompt_format = None
 
-    title = update_dict.get("title")
-    if title is None:
-        title = current.title
-    summary = update_dict.get("summary")
-    if summary is None:
-        summary = current.summary
-    occurred_at = update_dict.get("occurred_at")
-    if occurred_at is None:
-        occurred_at = current.occurred_at
-    category = update_dict.get("category")
-    if category is None:
-        category = current.category
-    pinned = update_dict.get("pinned")
-    if pinned is None:
-        pinned = current.pinned
+    title = _resolve_field(update_dict, "title", current.title)
+    summary = _resolve_field(update_dict, "summary", current.summary)
+    occurred_at = _resolve_field(update_dict, "occurred_at", current.occurred_at)
+    category = _resolve_field(update_dict, "category", current.category)
+    pinned = _resolve_field(update_dict, "pinned", current.pinned)
+    link_url = _resolve_field(update_dict, "link_url", current.link_url, allow_none=True)
+    thumbnail_url = _resolve_field(
+        update_dict, "thumbnail_url", current.thumbnail_url, allow_none=True
+    )
+    video_id = _resolve_field(update_dict, "video_id", current.video_id, allow_none=True)
 
     return EntryRecord(
         id=current.id,
@@ -245,9 +254,9 @@ def _update_record(current: EntryRecord, updates: EntryUpdate) -> EntryRecord:
         updated_at=datetime.now(tz=UTC),
         last_smart_update_at=current.last_smart_update_at,
         category=category,
-        link_url=update_dict.get("link_url", current.link_url),
-        thumbnail_url=update_dict.get("thumbnail_url", current.thumbnail_url),
-        video_id=update_dict.get("video_id", current.video_id),
+        link_url=link_url,
+        thumbnail_url=thumbnail_url,
+        video_id=video_id,
         pinned=pinned,
     )
 
