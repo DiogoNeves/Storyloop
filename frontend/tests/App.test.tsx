@@ -10,21 +10,25 @@ const mockEntries = vi.hoisted<Entry[]>(() => [
     title: "Published the season premiere",
     summary: "Story-focused cold open lifted AVD to 71% in the first 48 hours.",
     date: "2024-05-12T15:30:00.000Z",
+    updatedAt: "2024-05-12T15:30:00.000Z",
     category: "content" as const,
     linkUrl: "https://youtube.com/watch?v=storyloop-premiere",
     thumbnailUrl: "https://img.youtube.com/storyloop-premiere/hqdefault.jpg",
     videoId: "storyloop-premiere",
     pinned: false,
+    lastSmartUpdateAt: null,
   },
   {
     id: "entry-002",
     title: "Audience feedback: hero alignment",
     summary: "Comments highlight appreciation for behind-the-scenes vulnerability.",
     date: "2024-05-10T18:05:00.000Z",
+    updatedAt: "2024-05-10T18:05:00.000Z",
     category: "journal",
     linkUrl: null,
     thumbnailUrl: null,
     pinned: true,
+    lastSmartUpdateAt: null,
   },
 ]);
 
@@ -46,6 +50,8 @@ vi.mock("@/api/entries", () => {
       linkUrl: input.linkUrl ?? null,
       thumbnailUrl: input.thumbnailUrl ?? null,
       pinned: input.pinned ?? false,
+      updatedAt: input.date,
+      lastSmartUpdateAt: null,
     });
   }
 

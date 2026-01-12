@@ -16,6 +16,7 @@ from app.services import (
     YoutubeService,
 )
 from app.services.assets import AssetService
+from app.services.smart_entries import SmartEntryUpdateManager
 from app.services.youtube_analytics import YoutubeAnalyticsService
 from app.services.youtube_demo import (
     DemoUserService,
@@ -26,6 +27,17 @@ from app.services.youtube_demo import (
 def get_entry_service(request: Request) -> EntryService:
     """Extract EntryService from application state."""
     return request.app.state.entry_service
+
+
+def get_smart_entry_manager(request: Request) -> SmartEntryUpdateManager:
+    """Extract SmartEntryUpdateManager from application state."""
+    manager = getattr(request.app.state, "smart_entry_manager", None)
+    if manager is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Smart entry updates are not configured",
+        )
+    return manager
 
 
 def get_asset_service(request: Request) -> AssetService:

@@ -47,6 +47,9 @@ cd frontend && pnpm vitest run tests/setup.test.ts   # --run prevents watch mode
 cd frontend && pnpm test       # Starts vitest in watch mode (will hang in CI/scripts)
 
 # Type checking and linting
+make lint                       # Runs backend + frontend checks
+make lint-backend               # Backend ruff + mypy
+make lint-frontend              # Frontend lint
 uv run ruff check backend && uv run mypy backend
 cd frontend && pnpm run lint
 npx tsc --noEmit                # Frontend type check

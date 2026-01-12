@@ -39,6 +39,8 @@ const sampleEntry: Entry = {
   title: "Morning walk notes",
   summary: "Thoughts captured after a walk.",
   date: "2024-05-01T12:00:00Z",
+  updatedAt: "2024-05-01T12:00:00Z",
+  lastSmartUpdateAt: null,
   category: "journal",
   linkUrl: null,
   thumbnailUrl: null,
