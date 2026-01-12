@@ -357,7 +357,7 @@ function JournalPage() {
   const displayItems = hasActivity ? activityItems : seedActivityItems;
 
   const [draft, setDraft] = useState<ActivityDraft | null>(null);
-  const [draftMode, setDraftMode] = useState<EntryDraftMode>("standard");
+  const [, setDraftMode] = useState<EntryDraftMode>("standard");
   const [draftError, setDraftError] = useState<string | null>(null);
   const [conversationDeleteError, setConversationDeleteError] = useState<
     string | null
