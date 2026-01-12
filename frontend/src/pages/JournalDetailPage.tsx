@@ -680,7 +680,7 @@ export function JournalDetailPage() {
                     Updated {formattedUpdatedDate}
                   </span>
                 </TooltipTrigger>
-                <TooltipContent>Created {formattedCreatedDate}</TooltipContent>
+                <TooltipContent>Created: {formattedCreatedDate}</TooltipContent>
               </Tooltip>
             ) : (
               <span>Updated {formattedUpdatedDate}</span>
