@@ -727,7 +727,7 @@ export function JournalDetailPage() {
             content={promptMarkdown}
             className="text-muted-foreground"
           />
-        )
+        )}
         {promptError ? (
           <p className="text-xs text-destructive">{promptError}</p>
         ) : null}
