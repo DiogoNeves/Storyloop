@@ -17,6 +17,9 @@ importers:
       '@milkdown/core':
         specifier: ^7.15.0
         version: 7.18.0
+      '@milkdown/ctx':
+        specifier: ^7.15.0
+        version: 7.18.0
       '@milkdown/plugin-clipboard':
         specifier: ^7.15.0
         version: 7.18.0
@@ -24,6 +27,9 @@ importers:
         specifier: ^7.15.0
         version: 7.18.0
       '@milkdown/plugin-listener':
+        specifier: ^7.15.0
+        version: 7.18.0
+      '@milkdown/preset-commonmark':
         specifier: ^7.15.0
         version: 7.18.0
       '@milkdown/preset-gfm':
