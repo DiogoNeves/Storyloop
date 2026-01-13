@@ -1,5 +1,4 @@
 ## Goals
-## Goals
 - Unify journal viewing + editing into a single Typora-like experience (single surface with live preview, no split panes/mode switcher, minimal UI distractions while writing).
 - Replace raw markdown textareas with a Typora-style live preview editor (no separate WYSIWYG-only mode).
 - Create new entries from a dedicated journal detail view.
@@ -114,3 +113,8 @@ Typora-style editing removes the split view and lets users edit directly in a cl
 
 ## Open Questions
 - None for now.
+
+## Implementation Notes
+- Implemented Milkdown with the GFM preset and a small custom selection toolbar (bold/italic/strikethrough) instead of a full toolbar plugin.
+- Autosave writes to IndexedDB before remote sync by queueing update records in the sync store; remote saves clear the queued update when the latest version is confirmed.
+- `/journals/new` creation is online-only with a read-only editor until the entry is created to keep updates tied to a real entry ID.

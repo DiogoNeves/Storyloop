@@ -58,6 +58,7 @@ Server-Sent Events emitted:
 ### Journal Detail
 - Tabs: `Content` (default) and `Prompt`.
 - Content tab streams updates while running; shows “waiting for first update” state.
+- Once content exists, manual edits use the Milkdown editor in-place.
 - Prompt tab displays prompt + format and allows edits or “Stop smart updates”.
 - Header shows `Loopie updated <date>` and tooltip for original created date.
 

@@ -69,7 +69,7 @@ React Component
 UI Update (Badge shows "API ready")
 ```
 
-### 2. Journal Entry Creation Flow
+### 2. Journal Entry Creation Flow (detail view)
 
 ```
 User clicks "+ entry"
@@ -77,35 +77,18 @@ User clicks "+ entry"
     ▼
 ActivityFeed.tsx
     │
-    │ onStartDraft()
+    │ navigate("/journals/new")
     │
     ▼
-App.tsx (JournalPage)
+JournalDetailPage
     │
-    │ setDraft({ title: "", summary: "", date: now })
-    │
-    ▼
-ActivityDraftCard
-    │
-    │ User fills form
-    │   - Title input
-    │   - Summary textarea (markdown)
-    │   - Date/time picker
+    │ Title input + Create button (online-only)
     │
     ▼
-onSubmitDraft()
-    │
-    │ handleSubmitDraft()
-    │   - Validate title
-    │   - Generate UUID
-    │   - Build CreateEntryInput (includes pinned=false)
-    │   - mutateAsync(createEntry)
-    │
-    ▼
-api/entries.ts
+Create button
     │
     │ POST /entries
-    │ body: [{ id, title, summary, date, category, pinned }]
+    │ body: [{ id, title, summary: "", date, category, pinned }]
     │
     ▼
 Backend Router (routers/entries.py)
@@ -119,12 +102,11 @@ Response: saved entry
 React Query cache update
     │
     │ setQueryData(entries)
-    │ setDraft(null)
     │
     ▼
-ActivityFeed Re-renders
+Navigate to /journals/:id
     │
-    │ New entry appears at top
+    │ Editor unlocks + focuses for writing
 ```
 
 **Notes:**
@@ -152,7 +134,27 @@ User submits journal entry
 - iOS Safari lacks Background Sync; syncing relies on online/focus/visibility events.
 - Cached entries from last session are served while offline (service worker SWR).
 
-### 4. Asset Upload Flow (Journal + Loopie)
+### 4. Journal Entry Editing Flow (autosave)
+
+```
+User types in JournalEntryEditor
+    │
+    ▼
+JournalDetailPage
+    │
+    │ Update local title/summary state
+    │
+    ▼
+useDebouncedAutosave()
+    │
+    │ Queue update in IndexedDB (pending-entry-updates)
+    │
+    ├─► Online? Yes → PUT /entries/{id}
+    │
+    └─► Offline → keep queued update for sync
+```
+
+### 5. Asset Upload Flow (Journal + Loopie)
 
 ```
 User adds image/PDF

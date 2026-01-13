@@ -1,7 +1,7 @@
 import { createContext } from "react";
 
-import type { CreateEntryInput } from "@/api/entries";
-import type { PendingEntry, SyncResult } from "@/lib/sync";
+import type { CreateEntryInput, UpdateEntryInput } from "@/api/entries";
+import type { PendingEntry, PendingEntryUpdate, SyncResult } from "@/lib/sync";
 
 /**
  * Shared offline-sync state for the UI.
@@ -18,6 +18,8 @@ export interface SyncContextValue {
   pendingCount: number;
   /** List of pending entries */
   pendingEntries: PendingEntry[];
+  /** List of pending entry updates */
+  pendingEntryUpdates: PendingEntryUpdate[];
   /** Whether sync is currently in progress */
   isSyncing: boolean;
   /** Result of the last sync operation */
@@ -28,6 +30,10 @@ export interface SyncContextValue {
   syncNow: () => Promise<void>;
   /** Queue an entry for offline sync */
   queueEntry: (input: CreateEntryInput) => Promise<void>;
+  /** Queue an entry update for offline sync */
+  queueEntryUpdate: (input: UpdateEntryInput) => Promise<void>;
+  /** Remove a pending entry update */
+  removePendingEntryUpdate: (id: string) => Promise<void>;
   /** Mark server as unreachable (call on network errors) */
   markServerUnreachable: () => void;
   /** Clear the last sync error */
