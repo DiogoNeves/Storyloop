@@ -12,17 +12,15 @@ import {
   defaultValueCtx,
   editorViewCtx,
   rootCtx,
+  type CmdKey,
 } from "@milkdown/core";
-import { Milkdown, useEditor } from "@milkdown/react";
+import type { Ctx } from "@milkdown/ctx";
+import { Milkdown, MilkdownProvider, useEditor } from "@milkdown/react";
 import { clipboard } from "@milkdown/plugin-clipboard";
 import { history } from "@milkdown/plugin-history";
 import { listener, listenerCtx } from "@milkdown/plugin-listener";
-import {
-  gfm,
-  toggleEmphasisCommand,
-  toggleStrikeCommand,
-  toggleStrongCommand,
-} from "@milkdown/preset-gfm";
+import { toggleEmphasisCommand, toggleStrongCommand } from "@milkdown/preset-commonmark";
+import { gfm, toggleStrikethroughCommand } from "@milkdown/preset-gfm";
 
 import { useAssetUpload } from "@/hooks/useAssetUpload";
 import { cn } from "@/lib/utils";
@@ -40,7 +38,7 @@ export interface JournalEntryEditorHandle {
   focus: () => void;
 }
 
-export const JournalEntryEditor = forwardRef<
+const JournalEntryEditorInner = forwardRef<
   JournalEntryEditorHandle,
   JournalEntryEditorProps
 >(
@@ -52,19 +50,19 @@ export const JournalEntryEditor = forwardRef<
     left: number;
   } | null>(null);
 
-  const editorInitialValue = useMemo(() => initialValue, [resetKey, initialValue]);
+  const editorInitialValue = useMemo(() => initialValue, [initialValue]);
 
   useEffect(() => {
     hasInitializedRef.current = false;
   }, [resetKey]);
 
   const editor = useEditor(
-    (root) =>
+    (root: HTMLElement): Editor =>
       Editor.make()
-        .config((ctx) => {
+        .config((ctx: Ctx) => {
           ctx.set(rootCtx, root);
           ctx.set(defaultValueCtx, editorInitialValue);
-          ctx.get(listenerCtx).markdownUpdated((_ctx, markdown) => {
+          ctx.get(listenerCtx).markdownUpdated((_ctx: Ctx, markdown: string) => {
             if (!hasInitializedRef.current) {
               hasInitializedRef.current = true;
               return;
@@ -84,7 +82,7 @@ export const JournalEntryEditor = forwardRef<
     if (!instance) {
       return;
     }
-    instance.action((ctx) => {
+    instance.action((ctx: Ctx) => {
       const view = ctx.get(editorViewCtx);
       view.setProps({
         editable: () => isEditable,
@@ -100,7 +98,7 @@ export const JournalEntryEditor = forwardRef<
         if (!instance) {
           return;
         }
-        instance.action((ctx) => {
+        instance.action((ctx: Ctx) => {
           const view = ctx.get(editorViewCtx);
           view.focus();
         });
@@ -115,7 +113,7 @@ export const JournalEntryEditor = forwardRef<
       if (!instance) {
         return;
       }
-      instance.action((ctx) => {
+      instance.action((ctx: Ctx) => {
         const view = ctx.get(editorViewCtx);
         view.dispatch(view.state.tr.insertText(markdown));
         view.focus();
@@ -198,14 +196,14 @@ export const JournalEntryEditor = forwardRef<
     }
   };
 
-  const runCommand = (command: unknown) => {
+  const runCommand = (command: { key: CmdKey<unknown> }) => {
     const instance = editor.get();
     if (!instance) {
       return;
     }
-    instance.action((ctx) => {
+    instance.action((ctx: Ctx) => {
       ctx.get(editorViewCtx).focus();
-      ctx.get(commandsCtx).call(command as never);
+      ctx.get(commandsCtx).call(command.key);
     });
   };
 
@@ -252,7 +250,7 @@ export const JournalEntryEditor = forwardRef<
             size="icon"
             variant="ghost"
             className="h-7 w-7 line-through"
-            onClick={() => runCommand(toggleStrikeCommand)}
+            onClick={() => runCommand(toggleStrikethroughCommand)}
           >
             <span className="text-xs">S</span>
           </Button>
@@ -268,5 +266,16 @@ export const JournalEntryEditor = forwardRef<
   );
 },
 );
+
+JournalEntryEditorInner.displayName = "JournalEntryEditorInner";
+
+export const JournalEntryEditor = forwardRef<
+  JournalEntryEditorHandle,
+  JournalEntryEditorProps
+>((props, ref) => (
+  <MilkdownProvider>
+    <JournalEntryEditorInner {...props} ref={ref} />
+  </MilkdownProvider>
+));
 
 JournalEntryEditor.displayName = "JournalEntryEditor";

@@ -53,6 +53,12 @@ describe("SyncService", () => {
       updatePending: vi.fn().mockResolvedValue(undefined),
       removePending: vi.fn().mockResolvedValue(undefined),
       getPendingCount: vi.fn().mockResolvedValue(0),
+      addPendingUpdate: vi.fn().mockResolvedValue(undefined),
+      getAllPendingUpdates: vi.fn().mockResolvedValue([]),
+      getPendingUpdate: vi.fn().mockResolvedValue(undefined),
+      updatePendingUpdate: vi.fn().mockResolvedValue(undefined),
+      removePendingUpdate: vi.fn().mockResolvedValue(undefined),
+      getPendingUpdateCount: vi.fn().mockResolvedValue(0),
       clearAll: vi.fn().mockResolvedValue(undefined),
     };
 

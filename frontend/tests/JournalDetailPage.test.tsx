@@ -22,6 +22,19 @@ vi.mock("@/components/LoopiePanel", () => ({
   LoopiePanel: () => <div data-testid="agent-panel" />,
 }));
 
+vi.mock("@/components/JournalEntryEditor", async () => {
+  const React = await import("react");
+
+  const JournalEntryEditor = React.forwardRef<
+    HTMLDivElement,
+    Record<string, unknown>
+  >((_props, ref) => <div ref={ref} data-testid="journal-editor" />);
+
+  JournalEntryEditor.displayName = "JournalEntryEditor";
+
+  return { JournalEntryEditor };
+});
+
 vi.mock("@/api/client", () => ({
   apiClient: {
     get: apiGetMock,
@@ -95,7 +108,7 @@ describe("JournalDetailPage", () => {
 
     renderPage(<JournalDetailPage />);
 
-    expect(await screen.findByText(sampleEntry.title)).toBeInTheDocument();
+    expect(await screen.findByDisplayValue(sampleEntry.title)).toBeInTheDocument();
 
     const prompts = screen.getAllByText(
       /Link your YouTube account to see videos near this journal entry/i,
@@ -161,7 +174,7 @@ describe("JournalDetailPage", () => {
 
     renderPage(<JournalDetailPage />);
 
-    expect(await screen.findByText(sampleEntry.title)).toBeInTheDocument();
+    expect(await screen.findByDisplayValue(sampleEntry.title)).toBeInTheDocument();
 
     const beforeLabel = screen.getByText(/Published before this journal/i);
     const beforeCard = beforeLabel.closest("a") ?? beforeLabel;
@@ -184,7 +197,7 @@ describe("JournalDetailPage", () => {
 
     renderPage(<JournalDetailPage />);
 
-    expect(await screen.findByText(sampleEntry.title)).toBeInTheDocument();
+    expect(await screen.findByDisplayValue(sampleEntry.title)).toBeInTheDocument();
 
     const errors = screen.getAllByText(/We couldn't load channel information./i);
     expect(errors).toHaveLength(2);
