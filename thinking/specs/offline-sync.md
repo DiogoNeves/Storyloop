@@ -1,7 +1,7 @@
 # Offline-First Entry Creation
 
 ## Goals
-- Allow users to create journal entries while offline (iOS Safari PWA).
+- Allow users to queue smart journal entries while offline (activity feed drafts).
 - Allow users to edit existing journal entries while offline (queue updates locally).
 - Store pending entries in IndexedDB and sync when back online.
 - Show cached entries from the last online session when offline.
@@ -173,6 +173,11 @@ syncAll():
 ```
 
 ## UI Behavior
+
+### New Entry Creation
+- Standard entries are created via `/journals/new` and require an online connection.
+- When offline, the Create button is disabled and content remains read-only until an ID exists.
+- Smart entry drafts created in the activity feed can still queue offline.
 
 ### Offline Indicator (NavBar)
 - Location: Next to logo in NavBar

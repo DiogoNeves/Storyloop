@@ -61,7 +61,8 @@ export function JournalDetailPage() {
   const { setFocus } = useAgentConversationContext();
   const editorRef = useRef<JournalEntryEditorHandle | null>(null);
 
-  const isNewEntryRoute = journalId === "new";
+  const isNewEntryRoute =
+    journalId === "new" || location.pathname === "/journals/new";
 
   const entryQuery = useQuery({
     ...(journalId && !isNewEntryRoute
@@ -603,7 +604,7 @@ export function JournalDetailPage() {
   );
 
   const renderCardContent = () => {
-    if (!journalId) {
+    if (!journalId && !isNewEntryRoute) {
       return (
         <StickyHeaderScrollableCard>
           <p className="text-sm text-muted-foreground">
