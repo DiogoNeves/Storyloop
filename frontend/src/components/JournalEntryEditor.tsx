@@ -19,7 +19,11 @@ import { Milkdown, MilkdownProvider, useEditor } from "@milkdown/react";
 import { clipboard } from "@milkdown/plugin-clipboard";
 import { history } from "@milkdown/plugin-history";
 import { listener, listenerCtx } from "@milkdown/plugin-listener";
-import { toggleEmphasisCommand, toggleStrongCommand } from "@milkdown/preset-commonmark";
+import {
+  commonmark,
+  toggleEmphasisCommand,
+  toggleStrongCommand,
+} from "@milkdown/preset-commonmark";
 import { gfm, toggleStrikethroughCommand } from "@milkdown/preset-gfm";
 
 import { useAssetUpload } from "@/hooks/useAssetUpload";
@@ -70,6 +74,7 @@ const JournalEntryEditorInner = forwardRef<
             onChange(markdown);
           });
         })
+        .use(commonmark)
         .use(gfm)
         .use(history)
         .use(clipboard)
