@@ -401,6 +401,10 @@ function JournalPage() {
       if (draft) {
         return;
       }
+      if (mode === "standard") {
+        void navigate("/journals/new");
+        return;
+      }
       setDraftMode(mode);
       const baseDraft: ActivityDraft = {
         title: "",
@@ -408,14 +412,10 @@ function JournalPage() {
         date: formatNowAsDateTimeLocal(),
         mode,
       };
-      setDraft(
-        mode === "smart"
-          ? { ...baseDraft, promptBody: "", promptFormat: "" }
-          : baseDraft,
-      );
+      setDraft({ ...baseDraft, promptBody: "", promptFormat: "" });
       setDraftError(null);
     },
-    [draft, formatNowAsDateTimeLocal],
+    [draft, formatNowAsDateTimeLocal, navigate],
   );
 
   const handleDraftChange = useCallback((nextDraft: ActivityDraft) => {
@@ -441,11 +441,9 @@ function JournalPage() {
       return;
     }
 
-    const isSmartDraft = draft.mode === "smart";
     const trimmedPromptBody = (draft.promptBody ?? "").trim();
     const trimmedPromptFormat = (draft.promptFormat ?? "").trim();
-    const trimmedSummary = draft.summary.trim();
-    if (isSmartDraft && trimmedPromptBody.length === 0) {
+    if (trimmedPromptBody.length === 0) {
       setDraftError("Describe what Loopie should include before saving.");
       return;
     }
@@ -453,16 +451,12 @@ function JournalPage() {
     const entryInput: CreateEntryInput = {
       id: crypto.randomUUID(),
       title: trimmedTitle,
-      summary: isSmartDraft ? "" : trimmedSummary,
+      summary: "",
       date: new Date(draft.date).toISOString(),
       category: "journal",
       pinned: false,
-      ...(isSmartDraft
-        ? {
-            promptBody: trimmedPromptBody,
-            promptFormat: trimmedPromptFormat.length > 0 ? trimmedPromptFormat : null,
-          }
-        : {}),
+      promptBody: trimmedPromptBody,
+      promptFormat: trimmedPromptFormat.length > 0 ? trimmedPromptFormat : null,
     };
     const optimisticUpdatedAt = new Date().toISOString();
 
@@ -620,6 +614,10 @@ export function App() {
                     <Route path="journal" element={<JournalPage />} />
                     <Route path="loopie" element={<LoopiePage />} />
                   </Route>
+                  <Route
+                    path="/journals/new"
+                    element={<JournalDetailPage />}
+                  />
                   <Route path="/videos/:videoId" element={<VideoDetailPage />} />
                   <Route
                     path="/journals/:journalId"

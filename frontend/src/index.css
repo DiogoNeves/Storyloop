@@ -81,3 +81,69 @@
     display: none;
   }
 }
+
+@layer components {
+  .journal-editor .milkdown {
+    @apply text-sm leading-7 text-foreground/90;
+  }
+
+  .journal-editor .milkdown h1 {
+    @apply mt-6 text-xl font-semibold tracking-tight first:mt-0;
+  }
+
+  .journal-editor .milkdown h2 {
+    @apply mt-5 text-lg font-semibold tracking-tight first:mt-0;
+  }
+
+  .journal-editor .milkdown h3 {
+    @apply mt-4 text-base font-semibold tracking-tight first:mt-0;
+  }
+
+  .journal-editor .milkdown p {
+    @apply mb-4 last:mb-0;
+  }
+
+  .journal-editor .milkdown ul {
+    @apply mb-4 ml-4 list-disc space-y-2 last:mb-0;
+  }
+
+  .journal-editor .milkdown ol {
+    @apply mb-4 ml-4 list-decimal space-y-2 last:mb-0;
+  }
+
+  .journal-editor .milkdown li {
+    @apply leading-7;
+  }
+
+  .journal-editor .milkdown blockquote {
+    @apply mb-4 mt-2 border-l-2 border-primary/40 bg-primary/5 px-4 py-3 italic last:mb-0;
+  }
+
+  .journal-editor .milkdown pre {
+    @apply mb-4 mt-2 overflow-x-auto rounded-xl bg-muted/70 px-4 py-3 text-sm shadow-inner;
+  }
+
+  .journal-editor .milkdown code {
+    @apply rounded bg-muted px-1.5 py-0.5 font-mono text-[13px];
+  }
+
+  .journal-editor .milkdown pre code {
+    @apply bg-transparent p-0;
+  }
+
+  .journal-editor .milkdown table {
+    @apply my-4 w-full border-collapse text-sm;
+  }
+
+  .journal-editor .milkdown th {
+    @apply border-b border-border/60 px-3 py-2 text-left font-semibold;
+  }
+
+  .journal-editor .milkdown td {
+    @apply px-3 py-2 align-top;
+  }
+
+  .journal-editor .milkdown img {
+    @apply my-3 max-h-[360px] w-full rounded-xl border border-border/60 object-cover;
+  }
+}

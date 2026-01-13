@@ -16,6 +16,7 @@ frontend/
 │   ├── components/       # React components
 │   │   ├── ActivityDraftCard.tsx # Entry editor + uploads
 │   │   ├── ActivityFeed.tsx      # Main journal feed
+│   │   ├── JournalEntryEditor.tsx # Milkdown editor for journal detail
 │   │   ├── LoopiePanel.tsx       # Agent chat panel
 │   │   ├── chat/                 # Chat rendering
 │   │   │   ├── AssetAttachmentList.tsx
@@ -79,7 +80,7 @@ frontend/
 **Key Features:**
 
 - Activity feed driven by persisted entries + YouTube content + Loopie conversations
-- Journal entry creation and editing (title, summary, date, pinned)
+- Journal entry creation and editing (detail view editor, title autosave, pinned)
 - Image/PDF attachments inserted into markdown summaries via uploads
 - Loopie chat panel with attachment support
 - Conversation and detail routes for deeper inspection
@@ -108,6 +109,7 @@ frontend/
 - Pinned-first sorting (journals only), newest first within groups
 - Category badges and inline edit/delete/pin actions
 - Draft entry UI with attachment uploads
+- `+ entry` navigates to `/journals/new` for the new detail-based editor; smart entries are still created inline.
 - Search filtering and YouTube link status
 
 ### ActivityDraftCard Component
@@ -119,6 +121,16 @@ frontend/
 - Drag/drop and paste uploads for images and PDFs
 - Inserts markdown snippets (`![alt](/assets/{id})`, `[file](/assets/{id})`)
 - Inline error handling for upload failures
+
+### JournalEntryEditor Component
+
+**Purpose:** Typora-style editor for journal detail pages.
+
+**Features:**
+
+- Milkdown GFM preset with inline markdown shortcuts
+- Floating selection toolbar (bold/italic/strikethrough)
+- Drag/drop and paste asset uploads inserted at cursor
 
 ### LoopiePanel Component
 
