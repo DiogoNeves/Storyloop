@@ -48,10 +48,10 @@ export function useDebouncedAutosave({
     mutationFn: updateEntry,
   });
 
-  const reset = (nextTitle: string, nextSummary: string) => {
+  const reset = useCallback((nextTitle: string, nextSummary: string) => {
     baselineRef.current = { title: nextTitle, summary: nextSummary };
     setState({ status: "idle", errorMessage: null });
-  };
+  }, []);
 
   const saveNow = useCallback(
     async (trimmedTitle: string, nextSummary: string) => {
