@@ -35,6 +35,9 @@ importers:
       '@milkdown/preset-gfm':
         specifier: ^7.15.0
         version: 7.18.0
+      '@milkdown/prose':
+        specifier: ^7.15.0
+        version: 7.18.0
       '@milkdown/react':
         specifier: ^7.15.0
         version: 7.18.0(@codemirror/language@6.12.1)(@codemirror/state@6.5.3)(@codemirror/view@6.39.9)(prosemirror-model@1.25.4)(prosemirror-state@1.4.4)(prosemirror-view@1.41.4)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.3)

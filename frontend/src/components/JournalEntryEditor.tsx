@@ -16,11 +16,14 @@ import {
 } from "@milkdown/core";
 import type { Ctx } from "@milkdown/ctx";
 import { Milkdown, MilkdownProvider, useEditor } from "@milkdown/react";
+import { Fragment, type Node as ProseNode } from "@milkdown/prose/model";
 import { clipboard } from "@milkdown/plugin-clipboard";
 import { history } from "@milkdown/plugin-history";
 import { listener, listenerCtx } from "@milkdown/plugin-listener";
 import {
   commonmark,
+  paragraphSchema,
+  remarkPreserveEmptyLinePlugin,
   toggleEmphasisCommand,
   toggleStrongCommand,
 } from "@milkdown/preset-commonmark";
@@ -29,6 +32,85 @@ import { gfm, toggleStrikethroughCommand } from "@milkdown/preset-gfm";
 import { useAssetUpload } from "@/hooks/useAssetUpload";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+
+interface MarkdownState {
+  next: (fragment: Fragment) => void;
+  openNode: (name: string) => void;
+  closeNode: () => void;
+  addNode: (type: string, attrs?: unknown, value?: string) => void;
+}
+
+const serializeText = (state: MarkdownState, node: ProseNode) => {
+  const lastIsHardBreak =
+    node.childCount >= 1 && node.lastChild?.type.name === "hardbreak";
+  if (!lastIsHardBreak) {
+    state.next(node.content);
+    return;
+  }
+  const contentArr: ProseNode[] = [];
+  node.content.forEach((child, _offset, index) => {
+    if (index === node.childCount - 1) return;
+    contentArr.push(child);
+  });
+  state.next(Fragment.fromArray(contentArr));
+};
+
+const shouldPreserveEmptyLine = (ctx: Ctx) => {
+  try {
+    ctx.get(remarkPreserveEmptyLinePlugin.id);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const safeParagraphSchema = paragraphSchema.extendSchema((schema) => (ctx) => {
+  const baseSchema = schema(ctx);
+  return {
+    ...baseSchema,
+    toMarkdown: {
+      match: baseSchema.toMarkdown?.match ?? ((node) => node.type.name === "paragraph"),
+      runner: (state: MarkdownState, node: ProseNode) => {
+        let lastNode: ProseNode | null = null;
+        try {
+          lastNode = ctx.get(editorViewCtx).state?.doc.lastChild ?? null;
+        } catch {
+          lastNode = node;
+        }
+        state.openNode("paragraph");
+        if (
+          (!node.content || node.content.size === 0) &&
+          node !== lastNode &&
+          shouldPreserveEmptyLine(ctx)
+        ) {
+          state.addNode("html", undefined, "<br />");
+        } else {
+          serializeText(state, node);
+        }
+        state.closeNode();
+      },
+    },
+  };
+});
+
+const commonmarkWithSafeParagraph = (() => {
+  const paragraphPlugins = new Set(paragraphSchema);
+  const plugins: typeof commonmark = [];
+  let inserted = false;
+
+  for (const plugin of commonmark) {
+    if (paragraphPlugins.has(plugin)) {
+      if (!inserted) {
+        plugins.push(...safeParagraphSchema);
+        inserted = true;
+      }
+      continue;
+    }
+    plugins.push(plugin);
+  }
+
+  return plugins;
+})();
 
 interface JournalEntryEditorProps {
   initialValue: string;
@@ -74,7 +156,7 @@ const JournalEntryEditorInner = forwardRef<
             onChange(markdown);
           });
         })
-        .use(commonmark)
+        .use(commonmarkWithSafeParagraph)
         .use(gfm)
         .use(history)
         .use(clipboard)
