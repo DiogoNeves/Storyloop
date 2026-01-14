@@ -831,24 +831,18 @@ export function JournalDetailPage() {
                 placeholder="Untitled entry"
               />
               {showSaveIndicator ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span
-                      className={cn(
-                        "mt-2 inline-flex items-center",
-                        saveIndicatorTone,
-                      )}
-                    >
-                      <SaveOff
-                        className={cn(
-                          "h-4 w-4",
-                          autosaveStatus === "saving" && "animate-bounce",
-                        )}
-                      />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>{saveIndicatorMessage}</TooltipContent>
-                </Tooltip>
+                <span
+                  className={cn("mt-2 inline-flex items-center", saveIndicatorTone)}
+                  title={saveIndicatorMessage}
+                  aria-label={saveIndicatorMessage}
+                >
+                  <SaveOff
+                    className={cn(
+                      "h-4 w-4",
+                      autosaveStatus === "saving" && "animate-bounce",
+                    )}
+                  />
+                </span>
               ) : null}
             </div>
             <div className="flex items-center gap-2">
