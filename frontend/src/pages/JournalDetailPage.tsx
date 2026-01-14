@@ -186,6 +186,11 @@ export function JournalDetailPage() {
     isBlocked: isSmartUpdating,
     debounceMs: 1000,
   });
+  const {
+    reset: resetAutosave,
+    status: autosaveStatus,
+    errorMessage: autosaveError,
+  } = autosave;
 
   const lastEntryIdRef = useRef<string | null>(null);
 
@@ -196,6 +201,7 @@ export function JournalDetailPage() {
       setEditorInitialSummary("");
       setCreateError(null);
       lastEntryIdRef.current = null;
+      resetAutosave("", "");
       return;
     }
 
@@ -210,22 +216,22 @@ export function JournalDetailPage() {
       setTitleDraft(nextTitle);
       setSummaryDraft(nextSummary);
       setEditorInitialSummary(nextSummary);
-      autosave.reset(nextTitle, nextSummary);
+      resetAutosave(nextTitle, nextSummary);
     }
   }, [
-    autosave,
     currentEntry,
     currentEntry?.id,
     currentEntry?.summary,
     currentEntry?.title,
     isNewEntryRoute,
+    resetAutosave,
   ]);
 
   useEffect(() => {
     if (!currentEntry || !isSmartEntry || isSmartUpdating) {
       return;
     }
-    if (autosave.status !== "idle") {
+    if (autosaveStatus !== "idle") {
       return;
     }
     const nextSummary = currentEntry.summary ?? "";
@@ -234,12 +240,13 @@ export function JournalDetailPage() {
     }
     setSummaryDraft(nextSummary);
     setEditorInitialSummary(nextSummary);
-    autosave.reset(titleDraft, nextSummary);
+    resetAutosave(titleDraft, nextSummary);
   }, [
-    autosave,
+    autosaveStatus,
     currentEntry,
     isSmartEntry,
     isSmartUpdating,
+    resetAutosave,
     summaryDraft,
     titleDraft,
   ]);
@@ -785,21 +792,21 @@ export function JournalDetailPage() {
     );
 
     const showSaveIndicator =
-      autosave.status === "queued"
+      autosaveStatus === "queued"
         ? hasPendingUpdate
-        : autosave.status !== "idle" || hasPendingUpdate;
+        : autosaveStatus !== "idle" || hasPendingUpdate;
     const saveIndicatorTone =
-      autosave.status === "error"
+      autosaveStatus === "error"
         ? "text-destructive"
-        : autosave.status === "queued" || hasPendingUpdate
+        : autosaveStatus === "queued" || hasPendingUpdate
           ? "text-amber-500"
           : "text-muted-foreground";
     const saveIndicatorMessage =
-      autosave.status === "saving"
+      autosaveStatus === "saving"
         ? "Saving..."
-        : autosave.status === "error"
-          ? autosave.errorMessage ?? "Saved locally, couldn’t sync yet."
-          : autosave.status === "dirty"
+        : autosaveStatus === "error"
+          ? autosaveError ?? "Saved locally, couldn’t sync yet."
+          : autosaveStatus === "dirty"
             ? "Unsaved changes"
             : hasPendingUpdate
               ? "Saved locally, syncing soon."
@@ -835,7 +842,7 @@ export function JournalDetailPage() {
                       <SaveOff
                         className={cn(
                           "h-4 w-4",
-                          autosave.status === "saving" && "animate-bounce",
+                          autosaveStatus === "saving" && "animate-bounce",
                         )}
                       />
                     </span>
