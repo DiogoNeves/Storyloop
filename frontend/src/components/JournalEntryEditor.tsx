@@ -17,6 +17,7 @@ import {
 import type { Ctx } from "@milkdown/ctx";
 import { Milkdown, MilkdownProvider, useEditor } from "@milkdown/react";
 import { Fragment, type Node as ProseNode } from "@milkdown/prose/model";
+import type { SerializerState } from "@milkdown/transformer";
 import { clipboard } from "@milkdown/plugin-clipboard";
 import { history } from "@milkdown/plugin-history";
 import { listener, listenerCtx } from "@milkdown/plugin-listener";
@@ -33,14 +34,7 @@ import { useAssetUpload } from "@/hooks/useAssetUpload";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-interface MarkdownState {
-  next: (fragment: Fragment) => void;
-  openNode: (name: string) => void;
-  closeNode: () => void;
-  addNode: (type: string, attrs?: unknown, value?: string) => void;
-}
-
-const serializeText = (state: MarkdownState, node: ProseNode) => {
+const serializeText = (state: SerializerState, node: ProseNode) => {
   const lastIsHardBreak =
     node.childCount >= 1 && node.lastChild?.type.name === "hardbreak";
   if (!lastIsHardBreak) {
@@ -70,7 +64,7 @@ const safeParagraphSchema = paragraphSchema.extendSchema((schema) => (ctx) => {
     ...baseSchema,
     toMarkdown: {
       match: baseSchema.toMarkdown?.match ?? ((node) => node.type.name === "paragraph"),
-      runner: (state: MarkdownState, node: ProseNode) => {
+      runner: (state: SerializerState, node: ProseNode) => {
         let lastNode: ProseNode | null = null;
         try {
           lastNode = ctx.get(editorViewCtx).state?.doc.lastChild ?? null;
@@ -94,7 +88,7 @@ const safeParagraphSchema = paragraphSchema.extendSchema((schema) => (ctx) => {
 });
 
 const commonmarkWithSafeParagraph = (() => {
-  const paragraphPlugins = new Set(paragraphSchema);
+  const paragraphPlugins = new Set<unknown>(paragraphSchema);
   const plugins: typeof commonmark = [];
   let inserted = false;
 
