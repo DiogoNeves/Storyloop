@@ -87,6 +87,10 @@
     @apply text-sm leading-7 text-foreground/90;
   }
 
+  .journal-editor .ProseMirror {
+    @apply outline-none;
+  }
+
   .journal-editor .milkdown h1 {
     @apply mt-6 text-xl font-semibold tracking-tight first:mt-0;
   }
