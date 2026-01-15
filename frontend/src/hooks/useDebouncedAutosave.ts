@@ -44,7 +44,7 @@ export function useDebouncedAutosave({
   const saveVersionRef = useRef(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const updateEntryMutation = useMutation({
+  const { mutateAsync: updateEntryAsync, isPending: isMutationPending } = useMutation({
     mutationFn: updateEntry,
   });
 
@@ -82,7 +82,7 @@ export function useDebouncedAutosave({
         return;
       }
 
-      const savedEntry = await updateEntryMutation.mutateAsync(payload);
+      const savedEntry = await updateEntryAsync(payload);
       if (version === saveVersionRef.current) {
         await removePendingEntryUpdate(entryId);
         const listQuery = entriesQueries.all();
@@ -119,7 +119,7 @@ export function useDebouncedAutosave({
     queryClient,
     queueEntryUpdate,
     removePendingEntryUpdate,
-    updateEntryMutation,
+    updateEntryAsync,
   ],
   );
 
@@ -140,10 +140,15 @@ export function useDebouncedAutosave({
       return;
     }
 
-    setState((current) => ({
-      status: current.status === "saving" ? current.status : "dirty",
-      errorMessage: current.errorMessage,
-    }));
+    setState((current) => {
+      if (current.status === "saving" || current.status === "dirty") {
+        return current;
+      }
+      return {
+        status: "dirty",
+        errorMessage: current.errorMessage,
+      };
+    });
 
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
@@ -173,6 +178,6 @@ export function useDebouncedAutosave({
     status: state.status,
     errorMessage: state.errorMessage,
     reset,
-    isSaving: updateEntryMutation.isPending,
+    isSaving: isMutationPending,
   };
 }
