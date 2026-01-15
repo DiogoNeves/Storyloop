@@ -1,19 +1,20 @@
 import { useCallback, useMemo, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bot, Pin } from "lucide-react";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { Bot, Pin, SaveOff, Trash2 } from "lucide-react";
+import { Link, useLocation, useParams, useNavigate } from "react-router-dom";
 import useLocalStorageState from "use-local-storage-state";
 
 import { entriesMutations, entriesQueries, type Entry } from "@/api/entries";
+import { useDebouncedAutosave } from "@/hooks/useDebouncedAutosave";
 import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
 import { useEntryEditing } from "@/hooks/useEntryEditing";
 import { useSmartEntryUpdate } from "@/hooks/useSmartEntryUpdate";
 import { useSync } from "@/hooks/useSync";
-import { entryToActivityItem } from "@/lib/types/entries";
+import { compareEntriesByPinnedDate } from "@/lib/types/entries";
+import { cn } from "@/lib/utils";
 import { useAgentConversationContext } from "@/context/AgentConversationContext";
 import { NavBar } from "@/components/NavBar";
 import { VideoLinkCard } from "@/components/VideoLinkCard";
-import { ActivityDraftCard } from "@/components/ActivityDraftCard";
 import { type ActivityDraft } from "@/components/ActivityFeed";
 import { SmartEntryDraftCard } from "@/components/SmartEntryDraftCard";
 import { Button } from "@/components/ui/button";
@@ -34,27 +35,35 @@ import { MarkdownMessage } from "@/components/chat/MarkdownMessage";
 import { TwoColumnDetailLayout } from "@/components/TwoColumnDetailLayout";
 import { StickyHeaderScrollableCard } from "@/components/StickyHeaderScrollableCard";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  type JournalEntryEditorHandle,
+  JournalEntryEditor,
+} from "@/components/JournalEntryEditor";
 
 export function JournalDetailPage() {
   const { journalId } = useParams<{ journalId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"content" | "prompt">("content");
   const [promptDraft, setPromptDraft] = useState<ActivityDraft | null>(null);
   const [promptError, setPromptError] = useState<string | null>(null);
   const [isStopDialogOpen, setIsStopDialogOpen] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+  const [summaryDraft, setSummaryDraft] = useState("");
+  const [editorInitialSummary, setEditorInitialSummary] = useState("");
+  const [createError, setCreateError] = useState<string | null>(null);
   const { setFocus } = useAgentConversationContext();
+  const editorRef = useRef<JournalEntryEditorHandle | null>(null);
+
+  const isNewEntryRoute =
+    journalId === "new" || location.pathname === "/journals/new";
 
   const entryQuery = useQuery({
-    ...(journalId
+    ...(journalId && !isNewEntryRoute
       ? entriesQueries.byId(journalId)
       : entriesQueries.byId("missing")),
-    enabled: Boolean(journalId),
+    enabled: Boolean(journalId && !isNewEntryRoute),
   });
 
   const currentEntry: Entry | null = entryQuery.data ?? null;
@@ -71,7 +80,7 @@ export function JournalDetailPage() {
   });
 
   useEffect(() => {
-    if (!journalId) {
+    if (!journalId || isNewEntryRoute) {
       setFocus(null);
       return;
     }
@@ -96,29 +105,25 @@ export function JournalDetailPage() {
     return () => {
       setFocus(null);
     };
-  }, [currentEntry?.category, currentEntry?.id, currentEntry?.title, journalId, setFocus]);
+  }, [
+    currentEntry?.category,
+    currentEntry?.id,
+    currentEntry?.title,
+    isNewEntryRoute,
+    journalId,
+    setFocus,
+  ]);
 
   // Set up editing state
   const editingState = useEntryEditing();
-  const { isOnline } = useSync();
+  const { isOnline, pendingEntryUpdates } = useSync();
   const {
-    editingEntryId,
-    editingDraft,
-    editingError,
     deletingEntryId,
-    isUpdating,
     isDeleting,
-    startEdit,
-    handleEditDraftChange,
-    cancelEdit,
-    submitEdit,
     deleteEntry,
     togglePin,
     isPinning,
   } = editingState;
-
-  const isEditing = currentEntry?.id === editingEntryId;
-  const activityItem = currentEntry ? entryToActivityItem(currentEntry) : null;
   const isPinned = Boolean(currentEntry?.pinned);
   const pinLabel = isPinned ? "Unpin entry" : "Pin entry";
   const isPinDisabled =
@@ -139,12 +144,107 @@ export function JournalDetailPage() {
   const isPromptUpdating = promptUpdateMutation.isPending;
   const isPromptEditing = Boolean(promptDraft);
 
+  const createEntryMutation = useMutation(
+    entriesMutations.create(queryClient, {
+      onSuccess: (savedEntry) => {
+        if (!savedEntry) {
+          return;
+        }
+        const listQuery = entriesQueries.all();
+        queryClient.setQueryData<Entry[]>(
+          listQuery.queryKey,
+          (current) => {
+            const next = (current ?? []).filter(
+              (entry) => entry.id !== savedEntry.id,
+            );
+            next.push(savedEntry);
+            next.sort(compareEntriesByPinnedDate);
+            return next;
+          },
+        );
+      },
+    }),
+  );
+
   useEffect(() => {
     setActiveTab("content");
     setPromptDraft(null);
     setPromptError(null);
     setIsStopDialogOpen(false);
   }, [currentEntry?.id]);
+
+  const autosave = useDebouncedAutosave({
+    entryId: currentEntry?.id ?? null,
+    title: titleDraft,
+    summary: summaryDraft,
+    enabled: Boolean(currentEntry) && !isNewEntryRoute,
+    isBlocked: isSmartUpdating,
+    debounceMs: 1000,
+  });
+  const {
+    reset: resetAutosave,
+    status: autosaveStatus,
+    errorMessage: autosaveError,
+  } = autosave;
+
+  const lastEntryIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (isNewEntryRoute) {
+      setTitleDraft("");
+      setSummaryDraft("");
+      setEditorInitialSummary("");
+      setCreateError(null);
+      lastEntryIdRef.current = null;
+      resetAutosave("", "");
+      return;
+    }
+
+    if (!currentEntry) {
+      return;
+    }
+
+    if (lastEntryIdRef.current !== currentEntry.id) {
+      lastEntryIdRef.current = currentEntry.id;
+      const nextTitle = currentEntry.title ?? "";
+      const nextSummary = currentEntry.summary ?? "";
+      setTitleDraft(nextTitle);
+      setSummaryDraft(nextSummary);
+      setEditorInitialSummary(nextSummary);
+      resetAutosave(nextTitle, nextSummary);
+    }
+  }, [
+    currentEntry,
+    currentEntry?.id,
+    currentEntry?.summary,
+    currentEntry?.title,
+    isNewEntryRoute,
+    resetAutosave,
+  ]);
+
+  useEffect(() => {
+    if (!currentEntry || !isSmartEntry || isSmartUpdating) {
+      return;
+    }
+    if (autosaveStatus !== "idle") {
+      return;
+    }
+    const nextSummary = currentEntry.summary ?? "";
+    if (summaryDraft === nextSummary) {
+      return;
+    }
+    setSummaryDraft(nextSummary);
+    setEditorInitialSummary(nextSummary);
+    resetAutosave(titleDraft, nextSummary);
+  }, [
+    autosaveStatus,
+    currentEntry,
+    isSmartEntry,
+    isSmartUpdating,
+    resetAutosave,
+    summaryDraft,
+    titleDraft,
+  ]);
 
   useEffect(() => {
     if (!currentEntry || !isSmartEntry) {
@@ -156,12 +256,24 @@ export function JournalDetailPage() {
     void startSmartUpdate();
   }, [currentEntry, isSmartEntry, isOnline, isSmartUpdating, startSmartUpdate]);
 
+  const shouldAutoFocusEditor = Boolean(
+    (location.state as { focusEditor?: boolean } | null)?.focusEditor,
+  );
+
+  useEffect(() => {
+    if (!shouldAutoFocusEditor || !currentEntry) {
+      return;
+    }
+    editorRef.current?.focus();
+    void navigate(location.pathname, { replace: true, state: {} });
+  }, [currentEntry, location.pathname, navigate, shouldAutoFocusEditor]);
+
   const startPromptEdit = useCallback(() => {
     if (!currentEntry || !isSmartEntry) {
       return;
     }
     setPromptDraft({
-      title: currentEntry.title,
+      title: titleDraft,
       summary: "",
       date: currentEntry.date,
       promptBody: currentEntry.promptBody ?? "",
@@ -169,7 +281,7 @@ export function JournalDetailPage() {
       mode: "smart",
     });
     setPromptError(null);
-  }, [currentEntry, isSmartEntry]);
+  }, [currentEntry, isSmartEntry, titleDraft]);
 
   const handlePromptDraftChange = useCallback((nextDraft: ActivityDraft) => {
     setPromptDraft(nextDraft);
@@ -237,6 +349,47 @@ export function JournalDetailPage() {
       // handled in mutation onError
     }
   }, [currentEntry, isOnline, promptUpdateMutation]);
+
+  const handleCreateEntry = useCallback(async () => {
+    if (!isNewEntryRoute) {
+      return;
+    }
+    if (!isOnline) {
+      setCreateError("Go online to create.");
+      return;
+    }
+    const trimmedTitle = titleDraft.trim();
+    if (trimmedTitle.length === 0) {
+      setCreateError("Add a title before creating.");
+      return;
+    }
+
+    const entryId = crypto.randomUUID();
+    try {
+      const savedEntry = await createEntryMutation.mutateAsync({
+        id: entryId,
+        title: trimmedTitle,
+        summary: "",
+        date: new Date().toISOString(),
+        category: "journal",
+        pinned: false,
+      });
+      if (!savedEntry) {
+        setCreateError("This entry already exists.");
+        return;
+      }
+      setCreateError(null);
+      void navigate(`/journals/${savedEntry.id}`, {
+        state: { focusEditor: true },
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "We couldn't create this entry. Please try again.";
+      setCreateError(message);
+    }
+  }, [createEntryMutation, isNewEntryRoute, isOnline, navigate, titleDraft]);
 
   // Track when deletion is initiated
   useEffect(() => {
@@ -309,6 +462,11 @@ export function JournalDetailPage() {
   const summarySource: string | null = currentEntry?.summary ?? null;
   const summaryText =
     typeof summarySource === "string" ? summarySource.trim() : "";
+
+  const pendingUpdateForEntry = currentEntry
+    ? pendingEntryUpdates.find((update) => update.id === currentEntry.id)
+    : null;
+  const hasPendingUpdate = Boolean(pendingUpdateForEntry);
 
   // Read filter state from localStorage (same as ActivityFeed)
   const [contentTypeFilter] = useLocalStorageState<ContentTypeFilter>(
@@ -448,12 +606,71 @@ export function JournalDetailPage() {
   );
 
   const renderCardContent = () => {
-    if (!journalId) {
+    if (!journalId && !isNewEntryRoute) {
       return (
         <StickyHeaderScrollableCard>
           <p className="text-sm text-muted-foreground">
             We couldn’t determine which journal entry to display.
           </p>
+        </StickyHeaderScrollableCard>
+      );
+    }
+
+    if (isNewEntryRoute) {
+      const canCreate = titleDraft.trim().length > 0;
+      const createDisabledReason = !isOnline ? "Go online to create" : null;
+      const createButton = canCreate ? (
+        <Button
+          type="button"
+          onClick={() => {
+            void handleCreateEntry();
+          }}
+          disabled={createEntryMutation.isPending || Boolean(createDisabledReason)}
+          title={createDisabledReason ?? undefined}
+          aria-label={createDisabledReason ?? "Create"}
+        >
+          {createEntryMutation.isPending ? "Creating…" : "Create"}
+        </Button>
+      ) : null;
+
+      const header = (
+        <div className="space-y-2">
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            New journal entry
+          </span>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <input
+              className="w-full flex-1 border-none bg-transparent text-2xl font-semibold text-foreground outline-none placeholder:text-muted-foreground"
+              placeholder="Untitled entry"
+              value={titleDraft}
+              onChange={(event) => {
+                setTitleDraft(event.target.value);
+                setCreateError(null);
+              }}
+              autoFocus
+            />
+            {createButton}
+          </div>
+          {createError ? (
+            <p className="text-xs text-destructive">{createError}</p>
+          ) : null}
+        </div>
+      );
+
+      return (
+        <StickyHeaderScrollableCard header={header} stickyHeaderAt="lg">
+          <div className="space-y-4 pt-4">
+            <JournalEntryEditor
+              ref={editorRef}
+              initialValue={editorInitialSummary}
+              resetKey="new-entry"
+              onChange={setSummaryDraft}
+              isEditable={false}
+            />
+            <p className="text-xs text-muted-foreground">
+              Add a title and create the entry to start writing.
+            </p>
+          </div>
         </StickyHeaderScrollableCard>
       );
     }
@@ -490,49 +707,8 @@ export function JournalDetailPage() {
       );
     }
 
-    if (isEditing && editingDraft) {
-      return (
-        <StickyHeaderScrollableCard bodyClassName="space-y-6">
-          <ActivityDraftCard
-            draft={editingDraft}
-            onChange={handleEditDraftChange}
-            onCancel={cancelEdit}
-            onSubmit={() => {
-              void submitEdit();
-            }}
-            isSubmitting={isUpdating}
-            errorMessage={editingError}
-            submitLabel="Save changes"
-            category={currentEntry.category}
-            idPrefix={`edit-entry-${currentEntry.id}`}
-            onDelete={() => {
-              void deleteEntry(currentEntry.id);
-            }}
-            isDeleting={isDeleting(currentEntry.id)}
-          />
-
-          <div className="h-px w-full bg-border" aria-hidden="true" />
-
-          <div className="grid gap-4 md:grid-cols-2">
-            {renderVideoCard(
-              "Published before this journal",
-              adjacentVideos.previous,
-              "No earlier video yet—this journal leads the way!",
-            )}
-            {renderVideoCard(
-              "Published after this journal",
-              adjacentVideos.next,
-              "Looking forward to your next video!",
-            )}
-          </div>
-        </StickyHeaderScrollableCard>
-      );
-    }
-
     const promptActionsDisabled = !isOnline || isPromptUpdating || isSmartUpdating;
 
-    const editLabel =
-      isSmartEntry && activeTab === "prompt" ? "Edit prompt" : "Edit entry";
     const editDisabledReason = !isOnline
       ? "You are offline"
       : isSmartUpdating
@@ -541,69 +717,66 @@ export function JournalDetailPage() {
           ? "Updating..."
           : null;
     const isEditButtonDisabled =
-      Boolean(editDisabledReason) || (activeTab === "prompt" && isPromptEditing);
+      Boolean(editDisabledReason) || isPromptEditing;
 
-    const editButton = isEditButtonDisabled ? (
-      editDisabledReason ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button type="button" variant="outline" size="sm" disabled={true}>
-              {editLabel}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{editDisabledReason}</TooltipContent>
-        </Tooltip>
-      ) : (
-        <Button type="button" variant="outline" size="sm" disabled={true}>
-          {editLabel}
-        </Button>
-      )
-    ) : (
+    const editPromptButton = isSmartEntry ? (
       <Button
         type="button"
         variant="outline"
         size="sm"
+        disabled={isEditButtonDisabled}
+        title={editDisabledReason ?? undefined}
         onClick={() => {
-          if (!activityItem) {
+          if (isEditButtonDisabled) {
             return;
           }
-          if (isSmartEntry && activeTab === "prompt") {
-            startPromptEdit();
-            return;
-          }
-          startEdit(activityItem);
+          startPromptEdit();
+          setActiveTab("prompt");
         }}
       >
-        {editLabel}
+        Edit prompt
       </Button>
-    );
+    ) : null;
 
     const showStopSmartUpdates = isSmartEntry && activeTab === "prompt";
-    const stopSmartUpdatesButton = promptActionsDisabled ? (
-      editDisabledReason ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button type="button" variant="destructive" size="sm" disabled={true}>
-              Stop smart updates
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{editDisabledReason}</TooltipContent>
-        </Tooltip>
-      ) : (
-        <Button type="button" variant="destructive" size="sm" disabled={true}>
-          Stop smart updates
-        </Button>
-      )
-    ) : (
+    const stopSmartUpdatesButton = (
       <Button
         type="button"
         variant="destructive"
         size="sm"
-        onClick={() => setIsStopDialogOpen(true)}
+        disabled={promptActionsDisabled}
+        title={editDisabledReason ?? undefined}
+        onClick={() => {
+          if (promptActionsDisabled) {
+            return;
+          }
+          setIsStopDialogOpen(true);
+        }}
       >
         Stop smart updates
       </Button>
     );
+
+    const showSaveIndicator =
+      autosaveStatus === "queued"
+        ? hasPendingUpdate
+        : autosaveStatus !== "idle" || hasPendingUpdate;
+    const saveIndicatorTone =
+      autosaveStatus === "error"
+        ? "text-destructive"
+        : autosaveStatus === "queued" || hasPendingUpdate
+          ? "text-amber-500"
+          : "text-muted-foreground";
+    const saveIndicatorMessage =
+      autosaveStatus === "saving"
+        ? "Saving..."
+        : autosaveStatus === "error"
+          ? autosaveError ?? "Saved locally, couldn’t sync yet."
+          : autosaveStatus === "dirty"
+            ? "Unsaved changes"
+            : hasPendingUpdate
+              ? "Saved locally, syncing soon."
+              : "Saved locally";
 
     const header = (
       <>
@@ -614,61 +787,77 @@ export function JournalDetailPage() {
               <span>journal</span>
             </Badge>
           ) : null}
-          <div className="flex items-start justify-between gap-4">
-            <h1 className="text-2xl font-semibold text-foreground">
-              {currentEntry.title}
-            </h1>
-            {activityItem ? (
-              <div className="flex items-center gap-2">
-                {showStopSmartUpdates ? stopSmartUpdatesButton : null}
-                {editButton}
-                {isPinDisabled ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        disabled={true}
-                        aria-label={pinLabel}
-                        className={
-                          isPinned ? "text-primary" : "text-muted-foreground"
-                        }
-                      >
-                        <Pin
-                          className="h-4 w-4"
-                          fill={isPinned ? "currentColor" : "none"}
-                        />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {!isOnline ? "You are offline" : "Updating..."}
-                    </TooltipContent>
-                  </Tooltip>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      if (!currentEntry) {
-                        return;
-                      }
-                      void togglePin(currentEntry.id, !isPinned);
-                    }}
-                    aria-label={pinLabel}
-                    className={
-                      isPinned ? "text-primary" : "text-muted-foreground"
-                    }
-                  >
-                    <Pin
-                      className="h-4 w-4"
-                      fill={isPinned ? "currentColor" : "none"}
-                    />
-                  </Button>
-                )}
-              </div>
-            ) : null}
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex flex-1 items-start gap-3">
+              <input
+                className="w-full flex-1 border-none bg-transparent text-2xl font-semibold text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:text-muted-foreground"
+                value={titleDraft}
+                onChange={(event) => setTitleDraft(event.target.value)}
+                disabled={isSmartUpdating}
+                placeholder="Untitled entry"
+              />
+              {showSaveIndicator ? (
+                <span
+                  className={cn("mt-2 inline-flex items-center", saveIndicatorTone)}
+                  title={saveIndicatorMessage}
+                  aria-label={saveIndicatorMessage}
+                >
+                  <SaveOff
+                    className={cn(
+                      "h-4 w-4",
+                      autosaveStatus === "saving" && "animate-bounce",
+                    )}
+                  />
+                </span>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-2">
+              {showStopSmartUpdates ? stopSmartUpdatesButton : null}
+              {editPromptButton}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                disabled={isPinDisabled}
+                title={
+                  isPinDisabled
+                    ? !isOnline
+                      ? "You are offline"
+                      : "Updating..."
+                    : undefined
+                }
+                onClick={() => {
+                  if (!currentEntry || isPinDisabled) {
+                    return;
+                  }
+                  void togglePin(currentEntry.id, !isPinned);
+                }}
+                aria-label={pinLabel}
+                className={isPinned ? "text-primary" : "text-muted-foreground"}
+              >
+                <Pin
+                  className="h-4 w-4"
+                  fill={isPinned ? "currentColor" : "none"}
+                />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  if (!isOnline || isDeleting(currentEntry.id)) {
+                    return;
+                  }
+                  void deleteEntry(currentEntry.id);
+                }}
+                disabled={!isOnline || isDeleting(currentEntry.id)}
+                title={!isOnline ? "You are offline" : undefined}
+                aria-label="Delete entry"
+                className="text-muted-foreground"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
         <div className="flex flex-col gap-2 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
@@ -780,10 +969,21 @@ export function JournalDetailPage() {
               Loopie is drafting this update…
             </div>
           )
+        ) : !isSmartEntry ? (
+          <JournalEntryEditor
+            ref={editorRef}
+            initialValue={editorInitialSummary}
+            resetKey={currentEntry.id}
+            onChange={setSummaryDraft}
+            isEditable={!isSmartUpdating}
+          />
         ) : summaryText.length > 0 ? (
-          <MarkdownMessage
-            content={summaryText}
-            className="text-muted-foreground"
+          <JournalEntryEditor
+            ref={editorRef}
+            initialValue={editorInitialSummary}
+            resetKey={currentEntry.id}
+            onChange={setSummaryDraft}
+            isEditable={!isSmartUpdating}
           />
         ) : showWaitingForFirstUpdate ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">

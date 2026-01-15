@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 export function SyncStatusBanner() {
   const { isOnline, pendingCount, isSyncing, syncNow } = useSync();
 
-  // Only show when there are pending entries
+  // Only show when there are pending changes
   if (pendingCount === 0) {
     return null;
   }
@@ -28,7 +28,7 @@ export function SyncStatusBanner() {
       <div className="flex items-center gap-2">
         <CloudOff className="h-4 w-4 shrink-0" aria-hidden="true" />
         <span>
-          {pendingCount} pending {pendingCount === 1 ? "entry" : "entries"} to
+          {pendingCount} pending {pendingCount === 1 ? "change" : "changes"} to
           sync
         </span>
       </div>

@@ -57,6 +57,12 @@ export default defineConfig({
     alias: {
       "@": resolve(__dirname, "src"),
     },
+    dedupe: [
+      "@milkdown/core",
+      "@milkdown/ctx",
+      "@milkdown/utils",
+      "@milkdown/prose",
+    ],
   },
   test: {
     globals: true,

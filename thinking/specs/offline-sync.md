@@ -1,14 +1,15 @@
 # Offline-First Entry Creation
 
 ## Goals
-- Allow users to create journal entries while offline (iOS Safari PWA).
+- Allow users to queue smart journal entries while offline (activity feed drafts).
+- Allow users to edit existing journal entries while offline (queue updates locally).
 - Store pending entries in IndexedDB and sync when back online.
 - Show cached entries from the last online session when offline.
 - Provide clear visual feedback for offline state and pending sync status.
 - Design an abstraction layer that enables future migration to sync engines (RxDB, PowerSync).
 
 ## Non-goals (for now)
-- Editing, deleting, or pinning entries while offline.
+- Deleting or pinning entries while offline.
 - Offline support for conversations/Loopie.
 - Background Sync API (not supported on iOS Safari).
 - Conflict resolution for concurrent edits.
@@ -48,6 +49,15 @@ interface PendingEntry {
   lastError?: string;
 }
 
+interface PendingEntryUpdate {
+  id: string;
+  data: UpdateEntryInput;
+  queuedAt: number;
+  attempts: number;
+  status: 'pending' | 'syncing' | 'failed';
+  lastError?: string;
+}
+
 interface SyncStore {
   init(): Promise<void>;
   addPending(entry: PendingEntry): Promise<void>;
@@ -56,13 +66,19 @@ interface SyncStore {
   updatePending(id: string, updates: Partial<PendingEntry>): Promise<void>;
   removePending(id: string): Promise<void>;
   getPendingCount(): Promise<number>;
+  addPendingUpdate(entry: PendingEntryUpdate): Promise<void>;
+  getAllPendingUpdates(): Promise<PendingEntryUpdate[]>;
+  getPendingUpdate(id: string): Promise<PendingEntryUpdate | undefined>;
+  updatePendingUpdate(id: string, updates: Partial<PendingEntryUpdate>): Promise<void>;
+  removePendingUpdate(id: string): Promise<void>;
+  getPendingUpdateCount(): Promise<number>;
   clearAll(): Promise<void>;
 }
 ```
 
 ## IndexedDB Schema
 
-Database: `storyloop-sync` (version 1)
+Database: `storyloop-sync` (version 2)
 
 ### Object Store: `pending-entries`
 - Key path: `id`
@@ -86,6 +102,11 @@ Database: `storyloop-sync` (version 1)
   lastError?: string;  // Error message from last failed attempt
 }
 ```
+
+### Object Store: `pending-entry-updates`
+- Key path: `id`
+- Indexes:
+  - `by-queued-at` on `queuedAt` (for ordering)
 
 ## Service Worker Strategy
 
@@ -134,18 +155,29 @@ document.addEventListener('visibilitychange', () => {
 syncAll():
   1. Check if already syncing → return
   2. Check if offline → return
-  3. Get all pending entries ordered by queuedAt
-  4. For each entry:
+  3. Get all pending entries + pending updates ordered by queuedAt
+  4. For each entry create:
      a. If attempts >= 3 → skip (mark as failed)
      b. Mark status = 'syncing'
      c. Call createEntry API
      d. On success → remove from IndexedDB
      e. On error → increment attempts, set lastError
-  5. Invalidate TanStack Query cache (entries list)
-  6. Fire onSyncComplete callback
+  5. For each entry update (after creates, skipping IDs still pending create):
+     a. If attempts >= 3 → skip (mark as failed)
+     b. Mark status = 'syncing'
+     c. Call updateEntry API
+     d. On success → remove from IndexedDB
+     e. On error → increment attempts, set lastError
+  6. Invalidate TanStack Query cache (entries list)
+  7. Fire onSyncComplete callback
 ```
 
 ## UI Behavior
+
+### New Entry Creation
+- Standard entries are created via `/journals/new` and require an online connection.
+- When offline, the Create button is disabled and content remains read-only until an ID exists.
+- Smart entry drafts created in the activity feed can still queue offline.
 
 ### Offline Indicator (NavBar)
 - Location: Next to logo in NavBar
@@ -167,10 +199,10 @@ syncAll():
 - Content: "Pending sync" with CloudOff icon
 - Visibility: When entry.id is in pendingEntries list
 
-### Edit/Delete/Pin Buttons (Offline)
+### Delete/Pin Buttons (Offline)
 - State: Disabled (greyed out)
 - Tooltip: "You are offline"
-- Applies to: Edit, Delete, and Pin buttons in ActivityFeedItem and journal detail header
+- Applies to: Delete and Pin buttons in ActivityFeedItem and journal detail header
 
 ## Entry Creation Flow
 
@@ -190,6 +222,11 @@ User submits new entry:
   └─► Clear draft form
 ```
 
+### Online-only create for `/journals/new`
+
+- The `/journals/new` route keeps the content editor read-only until an entry is created.
+- The Create button is disabled offline and shows the tooltip copy: "Go online to create".
+
 ## Testing Strategy
 
 ### Unit Tests
@@ -199,9 +236,10 @@ User submits new entry:
 
 ### Manual Testing
 1. Chrome DevTools offline mode: create entry, go online, verify sync
-2. iOS Safari PWA: add to home screen, test offline creation
-3. Service worker: verify app loads offline
-4. Cache invalidation: verify fresh data fetched on sync
+2. Chrome DevTools offline mode: edit entry, go online, verify update sync
+3. iOS Safari PWA: add to home screen, test offline creation
+4. Service worker: verify app loads offline
+5. Cache invalidation: verify fresh data fetched on sync
 
 ## Open Questions (resolved)
 - Use event-based sync (online/focus/visibility) instead of Background Sync API

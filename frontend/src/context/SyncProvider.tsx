@@ -8,11 +8,12 @@ import {
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
-import type { CreateEntryInput } from "@/api/entries";
+import type { CreateEntryInput, UpdateEntryInput } from "@/api/entries";
 import {
   IdbSyncStore,
   SyncService,
   type PendingEntry,
+  type PendingEntryUpdate,
   type SyncResult,
 } from "@/lib/sync";
 
@@ -42,6 +43,9 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   const [pendingCount, setPendingCount] = useState(0);
   const [pendingEntries, setPendingEntries] = useState<PendingEntry[]>([]);
+  const [pendingEntryUpdates, setPendingEntryUpdates] = useState<
+    PendingEntryUpdate[]
+  >([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncResult, setLastSyncResult] = useState<SyncResult | undefined>();
   const [lastSyncError, setLastSyncError] = useState<Error | undefined>();
@@ -69,9 +73,12 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
     try {
       const count = await store.getPendingCount();
+      const updateCount = await store.getPendingUpdateCount();
       const entries = await store.getAllPending();
-      setPendingCount(count);
+      const updates = await store.getAllPendingUpdates();
       setPendingEntries(entries);
+      setPendingEntryUpdates(updates);
+      setPendingCount(count + updateCount);
     } catch (error) {
       // Store might not be ready yet, ignore
       console.warn("Failed to refresh pending entries:", error);
@@ -232,17 +239,42 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     [refreshPending],
   );
 
+  const queueEntryUpdate = useCallback(
+    async (input: UpdateEntryInput) => {
+      const service = serviceRef.current;
+      if (!service) return;
+
+      await service.queueEntryUpdate(input);
+      await refreshPending();
+    },
+    [refreshPending],
+  );
+
+  const removePendingEntryUpdate = useCallback(
+    async (id: string) => {
+      const service = serviceRef.current;
+      if (!service) return;
+
+      await service.removePendingEntryUpdate(id);
+      await refreshPending();
+    },
+    [refreshPending],
+  );
+
   const value = useMemo<SyncContextValue>(
     () => ({
       isOnline,
       isOfflineSyncAvailable,
       pendingCount,
       pendingEntries,
+      pendingEntryUpdates,
       isSyncing,
       lastSyncResult,
       lastSyncError,
       syncNow,
       queueEntry,
+      queueEntryUpdate,
+      removePendingEntryUpdate,
       markServerUnreachable,
       clearSyncError,
     }),
@@ -251,11 +283,14 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       isOfflineSyncAvailable,
       pendingCount,
       pendingEntries,
+      pendingEntryUpdates,
       isSyncing,
       lastSyncResult,
       lastSyncError,
       syncNow,
       queueEntry,
+      queueEntryUpdate,
+      removePendingEntryUpdate,
       markServerUnreachable,
       clearSyncError,
     ],
