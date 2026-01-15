@@ -292,7 +292,7 @@ const JournalEntryEditorInner = forwardRef<
     <div
       ref={containerRef}
       className={cn(
-        "journal-editor relative rounded-xl border border-border bg-background px-4 py-3 shadow-sm",
+        "journal-editor relative rounded-xl bg-background px-4 py-3",
         !isEditable && "opacity-70",
         className,
       )}
