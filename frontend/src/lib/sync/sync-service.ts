@@ -1,8 +1,14 @@
 import type { QueryClient } from "@tanstack/react-query";
 
-import { createEntry, entriesQueries, type CreateEntryInput } from "@/api/entries";
+import {
+  createEntry,
+  entriesQueries,
+  updateEntry,
+  type CreateEntryInput,
+  type UpdateEntryInput,
+} from "@/api/entries";
 
-import type { PendingEntry, SyncStore } from "./types";
+import type { PendingEntry, PendingEntryUpdate, SyncStore } from "./types";
 
 const MAX_RETRY_ATTEMPTS = 3;
 
@@ -63,6 +69,18 @@ export class SyncService {
     await this.store.addPending(pendingEntry);
   }
 
+  /** Queue an entry update for offline sync */
+  async queueEntryUpdate(input: UpdateEntryInput): Promise<void> {
+    const pendingUpdate: PendingEntryUpdate = {
+      id: input.id,
+      data: input,
+      queuedAt: Date.now(),
+      attempts: 0,
+      status: "pending",
+    };
+    await this.store.addPendingUpdate(pendingUpdate);
+  }
+
   /**
    * Attempt to sync all pending entries.
    * Uses promise-based lock to prevent concurrent syncs.
@@ -98,6 +116,8 @@ export class SyncService {
 
     try {
       const pending = await this.store.getAllPending();
+      const pendingUpdates = await this.store.getAllPendingUpdates();
+      const pendingEntryIds = new Set(pending.map((entry) => entry.id));
 
       for (const entry of pending) {
         // Check connectivity before each entry (handles mid-sync network loss)
@@ -143,6 +163,52 @@ export class SyncService {
         }
       }
 
+      for (const update of pendingUpdates) {
+        if (!this.isOnline()) {
+          abortedOffline++;
+          continue;
+        }
+
+        if (update.attempts >= MAX_RETRY_ATTEMPTS) {
+          skippedMaxRetries++;
+          continue;
+        }
+
+        if (pendingEntryIds.has(update.id)) {
+          continue;
+        }
+
+        try {
+          await this.store.updatePendingUpdate(update.id, { status: "syncing" });
+
+          await updateEntry(update.data);
+
+          try {
+            await this.store.removePendingUpdate(update.id);
+          } catch (storageError) {
+            console.warn(
+              "Failed to remove synced entry update from queue:",
+              storageError,
+            );
+          }
+          successCount++;
+        } catch (error) {
+          try {
+            await this.store.updatePendingUpdate(update.id, {
+              status: "pending",
+              attempts: update.attempts + 1,
+              lastError: error instanceof Error ? error.message : "Unknown error",
+            });
+          } catch (updateError) {
+            console.error(
+              "Failed to update entry update status after sync error:",
+              updateError,
+            );
+          }
+          failCount++;
+        }
+      }
+
       // Invalidate entries query to refresh data from server
       if (successCount > 0) {
         const listQuery = entriesQueries.all();
@@ -175,6 +241,16 @@ export class SyncService {
   /** Get all pending entries */
   async getPendingEntries(): Promise<PendingEntry[]> {
     return this.store.getAllPending();
+  }
+
+  /** Get all pending updates */
+  async getPendingEntryUpdates(): Promise<PendingEntryUpdate[]> {
+    return this.store.getAllPendingUpdates();
+  }
+
+  /** Remove a pending update */
+  async removePendingEntryUpdate(id: string): Promise<void> {
+    await this.store.removePendingUpdate(id);
   }
 
   /** Check if currently syncing */

@@ -4,7 +4,7 @@ This document describes the evolution path from the current simple offline imple
 
 ## Current Implementation (Option 2)
 
-Simple offline-first entry creation with IndexedDB storage and event-based sync.
+Offline-first entry creation + updates with IndexedDB storage and event-based sync.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -18,7 +18,7 @@ Simple offline-first entry creation with IndexedDB storage and event-based sync.
 │  (React Context providing sync state)                        │
 ├─────────────────────────────────────────────────────────────┤
 │                      SyncService                             │
-│  (~150 lines: queue, retry, invalidate)                     │
+│  (~200 lines: queue creates + updates, retry, invalidate)   │
 ├─────────────────────────────────────────────────────────────┤
 │                      SyncStore Interface                     │
 │  (addPending, getAllPending, removePending, etc.)           │
@@ -29,7 +29,7 @@ Simple offline-first entry creation with IndexedDB storage and event-based sync.
 ```
 
 ### Characteristics
-- **Scope**: Entry creation only (immutable offline)
+- **Scope**: Entry creation + updates (no offline delete/pin)
 - **Storage**: IndexedDB via `idb` library
 - **Sync**: Event-based (online/focus/visibility)
 - **Conflicts**: None (append-only when offline)

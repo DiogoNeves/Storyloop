@@ -1,4 +1,5 @@
 import type { CreateEntryInput } from "@/api/entries";
+import type { UpdateEntryInput } from "@/api/entries";
 
 /**
  * Status of a pending entry in the sync queue.
@@ -14,6 +15,24 @@ export interface PendingEntry {
   id: string;
   /** The entry data to sync */
   data: CreateEntryInput;
+  /** Timestamp when queued (for ordering) */
+  queuedAt: number;
+  /** Number of sync attempts */
+  attempts: number;
+  /** Current status */
+  status: PendingEntryStatus;
+  /** Last error message if sync failed */
+  lastError?: string;
+}
+
+/**
+ * Pending update stored for offline sync.
+ */
+export interface PendingEntryUpdate {
+  /** Entry ID (same as the entry's id field) */
+  id: string;
+  /** The entry update data to sync */
+  data: UpdateEntryInput;
   /** Timestamp when queued (for ordering) */
   queuedAt: number;
   /** Number of sync attempts */
@@ -51,6 +70,27 @@ export interface SyncStore {
 
   /** Get count of pending entries */
   getPendingCount(): Promise<number>;
+
+  /** Add a new pending update to the sync queue */
+  addPendingUpdate(update: PendingEntryUpdate): Promise<void>;
+
+  /** Get all pending updates, ordered by queuedAt */
+  getAllPendingUpdates(): Promise<PendingEntryUpdate[]>;
+
+  /** Get a single pending update by ID */
+  getPendingUpdate(id: string): Promise<PendingEntryUpdate | undefined>;
+
+  /** Update a pending update (e.g., increment attempts, set error) */
+  updatePendingUpdate(
+    id: string,
+    updates: Partial<PendingEntryUpdate>,
+  ): Promise<void>;
+
+  /** Remove a pending update (after successful sync) */
+  removePendingUpdate(id: string): Promise<void>;
+
+  /** Get count of pending updates */
+  getPendingUpdateCount(): Promise<number>;
 
   /** Clear all pending entries (for testing/reset) */
   clearAll(): Promise<void>;
