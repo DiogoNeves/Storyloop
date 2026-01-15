@@ -38,11 +38,6 @@ import {
   type JournalEntryEditorHandle,
   JournalEntryEditor,
 } from "@/components/JournalEntryEditor";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 export function JournalDetailPage() {
   const { journalId } = useParams<{ journalId: string }>();
@@ -625,26 +620,17 @@ export function JournalDetailPage() {
       const canCreate = titleDraft.trim().length > 0;
       const createDisabledReason = !isOnline ? "Go online to create" : null;
       const createButton = canCreate ? (
-        createDisabledReason ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button type="button" disabled={true}>
-                Create
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{createDisabledReason}</TooltipContent>
-          </Tooltip>
-        ) : (
-          <Button
-            type="button"
-            onClick={() => {
-              void handleCreateEntry();
-            }}
-            disabled={createEntryMutation.isPending}
-          >
-            {createEntryMutation.isPending ? "Creating…" : "Create"}
-          </Button>
-        )
+        <Button
+          type="button"
+          onClick={() => {
+            void handleCreateEntry();
+          }}
+          disabled={createEntryMutation.isPending || Boolean(createDisabledReason)}
+          title={createDisabledReason ?? undefined}
+          aria-label={createDisabledReason ?? "Create"}
+        >
+          {createEntryMutation.isPending ? "Creating…" : "Create"}
+        </Button>
       ) : null;
 
       const header = (
@@ -734,58 +720,38 @@ export function JournalDetailPage() {
       Boolean(editDisabledReason) || isPromptEditing;
 
     const editPromptButton = isSmartEntry ? (
-      isEditButtonDisabled ? (
-        editDisabledReason ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button type="button" variant="outline" size="sm" disabled={true}>
-                Edit prompt
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{editDisabledReason}</TooltipContent>
-          </Tooltip>
-        ) : (
-          <Button type="button" variant="outline" size="sm" disabled={true}>
-            Edit prompt
-          </Button>
-        )
-      ) : (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            startPromptEdit();
-            setActiveTab("prompt");
-          }}
-        >
-          Edit prompt
-        </Button>
-      )
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={isEditButtonDisabled}
+        title={editDisabledReason ?? undefined}
+        onClick={() => {
+          if (isEditButtonDisabled) {
+            return;
+          }
+          startPromptEdit();
+          setActiveTab("prompt");
+        }}
+      >
+        Edit prompt
+      </Button>
     ) : null;
 
     const showStopSmartUpdates = isSmartEntry && activeTab === "prompt";
-    const stopSmartUpdatesButton = promptActionsDisabled ? (
-      editDisabledReason ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button type="button" variant="destructive" size="sm" disabled={true}>
-              Stop smart updates
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{editDisabledReason}</TooltipContent>
-        </Tooltip>
-      ) : (
-        <Button type="button" variant="destructive" size="sm" disabled={true}>
-          Stop smart updates
-        </Button>
-      )
-    ) : (
+    const stopSmartUpdatesButton = (
       <Button
         type="button"
         variant="destructive"
         size="sm"
-        onClick={() => setIsStopDialogOpen(true)}
+        disabled={promptActionsDisabled}
+        title={editDisabledReason ?? undefined}
+        onClick={() => {
+          if (promptActionsDisabled) {
+            return;
+          }
+          setIsStopDialogOpen(true);
+        }}
       >
         Stop smart updates
       </Button>
@@ -848,78 +814,49 @@ export function JournalDetailPage() {
             <div className="flex items-center gap-2">
               {showStopSmartUpdates ? stopSmartUpdatesButton : null}
               {editPromptButton}
-              {isPinDisabled ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      disabled={true}
-                      aria-label={pinLabel}
-                      className={isPinned ? "text-primary" : "text-muted-foreground"}
-                    >
-                      <Pin
-                        className="h-4 w-4"
-                        fill={isPinned ? "currentColor" : "none"}
-                      />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {!isOnline ? "You are offline" : "Updating..."}
-                  </TooltipContent>
-                </Tooltip>
-              ) : (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    if (!currentEntry) {
-                      return;
-                    }
-                    void togglePin(currentEntry.id, !isPinned);
-                  }}
-                  aria-label={pinLabel}
-                  className={isPinned ? "text-primary" : "text-muted-foreground"}
-                >
-                  <Pin
-                    className="h-4 w-4"
-                    fill={isPinned ? "currentColor" : "none"}
-                  />
-                </Button>
-              )}
-              {!isOnline ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      disabled={true}
-                      aria-label="Delete entry"
-                      className="text-muted-foreground"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>You are offline</TooltipContent>
-                </Tooltip>
-              ) : (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    void deleteEntry(currentEntry.id);
-                  }}
-                  disabled={isDeleting(currentEntry.id)}
-                  aria-label="Delete entry"
-                  className="text-muted-foreground"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              )}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                disabled={isPinDisabled}
+                title={
+                  isPinDisabled
+                    ? !isOnline
+                      ? "You are offline"
+                      : "Updating..."
+                    : undefined
+                }
+                onClick={() => {
+                  if (!currentEntry || isPinDisabled) {
+                    return;
+                  }
+                  void togglePin(currentEntry.id, !isPinned);
+                }}
+                aria-label={pinLabel}
+                className={isPinned ? "text-primary" : "text-muted-foreground"}
+              >
+                <Pin
+                  className="h-4 w-4"
+                  fill={isPinned ? "currentColor" : "none"}
+                />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  if (!isOnline || isDeleting(currentEntry.id)) {
+                    return;
+                  }
+                  void deleteEntry(currentEntry.id);
+                }}
+                disabled={!isOnline || isDeleting(currentEntry.id)}
+                title={!isOnline ? "You are offline" : undefined}
+                aria-label="Delete entry"
+                className="text-muted-foreground"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         </div>
