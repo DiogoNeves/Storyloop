@@ -5,7 +5,7 @@ import { Link, useLocation, useParams, useNavigate } from "react-router-dom";
 import useLocalStorageState from "use-local-storage-state";
 
 import { entriesMutations, entriesQueries, type Entry } from "@/api/entries";
-import { useDebouncedAutosave } from "@/hooks/useDebouncedAutosave";
+import { useJournalEntryDraft } from "@/hooks/useJournalEntryDraft";
 import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
 import { useEntryEditing } from "@/hooks/useEntryEditing";
 import { useSmartEntryUpdate } from "@/hooks/useSmartEntryUpdate";
@@ -38,6 +38,7 @@ import {
   type JournalEntryEditorHandle,
   JournalEntryEditor,
 } from "@/components/JournalEntryEditor";
+import { NewEntryHeader } from "@/components/NewEntryHeader";
 
 export function JournalDetailPage() {
   const { journalId } = useParams<{ journalId: string }>();
@@ -49,9 +50,6 @@ export function JournalDetailPage() {
   const [promptDraft, setPromptDraft] = useState<ActivityDraft | null>(null);
   const [promptError, setPromptError] = useState<string | null>(null);
   const [isStopDialogOpen, setIsStopDialogOpen] = useState(false);
-  const [titleDraft, setTitleDraft] = useState("");
-  const [summaryDraft, setSummaryDraft] = useState("");
-  const [editorInitialSummary, setEditorInitialSummary] = useState("");
   const [createError, setCreateError] = useState<string | null>(null);
   const { setFocus } = useAgentConversationContext();
   const editorRef = useRef<JournalEntryEditorHandle | null>(null);
@@ -77,6 +75,20 @@ export function JournalDetailPage() {
   } = useSmartEntryUpdate({
     entryId: currentEntry?.id ?? null,
     enabled: isSmartEntry,
+  });
+
+  const {
+    titleDraft,
+    setTitleDraft,
+    setSummaryDraft,
+    editorInitialSummary,
+    autosaveStatus,
+    autosaveError,
+  } = useJournalEntryDraft({
+    currentEntry,
+    isNewEntryRoute,
+    isSmartEntry,
+    isSmartUpdating,
   });
 
   useEffect(() => {
@@ -173,78 +185,11 @@ export function JournalDetailPage() {
     setIsStopDialogOpen(false);
   }, [currentEntry?.id]);
 
-  const autosave = useDebouncedAutosave({
-    entryId: currentEntry?.id ?? null,
-    title: titleDraft,
-    summary: summaryDraft,
-    enabled: Boolean(currentEntry) && !isNewEntryRoute,
-    isBlocked: isSmartUpdating,
-    debounceMs: 1000,
-  });
-  const {
-    reset: resetAutosave,
-    status: autosaveStatus,
-    errorMessage: autosaveError,
-  } = autosave;
-
-  const lastEntryIdRef = useRef<string | null>(null);
-
   useEffect(() => {
     if (isNewEntryRoute) {
-      setTitleDraft("");
-      setSummaryDraft("");
-      setEditorInitialSummary("");
       setCreateError(null);
-      lastEntryIdRef.current = null;
-      resetAutosave("", "");
-      return;
     }
-
-    if (!currentEntry) {
-      return;
-    }
-
-    if (lastEntryIdRef.current !== currentEntry.id) {
-      lastEntryIdRef.current = currentEntry.id;
-      const nextTitle = currentEntry.title ?? "";
-      const nextSummary = currentEntry.summary ?? "";
-      setTitleDraft(nextTitle);
-      setSummaryDraft(nextSummary);
-      setEditorInitialSummary(nextSummary);
-      resetAutosave(nextTitle, nextSummary);
-    }
-  }, [
-    currentEntry,
-    currentEntry?.id,
-    currentEntry?.summary,
-    currentEntry?.title,
-    isNewEntryRoute,
-    resetAutosave,
-  ]);
-
-  useEffect(() => {
-    if (!currentEntry || !isSmartEntry || isSmartUpdating) {
-      return;
-    }
-    if (autosaveStatus !== "idle") {
-      return;
-    }
-    const nextSummary = currentEntry.summary ?? "";
-    if (summaryDraft === nextSummary) {
-      return;
-    }
-    setSummaryDraft(nextSummary);
-    setEditorInitialSummary(nextSummary);
-    resetAutosave(titleDraft, nextSummary);
-  }, [
-    autosaveStatus,
-    currentEntry,
-    isSmartEntry,
-    isSmartUpdating,
-    resetAutosave,
-    summaryDraft,
-    titleDraft,
-  ]);
+  }, [isNewEntryRoute]);
 
   useEffect(() => {
     if (!currentEntry || !isSmartEntry) {
@@ -617,44 +562,18 @@ export function JournalDetailPage() {
     }
 
     if (isNewEntryRoute) {
-      const canCreate = titleDraft.trim().length > 0;
-      const createDisabledReason = !isOnline ? "Go online to create" : null;
-      const createButton = canCreate ? (
-        <Button
-          type="button"
-          onClick={() => {
+      const header = (
+        <NewEntryHeader
+          title={titleDraft}
+          onTitleChange={setTitleDraft}
+          createError={createError}
+          onClearError={() => setCreateError(null)}
+          isOnline={isOnline}
+          isCreating={createEntryMutation.isPending}
+          onCreate={() => {
             void handleCreateEntry();
           }}
-          disabled={createEntryMutation.isPending || Boolean(createDisabledReason)}
-          title={createDisabledReason ?? undefined}
-          aria-label={createDisabledReason ?? "Create"}
-        >
-          {createEntryMutation.isPending ? "Creating…" : "Create"}
-        </Button>
-      ) : null;
-
-      const header = (
-        <div className="space-y-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            New journal entry
-          </span>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <input
-              className="w-full flex-1 border-none bg-transparent text-2xl font-semibold text-foreground outline-none placeholder:text-muted-foreground"
-              placeholder="Untitled entry"
-              value={titleDraft}
-              onChange={(event) => {
-                setTitleDraft(event.target.value);
-                setCreateError(null);
-              }}
-              autoFocus
-            />
-            {createButton}
-          </div>
-          {createError ? (
-            <p className="text-xs text-destructive">{createError}</p>
-          ) : null}
-        </div>
+        />
       );
 
       return (
