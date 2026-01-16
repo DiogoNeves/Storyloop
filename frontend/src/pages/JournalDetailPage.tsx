@@ -209,11 +209,25 @@ export function JournalDetailPage() {
     if (!shouldAutoFocusEditor || !currentEntry) {
       return;
     }
-    // Use requestAnimationFrame to ensure the editor is fully rendered
+    // Retry focusing the editor until it's ready (Milkdown editor initialization is async)
+    // The network call already completed before navigation, but the editor component
+    // needs time to mount and initialize the Milkdown instance
+    let attempts = 0;
+    const maxAttempts = 15; // Try for up to ~750ms (15 * 50ms)
+    const attemptFocus = () => {
+      attempts++;
+      if (editorRef.current) {
+        // The focus() method safely handles the case where editor instance isn't ready yet
+        editorRef.current.focus();
+      }
+      // Retry if we haven't exceeded max attempts
+      if (attempts < maxAttempts) {
+        setTimeout(attemptFocus, 50);
+      }
+    };
+    // Start attempting after React has rendered the new route
     requestAnimationFrame(() => {
-      setTimeout(() => {
-        editorRef.current?.focus();
-      }, 50);
+      setTimeout(attemptFocus, 100); // Initial delay to let route render
     });
     void navigate(location.pathname, { replace: true, state: {} });
   }, [currentEntry, location.pathname, navigate, shouldAutoFocusEditor]);
