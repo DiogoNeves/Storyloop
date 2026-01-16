@@ -209,7 +209,12 @@ export function JournalDetailPage() {
     if (!shouldAutoFocusEditor || !currentEntry) {
       return;
     }
-    editorRef.current?.focus();
+    // Use requestAnimationFrame to ensure the editor is fully rendered
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        editorRef.current?.focus();
+      }, 50);
+    });
     void navigate(location.pathname, { replace: true, state: {} });
   }, [currentEntry, location.pathname, navigate, shouldAutoFocusEditor]);
 
