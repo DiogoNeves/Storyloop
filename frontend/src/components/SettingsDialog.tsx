@@ -1,7 +1,19 @@
-import { useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ChangeEvent,
+  type KeyboardEvent,
+} from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { NotebookPen, UserRound } from "lucide-react";
 
+import {
+  DEFAULT_SMART_UPDATE_SCHEDULE_HOURS,
+  settingsQueries,
+  updateSettings,
+} from "@/api/settings";
 import { youtubeApi, youtubeQueries } from "@/api/youtube";
 import { useSettings } from "@/context/useSettings";
 import { Button } from "@/components/ui/button";
@@ -14,6 +26,8 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { StatusMessage } from "@/components/ui/status-message";
 import { cn } from "@/lib/utils";
 
 interface SettingsDialogProps {
@@ -27,8 +41,21 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<SettingsTab>("account");
   const { publicOnly, setPublicOnly } = useSettings();
+  const [scheduleInput, setScheduleInput] = useState(
+    String(DEFAULT_SMART_UPDATE_SCHEDULE_HOURS),
+  );
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
 
   const linkStatusQuery = useQuery(youtubeQueries.authStatus());
+  const settingsQuery = useQuery(settingsQueries.all());
+
+  const scheduleHours =
+    settingsQuery.data?.smartUpdateScheduleHours ??
+    DEFAULT_SMART_UPDATE_SCHEDULE_HOURS;
+
+  useEffect(() => {
+    setScheduleInput(String(scheduleHours));
+  }, [scheduleHours]);
 
   const unlinkMutation = useMutation({
     mutationFn: youtubeApi.unlinkAccount,
@@ -37,6 +64,61 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       void queryClient.invalidateQueries({ queryKey: ["youtube"] });
     },
   });
+
+  const scheduleMutation = useMutation({
+    mutationFn: updateSettings,
+    onSuccess: (data) => {
+      queryClient.setQueryData(settingsQueries.all().queryKey, data);
+      setScheduleError(null);
+    },
+    onError: () => {
+      setScheduleError("We couldn't update the smart update schedule. Try again.");
+    },
+  });
+
+  const commitSchedule = useCallback(() => {
+    if (scheduleMutation.isPending) {
+      return;
+    }
+
+    const parsed = Number(scheduleInput);
+    if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed < 1) {
+      setScheduleError("Enter a whole number of hours (1 or more).");
+      return;
+    }
+
+    const nextHours = Math.trunc(parsed);
+    setScheduleInput(String(nextHours));
+    setScheduleError(null);
+
+    if (nextHours === scheduleHours) {
+      return;
+    }
+
+    scheduleMutation.mutate({ smartUpdateScheduleHours: nextHours });
+  }, [scheduleHours, scheduleInput, scheduleMutation]);
+
+  const handleScheduleChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setScheduleInput(event.target.value);
+      setScheduleError(null);
+    },
+    [],
+  );
+
+  const handleScheduleBlur = useCallback(() => {
+    commitSchedule();
+  }, [commitSchedule]);
+
+  const handleScheduleKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        commitSchedule();
+      }
+    },
+    [commitSchedule],
+  );
 
   const tabs = useMemo(
     () => [
@@ -151,6 +233,40 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                       />
                     </div>
                   </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                    Smart updates
+                  </h4>
+                  <div className="flex flex-col gap-3 rounded-lg border bg-muted/50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">Update schedule</p>
+                      <p className="text-sm text-muted-foreground">
+                        Choose how often Loopie refreshes smart journals (checked hourly).
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="settings-smart-update-schedule" className="sr-only">
+                        Smart update schedule in hours
+                      </Label>
+                      <Input
+                        id="settings-smart-update-schedule"
+                        type="number"
+                        min={1}
+                        step={1}
+                        className="w-24 text-right"
+                        value={scheduleInput}
+                        onChange={handleScheduleChange}
+                        onBlur={handleScheduleBlur}
+                        onKeyDown={handleScheduleKeyDown}
+                        disabled={scheduleMutation.isPending || settingsQuery.isLoading}
+                        inputMode="numeric"
+                      />
+                      <span className="text-xs text-muted-foreground">hours</span>
+                    </div>
+                  </div>
+                  <StatusMessage type="error" message={scheduleError} />
                 </div>
               </div>
             ) : null}
