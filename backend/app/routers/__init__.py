@@ -6,6 +6,7 @@ from app.routers.assets import router as assets_router
 from app.routers.conversations import router as conversations_router
 from app.routers.entries import router as entries_router
 from app.routers.health import router as health_router
+from app.routers.settings import router as settings_router
 from app.routers.youtube import router as youtube_router
 from app.routers.youtube_auth import router as youtube_auth_router
 
@@ -16,6 +17,7 @@ api_router.include_router(
     conversations_router, prefix="/conversations", tags=["conversations"]
 )
 api_router.include_router(entries_router)
+api_router.include_router(settings_router)
 api_router.include_router(youtube_router)
 api_router.include_router(youtube_auth_router)
 
