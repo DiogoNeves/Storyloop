@@ -10,6 +10,7 @@ from sqlite3 import Row
 from app.services.base import DatabaseService
 
 _DEFAULT_USER_ID = "active"
+DEFAULT_SMART_UPDATE_INTERVAL_HOURS = 24
 
 
 @dataclass(slots=True)
@@ -31,6 +32,7 @@ class UserRecord:
     credentials_error: str | None
     oauth_state: str | None
     oauth_state_created_at: datetime | None
+    smart_update_interval_hours: int | None = None
 
 
 def _row_to_record(row: Row) -> UserRecord:
@@ -53,6 +55,7 @@ def _row_to_record(row: Row) -> UserRecord:
         credentials_error=row["credentials_error"],
         oauth_state=row["oauth_state"],
         oauth_state_created_at=_parse_timestamp(row["oauth_state_created_at"]),
+        smart_update_interval_hours=row["smart_update_interval_hours"],
     )
 
 
@@ -76,7 +79,8 @@ class UserService(DatabaseService):
                     credentials_updated_at TEXT,
                     credentials_error TEXT,
                     oauth_state TEXT,
-                    oauth_state_created_at TEXT
+                    oauth_state_created_at TEXT,
+                    smart_update_interval_hours INTEGER
                 )
                 """
             )
@@ -87,6 +91,10 @@ class UserService(DatabaseService):
             if "credentials_error" not in existing_columns:
                 connection.execute(
                     "ALTER TABLE users ADD COLUMN credentials_error TEXT"
+                )
+            if "smart_update_interval_hours" not in existing_columns:
+                connection.execute(
+                    "ALTER TABLE users ADD COLUMN smart_update_interval_hours INTEGER"
                 )
             connection.commit()
 
@@ -101,6 +109,48 @@ class UserService(DatabaseService):
         if row is None:
             return None
         return _row_to_record(row)
+
+    def get_smart_update_interval_hours(self) -> int:
+        """Return the configured smart journal update interval in hours."""
+        with closing(self._connection_factory()) as connection:
+            row = connection.execute(
+                "SELECT smart_update_interval_hours FROM users WHERE id = ?",
+                (_DEFAULT_USER_ID,),
+            ).fetchone()
+
+        if row is None:
+            return DEFAULT_SMART_UPDATE_INTERVAL_HOURS
+
+        value = row["smart_update_interval_hours"]
+        if value is None:
+            return DEFAULT_SMART_UPDATE_INTERVAL_HOURS
+
+        try:
+            hours = int(value)
+        except (TypeError, ValueError):
+            return DEFAULT_SMART_UPDATE_INTERVAL_HOURS
+
+        if hours < 1:
+            return DEFAULT_SMART_UPDATE_INTERVAL_HOURS
+
+        return hours
+
+    def set_smart_update_interval_hours(self, hours: int) -> None:
+        """Persist the smart journal update interval in hours."""
+        if hours < 1:
+            raise ValueError("Smart update interval must be at least 1 hour.")
+
+        with closing(self._connection_factory()) as connection:
+            connection.execute(
+                """
+                INSERT INTO users (id, smart_update_interval_hours)
+                VALUES (?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    smart_update_interval_hours=excluded.smart_update_interval_hours
+                """,
+                (_DEFAULT_USER_ID, int(hours)),
+            )
+            connection.commit()
 
     def upsert_credentials(
         self,

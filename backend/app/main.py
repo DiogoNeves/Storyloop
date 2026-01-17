@@ -126,7 +126,9 @@ def build_lifespan(
         )
         app.state.assistant_agent = assistant_agent
         app.state.smart_entry_agent = smart_entry_agent
-        smart_entry_manager = SmartEntryUpdateManager(app, entry_service)
+        smart_entry_manager = SmartEntryUpdateManager(
+            app, entry_service, user_service
+        )
         app.state.smart_entry_manager = smart_entry_manager
         smart_entry_scheduler: AsyncIOScheduler | None = None
         if active_settings.smart_entries_scheduler_enabled:

@@ -15,6 +15,7 @@ from fastapi import FastAPI
 
 from app.services.agent import build_loopie_deps
 from app.services.entries import EntryRecord, EntryService
+from app.services.users import UserService
 
 
 NO_UPDATE_SENTINEL = "NO_UPDATE"
@@ -36,11 +37,13 @@ class SmartEntryUpdateManager:
         self,
         app: FastAPI,
         entry_service: EntryService,
+        user_service: UserService,
         *,
         concurrency_limit: int = 3,
     ) -> None:
         self._app = app
         self._entry_service = entry_service
+        self._user_service = user_service
         self._semaphore = asyncio.Semaphore(concurrency_limit)
         self._lock = asyncio.Lock()
         self._inflight: dict[str, SmartEntryUpdateState] = {}
@@ -75,7 +78,8 @@ class SmartEntryUpdateManager:
 
     def _list_due_entries(self) -> list[EntryRecord]:
         now = datetime.now(tz=UTC)
-        cutoff = now - timedelta(days=1)
+        interval_hours = self._user_service.get_smart_update_interval_hours()
+        cutoff = now - timedelta(hours=interval_hours)
         records = self._entry_service.list_smart_entries()
         return [
             record
