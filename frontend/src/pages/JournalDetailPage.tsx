@@ -39,6 +39,7 @@ import {
   JournalEntryEditor,
 } from "@/components/JournalEntryEditor";
 import { NewEntryHeader } from "@/components/NewEntryHeader";
+import { CopyMarkdownButton } from "@/components/CopyMarkdownButton";
 
 export function JournalDetailPage() {
   const { journalId } = useParams<{ journalId: string }>();
@@ -79,6 +80,7 @@ export function JournalDetailPage() {
 
   const {
     titleDraft,
+    summaryDraft,
     setTitleDraft,
     setSummaryDraft,
     editorInitialSummary,
@@ -426,6 +428,12 @@ export function JournalDetailPage() {
   const summarySource: string | null = currentEntry?.summary ?? null;
   const summaryText =
     typeof summarySource === "string" ? summarySource.trim() : "";
+  const getCopyMarkdown = useCallback(() => {
+    const heading =
+      titleDraft.trim().length > 0 ? titleDraft.trim() : "Untitled entry";
+    const body = summaryDraft ?? "";
+    return `# ${heading}\n\n${body}`;
+  }, [summaryDraft, titleDraft]);
 
   const pendingUpdateForEntry = currentEntry
     ? pendingEntryUpdates.find((update) => update.id === currentEntry.id)
@@ -752,6 +760,11 @@ export function JournalDetailPage() {
             <div className="flex items-center gap-2">
               {showStopSmartUpdates ? stopSmartUpdatesButton : null}
               {editPromptButton}
+              <CopyMarkdownButton
+                getContent={getCopyMarkdown}
+                disabled={isSmartUpdating}
+                label="Copy markdown"
+              />
               <Button
                 type="button"
                 variant="ghost"
