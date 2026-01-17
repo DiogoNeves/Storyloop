@@ -94,6 +94,7 @@ export function useJournalEntryDraft({
 
   return {
     titleDraft,
+    summaryDraft,
     setTitleDraft,
     setSummaryDraft,
     editorInitialSummary,
