@@ -4,12 +4,12 @@ import { Check, Clipboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-type CopyMarkdownButtonProps = {
+interface CopyMarkdownButtonProps {
   getContent: () => string;
   disabled?: boolean;
   label?: string;
   title?: string;
-};
+}
 
 const COPY_RESET_MS = 1500;
 
