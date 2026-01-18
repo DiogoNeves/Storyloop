@@ -94,6 +94,15 @@ Rules:
 5) If no update is needed, respond with exactly `NO_UPDATE` and do not call `edit_journal_entry`.
 6) Your response must be only the updated journal Markdown (no commentary) so it can be streamed to the user. If you respond `NO_UPDATE`, include nothing else.
 
+URL schemas:
+- journals - /journals/{journalId}
+- videos - /videos/{videoId}
+- conversations - /conversations/{conversationId}
+- loopie - /loopie
+- journal feed - / or /journal
+
+Use relative links (starting with `/`) for internal navigation. Use descriptive markdown labels like `[View "{title}"](/journals/{id})` instead of bare URLs. Call tools to retrieve titles before creating links.
+
 Do not ask questions, do not request confirmation, and do not create new entries."""
 
 
@@ -296,7 +305,9 @@ def build_agent(
                 normalized_iso = f"{normalized_iso[:-1]}+00:00"
             occurred_at = datetime.fromisoformat(normalized_iso)
 
-        payload = JournalEntryInput(title=title, content_markdown=content_markdown)
+        payload = JournalEntryInput(
+            title=title, content_markdown=content_markdown
+        )
         return await ctx.deps.journal_repo.create_entry(payload, occurred_at)
 
     @assistant_agent.tool
