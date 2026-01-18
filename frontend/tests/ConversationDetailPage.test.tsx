@@ -49,6 +49,9 @@ function renderPage(ui: ReactElement, initialPath: string) {
   const mockSettings = {
     publicOnly: false,
     setPublicOnly: vi.fn(),
+    themePreference: "system" as const,
+    setThemePreference: vi.fn(),
+    resolvedTheme: "light" as const,
   };
 
   render(

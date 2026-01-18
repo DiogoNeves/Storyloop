@@ -28,3 +28,27 @@ if (!globalThis.ResizeObserver) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
   (globalThis as any).ResizeObserver = ResizeObserver;
 }
+
+// Mock window.matchMedia for theme preference detection
+Object.defineProperty(window, "matchMedia", {
+  writable: true,
+  value: (query: string) => {
+    const mediaQuery = {
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    };
+
+    // Default to light mode for tests
+    if (query === "(prefers-color-scheme: dark)") {
+      mediaQuery.matches = false;
+    }
+
+    return mediaQuery;
+  },
+});
