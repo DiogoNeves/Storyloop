@@ -161,7 +161,133 @@ class EntryService(DatabaseService):
                 connection.execute(
                     "UPDATE entries SET updated_at = occurred_at WHERE updated_at IS NULL"
                 )
+            has_fts = (
+                connection.execute(
+                    """
+                    SELECT name
+                    FROM sqlite_master
+                    WHERE type='table' AND name='entries_fts'
+                    """
+                ).fetchone()
+                is not None
+            )
+            if has_fts:
+                try:
+                    detail_row = connection.execute(
+                        "SELECT value FROM entries_fts_config WHERE k='detail'"
+                    ).fetchone()
+                    if detail_row is not None and detail_row["value"] != "full":
+                        connection.execute("DROP TABLE entries_fts")
+                        has_fts = False
+                except Exception:
+                    pass
+            if not has_fts:
+                connection.execute(
+                    """
+                    CREATE VIRTUAL TABLE IF NOT EXISTS entries_fts USING fts5(
+                        title,
+                        summary,
+                        prompt_body,
+                        content='entries',
+                        content_rowid='rowid',
+                        tokenize='trigram',
+                        detail='full'
+                    )
+                    """
+                )
+            connection.execute(
+                """
+                CREATE TRIGGER IF NOT EXISTS entries_fts_insert
+                AFTER INSERT ON entries
+                BEGIN
+                    INSERT INTO entries_fts(rowid, title, summary, prompt_body)
+                    VALUES (
+                        new.rowid,
+                        new.title,
+                        new.summary,
+                        COALESCE(new.prompt_body, '')
+                    );
+                END
+                """
+            )
+            connection.execute(
+                """
+                CREATE TRIGGER IF NOT EXISTS entries_fts_delete
+                AFTER DELETE ON entries
+                BEGIN
+                    INSERT INTO entries_fts(entries_fts, rowid, title, summary, prompt_body)
+                    VALUES (
+                        'delete',
+                        old.rowid,
+                        old.title,
+                        old.summary,
+                        COALESCE(old.prompt_body, '')
+                    );
+                END
+                """
+            )
+            connection.execute(
+                """
+                CREATE TRIGGER IF NOT EXISTS entries_fts_update
+                AFTER UPDATE ON entries
+                BEGIN
+                    INSERT INTO entries_fts(entries_fts, rowid, title, summary, prompt_body)
+                    VALUES (
+                        'delete',
+                        old.rowid,
+                        old.title,
+                        old.summary,
+                        COALESCE(old.prompt_body, '')
+                    );
+                    INSERT INTO entries_fts(rowid, title, summary, prompt_body)
+                    VALUES (
+                        new.rowid,
+                        new.title,
+                        new.summary,
+                        COALESCE(new.prompt_body, '')
+                    );
+                END
+                """
+            )
+            if not has_fts:
+                connection.execute("INSERT INTO entries_fts(entries_fts) VALUES('rebuild')")
             connection.commit()
+
+    def search_entries(
+        self,
+        *,
+        keyword: str,
+        category: str = "journal",
+        limit: int = 10,
+    ) -> list[EntryRecord]:
+        """Search entries by keyword using the FTS5 trigram index."""
+        normalized = keyword.strip()
+        if not normalized or limit <= 0:
+            return []
+        tokens = [
+            "".join(ch for ch in token if ch.isalnum())
+            for token in normalized.split()
+        ]
+        cleaned_tokens = [token for token in tokens if token]
+        if not cleaned_tokens:
+            return []
+        match_query = " ".join(cleaned_tokens)
+        with closing(self._connection_factory()) as connection:
+            columns_str = ", ".join(f"entries.{col}" for col in ENTRY_COLUMNS)
+            rows: Sequence[Row] = connection.execute(
+                f"""
+                SELECT {columns_str}
+                FROM entries
+                JOIN entries_fts ON entries.rowid = entries_fts.rowid
+                WHERE entries_fts MATCH ?
+                AND entries.category = ?
+                ORDER BY pinned DESC, datetime(updated_at) DESC
+                LIMIT ?
+                """,
+                (match_query, category, limit),
+            ).fetchall()
+
+        return [_row_to_record(row) for row in rows]
 
     def save_new_entries(
         self, entries: Iterable[EntryRecord]

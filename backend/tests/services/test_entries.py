@@ -158,3 +158,69 @@ def test_delete_entry_removes_record(memory_connection_factory: SqliteConnection
 
     assert service.delete_entry("entry-delete") is True
     assert service.get_entry("entry-delete") is None
+
+
+def test_search_entries_uses_trigram_index_and_filters_category(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    service = EntryService(memory_connection_factory)
+    service.ensure_schema()
+
+    now = datetime.now(tz=UTC)
+    journal_entry = EntryRecord(
+        id="entry-search-journal",
+        title="Retention Notes",
+        summary="Testing a retention hook for the intro.",
+        occurred_at=now,
+        updated_at=now,
+        category="journal",
+    )
+    content_entry = EntryRecord(
+        id="entry-search-content",
+        title="Video Plan",
+        summary="Retention hook notes for the next upload.",
+        occurred_at=now,
+        updated_at=now,
+        category="content",
+    )
+    service.save_new_entries([journal_entry, content_entry])
+
+    results = service.search_entries(keyword="tention", category="journal", limit=10)
+    assert [entry.id for entry in results] == ["entry-search-journal"]
+
+
+def test_search_entries_reflects_updates_and_deletes(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    service = EntryService(memory_connection_factory)
+    service.ensure_schema()
+
+    now = datetime.now(tz=UTC)
+    record = EntryRecord(
+        id="entry-search-update",
+        title="Original",
+        summary="Initial notes about thumbnails.",
+        occurred_at=now,
+        updated_at=now,
+        category="journal",
+    )
+    service.save_new_entries([record])
+
+    assert service.search_entries(keyword="retention", category="journal") == []
+
+    updated = EntryRecord(
+        id="entry-search-update",
+        title="Updated",
+        summary="Testing a thumbnail angle with retention hook.",
+        occurred_at=now,
+        updated_at=now,
+        category="journal",
+    )
+    assert service.update_entry(updated) is True
+    updated_results = service.search_entries(
+        keyword="retention", category="journal", limit=5
+    )
+    assert [entry.id for entry in updated_results] == ["entry-search-update"]
+
+    assert service.delete_entry("entry-search-update") is True
+    assert service.search_entries(keyword="retention", category="journal") == []
