@@ -2,7 +2,7 @@ import type { ChangeEvent, KeyboardEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 
-type NewEntryHeaderProps = {
+interface NewEntryHeaderProps {
   title: string;
   onTitleChange: (value: string) => void;
   createError: string | null;
@@ -10,7 +10,7 @@ type NewEntryHeaderProps = {
   isOnline: boolean;
   isCreating: boolean;
   onCreate: () => void;
-};
+}
 
 export function NewEntryHeader({
   title,

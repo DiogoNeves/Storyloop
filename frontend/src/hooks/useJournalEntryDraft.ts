@@ -3,12 +3,12 @@ import { useEffect, useRef, useState } from "react";
 import { useDebouncedAutosave } from "@/hooks/useDebouncedAutosave";
 import type { Entry } from "@/api/entries";
 
-type UseJournalEntryDraftOptions = {
+interface UseJournalEntryDraftOptions {
   currentEntry: Entry | null;
   isNewEntryRoute: boolean;
   isSmartEntry: boolean;
   isSmartUpdating: boolean;
-};
+}
 
 export function useJournalEntryDraft({
   currentEntry,
