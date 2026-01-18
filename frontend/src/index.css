@@ -150,4 +150,10 @@
   .journal-editor .milkdown img {
     @apply my-3 max-h-[360px] w-full rounded-xl border border-border/60 object-cover;
   }
+
+  .journal-editor .milkdown a {
+    @apply text-primary underline underline-offset-4 transition-colors;
+    @apply hover:text-primary/80 focus:text-primary/80;
+    @apply cursor-pointer;
+  }
 }

@@ -16,7 +16,7 @@ import {
 } from "@milkdown/core";
 import type { Ctx } from "@milkdown/ctx";
 import { Milkdown, MilkdownProvider, useEditor } from "@milkdown/react";
-import { Fragment, type Node as ProseNode } from "@milkdown/prose/model";
+import { Fragment, type Node as ProseNode, type Mark } from "@milkdown/prose/model";
 import type { SerializerState } from "@milkdown/transformer";
 import { clipboard } from "@milkdown/plugin-clipboard";
 import { history } from "@milkdown/plugin-history";
@@ -29,10 +29,21 @@ import {
   toggleStrongCommand,
 } from "@milkdown/preset-commonmark";
 import { gfm, toggleStrikethroughCommand } from "@milkdown/preset-gfm";
+import { ExternalLink, Pencil } from "lucide-react";
 
 import { useAssetUpload } from "@/hooks/useAssetUpload";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const serializeText = (state: SerializerState, node: ProseNode) => {
   const lastIsHardBreak =
@@ -118,6 +129,14 @@ export interface JournalEntryEditorHandle {
   focus: () => void;
 }
 
+interface LinkTooltipState {
+  href: string;
+  text: string;
+  position: { top: number; left: number };
+  from: number;
+  to: number;
+}
+
 const JournalEntryEditorInner = forwardRef<
   JournalEntryEditorHandle,
   JournalEntryEditorProps
@@ -129,6 +148,10 @@ const JournalEntryEditorInner = forwardRef<
     top: number;
     left: number;
   } | null>(null);
+  const [linkTooltip, setLinkTooltip] = useState<LinkTooltipState | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editLinkText, setEditLinkText] = useState("");
+  const [editLinkUrl, setEditLinkUrl] = useState("");
 
   const editorInitialValue = useMemo(() => initialValue, [initialValue]);
 
@@ -209,10 +232,163 @@ const JournalEntryEditorInner = forwardRef<
     },
   });
 
+  // Handle link clicks
+  useEffect(() => {
+    const instance = editor.get();
+    if (!instance) {
+      return;
+    }
+
+    let cleanup: (() => void) | null = null;
+
+    instance.action((ctx: Ctx) => {
+      const view = ctx.get(editorViewCtx);
+      const container = containerRef.current;
+      
+      const handleMiddleMouseOrModifierClick = (event: MouseEvent) => {
+        const target = event.target as HTMLElement;
+        const linkElement = target.closest("a");
+        
+        if (linkElement?.href && container) {
+          // Handle cmd/ctrl+click or middle mouse button to open immediately
+          if (event.metaKey || event.ctrlKey || event.button === 1) {
+            event.preventDefault();
+            window.open(linkElement.href, "_blank", "noopener,noreferrer");
+            setLinkTooltip(null);
+            return true;
+          }
+        }
+        return false;
+      };
+      
+      const handleClick = (event: MouseEvent) => {
+        const target = event.target as HTMLElement;
+        const linkElement = target.closest("a");
+        
+        if (linkElement?.href && container) {
+          // Handle cmd/ctrl+click or middle mouse button to open immediately
+          if (handleMiddleMouseOrModifierClick(event)) {
+            return;
+          }
+          
+          // Regular click - show tooltip
+          event.preventDefault();
+          
+          // Find the link mark position in the editor
+          instance.action((ctx: Ctx) => {
+            const view = ctx.get(editorViewCtx);
+            const { state } = view;
+            
+            // Get the position of the clicked element
+            const posAtDOM = view.posAtDOM(linkElement, 0);
+            if (posAtDOM === null || posAtDOM < 0) {
+              return;
+            }
+            
+            // Find the link mark at this position
+            const $pos = state.doc.resolve(posAtDOM);
+            const linkMark = $pos.marks().find((mark: Mark) => mark.type.name === "link");
+            
+            if (linkMark?.attrs.href) {
+              // Find mark boundaries by searching for the extent of the link mark
+              let linkFrom = posAtDOM;
+              let linkTo = posAtDOM;
+              
+              // Search backwards to find the start of the link
+              let pos = posAtDOM;
+              while (pos > 0) {
+                const $pos = state.doc.resolve(pos - 1);
+                const mark = $pos.marks().find((m: Mark) => m.type.name === "link" && m.attrs.href === linkMark.attrs.href);
+                if (!mark) break;
+                linkFrom = pos - 1;
+                pos--;
+              }
+              
+              // Search forwards to find the end of the link
+              pos = posAtDOM;
+              while (pos < state.doc.content.size) {
+                const $pos = state.doc.resolve(Math.min(pos + 1, state.doc.content.size));
+                const mark = $pos.marks().find((m: Mark) => m.type.name === "link" && m.attrs.href === linkMark.attrs.href);
+                if (!mark) break;
+                linkTo = Math.min(pos + 1, state.doc.content.size);
+                pos++;
+              }
+              
+              // Ensure we have valid positions
+              if (linkFrom < 0) linkFrom = posAtDOM;
+              if (linkTo <= linkFrom) linkTo = linkFrom + 1;
+              
+              // Get text content
+              const text = state.doc.textBetween(linkFrom, linkTo);
+              
+              const rect = linkElement.getBoundingClientRect();
+              const containerRect = container.getBoundingClientRect();
+              
+              setLinkTooltip({
+                href: linkMark.attrs.href as string,
+                text: text || (linkMark.attrs.href as string),
+                position: {
+                  top: rect.bottom - containerRect.top + container.scrollTop + 8,
+                  left: rect.left - containerRect.left + container.scrollLeft + rect.width / 2,
+                },
+                from: linkFrom,
+                to: linkTo,
+              });
+              setSelectionPosition(null);
+            }
+          });
+        }
+      };
+      
+      view.dom.addEventListener("click", handleClick);
+      view.dom.addEventListener("mousedown", handleMiddleMouseOrModifierClick);
+      
+      cleanup = () => {
+        view.dom.removeEventListener("click", handleClick);
+        view.dom.removeEventListener("mousedown", handleMiddleMouseOrModifierClick);
+      };
+    });
+
+    return () => {
+      cleanup?.();
+    };
+  }, [editor]);
+
+  // Close tooltip when clicking outside
+  useEffect(() => {
+    if (!linkTooltip) {
+      return;
+    }
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const container = containerRef.current;
+      if (container && !container.contains(target)) {
+        setLinkTooltip(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [linkTooltip]);
+
+  // Handle text selection (for formatting toolbar)
   useEffect(() => {
     const handleSelectionChange = () => {
       const container = containerRef.current;
       const selection = document.getSelection();
+      
+      // Clear link tooltip when clicking elsewhere
+      if (linkTooltip && selection?.anchorNode) {
+        const target = selection.anchorNode;
+        const linkElement = target instanceof HTMLElement ? target.closest("a") : null;
+        if (!linkElement) {
+          setLinkTooltip(null);
+        }
+      }
+      
       if (!container || !selection || selection.isCollapsed || !isEditable) {
         setSelectionPosition(null);
         return;
@@ -220,6 +396,15 @@ const JournalEntryEditorInner = forwardRef<
 
       const anchorNode = selection.anchorNode;
       if (!anchorNode || !container.contains(anchorNode)) {
+        setSelectionPosition(null);
+        return;
+      }
+
+      // Don't show formatting toolbar if clicking on a link
+      const linkElement = anchorNode instanceof HTMLElement 
+        ? anchorNode.closest("a")
+        : anchorNode.parentElement?.closest("a");
+      if (linkElement) {
         setSelectionPosition(null);
         return;
       }
@@ -244,7 +429,7 @@ const JournalEntryEditorInner = forwardRef<
     return () => {
       document.removeEventListener("selectionchange", handleSelectionChange);
     };
-  }, [isEditable]);
+  }, [isEditable, linkTooltip]);
 
   const handlePaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
     if (!isEditable) {
@@ -288,62 +473,207 @@ const JournalEntryEditorInner = forwardRef<
     });
   };
 
+  const handleOpenLink = () => {
+    if (linkTooltip) {
+      window.open(linkTooltip.href, "_blank", "noopener,noreferrer");
+      setLinkTooltip(null);
+    }
+  };
+
+  const handleEditLink = () => {
+    if (linkTooltip) {
+      setEditLinkText(linkTooltip.text);
+      setEditLinkUrl(linkTooltip.href);
+      setIsEditDialogOpen(true);
+    }
+  };
+
+  const handleSaveLink = () => {
+    const instance = editor.get();
+    if (!instance || !linkTooltip) {
+      return;
+    }
+
+    instance.action((ctx: Ctx) => {
+      const view = ctx.get(editorViewCtx);
+      const { state } = view;
+      const { from, to } = linkTooltip;
+      
+      // Get the link mark type from the schema
+      const linkMarkType = state.schema.marks.link;
+      if (!linkMarkType) {
+        return;
+      }
+
+      const tr = state.tr;
+      
+      // Get current text at this position
+      const currentText = state.doc.textBetween(from, to);
+      
+      // Remove old link mark
+      tr.removeMark(from, to, linkMarkType);
+      
+      // Replace text if it changed
+      const newTo = from + editLinkText.length;
+      if (currentText !== editLinkText) {
+        tr.delete(from, to);
+        tr.insertText(editLinkText, from);
+      }
+      
+      // Add new link mark with updated URL
+      const newLinkMark = linkMarkType.create({ href: editLinkUrl });
+      tr.addMark(from, newTo, newLinkMark);
+      
+      view.dispatch(tr);
+      view.focus();
+    });
+
+    setIsEditDialogOpen(false);
+    setLinkTooltip(null);
+  };
+
   return (
-    <div
-      ref={containerRef}
-      className={cn(
-        "journal-editor relative rounded-xl bg-background px-4 py-3",
-        !isEditable && "opacity-70",
-        className,
-      )}
-      onPaste={handlePaste}
-      onDrop={handleDrop}
-      onDragOver={handleDragOver}
-    >
-      {selectionPosition ? (
-        <div
-          className="absolute z-10 flex -translate-x-1/2 items-center gap-1 rounded-full border border-border bg-popover px-2 py-1 shadow-md"
-          style={{
-            top: selectionPosition.top,
-            left: selectionPosition.left,
-          }}
-        >
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="h-7 w-7"
-            onClick={() => runCommand(toggleStrongCommand)}
+    <>
+      <div
+        ref={containerRef}
+        className={cn(
+          "journal-editor relative rounded-xl bg-background px-4 py-3",
+          !isEditable && "opacity-70",
+          className,
+        )}
+        onPaste={handlePaste}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+      >
+        {selectionPosition ? (
+          <div
+            className="absolute z-10 flex -translate-x-1/2 items-center gap-1 rounded-full border border-border bg-popover px-2 py-1 shadow-md"
+            style={{
+              top: selectionPosition.top,
+              left: selectionPosition.left,
+            }}
           >
-            <span className="text-xs font-bold">B</span>
-          </Button>
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="h-7 w-7 italic"
-            onClick={() => runCommand(toggleEmphasisCommand)}
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7"
+              onClick={() => runCommand(toggleStrongCommand)}
+            >
+              <span className="text-xs font-bold">B</span>
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 italic"
+              onClick={() => runCommand(toggleEmphasisCommand)}
+            >
+              <span className="text-xs">I</span>
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 line-through"
+              onClick={() => runCommand(toggleStrikethroughCommand)}
+            >
+              <span className="text-xs">S</span>
+            </Button>
+          </div>
+        ) : null}
+        {linkTooltip ? (
+          <div
+            className="absolute z-10 flex -translate-x-1/2 flex-col items-center gap-2 rounded-lg border border-border bg-popover p-3 shadow-lg"
+            style={{
+              top: linkTooltip.position.top,
+              left: linkTooltip.position.left,
+            }}
           >
-            <span className="text-xs">I</span>
-          </Button>
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="h-7 w-7 line-through"
-            onClick={() => runCommand(toggleStrikethroughCommand)}
-          >
-            <span className="text-xs">S</span>
-          </Button>
-        </div>
-      ) : null}
-      <Milkdown />
-      {isUploading ? (
-        <p className="mt-2 text-xs text-muted-foreground">
-          Uploading assets…
-        </p>
-      ) : null}
-    </div>
+            <div className="text-xs text-muted-foreground break-all max-w-[300px]">
+              {linkTooltip.href}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleOpenLink}
+                className="gap-2"
+              >
+                <ExternalLink className="h-3 w-3" />
+                Open
+              </Button>
+              {isEditable ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleEditLink}
+                  className="gap-2"
+                >
+                  <Pencil className="h-3 w-3" />
+                  Edit
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+        <Milkdown />
+        {isUploading ? (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Uploading assets…
+          </p>
+        ) : null}
+      </div>
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Link</DialogTitle>
+            <DialogDescription>
+              Update the link text and URL.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-link-text">Link Text</Label>
+              <Input
+                id="edit-link-text"
+                value={editLinkText}
+                onChange={(e) => setEditLinkText(e.target.value)}
+                placeholder="Link text"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-link-url">URL</Label>
+              <Input
+                id="edit-link-url"
+                value={editLinkUrl}
+                onChange={(e) => setEditLinkUrl(e.target.value)}
+                placeholder="https://example.com"
+                type="url"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsEditDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveLink}
+              disabled={!editLinkText.trim() || !editLinkUrl.trim()}
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 },
 );
