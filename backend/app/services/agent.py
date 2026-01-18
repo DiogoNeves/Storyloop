@@ -88,7 +88,7 @@ Use this plan for every update:
 
 Rules:
 1) Always call `read_journal_entry` for the provided entry ID before attempting any edit.
-2) Use any other tools you need to gather context (journals, videos, analytics).
+2) Use any other tools you need to gather context (journals, videos, analytics). You can search past entries by keyword if relevant.
 3) Decide if the journal entry needs to change. If so, draft the complete updated Markdown.
 4) After drafting, call `edit_journal_entry` with the exact same Markdown and the `content_hash` from the read. If the hash mismatches, re-read and try again.
 5) If no update is needed, respond with exactly `NO_UPDATE` and do not call `edit_journal_entry`.
