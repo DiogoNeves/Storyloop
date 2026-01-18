@@ -27,6 +27,13 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { StatusMessage } from "@/components/ui/status-message";
 import { cn } from "@/lib/utils";
 
@@ -40,7 +47,8 @@ type SettingsTab = "account" | "journal";
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<SettingsTab>("account");
-  const { publicOnly, setPublicOnly } = useSettings();
+  const { publicOnly, setPublicOnly, themePreference, setThemePreference } =
+    useSettings();
   const [scheduleInput, setScheduleInput] = useState(
     String(DEFAULT_SMART_UPDATE_SCHEDULE_HOURS),
   );
@@ -231,6 +239,34 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                         checked={publicOnly}
                         onCheckedChange={setPublicOnly}
                       />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border bg-muted/50 p-4">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">Theme</p>
+                      <p className="text-sm text-muted-foreground">
+                        Choose your preferred color scheme for the interface.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="settings-theme" className="sr-only">
+                        Theme preference
+                      </Label>
+                      <Select
+                        value={themePreference}
+                        onValueChange={(value) =>
+                          setThemePreference(value as "light" | "dark" | "system")
+                        }
+                      >
+                        <SelectTrigger id="settings-theme" className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="light">Light</SelectItem>
+                          <SelectItem value="dark">Dark</SelectItem>
+                          <SelectItem value="system">System</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </div>
