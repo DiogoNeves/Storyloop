@@ -68,6 +68,10 @@ Tailscale is configured with HTTPS for testing PWA on phone. Access via Tailscal
 - Keep the end goal and current TODOs visible
 - Work in short horizons, backtrack quickly on dead ends
 - Confirm each step before expanding scope
+- **Always include steps to run tests and build the project in planning:**
+  - Add `make test` (or `make test-backend` / `make test-frontend` for specific suites) as a validation step
+  - Add `make build` to verify the frontend builds successfully
+  - Include these steps in todo lists for features that modify code
 
 ## Code Style
 
