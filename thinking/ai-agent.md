@@ -109,6 +109,7 @@ The agent references this capsule explicitly (“You’re looking at ‘Advanced
 - `JournalRepository` and `YouTubeRepository` reuse the same services as FastAPI routes so the tools and HTTP endpoints stay in sync.
 - Registered tools:
   - `load_journal_entries` (recent journal tone/context)
+  - `grep_journal_entries` (grep journal entries by keyword)
   - `read_journal_entry` (full journal text + content hash for edits)
   - `edit_journal_entry` (requires the latest content hash)
   - `create_journal_entry` (new journal entry with model-provided title)

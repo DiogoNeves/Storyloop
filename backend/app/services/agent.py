@@ -226,6 +226,31 @@ def build_agent(
         )
 
     @assistant_agent.tool
+    async def grep_journal_entries(
+        ctx: RunContext[LoopieDeps],
+        keyword: str,
+        limit: int = 30,
+    ) -> list[JournalEntry]:
+        """Search journal entries for a literal substring or short keyword.
+
+        Use when the user wants to find past notes by a specific word or phrase.
+        Pass a short literal query (3+ characters), ideally 1-2 distinct words.
+        Avoid quotes, wildcards, or boolean operators.
+
+        Example tool call:
+        grep_journal_entries(keyword="retention hook", limit=5)
+        """
+
+        if ctx.deps.tool_call_notifier:
+            await ctx.deps.tool_call_notifier(
+                f'🔎 searching journal entries for "{keyword}"'
+            )
+
+        return await ctx.deps.journal_repo.search_entries(
+            user_id=ctx.deps.user_id, keyword=keyword, limit=limit
+        )
+
+    @assistant_agent.tool
     async def read_journal_entry(
         ctx: RunContext[LoopieDeps], entry_id: str
     ) -> JournalEntryDetails:

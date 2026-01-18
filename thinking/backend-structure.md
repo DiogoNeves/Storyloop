@@ -130,11 +130,13 @@ conn.close()
 - `ensure_schema()` - Creates and migrates the entries table (including pinned flag)
 - `save_new_entries()` - Insert new entries from the frontend
 - `list_entries()` - Return entries ordered by pinned then recency
+- `search_entries()` - Search entries via FTS5 trigram index
 - `update_entry()` / `delete_entry()` - Edit and remove entries
 
 **Schema Notes:**
 
 - `entries.pinned` is stored as `INTEGER NOT NULL DEFAULT 0` and added in `ensure_schema()` if missing.
+- `entries_fts` is an FTS5 trigram virtual table kept in sync via triggers for grep-style search.
 
 
 #### AssetService (`services/assets.py`)

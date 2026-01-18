@@ -53,6 +53,20 @@ def _to_journal_details(record: EntryRecord) -> JournalEntryDetails:
     )
 
 
+def _to_journal_entry(
+    record: EntryRecord, asset_service: AssetService | None
+) -> JournalEntry:
+    return JournalEntry(
+        id=record.id,
+        title=record.title,
+        created_at=record.occurred_at.isoformat(),
+        updated_at=record.updated_at.isoformat(),
+        text=record.summary,
+        pinned=record.pinned,
+        attachments=_collect_attachments(asset_service, record.summary),
+    )
+
+
 class JournalRepository:
     """Readonly accessors for journal entries scoped to the current user."""
 
@@ -96,18 +110,24 @@ class JournalRepository:
             )
             limited = filtered[:limit]
             return [
-                JournalEntry(
-                    id=record.id,
-                    title=record.title,
-                    created_at=record.occurred_at.isoformat(),
-                    updated_at=record.updated_at.isoformat(),
-                    text=record.summary,
-                    pinned=record.pinned,
-                    attachments=_collect_attachments(
-                        self._asset_service, record.summary
-                    ),
-                )
+                _to_journal_entry(record, self._asset_service)
                 for record in limited
+            ]
+
+        return await anyio.to_thread.run_sync(_fetch)
+
+    async def search_entries(
+        self, *, user_id: str, keyword: str, limit: int = 10
+    ) -> list[JournalEntry]:
+        """Search journal entries by keyword."""
+
+        def _fetch() -> list[JournalEntry]:
+            records = self._entry_service.search_entries(
+                keyword=keyword, category="journal", limit=limit
+            )
+            return [
+                _to_journal_entry(record, self._asset_service)
+                for record in records
             ]
 
         return await anyio.to_thread.run_sync(_fetch)
@@ -206,6 +226,11 @@ class BaseJournalRepository(Protocol):
     async def get_entry(self, entry_id: str) -> JournalEntryDetails:
         """Return a journal entry by identifier."""
 
+    async def search_entries(
+        self, *, user_id: str, keyword: str, limit: int = 10
+    ) -> list[JournalEntry]:
+        """Search journal entries by keyword."""
+
     async def update_entry(
         self,
         entry_id: str,
@@ -232,6 +257,11 @@ class EmptyJournalRepository:
 
     async def get_entry(self, entry_id: str) -> JournalEntryDetails:
         raise RuntimeError("Entry service not configured")
+
+    async def search_entries(
+        self, *, user_id: str, keyword: str, limit: int = 10
+    ) -> list[JournalEntry]:
+        return []
 
     async def update_entry(
         self,
