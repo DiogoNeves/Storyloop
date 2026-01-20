@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   Editor,
   commandsCtx,
@@ -500,14 +501,13 @@ const JournalEntryEditorInner = forwardRef<
               const text = state.doc.textBetween(linkFrom, linkTo);
               
               const rect = linkElement.getBoundingClientRect();
-              const containerRect = container.getBoundingClientRect();
               
               setLinkTooltip({
                 href: linkMark.attrs.href as string,
                 text: text || (linkMark.attrs.href as string),
                 position: {
-                  top: rect.bottom - containerRect.top + container.scrollTop + 8,
-                  left: rect.left - containerRect.left + container.scrollLeft + rect.width / 2,
+                  top: rect.bottom + 8,
+                  left: rect.left + rect.width / 2,
                 },
                 from: linkFrom,
                 to: linkTo,
@@ -876,43 +876,46 @@ const JournalEntryEditorInner = forwardRef<
             </Button>
           </div>
         ) : null}
-        {linkTooltip ? (
-          <div
-            className="absolute z-10 flex -translate-x-1/2 flex-col items-center gap-2 rounded-lg border border-border bg-popover p-3 shadow-lg"
-            style={{
-              top: linkTooltip.position.top,
-              left: linkTooltip.position.left,
-            }}
-          >
-            <div className="text-xs text-muted-foreground break-all max-w-[300px]">
-              {linkTooltip.href}
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={handleOpenLink}
-                className="gap-2"
+        {linkTooltip && typeof document !== "undefined"
+          ? createPortal(
+              <div
+                className="fixed z-[1000] flex -translate-x-1/2 flex-col items-center gap-2 rounded-lg border border-border bg-popover p-3 shadow-lg"
+                style={{
+                  top: linkTooltip.position.top,
+                  left: linkTooltip.position.left,
+                }}
               >
-                <ExternalLink className="h-3 w-3" />
-                Open
-              </Button>
-              {isEditable ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={handleEditLink}
-                  className="gap-2"
-                >
-                  <Pencil className="h-3 w-3" />
-                  Edit
-                </Button>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
+                <div className="text-xs text-muted-foreground break-all max-w-[300px]">
+                  {linkTooltip.href}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={handleOpenLink}
+                    className="gap-2"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    Open
+                  </Button>
+                  {isEditable ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={handleEditLink}
+                      className="gap-2"
+                    >
+                      <Pencil className="h-3 w-3" />
+                      Edit
+                    </Button>
+                  ) : null}
+                </div>
+              </div>,
+              document.body,
+            )
+          : null}
         {mentionState ? (
           <div
             ref={mentionTooltipRef}
