@@ -2,7 +2,6 @@ import {
   QueryClient,
   QueryClientProvider,
   useMutation,
-  useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
@@ -30,18 +29,12 @@ import {
 import { SettingsDialog } from "@/components/SettingsDialog";
 import {
   entriesMutations,
-  entriesQueries,
   type CreateEntryInput,
   type Entry,
 } from "@/api/entries";
-import { conversationQueries, deleteConversation } from "@/api/conversations";
-import {
-  compareActivityItemsByPinnedDate,
-  compareEntriesByPinnedDate,
-  type ActivityItem,
-  entryToActivityItem,
-} from "@/lib/types/entries";
-import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
+import { deleteConversation } from "@/api/conversations";
+import { compareEntriesByPinnedDate, type ActivityItem } from "@/lib/types/entries";
+import { useActivityItems } from "@/hooks/useActivityItems";
 import { YoutubeAuthCallback } from "@/pages/YoutubeAuthCallback";
 import { VideoDetailPage } from "@/pages/VideoDetailPage";
 import { JournalDetailPage } from "@/pages/JournalDetailPage";
@@ -155,78 +148,16 @@ function JournalPage() {
   const { publicOnly } = useSettings();
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Determine videoType filter for API calls: null if "all", otherwise the type
-  const videoTypeFilter = useMemo<"short" | "video" | "live" | null>(() => {
-    if (contentTypeFilter === "all") {
-      return null;
-    }
-    return contentTypeFilter;
-  }, [contentTypeFilter]);
-
-  const entriesListQuery = useMemo(() => entriesQueries.all(), []);
   const {
-    data: storedEntries,
-    status: entriesStatus,
-    error: entriesError,
-  } = useQuery(entriesListQuery);
-  const conversationListQuery = useMemo(() => conversationQueries.list(), []);
-  const conversationsQuery = useQuery(conversationListQuery);
-  const demoConversationActivityItems = useMemo<ActivityItem[]>(() => {
-    if (!isDemo) {
-      return [];
-    }
-
-    const now = Date.now();
-
-    return [
-      {
-        id: "demo-conversation-1",
-        title: "Loopie summarized your audience research sprint",
-        summary:
-          "Loopie connected sentiment shifts across shorts, distilled the most replayed hooks, and drafted the next set of experiments for the July uploads.",
-        date: new Date(now - 1000 * 60 * 35).toISOString(),
-        category: "conversation",
-      },
-      {
-        id: "demo-conversation-2",
-        title: "Quick check-in about pacing",
-        summary:
-          "Loopie pinpointed the moment to trim and suggested a tighter intro beat.",
-        date: new Date(now - 1000 * 60 * 90).toISOString(),
-        category: "conversation",
-      },
-    ];
-  }, [isDemo]);
-
-  const conversationActivityItems = useMemo<ActivityItem[]>(() => {
-    if (isDemo) {
-      return demoConversationActivityItems;
-    }
-
-    if (!conversationsQuery.data) {
-      return [];
-    }
-    return conversationsQuery.data
-      .filter((conversation) => (conversation.turnCount ?? 0) > 0)
-      .map((conversation) => {
-        const firstTurnTitle = conversation.firstTurnText?.trim();
-        const trimmedSummary = conversation.lastTurnText?.trim();
-        const title =
-          firstTurnTitle && firstTurnTitle.length > 0
-            ? firstTurnTitle
-            : (conversation.title ?? "Loopie conversation");
-        return {
-          id: conversation.id,
-          title,
-          summary:
-            trimmedSummary && trimmedSummary.length > 0
-              ? trimmedSummary
-              : "Jump into this Loopie conversation to keep building.",
-          date: conversation.lastTurnAt ?? conversation.createdAt,
-          category: "conversation" as const,
-        };
-      });
-  }, [conversationsQuery.data, demoConversationActivityItems, isDemo]);
+    activityItems,
+    entriesListQuery,
+    entriesQuery,
+    conversationListQuery,
+    youtubeState,
+  } = useActivityItems({
+    contentTypeFilter,
+    publicOnly,
+  });
   const handleConversationClick = useCallback(
     async (conversationId: string) => {
       await setActiveConversation(conversationId);
@@ -273,87 +204,7 @@ function JournalPage() {
     ],
   );
 
-  const storedActivityItems = useMemo<ActivityItem[]>(() => {
-    if (!storedEntries) {
-      return [];
-    }
-    return storedEntries.map(entryToActivityItem);
-  }, [storedEntries]);
-
-  // Fetch YouTube videos with filter
-  const youtubeState = useYouTubeFeed(videoTypeFilter);
-
-  // Build the activity list from conversations, entries, and YouTube videos
-  const activityItems = useMemo<ActivityItem[]>(() => {
-    const baseItems = [...conversationActivityItems, ...storedActivityItems];
-
-    // Add YouTube videos if available
-    if (youtubeState.youtubeFeed?.videos) {
-      const videos = Array.isArray(youtubeState.youtubeFeed.videos)
-        ? youtubeState.youtubeFeed.videos
-        : [];
-      const videoItems = videos.map((video) => ({
-        id: `youtube:${video.id}`,
-        title: video.title,
-        summary: video.description,
-        date: video.publishedAt,
-        category: "content" as const,
-        linkUrl: video.url,
-        thumbnailUrl: video.thumbnailUrl ?? undefined,
-        videoId: video.id,
-        videoType: video.videoType,
-        privacyStatus: video.privacyStatus,
-      }));
-
-      // Filter YouTube videos by selected content type and privacy status
-      const filteredVideoItems = videoItems.filter((item) => {
-        // Filter by content type
-        if (!item.videoType) {
-          // Include items without videoType only if not filtering by type
-          if (contentTypeFilter !== "all") return false;
-        } else {
-          if (contentTypeFilter !== "all") {
-            if (item.videoType !== contentTypeFilter) return false;
-          }
-        }
-
-        // Filter by privacy status if "public only" is enabled
-        if (publicOnly) {
-          // Only include public videos (exclude unlisted and private)
-          if (item.privacyStatus !== "public") return false;
-        }
-
-        return true;
-      });
-
-      const seenIds = new Set(baseItems.map((item) => item.id));
-      const uniqueVideoItems = filteredVideoItems.filter((item) => {
-        if (seenIds.has(item.id)) {
-          return false;
-        }
-        seenIds.add(item.id);
-        return true;
-      });
-
-      baseItems.push(...uniqueVideoItems);
-    }
-
-    // Sort by date (newest first) and limit to 50
-    // Create a new array to avoid mutating the original
-    return [...baseItems]
-      .sort(compareActivityItemsByPinnedDate)
-      .slice(0, 50);
-  }, [
-    conversationActivityItems,
-    storedActivityItems,
-    youtubeState.youtubeFeed,
-    contentTypeFilter,
-    publicOnly,
-  ]);
-  const hasActivity =
-    conversationActivityItems.length > 0 ||
-    storedActivityItems.length > 0 ||
-    Boolean(youtubeState.youtubeFeed);
+  const hasActivity = activityItems.length > 0 || Boolean(youtubeState.youtubeFeed);
   const displayItems = hasActivity ? activityItems : seedActivityItems;
 
   const [draft, setDraft] = useState<ActivityDraft | null>(null);
@@ -547,14 +398,14 @@ function JournalPage() {
   }, [handleSubmitDraft]);
 
   const entriesErrorMessage = useMemo(() => {
-    if (entriesStatus !== "error") {
+    if (entriesQuery.status !== "error") {
       return null;
     }
-    if (entriesError instanceof Error) {
-      return `We couldn't load saved entries: ${entriesError.message}`;
+    if (entriesQuery.error instanceof Error) {
+      return `We couldn't load saved entries: ${entriesQuery.error.message}`;
     }
     return "We couldn't load saved entries.";
-  }, [entriesError, entriesStatus]);
+  }, [entriesQuery.error, entriesQuery.status]);
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 sm:gap-4">
