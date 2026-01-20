@@ -6,7 +6,7 @@ import useLocalStorageState from "use-local-storage-state";
 
 import { entriesMutations, entriesQueries, type Entry } from "@/api/entries";
 import { useJournalEntryDraft } from "@/hooks/useJournalEntryDraft";
-import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
+import { useActivityItems } from "@/hooks/useActivityItems";
 import { useEntryEditing } from "@/hooks/useEntryEditing";
 import { useSmartEntryUpdate } from "@/hooks/useSmartEntryUpdate";
 import { useSync } from "@/hooks/useSync";
@@ -452,15 +452,10 @@ export function JournalDetailPage() {
     defaultValue: true,
   });
 
-  // Determine videoType filter for API calls: null if "all", otherwise the type
-  const videoTypeFilter = useMemo<"short" | "video" | "live" | null>(() => {
-    if (contentTypeFilter === "all") {
-      return null;
-    }
-    return contentTypeFilter;
-  }, [contentTypeFilter]);
-
-  const youtubeState = useYouTubeFeed(videoTypeFilter);
+  const { activityItems, youtubeState } = useActivityItems({
+    contentTypeFilter,
+    publicOnly,
+  });
 
   const adjacentVideos = useMemo(() => {
     if (!youtubeState.youtubeFeed?.videos || !journalDate) {
@@ -612,6 +607,7 @@ export function JournalDetailPage() {
               resetKey="new-entry"
               onChange={setSummaryDraft}
               isEditable={false}
+              activityItems={activityItems}
             />
             <p className="text-xs text-muted-foreground">
               Add a title and create the entry to start writing.
@@ -927,6 +923,7 @@ export function JournalDetailPage() {
             resetKey={currentEntry.id}
             onChange={setSummaryDraft}
             isEditable={!isSmartUpdating}
+            activityItems={activityItems}
           />
         ) : summaryText.length > 0 ? (
           <JournalEntryEditor
@@ -935,6 +932,7 @@ export function JournalDetailPage() {
             resetKey={currentEntry.id}
             onChange={setSummaryDraft}
             isEditable={!isSmartUpdating}
+            activityItems={activityItems}
           />
         ) : showWaitingForFirstUpdate ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">

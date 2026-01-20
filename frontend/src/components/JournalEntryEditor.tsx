@@ -1,7 +1,9 @@
 import {
   forwardRef,
+  useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -17,6 +19,7 @@ import {
 import type { Ctx } from "@milkdown/ctx";
 import { Milkdown, MilkdownProvider, useEditor } from "@milkdown/react";
 import { Fragment, type Node as ProseNode, type Mark } from "@milkdown/prose/model";
+import type { EditorView } from "@milkdown/prose/view";
 import type { SerializerState } from "@milkdown/transformer";
 import { clipboard } from "@milkdown/plugin-clipboard";
 import { history } from "@milkdown/plugin-history";
@@ -32,6 +35,10 @@ import { gfm, toggleStrikethroughCommand } from "@milkdown/preset-gfm";
 import { ExternalLink, Pencil } from "lucide-react";
 
 import { useAssetUpload } from "@/hooks/useAssetUpload";
+import type { ActivityItem } from "@/lib/types/entries";
+import { filterActivityItems } from "@/lib/activity-search";
+import { getActivityDetailPath } from "@/lib/activity-helpers";
+import { findMentionCandidate } from "@/lib/mention-search";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -123,6 +130,7 @@ interface JournalEntryEditorProps {
   onChange: (markdown: string) => void;
   isEditable?: boolean;
   className?: string;
+  activityItems?: ActivityItem[];
 }
 
 export interface JournalEntryEditorHandle {
@@ -137,18 +145,43 @@ interface LinkTooltipState {
   to: number;
 }
 
+interface MentionState {
+  query: string;
+  position: { top: number; left: number };
+  anchor: { top: number; bottom: number; left: number };
+  range: { from: number; to: number };
+}
+
 const JournalEntryEditorInner = forwardRef<
   JournalEntryEditorHandle,
   JournalEntryEditorProps
 >(
-  ({ initialValue, resetKey, onChange, isEditable = true, className }, ref) => {
+  (
+    {
+      initialValue,
+      resetKey,
+      onChange,
+      isEditable = true,
+      className,
+      activityItems = [],
+    },
+    ref,
+  ) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const hasInitializedRef = useRef(false);
+  const editorViewRef = useRef<EditorView | null>(null);
+  const mentionTooltipRef = useRef<HTMLDivElement | null>(null);
   const [selectionPosition, setSelectionPosition] = useState<{
     top: number;
     left: number;
   } | null>(null);
   const [linkTooltip, setLinkTooltip] = useState<LinkTooltipState | null>(null);
+  const [mentionState, setMentionState] = useState<MentionState | null>(null);
+  const [mentionActiveIndex, setMentionActiveIndex] = useState(0);
+  const [mentionPosition, setMentionPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editLinkText, setEditLinkText] = useState("");
   const [editLinkUrl, setEditLinkUrl] = useState("");
@@ -188,6 +221,7 @@ const JournalEntryEditorInner = forwardRef<
     }
     instance.action((ctx: Ctx) => {
       const view = ctx.get(editorViewCtx);
+      editorViewRef.current = view;
       view.setProps({
         editable: () => isEditable,
       });
@@ -231,6 +265,150 @@ const JournalEntryEditorInner = forwardRef<
       insertMarkdown(`\n\n${asset.markdown}\n\n`);
     },
   });
+
+  const mentionSuggestions = useMemo(() => {
+    if (!mentionState || mentionState.query.trim().length === 0) {
+      return [];
+    }
+    return filterActivityItems(activityItems, mentionState.query).slice(0, 3);
+  }, [activityItems, mentionState]);
+
+  useLayoutEffect(() => {
+    if (!mentionState) {
+      setMentionPosition(null);
+      return;
+    }
+    const tooltip = mentionTooltipRef.current;
+    if (!tooltip) {
+      setMentionPosition(mentionState.position);
+      return;
+    }
+
+    const padding = 8;
+    const tooltipRect = tooltip.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    const maxLeft = viewportWidth - tooltipRect.width - padding;
+    const nextLeft = Math.min(
+      Math.max(mentionState.position.left, padding),
+      Math.max(padding, maxLeft),
+    );
+
+    const belowTop = mentionState.position.top;
+    const aboveTop =
+      mentionState.anchor.top - tooltipRect.height - padding;
+    const maxBottom = viewportHeight - padding;
+
+    const nextTop =
+      belowTop + tooltipRect.height > maxBottom && aboveTop >= padding
+        ? aboveTop
+        : belowTop;
+
+    setMentionPosition({ top: nextTop, left: nextLeft });
+  }, [mentionState, mentionSuggestions.length]);
+
+  const insertMention = useCallback(
+    (item: ActivityItem) => {
+      if (!mentionState) {
+        return;
+      }
+      const detailPath = getActivityDetailPath(item);
+      if (!detailPath) {
+        return;
+      }
+      const instance = editor.get();
+      if (!instance) {
+        return;
+      }
+      instance.action((ctx: Ctx) => {
+        const view = ctx.get(editorViewCtx);
+        const { state } = view;
+        const linkMarkType = state.schema.marks.link;
+        if (!linkMarkType) {
+          return;
+        }
+
+        const { from, to } = mentionState.range;
+        const tr = state.tr.insertText(item.title, from, to);
+        const nextTo = from + item.title.length;
+        tr.addMark(from, nextTo, linkMarkType.create({ href: detailPath }));
+        view.dispatch(tr);
+        view.focus();
+      });
+      setMentionState(null);
+      setMentionActiveIndex(0);
+    },
+    [editor, mentionState],
+  );
+
+  const updateMentionFromView = useCallback(
+    (view: EditorView) => {
+      if (!isEditable || linkTooltip) {
+        setMentionState(null);
+        setMentionActiveIndex(0);
+        return;
+      }
+
+      const { selection, doc } = view.state;
+      if (!selection.empty) {
+        setMentionState(null);
+        setMentionActiveIndex(0);
+        return;
+      }
+
+      const container = containerRef.current;
+      if (!container) {
+        setMentionState(null);
+        setMentionActiveIndex(0);
+        return;
+      }
+
+      const parentStart = selection.$from.start();
+      const textBefore = doc.textBetween(
+        parentStart,
+        selection.from,
+        "\n",
+        "\n",
+      );
+      const candidate = findMentionCandidate(textBefore);
+      if (!candidate) {
+        setMentionState(null);
+        setMentionActiveIndex(0);
+        return;
+      }
+
+      const { startIndex, query } = candidate;
+      const mentionFrom = parentStart + startIndex;
+      const coords = view.coordsAtPos(selection.from);
+      const nextPosition = {
+        top: coords.bottom + 8,
+        left: coords.left,
+      };
+
+      setMentionState((prev) => {
+        if (
+          prev &&
+          prev.query === query &&
+          prev.range.from === mentionFrom &&
+          prev.range.to === selection.from
+        ) {
+          return { ...prev, position: nextPosition };
+        }
+        return {
+          query,
+          position: nextPosition,
+          anchor: { top: coords.top, bottom: coords.bottom, left: coords.left },
+          range: { from: mentionFrom, to: selection.from },
+        };
+      });
+
+      if (!mentionState || mentionState.query !== query) {
+        setMentionActiveIndex(0);
+      }
+    },
+    [isEditable, linkTooltip, mentionState],
+  );
 
   // Handle link clicks
   useEffect(() => {
@@ -374,7 +552,7 @@ const JournalEntryEditorInner = forwardRef<
     };
   }, [linkTooltip]);
 
-  // Handle text selection (for formatting toolbar)
+  // Handle text selection (for formatting toolbar + mentions)
   useEffect(() => {
     const handleSelectionChange = () => {
       const container = containerRef.current;
@@ -389,14 +567,18 @@ const JournalEntryEditorInner = forwardRef<
         }
       }
       
-      if (!container || !selection || selection.isCollapsed || !isEditable) {
+      if (!container || !selection || !isEditable) {
         setSelectionPosition(null);
+        setMentionState(null);
+        setMentionActiveIndex(0);
         return;
       }
 
       const anchorNode = selection.anchorNode;
       if (!anchorNode || !container.contains(anchorNode)) {
         setSelectionPosition(null);
+        setMentionState(null);
+        setMentionActiveIndex(0);
         return;
       }
 
@@ -404,32 +586,144 @@ const JournalEntryEditorInner = forwardRef<
       const linkElement = anchorNode instanceof HTMLElement 
         ? anchorNode.closest("a")
         : anchorNode.parentElement?.closest("a");
-      if (linkElement) {
+      if (linkElement || selection.isCollapsed) {
         setSelectionPosition(null);
-        return;
+      } else {
+        const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+        if (!range) {
+          setSelectionPosition(null);
+        } else {
+          const rect = range.getBoundingClientRect();
+          if (rect.width === 0 && rect.height === 0) {
+            setSelectionPosition(null);
+          } else {
+            setSelectionPosition({
+              top: rect.top + window.scrollY - 44,
+              left: rect.left + window.scrollX + rect.width / 2,
+            });
+          }
+        }
       }
 
-      const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
-      if (!range) {
-        setSelectionPosition(null);
-        return;
+      const instance = editor.get();
+      if (instance) {
+        instance.action((ctx: Ctx) => {
+          const view = ctx.get(editorViewCtx);
+          updateMentionFromView(view);
+        });
       }
-      const rect = range.getBoundingClientRect();
-      if (rect.width === 0 && rect.height === 0) {
-        setSelectionPosition(null);
-        return;
-      }
-      setSelectionPosition({
-        top: rect.top + window.scrollY - 44,
-        left: rect.left + window.scrollX + rect.width / 2,
-      });
     };
 
     document.addEventListener("selectionchange", handleSelectionChange);
     return () => {
       document.removeEventListener("selectionchange", handleSelectionChange);
     };
-  }, [isEditable, linkTooltip]);
+  }, [editor, isEditable, linkTooltip, updateMentionFromView]);
+
+  useEffect(() => {
+    const instance = editor.get();
+    if (!instance) {
+      return;
+    }
+
+    let activeView: EditorView | null = editorViewRef.current;
+    if (!activeView) {
+      instance.action((ctx: Ctx) => {
+        activeView = ctx.get(editorViewCtx);
+        editorViewRef.current = activeView;
+      });
+    }
+
+    if (!activeView) {
+      return;
+    }
+
+    const view = activeView;
+    const handleEditorInput = () => {
+      updateMentionFromView(view);
+    };
+
+    view.dom.addEventListener("input", handleEditorInput);
+    view.dom.addEventListener("compositionend", handleEditorInput);
+
+    return () => {
+      view.dom.removeEventListener("input", handleEditorInput);
+      view.dom.removeEventListener("compositionend", handleEditorInput);
+    };
+  }, [editor, updateMentionFromView]);
+
+  useEffect(() => {
+    if (!mentionState || mentionSuggestions.length === 0) {
+      setMentionActiveIndex(0);
+      return;
+    }
+
+    setMentionActiveIndex((current) =>
+      Math.min(current, mentionSuggestions.length - 1),
+    );
+  }, [mentionState, mentionSuggestions.length]);
+
+  useEffect(() => {
+    const instance = editor.get();
+    if (!instance) {
+      return;
+    }
+
+    instance.action((ctx: Ctx) => {
+      const view = ctx.get(editorViewCtx);
+      view.setProps({
+        handleKeyDown: (_view, event) => {
+          if (!mentionState) {
+            return false;
+          }
+
+          if (event.key === "ArrowDown") {
+            if (mentionSuggestions.length === 0) {
+              return false;
+            }
+            event.preventDefault();
+            setMentionActiveIndex((current) =>
+              (current + 1) % mentionSuggestions.length,
+            );
+            return true;
+          }
+
+          if (event.key === "ArrowUp") {
+            if (mentionSuggestions.length === 0) {
+              return false;
+            }
+            event.preventDefault();
+            setMentionActiveIndex((current) =>
+              (current - 1 + mentionSuggestions.length) %
+              mentionSuggestions.length,
+            );
+            return true;
+          }
+
+          if (event.key === "Enter") {
+            if (mentionSuggestions.length === 0) {
+              return false;
+            }
+            event.preventDefault();
+            const selection =
+              mentionSuggestions[mentionActiveIndex] ?? mentionSuggestions[0];
+            if (selection) {
+              insertMention(selection);
+              return true;
+            }
+          }
+
+          return false;
+        },
+      });
+    });
+  }, [
+    editor,
+    insertMention,
+    mentionActiveIndex,
+    mentionState,
+    mentionSuggestions,
+  ]);
 
   const handlePaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
     if (!isEditable) {
@@ -617,6 +911,47 @@ const JournalEntryEditorInner = forwardRef<
                 </Button>
               ) : null}
             </div>
+          </div>
+        ) : null}
+        {mentionState ? (
+          <div
+            ref={mentionTooltipRef}
+            className="fixed z-50 w-72 rounded-lg border border-border bg-popover p-2 shadow-lg"
+            style={{
+              top: mentionPosition?.top ?? mentionState.position.top,
+              left: mentionPosition?.left ?? mentionState.position.left,
+            }}
+          >
+            {mentionState.query.trim().length === 0 ? (
+              <div className="px-2 py-1 text-xs text-muted-foreground">
+                type to search
+              </div>
+            ) : mentionSuggestions.length > 0 ? (
+              <div className="flex flex-col gap-1" role="listbox">
+                {mentionSuggestions.map((item, index) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={cn(
+                      "flex w-full items-center rounded-md px-2 py-1 text-left text-sm",
+                      index === mentionActiveIndex
+                        ? "bg-primary/10 text-foreground"
+                        : "text-foreground/90 hover:bg-muted/60",
+                    )}
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                    }}
+                    onClick={() => insertMention(item)}
+                  >
+                    {item.title}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="px-2 py-1 text-xs text-muted-foreground">
+                No matches
+              </div>
+            )}
           </div>
         ) : null}
         <Milkdown />
