@@ -598,8 +598,8 @@ const JournalEntryEditorInner = forwardRef<
             setSelectionPosition(null);
           } else {
             setSelectionPosition({
-              top: rect.top + window.scrollY - 44,
-              left: rect.left + window.scrollX + rect.width / 2,
+              top: rect.top - 44,
+              left: rect.left + rect.width / 2,
             });
           }
         }
@@ -839,43 +839,46 @@ const JournalEntryEditorInner = forwardRef<
         onDrop={handleDrop}
         onDragOver={handleDragOver}
       >
-        {selectionPosition ? (
-          <div
-            className="absolute z-10 flex -translate-x-1/2 items-center gap-1 rounded-full border border-border bg-popover px-2 py-1 shadow-md"
-            style={{
-              top: selectionPosition.top,
-              left: selectionPosition.left,
-            }}
-          >
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              className="h-7 w-7"
-              onClick={() => runCommand(toggleStrongCommand)}
-            >
-              <span className="text-xs font-bold">B</span>
-            </Button>
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              className="h-7 w-7 italic"
-              onClick={() => runCommand(toggleEmphasisCommand)}
-            >
-              <span className="text-xs">I</span>
-            </Button>
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              className="h-7 w-7 line-through"
-              onClick={() => runCommand(toggleStrikethroughCommand)}
-            >
-              <span className="text-xs">S</span>
-            </Button>
-          </div>
-        ) : null}
+        {selectionPosition && typeof document !== "undefined"
+          ? createPortal(
+              <div
+                className="fixed z-10 flex -translate-x-1/2 items-center gap-1 rounded-full border border-border bg-popover px-2 py-1 shadow-md"
+                style={{
+                  top: selectionPosition.top,
+                  left: selectionPosition.left,
+                }}
+              >
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7"
+                  onClick={() => runCommand(toggleStrongCommand)}
+                >
+                  <span className="text-xs font-bold">B</span>
+                </Button>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7 italic"
+                  onClick={() => runCommand(toggleEmphasisCommand)}
+                >
+                  <span className="text-xs">I</span>
+                </Button>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7 line-through"
+                  onClick={() => runCommand(toggleStrikethroughCommand)}
+                >
+                  <span className="text-xs">S</span>
+                </Button>
+              </div>,
+              document.body,
+            )
+          : null}
         {linkTooltip && typeof document !== "undefined"
           ? createPortal(
               <div
