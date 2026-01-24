@@ -54,6 +54,7 @@ export function JournalDetailPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const { setFocus } = useAgentConversationContext();
   const editorRef = useRef<JournalEntryEditorHandle | null>(null);
+  const titleInputRef = useRef<HTMLInputElement | null>(null);
 
   const isNewEntryRoute =
     journalId === "new" || location.pathname === "/journals/new";
@@ -92,6 +93,20 @@ export function JournalDetailPage() {
     isSmartEntry,
     isSmartUpdating,
   });
+
+  // Focus title input when creating a new entry (especially important on mobile)
+  useEffect(() => {
+    if (!isNewEntryRoute || !titleInputRef.current) {
+      return;
+    }
+    // Use requestAnimationFrame to ensure the input is rendered and visible
+    const timeoutId = setTimeout(() => {
+      titleInputRef.current?.focus();
+    }, 0);
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [isNewEntryRoute]);
 
   useEffect(() => {
     if (!journalId || isNewEntryRoute) {
@@ -586,6 +601,7 @@ export function JournalDetailPage() {
     if (isNewEntryRoute) {
       const header = (
         <NewEntryHeader
+          ref={titleInputRef}
           title={titleDraft}
           onTitleChange={setTitleDraft}
           createError={createError}
