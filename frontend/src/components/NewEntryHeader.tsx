@@ -1,4 +1,4 @@
-import type { ChangeEvent, KeyboardEvent } from "react";
+import { forwardRef, type ChangeEvent, type KeyboardEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 
@@ -12,15 +12,19 @@ interface NewEntryHeaderProps {
   onCreate: () => void;
 }
 
-export function NewEntryHeader({
-  title,
-  onTitleChange,
-  createError,
-  onClearError,
-  isOnline,
-  isCreating,
-  onCreate,
-}: NewEntryHeaderProps) {
+export const NewEntryHeader = forwardRef<HTMLInputElement, NewEntryHeaderProps>(
+  (
+    {
+      title,
+      onTitleChange,
+      createError,
+      onClearError,
+      isOnline,
+      isCreating,
+      onCreate,
+    },
+    ref,
+  ) => {
   const canCreate = title.trim().length > 0;
   const isCreateDisabled = isCreating || !isOnline || !canCreate;
   const createDisabledReason = !isOnline ? "Go online to create" : null;
@@ -60,6 +64,7 @@ export function NewEntryHeader({
       </span>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <input
+          ref={ref}
           className="w-full flex-1 border-none bg-transparent text-2xl font-semibold text-foreground outline-none placeholder:text-muted-foreground"
           placeholder="Untitled entry"
           value={title}
@@ -74,4 +79,7 @@ export function NewEntryHeader({
       ) : null}
     </div>
   );
-}
+  },
+);
+
+NewEntryHeader.displayName = "NewEntryHeader";
