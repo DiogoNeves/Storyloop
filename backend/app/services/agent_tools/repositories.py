@@ -11,7 +11,12 @@ from pydantic import ValidationError
 from app.services.assets import AssetService, extract_asset_ids
 from app.services.entries import EntryRecord, EntryService
 from app.services.users import UserService
-from app.services.channel_profile import ChannelProfile, ChannelProfileSnapshot
+from app.services.channel_profile import (
+    ChannelProfile,
+    ChannelProfilePatch,
+    ChannelProfileSnapshot,
+    apply_channel_profile_patch,
+)
 from app.services.youtube import YoutubeService
 from app.services.agent_tools.models import (
     ChannelMetrics,
@@ -348,6 +353,34 @@ class ChannelProfileRepository:
 
         return await anyio.to_thread.run_sync(_fetch)
 
+    async def update_profile(
+        self, patch: ChannelProfilePatch
+    ) -> ChannelProfileSnapshot:
+        """Apply a patch and persist the updated channel profile."""
+
+        def _update() -> ChannelProfileSnapshot:
+            profile_data, _ = self._user_service.get_channel_profile()
+            current_profile = None
+            if profile_data:
+                try:
+                    current_profile = ChannelProfile.model_validate(
+                        profile_data
+                    )
+                except ValidationError:
+                    current_profile = None
+
+            updated_profile = apply_channel_profile_patch(
+                current_profile, patch
+            )
+            serialized = updated_profile.model_dump(by_alias=True)
+            updated_at = self._user_service.upsert_channel_profile(serialized)
+            return ChannelProfileSnapshot(
+                profile=updated_profile,
+                updated_at=updated_at.isoformat(),
+            )
+
+        return await anyio.to_thread.run_sync(_update)
+
 
 @runtime_checkable
 class BaseChannelProfileRepository(Protocol):
@@ -356,12 +389,22 @@ class BaseChannelProfileRepository(Protocol):
     async def get_profile(self) -> ChannelProfileSnapshot:
         """Return the stored channel profile (if any)."""
 
+    async def update_profile(
+        self, patch: ChannelProfilePatch
+    ) -> ChannelProfileSnapshot:
+        """Apply a patch and persist the channel profile."""
+
 
 class EmptyChannelProfileRepository:
     """Fallback repository returning no channel profile data."""
 
     async def get_profile(self) -> ChannelProfileSnapshot:
         return ChannelProfileSnapshot(profile=None, updated_at=None)
+
+    async def update_profile(
+        self, patch: ChannelProfilePatch
+    ) -> ChannelProfileSnapshot:
+        raise RuntimeError("Channel profile service not configured")
 
 
 def _collect_attachments(
