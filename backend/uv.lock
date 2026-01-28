@@ -1807,6 +1807,15 @@ wheels = [
 ]
 
 [[package]]
+name = "promptdown"
+version = "1.1.6"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/29/55/2613a5c9e1ddef7bc9eaf517da80ed74280ccbd6bba63da63cf41ee0da87/promptdown-1.1.6.tar.gz", hash = "sha256:e7bf42e5068d149600ffcfbdd0bbeed6375dbd6040d4ea8e1c40a6a1c5602c77", size = 13132 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1d/f0/f2769f8c513deffca1a6be2e2cf69c1b1e1f21edf05d6cbe59abe224adfe/promptdown-1.1.6-py3-none-any.whl", hash = "sha256:897ee566d6e99bbd3f39e4c89ce35466ec1a266c19da1efad69b3500ad1abdfd", size = 12040 },
+]
+
+[[package]]
 name = "proto-plus"
 version = "1.26.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2612,6 +2621,7 @@ dependencies = [
     { name = "httpx" },
     { name = "logfire" },
     { name = "pillow" },
+    { name = "promptdown" },
     { name = "pydantic" },
     { name = "pydantic-ai" },
     { name = "pypdf" },
@@ -2641,6 +2651,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "logfire", specifier = ">=4.14.2" },
     { name = "pillow", specifier = ">=11.0.0" },
+    { name = "promptdown", specifier = ">=1.1.6" },
     { name = "pydantic", specifier = ">=2.12.3" },
     { name = "pydantic-ai", specifier = ">=0.0.14" },
     { name = "pypdf", specifier = ">=5.2.0" },
