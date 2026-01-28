@@ -1,10 +1,5 @@
-import type { AudienceBucket } from "@/api/channel";
+import type { AudienceBucket, ChannelProfileAdvice } from "@/api/channel";
 import { Button } from "@/components/ui/button";
-import {
-  bucketFieldDefinitions,
-  checklistContent,
-  profileFieldDefinitions,
-} from "@/components/channel-profile/channelProfileContent";
 import { BucketCard } from "@/components/channel-profile/BucketCard";
 import { BucketField } from "@/components/channel-profile/BucketField";
 import { ChecklistCard } from "@/components/channel-profile/ChecklistCard";
@@ -12,6 +7,7 @@ import { ProfileField } from "@/components/channel-profile/ProfileField";
 import { SectionCard } from "@/components/channel-profile/SectionCard";
 
 type AudienceBucketsSectionProps = {
+  advice: ChannelProfileAdvice;
   buckets: AudienceBucket[];
   minBuckets: number;
   maxBuckets: number;
@@ -25,6 +21,7 @@ type AudienceBucketsSectionProps = {
 };
 
 export function AudienceBucketsSection({
+  advice,
   buckets,
   minBuckets,
   maxBuckets,
@@ -38,6 +35,8 @@ export function AudienceBucketsSection({
 }: AudienceBucketsSectionProps) {
   const canRemove = buckets.length > minBuckets;
   const atMaxBuckets = buckets.length >= maxBuckets;
+
+  const { bucketFields, checklists, profileFields } = advice;
 
   return (
     <SectionCard
@@ -55,37 +54,37 @@ export function AudienceBucketsSection({
           <div className="grid gap-3 sm:grid-cols-2">
             <BucketField
               bucket={bucket}
-              definition={bucketFieldDefinitions.name}
+              definition={bucketFields.name}
               onUpdate={onUpdateBucket}
             />
             <BucketField
               bucket={bucket}
-              definition={bucketFieldDefinitions.description}
+              definition={bucketFields.description}
               onUpdate={onUpdateBucket}
             />
             <BucketField
               bucket={bucket}
-              definition={bucketFieldDefinitions.careAndUnderstanding}
+              definition={bucketFields.careAndUnderstanding}
               onUpdate={onUpdateBucket}
             />
             <ChecklistCard
-              title={checklistContent.careNote.title}
-              items={checklistContent.careNote.items}
+              title={checklists.careNote.title}
+              items={checklists.careNote.items}
               className="p-3 sm:col-span-2"
             />
             <BucketField
               bucket={bucket}
-              definition={bucketFieldDefinitions.otherCreatorsWatched}
+              definition={bucketFields.otherCreatorsWatched}
               onUpdate={onUpdateBucket}
             />
             <ChecklistCard
-              title={checklistContent.creatorsNote.title}
-              items={checklistContent.creatorsNote.items}
+              title={checklists.creatorsNote.title}
+              items={checklists.creatorsNote.items}
               className="p-3 sm:col-span-2"
             />
             <BucketField
               bucket={bucket}
-              definition={bucketFieldDefinitions.personalConnectionNotes}
+              definition={bucketFields.personalConnectionNotes}
               onUpdate={onUpdateBucket}
             />
           </div>
@@ -105,22 +104,22 @@ export function AudienceBucketsSection({
         </Button>
       </div>
       <ChecklistCard
-        title={checklistContent.bucketMental.title}
-        items={checklistContent.bucketMental.items}
+        title={checklists.bucketMental.title}
+        items={checklists.bucketMental.items}
         className="p-4"
       />
       <ProfileField
-        field={profileFieldDefinitions.bucketsLockedNotes}
+        field={profileFields.bucketsLockedNotes}
         value={bucketsLockedNotes}
         onChange={onBucketsLockedNotesChange}
       />
       <ChecklistCard
-        title={checklistContent.bucketsLockedMental.title}
-        items={checklistContent.bucketsLockedMental.items}
+        title={checklists.bucketsLockedMental.title}
+        items={checklists.bucketsLockedMental.items}
         className="p-4"
       />
       <ProfileField
-        field={profileFieldDefinitions.personalConnectionNotes}
+        field={profileFields.personalConnectionNotes}
         value={personalConnectionNotes}
         onChange={onPersonalConnectionNotesChange}
       />
