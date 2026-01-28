@@ -123,7 +123,7 @@ class TurnFocus(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    category: Literal["content", "journal"]
+    category: Literal["content", "journal", "channel"]
     id: str
     title: str | None = None
     route: str | None = None
@@ -145,9 +145,13 @@ def render_history_prompt(
     """Render a prompt with the full conversation history and latest user turn."""
 
     if not turns:
-        history_block = "No previous turns. This is the first turn in the conversation."
+        history_block = (
+            "No previous turns. This is the first turn in the conversation."
+        )
     else:
-        history_lines = [f"{turn['role'].upper()}: {turn['text']}" for turn in turns]
+        history_lines = [
+            f"{turn['role'].upper()}: {turn['text']}" for turn in turns
+        ]
         history_block = "\n".join(history_lines)
 
     focus_block = ""

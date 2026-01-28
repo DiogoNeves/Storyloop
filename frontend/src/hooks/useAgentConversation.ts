@@ -9,6 +9,7 @@ import {
   type Conversation,
   type ConversationTurn,
 } from "@/api/conversations";
+import { channelQueries } from "@/api/channel";
 import { entriesQueries } from "@/api/entries";
 import { isNotFoundError } from "@/api/client";
 import type {
@@ -109,7 +110,7 @@ export function useAgentConversation({
 
           const nextTurnCount = options?.incrementTurnCount
             ? (base.turnCount ?? 0) + 1
-            : updates.turnCount ?? base.turnCount ?? 0;
+            : (updates.turnCount ?? base.turnCount ?? 0);
 
           const shouldUpdateLastTurnText =
             updates.lastTurnText !== undefined && (base.turnCount ?? 0) <= 1;
@@ -120,7 +121,7 @@ export function useAgentConversation({
             firstTurnText: base.firstTurnText ?? updates.firstTurnText ?? null,
             lastTurnText: shouldUpdateLastTurnText
               ? updates.lastTurnText
-              : base.lastTurnText ?? updates.lastTurnText ?? null,
+              : (base.lastTurnText ?? updates.lastTurnText ?? null),
             turnCount: nextTurnCount,
           };
 
@@ -175,7 +176,7 @@ export function useAgentConversation({
         conversationId: "",
         messages: [],
         composer: { status: "idle", error: null },
-              });
+      });
 
       try {
         if (forceNew && persistConversationId) {
@@ -223,7 +224,7 @@ export function useAgentConversation({
           conversationId: conversationId ?? "",
           messages: existingTurns.map(mapTurnToMessage),
           composer: { status: "idle", error: null },
-                  });
+        });
       } catch (error) {
         if (initializeTokenRef.current !== initializeToken) {
           return;
@@ -236,18 +237,13 @@ export function useAgentConversation({
           conversationId: "",
           messages: [],
           composer: { status: "idle", error: message },
-                  });
+        });
       }
       if (initializeTokenRef.current === initializeToken) {
         setIsInitializing(false);
       }
     },
-    [
-      abortActiveStream,
-      enabled,
-      initialConversationId,
-      persistConversationId,
-    ],
+    [abortActiveStream, enabled, initialConversationId, persistConversationId],
   );
 
   useEffect(() => {
@@ -345,11 +341,11 @@ export function useAgentConversation({
         const baseMessage: AgentMessage =
           existingIndex === -1
             ? {
-              id: streamingMessageId,
-              role: "assistant",
-              content: "",
-              createdAt: streamingMessageCreatedAt,
-            }
+                id: streamingMessageId,
+                role: "assistant",
+                content: "",
+                createdAt: streamingMessageCreatedAt,
+              }
             : messageBuffer[existingIndex];
 
         const updatedMessage: AgentMessage = {
@@ -362,8 +358,8 @@ export function useAgentConversation({
           existingIndex === -1
             ? [...messageBuffer, updatedMessage]
             : messageBuffer.map((message, index) =>
-              index === existingIndex ? updatedMessage : message,
-            );
+                index === existingIndex ? updatedMessage : message,
+              );
 
         setState((previous) => {
           if (previous.conversationId !== conversationId) {
@@ -544,11 +540,10 @@ export function useAgentConversation({
               if (hasToolSplit && !displayText) {
                 removeAssistantMessage();
               } else {
-                upsertAssistantMessage(
-                  displayText,
-                  overrides,
-                  { status: "idle", error: null },
-                );
+                upsertAssistantMessage(displayText, overrides, {
+                  status: "idle",
+                  error: null,
+                });
               }
               if (!conversationIdPersistedRef.current) {
                 conversationIdPersistedRef.current = true;
@@ -591,6 +586,12 @@ export function useAgentConversation({
             },
             onToolCall: (message) => {
               appendToolCall(message);
+              if (message === "🧭 updating channel profile") {
+                const profileQuery = channelQueries.profile();
+                void queryClient.invalidateQueries({
+                  queryKey: profileQuery.queryKey,
+                });
+              }
             },
           },
         });
@@ -647,12 +648,16 @@ export function useAgentConversation({
         return previous;
       }
 
-      if (previous.conversationId !== (conversationIdRef.current ?? previous.conversationId)) {
+      if (
+        previous.conversationId !==
+        (conversationIdRef.current ?? previous.conversationId)
+      ) {
         return previous;
       }
 
       const hasStopMarker = previous.messages.some(
-        (message) => message.content === "[user stopped]" && message.role === "system",
+        (message) =>
+          message.content === "[user stopped]" && message.role === "system",
       );
 
       return {
@@ -660,16 +665,16 @@ export function useAgentConversation({
         messages: hasStopMarker
           ? previous.messages
           : [
-            ...previous.messages,
-            {
-              id: crypto.randomUUID(),
-              role: "system",
-              content: "[user stopped]",
-              createdAt: new Date().toISOString(),
-            },
-          ],
+              ...previous.messages,
+              {
+                id: crypto.randomUUID(),
+                role: "system",
+                content: "[user stopped]",
+                createdAt: new Date().toISOString(),
+              },
+            ],
         composer: { status: "idle", error: null },
-              };
+      };
     });
   }, [abortActiveStream]);
 
@@ -694,11 +699,14 @@ export function useAgentConversation({
     [enabled, initializeConversation],
   );
 
-  const adapter = useMemo<AgentConversationAdapter>(() => ({
-    sendMessage,
-    stopResponse,
-    resetConversation,
-  }), [resetConversation, sendMessage, stopResponse]);
+  const adapter = useMemo<AgentConversationAdapter>(
+    () => ({
+      sendMessage,
+      stopResponse,
+      resetConversation,
+    }),
+    [resetConversation, sendMessage, stopResponse],
+  );
 
   return useMemo(
     () => ({

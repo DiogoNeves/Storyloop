@@ -23,6 +23,8 @@ import {
 import { FrameworkFilterSection } from "@/components/channel-profile/FrameworkFilterSection";
 import { SaveBar } from "@/components/channel-profile/SaveBar";
 import { ValueAuditSection } from "@/components/channel-profile/ValueAuditSection";
+import { useAgentConversationContext } from "@/context/AgentConversationContext";
+import type { AgentFocus } from "@/lib/types/agent";
 
 const createEmptyBucket = (): AudienceBucket => ({
   id: crypto.randomUUID(),
@@ -78,6 +80,7 @@ export function ChannelPage() {
   const [profile, setProfile] = useState<ChannelProfile>(createEmptyProfile);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const { setFocus } = useAgentConversationContext();
 
   useEffect(() => {
     if (!channelQuery.data) {
@@ -85,6 +88,30 @@ export function ChannelPage() {
     }
     setProfile(normalizeProfile(channelQuery.data.profile));
   }, [channelQuery.data]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    if (typeof window.matchMedia !== "function") {
+      setFocus(null);
+      return;
+    }
+    const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
+    if (!isDesktop) {
+      setFocus(null);
+      return;
+    }
+    setFocus({
+      category: "channel",
+      id: "channel-profile",
+      title: "Channel profile",
+      route: "/channel",
+    } as AgentFocus);
+    return () => {
+      setFocus(null);
+    };
+  }, [setFocus]);
 
   const updateMutation = useMutation({
     mutationFn: updateChannelProfile,
