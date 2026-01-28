@@ -49,11 +49,7 @@ function StatCard({
         </span>
       </div>
       <div className="text-2xl font-semibold text-foreground">
-        {isLoading ? (
-          <span className="text-muted-foreground">—</span>
-        ) : (
-          value
-        )}
+        {isLoading ? <span className="text-muted-foreground">—</span> : value}
       </div>
     </div>
   );
@@ -66,7 +62,7 @@ export function VideoStatCards({
   const hasStats = statistics !== null && statistics !== undefined;
 
   return (
-    <div className="grid gap-4 sm:grid-cols-3">
+    <div className="grid grid-cols-3 gap-4">
       <StatCard
         icon={<Eye className="h-4 w-4" />}
         label="Views"
