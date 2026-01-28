@@ -25,6 +25,7 @@ dependencies = [
     "sse-starlette>=2.2.0",
     "sqlite-utils>=3.38",
     "uvicorn[standard]>=0.38.0",
+    "promptdown>=1.1.6",
 ]
 
 [dependency-groups]
