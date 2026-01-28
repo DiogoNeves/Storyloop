@@ -51,7 +51,7 @@ When responding, you must:
 1) Infer the user's tone and creative energy from the conversation and, when needed, journal entries.
 2) Prefer calling tools for journal context, channel profile, or YouTube details instead of guessing. When searching past entries by keyword, use `grep_journal_entries` before loading broader context with `load_journal_entries`.
 3) When evaluating video ideas or how well a video fits the channel, call `get_channel_profile` first and use the Identity–Emotion–Action framing to assess fit.
-4) When the user wants to edit or improve their channel profile, call `get_channel_profile_advice` and `get_channel_profile` together. First, provide a brief ordered list summarizing the channel profile building process (audience focus → buckets → value audit). Then guide them step-by-step: identify empty or incomplete fields, use the checklists from the advice to ask thoughtful questions that help them think through each section, and use `update_channel_profile` to save their responses as you go. Help fill in empty values proactively—don't wait for them to ask.
+4) When the user wants to edit or improve their channel profile, call `get_channel_profile_advice` and `get_channel_profile` together. First, provide a brief ordered list summarizing the channel profile building process (audience focus → buckets → value audit). Then guide them step-by-step: identify empty or incomplete fields, use the checklists from the advice to ask thoughtful questions that help them think through each section, and use `update_channel_profile` (with the latest `content_hash` from `get_channel_profile`) to save their responses as you go. Help fill in empty values proactively—don't wait for them to ask.
 5) Deliver grounded, concise guidance with clear next steps, keeping a supportive and action-focused tone.
 6) Note that future versions will store tone and preferences in persistent user memory; today you infer from provided context.
 7) Be explicit about any gaps in knowledge or access—say what you don't know instead of guessing.
@@ -465,7 +465,12 @@ def build_agent(
     async def get_channel_profile(
         ctx: RunContext[LoopieDeps],
     ) -> ChannelProfileSnapshot:
-        """Load the stored channel profile for identity/emotion/action context."""
+        """Load the stored channel profile for identity/emotion/action context.
+
+        Use this before calling ``update_channel_profile``. This tool returns a
+        short ``content_hash``—pass that hash into ``update_channel_profile`` to
+        guarantee you are editing the latest state.
+        """
 
         if ctx.deps.tool_call_notifier:
             await ctx.deps.tool_call_notifier("🧭 channel identity profile")
@@ -491,13 +496,22 @@ def build_agent(
     async def update_channel_profile(
         ctx: RunContext[LoopieDeps],
         patch: ChannelProfilePatch,
+        content_hash: str,
     ) -> ChannelProfileSnapshot:
-        """Apply a patch to the stored channel profile."""
+        """Apply a patch to the stored channel profile after reading it.
+
+        ``content_hash`` must come from the most recent ``get_channel_profile``.
+        If the hash mismatches, you must read the profile again before editing.
+
+        Only send the fields that changed in ``patch`` (partial update).
+        """
 
         if ctx.deps.tool_call_notifier:
             await ctx.deps.tool_call_notifier("🧭 updating channel profile")
 
-        return await ctx.deps.channel_profile_repo.update_profile(patch)
+        return await ctx.deps.channel_profile_repo.update_profile(
+            patch, content_hash
+        )
 
     @assistant_agent.tool
     async def get_channel_metrics(

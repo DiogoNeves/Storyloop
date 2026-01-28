@@ -1,9 +1,15 @@
+import type { AgentFocusCategory } from "@/lib/types/agent";
 import type { ActivityItem } from "@/lib/types/entries";
 
 export function getActivityCategoryLabel(
-  category: ActivityItem["category"],
+  category: ActivityItem["category"] | AgentFocusCategory,
 ): string {
-  return category;
+  switch (category) {
+    case "channel":
+      return "channel profile";
+    default:
+      return category;
+  }
 }
 
 export function isActivityEditable(item: ActivityItem): boolean {
