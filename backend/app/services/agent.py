@@ -33,7 +33,14 @@ from app.services.agent_tools import (
     VideoMetrics,
     YouTubeRepository,
 )
-from app.services.channel_profile import ChannelProfileSnapshot
+from app.services.channel_profile import (
+    ChannelProfilePatch,
+    ChannelProfileSnapshot,
+)
+from app.services.channel_profile_advice import (
+    ChannelProfileAdvice,
+    get_channel_profile_advice as load_channel_profile_advice,
+)
 
 
 LOOPIE_SYSTEM_PROMPT = """You are Loopie, the slightly loopy (yet extremely useful) creative partner for YouTube creators on Storyloop.
@@ -463,6 +470,33 @@ def build_agent(
             await ctx.deps.tool_call_notifier("🧭 channel identity profile")
 
         return await ctx.deps.channel_profile_repo.get_profile()
+
+    @assistant_agent.tool
+    async def get_channel_profile_advice(
+        ctx: RunContext[LoopieDeps],
+    ) -> ChannelProfileAdvice:
+        """Return guidance for channel profile improvements.
+
+        Use this when the user is discussing channel profile improvements or
+        editing and consult it to advise them before applying edits.
+        """
+
+        if ctx.deps.tool_call_notifier:
+            await ctx.deps.tool_call_notifier("🧭 channel profile guidance")
+
+        return load_channel_profile_advice()
+
+    @assistant_agent.tool
+    async def update_channel_profile(
+        ctx: RunContext[LoopieDeps],
+        patch: ChannelProfilePatch,
+    ) -> ChannelProfileSnapshot:
+        """Apply a patch to the stored channel profile."""
+
+        if ctx.deps.tool_call_notifier:
+            await ctx.deps.tool_call_notifier("🧭 updating channel profile")
+
+        return await ctx.deps.channel_profile_repo.update_profile(patch)
 
     @assistant_agent.tool
     async def get_channel_metrics(
