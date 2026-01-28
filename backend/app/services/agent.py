@@ -13,12 +13,15 @@ from pydantic_ai.models.openai import OpenAIChatModel
 
 from app.config import Settings
 from app.services.agent_tools import (
+    BaseChannelProfileRepository,
     BaseEntryRepository,
     BaseJournalRepository,
     BaseYouTubeRepository,
     ChannelMetrics,
+    ChannelProfileRepository,
     EmptyEntryRepository,
     EmptyJournalRepository,
+    EmptyChannelProfileRepository,
     EmptyYouTubeRepository,
     EntryRepository,
     JournalEntry,
@@ -30,6 +33,7 @@ from app.services.agent_tools import (
     VideoMetrics,
     YouTubeRepository,
 )
+from app.services.channel_profile import ChannelProfileSnapshot
 
 
 LOOPIE_SYSTEM_PROMPT = """You are Loopie, the slightly loopy (yet extremely useful) creative partner for YouTube creators on Storyloop.
@@ -38,13 +42,14 @@ You help creators understand their analytics, spark new ideas, and make data-dri
 
 When responding, you must:
 1) Infer the user's tone and creative energy from the conversation and, when needed, journal entries.
-2) Prefer calling tools for journal context or YouTube details instead of guessing. When searching past entries by keyword, use `grep_journal_entries` before loading broader context with `load_journal_entries`.
-3) Deliver grounded, concise guidance with clear next steps, keeping a supportive and action-focused tone.
-4) Note that future versions will store tone and preferences in persistent user memory; today you infer from provided context.
-5) Be explicit about any gaps in knowledge or access—say what you don't know instead of guessing.
-6) Use ``read_journal_entry`` before ``edit_journal_entry`` and pass along the returned ``content_hash``. Tool calls can appear mid-response and will render inline.
-7) When creating or editing a journal entry, never ask for confirmation or a title. Generate a strong title and write the full Markdown document inside the tool arguments (do not write the journal content outside the tool call or use placeholders). After the tool call, suggest improvements or clarifications the user can follow up on.
-8) When creating a journal entry, include a link to `/journals/{entry_id}` after creation.
+2) Prefer calling tools for journal context, channel profile, or YouTube details instead of guessing. When searching past entries by keyword, use `grep_journal_entries` before loading broader context with `load_journal_entries`.
+3) When evaluating video ideas or how well a video fits the channel, call `get_channel_profile` first and use the Identity–Emotion–Action framing to assess fit.
+4) Deliver grounded, concise guidance with clear next steps, keeping a supportive and action-focused tone.
+5) Note that future versions will store tone and preferences in persistent user memory; today you infer from provided context.
+6) Be explicit about any gaps in knowledge or access—say what you don't know instead of guessing.
+7) Use ``read_journal_entry`` before ``edit_journal_entry`` and pass along the returned ``content_hash``. Tool calls can appear mid-response and will render inline.
+8) When creating or editing a journal entry, never ask for confirmation or a title. Generate a strong title and write the full Markdown document inside the tool arguments (do not write the journal content outside the tool call or use placeholders). After the tool call, suggest improvements or clarifications the user can follow up on.
+9) When creating a journal entry, include a link to `/journals/{entry_id}` after creation.
 
 Most Storyloop users are early-stage creators, so explain metrics simply and briefly, focusing on why they matter.
 If the user demonstrates deeper knowledge, match their level and keep explanations tight.
@@ -115,6 +120,7 @@ class LoopieDeps(BaseModel):
     entry_repo: BaseEntryRepository
     journal_repo: BaseJournalRepository
     youtube_repo: BaseYouTubeRepository
+    channel_profile_repo: BaseChannelProfileRepository
     tool_call_notifier: Callable[[str], Awaitable[None]] | None = None
 
 
@@ -160,11 +166,18 @@ async def build_loopie_deps(
             youtube_service, user_service, oauth_service, analytics_service
         )
 
+    channel_profile_repo: BaseChannelProfileRepository
+    if user_service is None:
+        channel_profile_repo = EmptyChannelProfileRepository()
+    else:
+        channel_profile_repo = ChannelProfileRepository(user_service)
+
     return LoopieDeps(
         user_id=user_id,
         entry_repo=entry_repo,
         journal_repo=journal_repo,
         youtube_repo=youtube_repo,
+        channel_profile_repo=channel_profile_repo,
         tool_call_notifier=tool_call_notifier,
     )
 
@@ -439,6 +452,17 @@ def build_agent(
             await ctx.deps.tool_call_notifier("📈 metrics for a specific video")
 
         return await ctx.deps.youtube_repo.get_video_metrics(video_id)
+
+    @assistant_agent.tool
+    async def get_channel_profile(
+        ctx: RunContext[LoopieDeps],
+    ) -> ChannelProfileSnapshot:
+        """Load the stored channel profile for identity/emotion/action context."""
+
+        if ctx.deps.tool_call_notifier:
+            await ctx.deps.tool_call_notifier("🧭 channel identity profile")
+
+        return await ctx.deps.channel_profile_repo.get_profile()
 
     @assistant_agent.tool
     async def get_channel_metrics(

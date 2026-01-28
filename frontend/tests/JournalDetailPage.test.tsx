@@ -12,10 +12,12 @@ import { SettingsProvider } from "@/context/SettingsProvider";
 import { SyncProvider } from "@/context/SyncProvider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-const useYouTubeFeedMock = vi.fn<
-  (videoType?: "short" | "video" | "live" | null) =>
-    ReturnType<typeof useYouTubeFeedHook>
->();
+const useYouTubeFeedMock =
+  vi.fn<
+    (
+      videoType?: "short" | "video" | "live" | null,
+    ) => ReturnType<typeof useYouTubeFeedHook>
+  >();
 const apiGetMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/components/LoopiePanel", () => ({
@@ -91,7 +93,18 @@ function renderPage(ui: ReactElement) {
 describe("JournalDetailPage", () => {
   beforeEach(() => {
     apiGetMock.mockReset();
-    apiGetMock.mockResolvedValue({ data: sampleEntry });
+    apiGetMock.mockImplementation((url: string) => {
+      if (url.startsWith("/entries/")) {
+        return Promise.resolve({ data: sampleEntry });
+      }
+      if (url.startsWith("/entries")) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.startsWith("/conversations")) {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.resolve({ data: sampleEntry });
+    });
     useYouTubeFeedMock.mockReset();
     localStorage.clear();
   });
@@ -108,7 +121,9 @@ describe("JournalDetailPage", () => {
 
     renderPage(<JournalDetailPage />);
 
-    expect(await screen.findByDisplayValue(sampleEntry.title)).toBeInTheDocument();
+    expect(
+      await screen.findByDisplayValue(sampleEntry.title),
+    ).toBeInTheDocument();
 
     const prompts = screen.getAllByText(
       /Link your YouTube account to see videos near this journal entry/i,
@@ -174,11 +189,15 @@ describe("JournalDetailPage", () => {
 
     renderPage(<JournalDetailPage />);
 
-    expect(await screen.findByDisplayValue(sampleEntry.title)).toBeInTheDocument();
+    expect(
+      await screen.findByDisplayValue(sampleEntry.title),
+    ).toBeInTheDocument();
 
     const beforeLabel = screen.getByText(/Published before this journal/i);
     const beforeCard = beforeLabel.closest("a") ?? beforeLabel;
-    expect(within(beforeCard).getByText(earlierVideo.title)).toBeInTheDocument();
+    expect(
+      within(beforeCard).getByText(earlierVideo.title),
+    ).toBeInTheDocument();
 
     const afterLabel = screen.getByText(/Published after this journal/i);
     const afterCard = afterLabel.closest("a") ?? afterLabel;
@@ -197,9 +216,13 @@ describe("JournalDetailPage", () => {
 
     renderPage(<JournalDetailPage />);
 
-    expect(await screen.findByDisplayValue(sampleEntry.title)).toBeInTheDocument();
+    expect(
+      await screen.findByDisplayValue(sampleEntry.title),
+    ).toBeInTheDocument();
 
-    const errors = screen.getAllByText(/We couldn't load channel information./i);
+    const errors = screen.getAllByText(
+      /We couldn't load channel information./i,
+    );
     expect(errors).toHaveLength(2);
   });
 });
