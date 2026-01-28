@@ -14,12 +14,18 @@ async def test_get_settings_returns_default_schedule() -> None:
     app = create_app(settings)
     transport = ASGITransport(app=app)
 
-    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
-        response = await client.get("/settings")
+    async with app.router.lifespan_context(app):
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
+            response = await client.get("/settings/")
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["smartUpdateScheduleHours"] == DEFAULT_SMART_UPDATE_INTERVAL_HOURS
+    assert (
+        payload["smartUpdateScheduleHours"]
+        == DEFAULT_SMART_UPDATE_INTERVAL_HOURS
+    )
 
 
 @pytest.mark.asyncio
@@ -30,11 +36,14 @@ async def test_update_settings_persists_schedule() -> None:
     app = create_app(settings)
     transport = ASGITransport(app=app)
 
-    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
-        update_response = await client.put(
-            "/settings", json={"smartUpdateScheduleHours": 6}
-        )
-        followup = await client.get("/settings")
+    async with app.router.lifespan_context(app):
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
+            update_response = await client.put(
+                "/settings/", json={"smartUpdateScheduleHours": 6}
+            )
+            followup = await client.get("/settings/")
 
     assert update_response.status_code == 200
     assert update_response.json()["smartUpdateScheduleHours"] == 6

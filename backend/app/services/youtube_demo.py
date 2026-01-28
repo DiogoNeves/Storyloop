@@ -273,11 +273,14 @@ class DemoUserService(UserService):
             channel_url="https://www.youtube.com/channel/UCDEMOCHANNEL",
             channel_thumbnail_url="https://example.com/demo/high.jpg",
             channel_updated_at=datetime.now(tz=UTC),
+            channel_profile_json=None,
+            channel_profile_updated_at=None,
             credentials_json=demo_credentials,
             credentials_updated_at=datetime.now(tz=UTC),
             credentials_error=None,
             oauth_state=None,
             oauth_state_created_at=None,
+            smart_update_interval_hours=None,
         )
 
     # Delegate all other methods to real service
@@ -335,7 +338,9 @@ class DemoYoutubeService(YoutubeService):
         super().__init__(
             api_key=api_key or "demo", transport=transport, client=client
         )
-        selected_scenario = scenario or os.getenv("YOUTUBE_DEMO_SCENARIO") or "baseline"
+        selected_scenario = (
+            scenario or os.getenv("YOUTUBE_DEMO_SCENARIO") or "baseline"
+        )
         try:
             self._fixture_loader = FixtureLoader(selected_scenario)
         except (

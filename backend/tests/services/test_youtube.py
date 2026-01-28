@@ -23,7 +23,9 @@ async def test_fetch_channel_videos_returns_feed():
                     "title": "Storyloop",
                     "description": "Channel description",
                     "thumbnails": {
-                        "default": {"url": "https://img.youtube.com/default.jpg"},
+                        "default": {
+                            "url": "https://img.youtube.com/default.jpg"
+                        },
                         "medium": {"url": "https://img.youtube.com/medium.jpg"},
                     },
                 },
@@ -44,7 +46,9 @@ async def test_fetch_channel_videos_returns_feed():
                     "publishedAt": "2024-01-01T12:00:00Z",
                     "resourceId": {"videoId": "vid-1"},
                     "thumbnails": {
-                        "medium": {"url": "https://img.youtube.com/vid-1/mqdefault.jpg"}
+                        "medium": {
+                            "url": "https://img.youtube.com/vid-1/mqdefault.jpg"
+                        }
                     },
                 }
             }
@@ -66,7 +70,9 @@ async def test_fetch_channel_videos_returns_feed():
             return httpx.Response(200, json={"items": []})
         raise AssertionError(f"Unhandled URL {request.url}")
 
-    service = YoutubeService(api_key="test-key", transport=httpx.MockTransport(handler))
+    service = YoutubeService(
+        api_key="test-key", transport=httpx.MockTransport(handler)
+    )
 
     feed = await service.fetch_channel_videos("@storyloop", max_results=5)
 
@@ -98,7 +104,9 @@ async def test_fetch_channel_videos_handles_missing_channel():
             return httpx.Response(200, json={"items": []})
         raise AssertionError(f"Unhandled URL {request.url}")
 
-    service = YoutubeService(api_key="test-key", transport=httpx.MockTransport(handler))
+    service = YoutubeService(
+        api_key="test-key", transport=httpx.MockTransport(handler)
+    )
 
     with pytest.raises(YoutubeChannelNotFound):
         await service.fetch_channel_videos("https://youtube.com/channel/UC123")
@@ -124,7 +132,9 @@ async def test_fetch_channel_videos_resolves_watch_url_via_video_lookup():
                     "title": "Storyloop",
                     "description": "Channel description",
                     "thumbnails": {
-                        "default": {"url": "https://img.youtube.com/default.jpg"},
+                        "default": {
+                            "url": "https://img.youtube.com/default.jpg"
+                        },
                     },
                 },
                 "contentDetails": {
@@ -163,7 +173,9 @@ async def test_fetch_channel_videos_resolves_watch_url_via_video_lookup():
             return httpx.Response(200, json={"items": []})
         raise AssertionError(f"Unhandled URL {request.url}")
 
-    service = YoutubeService(api_key="test-key", transport=httpx.MockTransport(handler))
+    service = YoutubeService(
+        api_key="test-key", transport=httpx.MockTransport(handler)
+    )
 
     feed = await service.fetch_channel_videos(
         "https://www.youtube.com/watch?v=vid-1", max_results=1
@@ -182,7 +194,9 @@ async def test_fetch_channel_videos_skips_playlist_when_max_results_is_zero():
                 "snippet": {
                     "title": "Storyloop",
                     "thumbnails": {
-                        "default": {"url": "https://img.youtube.com/default.jpg"},
+                        "default": {
+                            "url": "https://img.youtube.com/default.jpg"
+                        },
                     },
                 },
                 "contentDetails": {"relatedPlaylists": {"uploads": "UU999"}},
@@ -199,7 +213,9 @@ async def test_fetch_channel_videos_skips_playlist_when_max_results_is_zero():
             return httpx.Response(200, json={"items": []})
         raise AssertionError(f"Unhandled URL {request.url}")
 
-    service = YoutubeService(api_key="test-key", transport=httpx.MockTransport(handler))
+    service = YoutubeService(
+        api_key="test-key", transport=httpx.MockTransport(handler)
+    )
 
     feed = await service.fetch_channel_videos("@storyloop", max_results=0)
 
@@ -216,11 +232,14 @@ async def test_fetch_channel_feed_uses_authenticated_when_credentials_exist():
         channel_url=None,
         channel_thumbnail_url=None,
         channel_updated_at=None,
+        channel_profile_json=None,
+        channel_profile_updated_at=None,
         credentials_json="{}",
         credentials_updated_at=None,
         credentials_error=None,
         oauth_state=None,
         oauth_state_created_at=None,
+        smart_update_interval_hours=None,
     )
 
     class DummyUserService:
@@ -247,7 +266,13 @@ async def test_fetch_channel_feed_uses_authenticated_when_credentials_exist():
         def __init__(self, *args, **kwargs) -> None:
             super().__init__(*args, **kwargs)
             self.calls: list[
-                tuple[UserService, YoutubeOAuthService, str | None, int, str | None]
+                tuple[
+                    UserService,
+                    YoutubeOAuthService,
+                    str | None,
+                    int,
+                    str | None,
+                ]
             ] = []
 
         async def fetch_authenticated_channel_videos(
@@ -260,7 +285,13 @@ async def test_fetch_channel_feed_uses_authenticated_when_credentials_exist():
             video_type: str | None = None,
         ) -> YoutubeFeed:
             self.calls.append(
-                (user_service, oauth_service, channel_id, max_results, video_type)
+                (
+                    user_service,
+                    oauth_service,
+                    channel_id,
+                    max_results,
+                    video_type,
+                )
             )
             return sentinel_feed
 
@@ -291,11 +322,14 @@ async def test_fetch_channel_feed_falls_back_when_authentication_fails():
         channel_url=None,
         channel_thumbnail_url=None,
         channel_updated_at=None,
+        channel_profile_json=None,
+        channel_profile_updated_at=None,
         credentials_json="{}",
         credentials_updated_at=None,
         credentials_error=None,
         oauth_state=None,
         oauth_state_created_at=None,
+        smart_update_interval_hours=None,
     )
 
     class DummyUserService:
@@ -370,11 +404,14 @@ def test_build_authenticated_client_clears_credentials_on_refresh_failure():
         channel_url=None,
         channel_thumbnail_url=None,
         channel_updated_at=None,
+        channel_profile_json=None,
+        channel_profile_updated_at=None,
         credentials_json="{}",
         credentials_updated_at=None,
         credentials_error=None,
         oauth_state=None,
         oauth_state_created_at=None,
+        smart_update_interval_hours=None,
     )
 
     class DummyUserService:
@@ -420,7 +457,9 @@ def test_build_authenticated_client_clears_credentials_on_refresh_failure():
     with pytest.raises(YoutubeConfigurationError):
         service.build_authenticated_client(user_service, oauth_service)
 
-    assert dummy_user_service.upsert_calls == [(None, None, "invalid credentials")]
+    assert dummy_user_service.upsert_calls == [
+        (None, None, "invalid credentials")
+    ]
 
 
 @pytest.mark.asyncio
@@ -432,7 +471,9 @@ async def test_fetch_channel_videos_paginates_playlist_items():
                 "snippet": {
                     "title": "Storyloop",
                     "thumbnails": {
-                        "default": {"url": "https://img.youtube.com/default.jpg"},
+                        "default": {
+                            "url": "https://img.youtube.com/default.jpg"
+                        },
                     },
                 },
                 "contentDetails": {"relatedPlaylists": {"uploads": "UU222"}},
@@ -496,7 +537,9 @@ async def test_fetch_channel_videos_paginates_playlist_items():
             return httpx.Response(200, json={"items": []})
         raise AssertionError(f"Unhandled URL {request.url}")
 
-    service = YoutubeService(api_key="test-key", transport=httpx.MockTransport(handler))
+    service = YoutubeService(
+        api_key="test-key", transport=httpx.MockTransport(handler)
+    )
 
     feed = await service.fetch_channel_videos("@storyloop", max_results=3)
 
@@ -513,7 +556,9 @@ async def test_fetch_channel_videos_raises_for_malformed_json():
                 "snippet": {
                     "title": "Storyloop",
                     "thumbnails": {
-                        "default": {"url": "https://img.youtube.com/default.jpg"},
+                        "default": {
+                            "url": "https://img.youtube.com/default.jpg"
+                        },
                     },
                 },
                 "contentDetails": {"relatedPlaylists": {"uploads": "UU111"}},
@@ -534,7 +579,9 @@ async def test_fetch_channel_videos_raises_for_malformed_json():
             return httpx.Response(200, json={"items": []})
         raise AssertionError(f"Unhandled URL {request.url}")
 
-    service = YoutubeService(api_key="test-key", transport=httpx.MockTransport(handler))
+    service = YoutubeService(
+        api_key="test-key", transport=httpx.MockTransport(handler)
+    )
 
     with pytest.raises(YoutubeAPIRequestError):
         await service.fetch_channel_videos("@storyloop", max_results=5)
@@ -550,7 +597,9 @@ async def test_fetch_channel_videos_filters_by_video_type():
                 "snippet": {
                     "title": "Storyloop",
                     "thumbnails": {
-                        "default": {"url": "https://img.youtube.com/default.jpg"},
+                        "default": {
+                            "url": "https://img.youtube.com/default.jpg"
+                        },
                     },
                 },
                 "contentDetails": {"relatedPlaylists": {"uploads": "UU444"}},
@@ -614,12 +663,16 @@ async def test_fetch_channel_videos_filters_by_video_type():
         if request.url.path.endswith("/videos"):
             # Video duration lookup
             video_ids = request.url.params.get("id", "")
-            return httpx.Response(200, json=video_durations.get(video_ids, {"items": []}))
+            return httpx.Response(
+                200, json=video_durations.get(video_ids, {"items": []})
+            )
         if request.url.path.endswith("/search"):
             return httpx.Response(200, json={"items": []})
         raise AssertionError(f"Unhandled URL {request.url}")
 
-    service = YoutubeService(api_key="test-key", transport=httpx.MockTransport(handler))
+    service = YoutubeService(
+        api_key="test-key", transport=httpx.MockTransport(handler)
+    )
 
     # Test filtering for shorts only
     feed_short = await service.fetch_channel_videos(

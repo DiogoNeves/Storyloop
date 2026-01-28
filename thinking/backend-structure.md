@@ -16,6 +16,7 @@ backend/
 │   ├── routers/           # HTTP endpoints
 │   │   ├── __init__.py
 │   │   ├── assets.py      # Asset upload + retrieval
+│   │   ├── channel.py     # Channel identity profile
 │   │   ├── conversations.py  # Conversation streaming endpoints
 │   │   ├── entries.py     # Journal/timeline entries CRUD
 │   │   ├── health.py      # Health check endpoint
@@ -26,6 +27,7 @@ backend/
 │       ├── agent.py       # PydanticAI agent builder
 │       ├── agent_tools/   # Agent tool adapters + models
 │       ├── assets.py      # Asset storage + metadata
+│       ├── channel_profile.py # Channel profile data models
 │       ├── entries.py     # Entry persistence
 │       ├── users.py       # Active user/channel state
 │       ├── youtube.py     # YouTube API integration
@@ -138,7 +140,6 @@ conn.close()
 - `entries.pinned` is stored as `INTEGER NOT NULL DEFAULT 0` and added in `ensure_schema()` if missing.
 - `entries_fts` is an FTS5 trigram virtual table kept in sync via triggers for grep-style search.
 
-
 #### AssetService (`services/assets.py`)
 
 **Purpose:** Store uploaded files on disk with metadata in SQLite.
@@ -221,12 +222,10 @@ markdown links to `/assets/{id}` for attachments.
 **Endpoints:**
 
 - `POST /conversations` - Create a new conversation
-
   - Request: `{ "title": "optional title" }`
   - Response: `{ "id": "...", "title": "...", "created_at": "..." }`
 
 - `GET /conversations/{conversation_id}/turns` - List all turns for a conversation
-
   - Response: `[{ "id": "...", "role": "user|assistant", "text": "...", "attachments": [], "created_at": "..." }]`
 
 - `POST /conversations/{conversation_id}/turns/stream` - Stream assistant response (SSE)
@@ -249,15 +248,16 @@ markdown links to `/assets/{id}` for attachments.
 
 #### Channel Settings Router (Future: `routers/settings.py`)
 
+#### Channel Router (`routers/channel.py`)
+
 **Endpoints:**
 
-- `GET /settings/channel` - Retrieve saved channel preference
-- `POST /settings/channel` - Save channel preference (first-time setup)
-- `PUT /settings/channel` - Update channel preference
+- `GET /channel` - Retrieve saved channel identity profile (or null)
+- `PUT /channel` - Save/update channel identity profile
 
-**Purpose:** Manage user's channel selection for YouTube tracking
+**Purpose:** Persist the audience buckets + Identity–Emotion–Action framework used by Loopie.
 
-**Integration:** Frontend uses this to check for saved channel on app load and prompt for selection if none exists
+**Integration:** Frontend Channel tab writes this profile; the agent uses it to evaluate idea fit.
 
 ## Request Flow
 

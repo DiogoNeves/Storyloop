@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from contextlib import closing
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from sqlite3 import Row
 
 from app.services.base import DatabaseService
@@ -23,6 +24,8 @@ class UserRecord:
     channel_url: str | None
     channel_thumbnail_url: str | None
     channel_updated_at: datetime | None
+    channel_profile_json: str | None
+    channel_profile_updated_at: datetime | None
     # Serialized OAuth credentials (JSON string) containing access token, refresh token,
     # and expiry. Used to build authenticated YouTube API clients for fetching channel
     # info during OAuth callback and checking authentication status. Credentials are
@@ -50,6 +53,10 @@ def _row_to_record(row: Row) -> UserRecord:
         channel_url=row["channel_url"],
         channel_thumbnail_url=row["channel_thumbnail_url"],
         channel_updated_at=_parse_timestamp(row["channel_updated_at"]),
+        channel_profile_json=row["channel_profile_json"],
+        channel_profile_updated_at=_parse_timestamp(
+            row["channel_profile_updated_at"]
+        ),
         credentials_json=row["credentials_json"],
         credentials_updated_at=_parse_timestamp(row["credentials_updated_at"]),
         credentials_error=row["credentials_error"],
@@ -75,6 +82,8 @@ class UserService(DatabaseService):
                     channel_url TEXT,
                     channel_thumbnail_url TEXT,
                     channel_updated_at TEXT,
+                    channel_profile_json TEXT,
+                    channel_profile_updated_at TEXT,
                     credentials_json TEXT,
                     credentials_updated_at TEXT,
                     credentials_error TEXT,
@@ -95,6 +104,14 @@ class UserService(DatabaseService):
             if "smart_update_interval_hours" not in existing_columns:
                 connection.execute(
                     "ALTER TABLE users ADD COLUMN smart_update_interval_hours INTEGER"
+                )
+            if "channel_profile_json" not in existing_columns:
+                connection.execute(
+                    "ALTER TABLE users ADD COLUMN channel_profile_json TEXT"
+                )
+            if "channel_profile_updated_at" not in existing_columns:
+                connection.execute(
+                    "ALTER TABLE users ADD COLUMN channel_profile_updated_at TEXT"
                 )
             connection.commit()
 
@@ -251,6 +268,64 @@ class UserService(DatabaseService):
                 (_DEFAULT_USER_ID,),
             )
             connection.commit()
+
+    def get_channel_profile(
+        self,
+    ) -> tuple[dict[str, object] | None, datetime | None]:
+        """Return the stored channel profile and last update time."""
+
+        with closing(self._connection_factory()) as connection:
+            row = connection.execute(
+                """
+                SELECT channel_profile_json, channel_profile_updated_at
+                FROM users WHERE id = ?
+                """,
+                (_DEFAULT_USER_ID,),
+            ).fetchone()
+
+        if row is None:
+            return None, None
+
+        raw_profile = row["channel_profile_json"]
+        updated_at = row["channel_profile_updated_at"]
+        parsed_updated_at = (
+            datetime.fromisoformat(updated_at) if updated_at else None
+        )
+        if not raw_profile:
+            return None, parsed_updated_at
+
+        try:
+            profile = json.loads(raw_profile)
+        except json.JSONDecodeError:
+            return None, parsed_updated_at
+
+        if not isinstance(profile, dict):
+            return None, parsed_updated_at
+
+        return profile, parsed_updated_at
+
+    def upsert_channel_profile(self, profile: dict[str, object]) -> datetime:
+        """Persist the channel profile for the active user."""
+
+        updated_at = datetime.now(tz=UTC)
+        serialized = json.dumps(profile)
+        with closing(self._connection_factory()) as connection:
+            connection.execute(
+                """
+                INSERT INTO users (
+                    id,
+                    channel_profile_json,
+                    channel_profile_updated_at
+                ) VALUES (?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    channel_profile_json=excluded.channel_profile_json,
+                    channel_profile_updated_at=excluded.channel_profile_updated_at
+                """,
+                (_DEFAULT_USER_ID, serialized, updated_at.isoformat()),
+            )
+            connection.commit()
+
+        return updated_at
 
     def save_oauth_state(self, state: str, created_at: datetime) -> None:
         """Persist the most recent OAuth state token for CSRF protection."""
