@@ -7,6 +7,10 @@ from pydantic import ValidationError
 
 from app.dependencies import get_user_service
 from app.services.channel_profile import ChannelProfile, ChannelProfileSnapshot
+from app.services.channel_profile_advice import (
+    ChannelProfileAdvice,
+    get_channel_profile_advice,
+)
 from app.services.users import UserService
 
 router = APIRouter(prefix="/channel", tags=["channel"])
@@ -28,8 +32,15 @@ def get_channel_profile(
 
     return ChannelProfileSnapshot(
         profile=profile,
-        updated_at=updated_at.isoformat() if updated_at else None,
+        updatedAt=updated_at.isoformat() if updated_at else None,
     )
+
+
+@router.get("/advice", response_model=ChannelProfileAdvice)
+def get_channel_profile_advice_route() -> ChannelProfileAdvice:
+    """Return the static guidance for building a channel profile."""
+
+    return get_channel_profile_advice()
 
 
 @router.put("/", response_model=ChannelProfileSnapshot)
@@ -42,5 +53,5 @@ def update_channel_profile(
     serialized = payload.model_dump(by_alias=True)
     updated_at = user_service.upsert_channel_profile(serialized)
     return ChannelProfileSnapshot(
-        profile=payload, updated_at=updated_at.isoformat()
+        profile=payload, updatedAt=updated_at.isoformat()
     )
