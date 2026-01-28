@@ -6,10 +6,12 @@ from typing import Any, Protocol, runtime_checkable
 from uuid import uuid4
 
 import anyio
+from pydantic import ValidationError
 
 from app.services.assets import AssetService, extract_asset_ids
 from app.services.entries import EntryRecord, EntryService
 from app.services.users import UserService
+from app.services.channel_profile import ChannelProfile, ChannelProfileSnapshot
 from app.services.youtube import YoutubeService
 from app.services.agent_tools.models import (
     ChannelMetrics,
@@ -92,9 +94,7 @@ class JournalRepository:
         def _fetch() -> list[JournalEntry]:
             records = self._entry_service.list_entries()
             filtered = [
-                record
-                for record in records
-                if record.category == "journal"
+                record for record in records if record.category == "journal"
             ]
             if before:
                 cutoff = _parse_iso_datetime(before)
@@ -177,7 +177,9 @@ class JournalRepository:
                 link_url=record.link_url,
                 thumbnail_url=record.thumbnail_url,
                 video_id=record.video_id,
-                pinned=payload.pinned if payload.pinned is not None else record.pinned,
+                pinned=payload.pinned
+                if payload.pinned is not None
+                else record.pinned,
             )
             updated = self._entry_service.update_entry(updated_record)
             if not updated:
@@ -322,6 +324,46 @@ class EmptyEntryRepository:
         raise RuntimeError("Entry service not configured")
 
 
+class ChannelProfileRepository:
+    """Access stored channel identity profile."""
+
+    def __init__(self, user_service: UserService) -> None:
+        self._user_service = user_service
+
+    async def get_profile(self) -> ChannelProfileSnapshot:
+        """Return the stored channel profile with update time."""
+
+        def _fetch() -> ChannelProfileSnapshot:
+            profile_data, updated_at = self._user_service.get_channel_profile()
+            profile = None
+            if profile_data:
+                try:
+                    profile = ChannelProfile.model_validate(profile_data)
+                except ValidationError:
+                    profile = None
+            return ChannelProfileSnapshot(
+                profile=profile,
+                updated_at=updated_at.isoformat() if updated_at else None,
+            )
+
+        return await anyio.to_thread.run_sync(_fetch)
+
+
+@runtime_checkable
+class BaseChannelProfileRepository(Protocol):
+    """Interface for channel profile access consumed by the agent."""
+
+    async def get_profile(self) -> ChannelProfileSnapshot:
+        """Return the stored channel profile (if any)."""
+
+
+class EmptyChannelProfileRepository:
+    """Fallback repository returning no channel profile data."""
+
+    async def get_profile(self) -> ChannelProfileSnapshot:
+        return ChannelProfileSnapshot(profile=None, updated_at=None)
+
+
 def _collect_attachments(
     asset_service: AssetService | None, summary: str
 ) -> list[JournalEntryAttachment]:
@@ -373,7 +415,9 @@ class YouTubeRepository:
         self._analytics_service = analytics_service
 
     async def _get_active_user(self) -> Any:
-        return await anyio.to_thread.run_sync(self._user_service.get_active_user)
+        return await anyio.to_thread.run_sync(
+            self._user_service.get_active_user
+        )
 
     async def list_recent_videos(
         self, *, limit: int = 5, include_shorts: bool = False
@@ -397,7 +441,9 @@ class YouTubeRepository:
             max_results=max(limit, 5),
         )
         videos = [
-            video for video in feed.videos if include_shorts or video.video_type == "video"
+            video
+            for video in feed.videos
+            if include_shorts or video.video_type == "video"
         ][:limit]
         return [
             VideoDetails(
@@ -453,7 +499,9 @@ class YouTubeRepository:
             return []
 
         effective_max_scan = max_scan or self._DEFAULT_MAX_SCAN
-        effective_max_scan = max(1, min(effective_max_scan, self._HARD_MAX_SCAN))
+        effective_max_scan = max(
+            1, min(effective_max_scan, self._HARD_MAX_SCAN)
+        )
 
         video_type = None if include_shorts else "video"
         feed = await self._youtube_service.fetch_channel_feed(
@@ -513,7 +561,9 @@ class YouTubeRepository:
             )
 
         effective_max_scan = max_scan or self._DEFAULT_MAX_SCAN
-        effective_max_scan = max(1, min(effective_max_scan, self._HARD_MAX_SCAN))
+        effective_max_scan = max(
+            1, min(effective_max_scan, self._HARD_MAX_SCAN)
+        )
 
         video_type = None if include_shorts else "video"
         feed = await self._youtube_service.fetch_channel_feed(

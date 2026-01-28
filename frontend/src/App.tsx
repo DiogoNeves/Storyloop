@@ -33,13 +33,17 @@ import {
   type Entry,
 } from "@/api/entries";
 import { deleteConversation } from "@/api/conversations";
-import { compareEntriesByPinnedDate, type ActivityItem } from "@/lib/types/entries";
+import {
+  compareEntriesByPinnedDate,
+  type ActivityItem,
+} from "@/lib/types/entries";
 import { useActivityItems } from "@/hooks/useActivityItems";
 import { YoutubeAuthCallback } from "@/pages/YoutubeAuthCallback";
 import { VideoDetailPage } from "@/pages/VideoDetailPage";
 import { JournalDetailPage } from "@/pages/JournalDetailPage";
 import { ConversationDetailPage } from "@/pages/ConversationDetailPage";
 import { LoopiePage } from "@/pages/LoopiePage";
+import { ChannelPage } from "@/pages/ChannelPage";
 import { Input } from "@/components/ui/input";
 import {
   AgentConversationProvider,
@@ -204,7 +208,8 @@ function JournalPage() {
     ],
   );
 
-  const hasActivity = activityItems.length > 0 || Boolean(youtubeState.youtubeFeed);
+  const hasActivity =
+    activityItems.length > 0 || Boolean(youtubeState.youtubeFeed);
   const displayItems = hasActivity ? activityItems : seedActivityItems;
 
   const [draft, setDraft] = useState<ActivityDraft | null>(null);
@@ -391,7 +396,15 @@ function JournalPage() {
           : "We couldn't save your entry. Please try again.";
       setDraftError(message);
     }
-  }, [draft, saveEntry, isOnline, queueEntry, markServerUnreachable, queryClient, entriesListQuery.queryKey]);
+  }, [
+    draft,
+    saveEntry,
+    isOnline,
+    queueEntry,
+    markServerUnreachable,
+    queryClient,
+    entriesListQuery.queryKey,
+  ]);
 
   const handleDraftSubmit = useCallback(() => {
     void handleSubmitDraft();
@@ -425,28 +438,27 @@ function JournalPage() {
         </div>
       </div>
 
-        <ActivityFeed
-          className="flex-1"
-          items={displayItems}
-          youtubeFeed={youtubeState.youtubeFeed}
-          isLinked={youtubeState.isLinked}
-          linkStatus={youtubeState.linkStatus}
-          youtubeError={youtubeState.youtubeError}
-          draft={draft}
-          onStartDraft={handleStartDraft}
-          onDraftChange={handleDraftChange}
-          onCancelDraft={handleCancelDraft}
-          onSubmitDraft={handleDraftSubmit}
-          isSubmittingDraft={isSavingEntry}
-          draftError={draftError}
-          errorMessage={entriesErrorMessage}
-          conversationErrorMessage={conversationDeleteError}
-          onConversationClick={handleConversationClick}
-          onConversationDelete={isDemo ? undefined : handleConversationDelete}
-          deletingConversationIds={deletingConversationIds}
-          searchQuery={searchQuery}
-        />
-
+      <ActivityFeed
+        className="flex-1"
+        items={displayItems}
+        youtubeFeed={youtubeState.youtubeFeed}
+        isLinked={youtubeState.isLinked}
+        linkStatus={youtubeState.linkStatus}
+        youtubeError={youtubeState.youtubeError}
+        draft={draft}
+        onStartDraft={handleStartDraft}
+        onDraftChange={handleDraftChange}
+        onCancelDraft={handleCancelDraft}
+        onSubmitDraft={handleDraftSubmit}
+        isSubmittingDraft={isSavingEntry}
+        draftError={draftError}
+        errorMessage={entriesErrorMessage}
+        conversationErrorMessage={conversationDeleteError}
+        onConversationClick={handleConversationClick}
+        onConversationDelete={isDemo ? undefined : handleConversationDelete}
+        deletingConversationIds={deletingConversationIds}
+        searchQuery={searchQuery}
+      />
     </div>
   );
 }
@@ -463,13 +475,14 @@ export function App() {
                   <Route path="/" element={<AppLayout />}>
                     <Route index element={<JournalPage />} />
                     <Route path="journal" element={<JournalPage />} />
+                    <Route path="channel" element={<ChannelPage />} />
                     <Route path="loopie" element={<LoopiePage />} />
                   </Route>
+                  <Route path="/journals/new" element={<JournalDetailPage />} />
                   <Route
-                    path="/journals/new"
-                    element={<JournalDetailPage />}
+                    path="/videos/:videoId"
+                    element={<VideoDetailPage />}
                   />
-                  <Route path="/videos/:videoId" element={<VideoDetailPage />} />
                   <Route
                     path="/journals/:journalId"
                     element={<JournalDetailPage />}
@@ -478,7 +491,10 @@ export function App() {
                     path="/conversations/:conversationId"
                     element={<ConversationDetailPage />}
                   />
-                  <Route path="/auth/callback" element={<YoutubeAuthCallback />} />
+                  <Route
+                    path="/auth/callback"
+                    element={<YoutubeAuthCallback />}
+                  />
                 </Routes>
               </AgentConversationProvider>
             </SyncProvider>

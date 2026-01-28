@@ -7,6 +7,7 @@ frontend/
 ├── src/
 │   ├── api/              # API client and query helpers
 │   │   ├── assets.ts     # Asset uploads + metadata
+│   │   ├── channel.ts    # Channel identity profile
 │   │   ├── client.ts     # Axios instance
 │   │   ├── conversations.ts # Loopie conversations + turns
 │   │   ├── entries.ts    # Activity/journal entries
@@ -39,6 +40,7 @@ frontend/
 │   │   ├── types/        # Shared TS types
 │   │   └── utils.ts      # cn() helper
 │   ├── pages/            # Routed pages
+│   │   ├── ChannelPage.tsx
 │   │   ├── ConversationDetailPage.tsx
 │   │   ├── JournalDetailPage.tsx
 │   │   ├── LoopiePage.tsx
@@ -83,6 +85,7 @@ frontend/
 - Journal entry creation and editing (detail view editor, title autosave, pinned)
 - Image/PDF attachments inserted into markdown summaries via uploads
 - Loopie chat panel with attachment support
+- Channel identity page with guided audience + value audit flow
 - Conversation and detail routes for deeper inspection
 
 ### ActivityFeed Component
@@ -156,7 +159,7 @@ frontend/
 **Features:**
 
 - Branding with Storyloop logo
-- Navigation links (Dashboard, Library, Settings)
+- Navigation links (Journal, Channel, Loopie, Settings)
 - Responsive design
 
 ## Entry Sorting
@@ -406,26 +409,18 @@ import.meta.env.VITE_API_BASE_URL;
 - `@/api` → `src/api`
 - `@/lib` → `src/lib`
 
-## Channel Selection Flow
+## Channel Identity Profile
 
-**First-Time Login:**
+**Channel Tab:**
 
-- User is prompted to select which YouTube channel to track
-- Channel selection is saved to user preferences/database
-- Channel information is stored and used for all subsequent syncs
+- Guided, scrollable flow based on Audience Audit + Value Proposition worksheets
+- Stores audience buckets plus Identity–Emotion–Action details
+- Designed for desktop and mobile, minimal markdown usage
 
-**Subsequent Logins:**
+**Journal Banner:**
 
-- Saved channel is automatically loaded
-- No prompt needed unless user explicitly changes channel settings
-- Channel preference persists across sessions
-
-**Implementation Notes:**
-
-- Channel selection will be stored in backend (user preferences/settings table)
-- Frontend will check for saved channel on app load
-- If no channel exists, show channel selection dialog/modal
-- Channel ID/identifier used for YouTube API syncs
+- If the channel profile is empty, the activity feed surfaces a banner linking to `/channel`
+- Once saved, Loopie uses the profile to evaluate idea fit
 
 ## Future Enhancements
 
