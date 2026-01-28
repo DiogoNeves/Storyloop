@@ -82,3 +82,24 @@ async def test_put_channel_profile_persists_payload() -> None:
         followup_payload["profile"]["audienceBuckets"][0]["name"]
         == "Solo filmmakers"
     )
+
+
+@pytest.mark.asyncio
+async def test_get_channel_profile_advice_returns_guidance() -> None:
+    settings = Settings.model_validate(
+        {"DATABASE_URL": "sqlite:///:memory:", "YOUTUBE_API_KEY": "test-key"}
+    )
+    app = create_app(settings)
+    transport = ASGITransport(app=app)
+
+    async with app.router.lifespan_context(app):
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
+            response = await client.get("/channel/advice")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "profileFields" in payload
+    assert "bucketFields" in payload
+    assert "checklists" in payload

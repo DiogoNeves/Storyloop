@@ -19,6 +19,43 @@ export interface AudienceBucket {
   valueNotes?: string;
 }
 
+export type FieldKind = "input" | "textarea";
+
+export type ChecklistSection = {
+  title: string;
+  items: string[];
+};
+
+export type FieldDefinition = {
+  id: string;
+  label: string;
+  placeholder?: string;
+  kind: FieldKind;
+  className?: string;
+  controlClassName?: string;
+};
+
+export type ProfileFieldKey =
+  | "audienceFocus"
+  | "bucketsLockedNotes"
+  | "personalConnectionNotes";
+
+export type ProfileFieldDefinition = FieldDefinition & {
+  id: string;
+  key: ProfileFieldKey;
+};
+
+export type BucketFieldDefinition = Omit<FieldDefinition, "id"> & {
+  idSuffix: string;
+  key: keyof AudienceBucket;
+};
+
+export type ChannelProfileAdvice = {
+  profileFields: Record<ProfileFieldKey, ProfileFieldDefinition>;
+  bucketFields: Record<string, BucketFieldDefinition>;
+  checklists: Record<string, ChecklistSection>;
+};
+
 export interface ChannelProfile {
   audienceFocus?: string;
   audienceBuckets: AudienceBucket[];
@@ -38,6 +75,14 @@ export const channelQueries = createQueryKeys("channel", {
     queryKey: ["channel", "profile"],
     queryFn: async (): Promise<ChannelProfileResponse> => {
       const { data } = await apiClient.get<ChannelProfileResponse>("/channel");
+      return data;
+    },
+  }),
+  advice: () => ({
+    queryKey: ["channel", "advice"],
+    queryFn: async (): Promise<ChannelProfileAdvice> => {
+      const { data } =
+        await apiClient.get<ChannelProfileAdvice>("/channel/advice");
       return data;
     },
   }),

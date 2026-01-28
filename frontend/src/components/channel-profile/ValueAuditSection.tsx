@@ -1,22 +1,22 @@
-import type { AudienceBucket } from "@/api/channel";
-import {
-  bucketFieldDefinitions,
-  checklistContent,
-} from "@/components/channel-profile/channelProfileContent";
+import type { AudienceBucket, ChannelProfileAdvice } from "@/api/channel";
 import { BucketCard } from "@/components/channel-profile/BucketCard";
 import { BucketField } from "@/components/channel-profile/BucketField";
 import { ChecklistCard } from "@/components/channel-profile/ChecklistCard";
 import { SectionCard } from "@/components/channel-profile/SectionCard";
 
 type ValueAuditSectionProps = {
+  advice: ChannelProfileAdvice;
   buckets: AudienceBucket[];
   onUpdateBucket: (bucketId: string, updates: Partial<AudienceBucket>) => void;
 };
 
 export function ValueAuditSection({
+  advice,
   buckets,
   onUpdateBucket,
 }: ValueAuditSectionProps) {
+  const { bucketFields, checklists } = advice;
+
   return (
     <SectionCard
       title="Steps 7–10: Value audit (Identity–Emotion–Action)"
@@ -31,32 +31,32 @@ export function ValueAuditSection({
             <div className="grid gap-3 sm:grid-cols-2">
               <BucketField
                 bucket={bucket}
-                definition={bucketFieldDefinitions.valueEmotion}
+                definition={bucketFields.valueEmotion}
                 onUpdate={onUpdateBucket}
               />
               <BucketField
                 bucket={bucket}
-                definition={bucketFieldDefinitions.valueAction}
+                definition={bucketFields.valueAction}
                 onUpdate={onUpdateBucket}
               />
               <ChecklistCard
-                title={checklistContent.valueSpecificity.title}
-                items={checklistContent.valueSpecificity.items}
+                title={checklists.valueSpecificity.title}
+                items={checklists.valueSpecificity.items}
                 className="p-3 sm:col-span-2"
               />
               <ChecklistCard
-                title={checklistContent.valueRealism.title}
-                items={checklistContent.valueRealism.items}
+                title={checklists.valueRealism.title}
+                items={checklists.valueRealism.items}
                 className="p-3 sm:col-span-2"
               />
               <ChecklistCard
-                title={checklistContent.valueRepeatability.title}
-                items={checklistContent.valueRepeatability.items}
+                title={checklists.valueRepeatability.title}
+                items={checklists.valueRepeatability.items}
                 className="p-3 sm:col-span-2"
               />
               <BucketField
                 bucket={bucket}
-                definition={bucketFieldDefinitions.valueNotes}
+                definition={bucketFields.valueNotes}
                 onUpdate={onUpdateBucket}
               />
             </div>

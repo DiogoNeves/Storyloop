@@ -1,8 +1,5 @@
-import type { AudienceBucket } from "@/api/channel";
-import {
-  buildBucketField,
-  type BucketFieldDefinition,
-} from "@/components/channel-profile/channelProfileContent";
+import type { AudienceBucket, BucketFieldDefinition } from "@/api/channel";
+import { buildBucketField } from "@/components/channel-profile/channelProfileContent";
 import { ProfileField } from "@/components/channel-profile/ProfileField";
 
 type BucketFieldProps = {

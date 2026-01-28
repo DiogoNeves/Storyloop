@@ -74,6 +74,7 @@ const normalizeProfile = (profile: ChannelProfile | null): ChannelProfile => {
 export function ChannelPage() {
   const queryClient = useQueryClient();
   const channelQuery = useQuery(channelQueries.profile());
+  const adviceQuery = useQuery(channelQueries.advice());
   const [profile, setProfile] = useState<ChannelProfile>(createEmptyProfile);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -172,6 +173,19 @@ export function ChannelPage() {
   }, [channelQuery.data?.updatedAt]);
 
   const isSaving = updateMutation.isPending;
+  const advice = adviceQuery.data;
+
+  if (!advice) {
+    return (
+      <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto pb-6 pr-2 sm:gap-6 sm:pr-4">
+        <ChannelHeader
+          lastUpdatedLabel={lastUpdatedLabel}
+          isSaving={isSaving}
+          onSave={() => handleSave()}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto pb-6 pr-2 sm:gap-6 sm:pr-4">
@@ -183,6 +197,7 @@ export function ChannelPage() {
 
       <form className="flex min-h-0 flex-col gap-4" onSubmit={handleSave}>
         <AudienceFocusSection
+          advice={advice}
           value={profile.audienceFocus ?? ""}
           onChange={(value) =>
             updateProfile({ audienceFocus: value } as Partial<ChannelProfile>)
@@ -190,6 +205,7 @@ export function ChannelPage() {
         />
 
         <AudienceBucketsSection
+          advice={advice}
           buckets={profile.audienceBuckets}
           minBuckets={MIN_BUCKETS}
           maxBuckets={MAX_BUCKETS}
@@ -211,6 +227,7 @@ export function ChannelPage() {
         />
 
         <ValueAuditSection
+          advice={advice}
           buckets={profile.audienceBuckets}
           onUpdateBucket={updateBucket}
         />
