@@ -6,7 +6,11 @@ from fastapi import APIRouter, Depends
 from pydantic import ValidationError
 
 from app.dependencies import get_user_service
-from app.services.channel_profile import ChannelProfile, ChannelProfileSnapshot
+from app.services.channel_profile import (
+    ChannelProfile,
+    ChannelProfileSnapshot,
+    calculate_channel_profile_hash,
+)
 from app.services.channel_profile_advice import (
     ChannelProfileAdvice,
     get_channel_profile_advice,
@@ -33,6 +37,7 @@ def get_channel_profile(
     return ChannelProfileSnapshot(
         profile=profile,
         updatedAt=updated_at.isoformat() if updated_at else None,
+        contentHash=calculate_channel_profile_hash(profile),
     )
 
 
@@ -53,5 +58,7 @@ def update_channel_profile(
     serialized = payload.model_dump(by_alias=True)
     updated_at = user_service.upsert_channel_profile(serialized)
     return ChannelProfileSnapshot(
-        profile=payload, updatedAt=updated_at.isoformat()
+        profile=payload,
+        updatedAt=updated_at.isoformat(),
+        contentHash=calculate_channel_profile_hash(payload),
     )
