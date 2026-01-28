@@ -6,6 +6,7 @@ import {
   type FormEvent,
 } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Check } from "lucide-react";
 
 import {
   channelQueries,
@@ -24,7 +25,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StatusMessage } from "@/components/ui/status-message";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
 const MIN_BUCKETS = 3;
@@ -35,40 +35,44 @@ const createEmptyBucket = (): AudienceBucket => ({
   name: "",
   description: "",
   careAndUnderstanding: "",
-  careAndUnderstandingConfirmed: false,
   otherCreatorsWatched: "",
-  personalConnection: false,
   personalConnectionNotes: "",
   valueEmotion: "",
   valueAction: "",
-  valueSpecific: false,
-  valueRealistic: false,
-  valueRepeatable: false,
   valueNotes: "",
 });
 
 const createEmptyProfile = (): ChannelProfile => ({
   audienceFocus: "",
-  personalConnectionConfirmed: false,
   personalConnectionNotes: "",
-  bucketsLocked: false,
   bucketsLockedNotes: "",
   audienceBuckets: Array.from({ length: MIN_BUCKETS }, createEmptyBucket),
 });
 
 const normalizeProfile = (profile: ChannelProfile | null): ChannelProfile => {
   const base = profile ?? createEmptyProfile();
-  const buckets = (base.audienceBuckets ?? []).map((bucket) => ({
-    ...createEmptyBucket(),
-    ...bucket,
-    id: bucket.id || crypto.randomUUID(),
-  }));
+  const { personalConnectionConfirmed, bucketsLocked, ...baseProfile } = base;
+  const buckets = (baseProfile.audienceBuckets ?? []).map((bucket) => {
+    const {
+      careAndUnderstandingConfirmed,
+      personalConnection,
+      valueSpecific,
+      valueRealistic,
+      valueRepeatable,
+      ...bucketRest
+    } = bucket;
+    return {
+      ...createEmptyBucket(),
+      ...bucketRest,
+      id: bucket.id || crypto.randomUUID(),
+    };
+  });
   while (buckets.length < MIN_BUCKETS) {
     buckets.push(createEmptyBucket());
   }
   return {
     ...createEmptyProfile(),
-    ...base,
+    ...baseProfile,
     audienceBuckets: buckets.slice(0, MAX_BUCKETS),
   };
 };
@@ -220,7 +224,40 @@ export function ChannelPage() {
                 updateProfile({ audienceFocus: event.target.value })
               }
               placeholder="Describe the people you want to help most."
+              className="min-h-[120px]"
             />
+            <div className="rounded-lg border bg-muted/40 p-3 text-muted-foreground">
+              <p className="text-sm font-medium text-foreground">
+                Mental checklist (while you write)
+              </p>
+              <ul className="mt-2 space-y-1 text-xs">
+                <li className="flex items-start gap-2">
+                  <Check className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                  <span>
+                    Start with who you want to serve (even if you lose some
+                    legacy viewers).
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                  <span>Describe them in human terms, not demographics.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                  <span>
+                    Make it vivid: a real moment they’re in (late-night laptop,
+                    stuck job, etc.).
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                  <span>
+                    This should make it obvious what to make next and what the
+                    value exchange is.
+                  </span>
+                </li>
+              </ul>
+            </div>
           </CardContent>
         </Card>
 
@@ -299,20 +336,33 @@ export function ChannelPage() {
                       placeholder="What proves you care and understand this group?"
                     />
                   </div>
-                  <div className="flex items-center justify-between rounded-lg border bg-muted/40 p-3 sm:col-span-2">
-                    <div>
-                      <p className="text-sm font-medium">
-                        I genuinely care and understand this group
-                      </p>
-                    </div>
-                    <Switch
-                      checked={bucket.careAndUnderstandingConfirmed ?? false}
-                      onCheckedChange={(checked) =>
-                        updateBucket(bucket.id, {
-                          careAndUnderstandingConfirmed: checked,
-                        })
-                      }
-                    />
+                  <div className="rounded-lg border bg-muted/40 p-3 text-muted-foreground sm:col-span-2">
+                    <p className="text-sm font-medium text-foreground">
+                      Checklist for this note
+                    </p>
+                    <ul className="mt-2 space-y-1 text-xs">
+                      <li className="flex items-start gap-2">
+                        <Check className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                        <span>
+                          Cite a specific moment that proves you care.
+                        </span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                        <span>Share how you learned about them.</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                        <span>Describe how you would show up to help.</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                        <span>
+                          If they feel stuck, point to the first small step (not
+                          a life-changing leap).
+                        </span>
+                      </li>
+                    </ul>
                   </div>
                   <div className="space-y-2 sm:col-span-2">
                     <Label htmlFor={`bucket-${bucket.id}-creators`}>
@@ -329,21 +379,35 @@ export function ChannelPage() {
                       placeholder="List channels, shows, or formats they already follow."
                     />
                   </div>
-                  <div className="flex items-center justify-between rounded-lg border bg-muted/40 p-3 sm:col-span-2">
-                    <div>
-                      <p className="text-sm font-medium">
-                        I personally belong to or deeply understand this
-                        audience
-                      </p>
-                    </div>
-                    <Switch
-                      checked={bucket.personalConnection ?? false}
-                      onCheckedChange={(checked) =>
-                        updateBucket(bucket.id, {
-                          personalConnection: checked,
-                        })
-                      }
-                    />
+                  <div className="rounded-lg border bg-muted/40 p-3 text-muted-foreground sm:col-span-2">
+                    <p className="text-sm font-medium text-foreground">
+                      Checklist for this note
+                    </p>
+                    <ul className="mt-2 space-y-1 text-xs">
+                      <li className="flex items-start gap-2">
+                        <Check className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                        <span>Call out your shared background or role.</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                        <span>
+                          Note lived experience or time alongside them.
+                        </span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                        <span>
+                          Explain why that connection still feels real.
+                        </span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                        <span>
+                          Write it like you’re talking to yourself in that
+                          season of life.
+                        </span>
+                      </li>
+                    </ul>
                   </div>
                   <div className="space-y-2 sm:col-span-2">
                     <Label htmlFor={`bucket-${bucket.id}-personal-notes`}>
@@ -376,21 +440,33 @@ export function ChannelPage() {
                 Add audience bucket
               </Button>
             </div>
-            <div className="flex items-center justify-between rounded-lg border bg-muted/40 p-4">
-              <div className="space-y-1">
-                <p className="text-sm font-medium">
-                  I feel these buckets are coherent and motivating
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Lock them in once they feel right.
-                </p>
-              </div>
-              <Switch
-                checked={profile.bucketsLocked ?? false}
-                onCheckedChange={(checked) =>
-                  updateProfile({ bucketsLocked: checked })
-                }
-              />
+            <div className="rounded-lg border bg-muted/40 p-4 text-muted-foreground">
+              <p className="text-sm font-medium text-foreground">
+                Mental checklist
+              </p>
+              <ul className="mt-2 space-y-1 text-xs">
+                <li className="flex items-start gap-2">
+                  <Check className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                  <span>3–4 buckets max: distinct, nameable groups.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                  <span>Each bucket can be described in one sentence.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                  <span>
+                    Buckets are different enough to change what you make next.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                  <span>
+                    It’s okay if one bucket is a “current/legacy” audience—as
+                    long as you’re clear about it.
+                  </span>
+                </li>
+              </ul>
             </div>
             <div className="space-y-2">
               <Label htmlFor="channel-buckets-locked-notes">
@@ -405,22 +481,31 @@ export function ChannelPage() {
                 placeholder="Why do these feel coherent and motivating?"
               />
             </div>
-            <div className="flex items-center justify-between rounded-lg border bg-muted/40 p-4">
-              <div className="space-y-1">
-                <p className="text-sm font-medium">
-                  I personally belong to or deeply understand at least one
-                  audience
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  This keeps the channel grounded in real empathy.
-                </p>
-              </div>
-              <Switch
-                checked={profile.personalConnectionConfirmed ?? false}
-                onCheckedChange={(checked) =>
-                  updateProfile({ personalConnectionConfirmed: checked })
-                }
-              />
+            <div className="rounded-lg border bg-muted/40 p-4 text-muted-foreground">
+              <p className="text-sm font-medium text-foreground">
+                Mental checklist
+              </p>
+              <ul className="mt-2 space-y-1 text-xs">
+                <li className="flex items-start gap-2">
+                  <Check className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                  <span>
+                    You’re a member of at least one bucket (or you can’t
+                    honestly empathize).
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                  <span>
+                    Say what makes the connection real (not performative).
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                  <span>
+                    If you don’t care about this audience, don’t build for them.
+                  </span>
+                </li>
+              </ul>
             </div>
             <div className="space-y-2">
               <Label htmlFor="channel-personal-connection-notes">
@@ -491,44 +576,72 @@ export function ChannelPage() {
                         placeholder="Ex: open their project timeline tonight"
                       />
                     </div>
-                    <div className="flex items-center justify-between rounded-lg border bg-muted/40 p-3 sm:col-span-2">
-                      <div className="flex flex-col gap-1">
-                        <p className="text-sm font-medium">
-                          Emotion and action are specific
-                        </p>
-                      </div>
-                      <Switch
-                        checked={bucket.valueSpecific ?? false}
-                        onCheckedChange={(checked) =>
-                          updateBucket(bucket.id, { valueSpecific: checked })
-                        }
-                      />
+                    <div className="rounded-lg border bg-muted/40 p-3 text-muted-foreground sm:col-span-2">
+                      <p className="text-sm font-medium text-foreground">
+                        Checklist for specificity
+                      </p>
+                      <ul className="mt-2 space-y-1 text-xs">
+                        <li className="flex items-start gap-2">
+                          <Check className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                          <span>The emotion is precise, not vague.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <Check className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                          <span>
+                            The action can happen today without extra context.
+                          </span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <Check className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                          <span>
+                            Title/thumbnail should set the same expectation.
+                          </span>
+                        </li>
+                      </ul>
                     </div>
-                    <div className="flex items-center justify-between rounded-lg border bg-muted/40 p-3 sm:col-span-2">
-                      <div className="flex flex-col gap-1">
-                        <p className="text-sm font-medium">
-                          Emotion and action are realistic
-                        </p>
-                      </div>
-                      <Switch
-                        checked={bucket.valueRealistic ?? false}
-                        onCheckedChange={(checked) =>
-                          updateBucket(bucket.id, { valueRealistic: checked })
-                        }
-                      />
+                    <div className="rounded-lg border bg-muted/40 p-3 text-muted-foreground sm:col-span-2">
+                      <p className="text-sm font-medium text-foreground">
+                        Checklist for realism
+                      </p>
+                      <ul className="mt-2 space-y-1 text-xs">
+                        <li className="flex items-start gap-2">
+                          <Check className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                          <span>
+                            The action fits their time, resources, and skill.
+                          </span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <Check className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                          <span>No wishful leaps required.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <Check className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                          <span>
+                            Prefer “small steps” over overwhelming inspiration.
+                          </span>
+                        </li>
+                      </ul>
                     </div>
-                    <div className="flex items-center justify-between rounded-lg border bg-muted/40 p-3 sm:col-span-2">
-                      <div className="flex flex-col gap-1">
-                        <p className="text-sm font-medium">
-                          Emotion and action are repeatable
-                        </p>
-                      </div>
-                      <Switch
-                        checked={bucket.valueRepeatable ?? false}
-                        onCheckedChange={(checked) =>
-                          updateBucket(bucket.id, { valueRepeatable: checked })
-                        }
-                      />
+                    <div className="rounded-lg border bg-muted/40 p-3 text-muted-foreground sm:col-span-2">
+                      <p className="text-sm font-medium text-foreground">
+                        Checklist for repeatability
+                      </p>
+                      <ul className="mt-2 space-y-1 text-xs">
+                        <li className="flex items-start gap-2">
+                          <Check className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                          <span>They could repeat the action next week.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <Check className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                          <span>The promise stays consistent over time.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <Check className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                          <span>
+                            Ask: “Who is this for, and why are they watching?”
+                          </span>
+                        </li>
+                      </ul>
                     </div>
                     <div className="space-y-2 sm:col-span-2">
                       <Label htmlFor={`bucket-${bucket.id}-value-notes`}>
