@@ -29,7 +29,7 @@ export interface AgentComposerState {
   error?: string | null;
 }
 
-export type AgentFocusCategory = "content" | "journal";
+export type AgentFocusCategory = "content" | "journal" | "channel";
 
 export interface AgentFocus {
   category: AgentFocusCategory;

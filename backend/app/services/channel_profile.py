@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from hashlib import blake2s
+import json
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -182,3 +184,19 @@ class ChannelProfileSnapshot(BaseModel):
 
     profile: ChannelProfile | None = None
     updated_at: str | None = Field(default=None, alias="updatedAt")
+    content_hash: str | None = Field(default=None, alias="contentHash")
+
+
+def calculate_channel_profile_hash(profile: ChannelProfile | None) -> str:
+    """Return a short hash of the channel profile content."""
+
+    if profile is None:
+        payload = "null"
+    else:
+        payload = json.dumps(
+            profile.model_dump(by_alias=True),
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+        )
+    return blake2s(payload.encode("utf-8")).hexdigest()[:12]
