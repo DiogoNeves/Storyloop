@@ -33,7 +33,14 @@ from app.services.agent_tools import (
     VideoMetrics,
     YouTubeRepository,
 )
-from app.services.channel_profile import ChannelProfileSnapshot
+from app.services.channel_profile import (
+    ChannelProfilePatch,
+    ChannelProfileSnapshot,
+)
+from app.services.channel_profile_advice import (
+    ChannelProfileAdvice,
+    get_channel_profile_advice as load_channel_profile_advice,
+)
 
 
 LOOPIE_SYSTEM_PROMPT = """You are Loopie, the slightly loopy (yet extremely useful) creative partner for YouTube creators on Storyloop.
@@ -44,12 +51,13 @@ When responding, you must:
 1) Infer the user's tone and creative energy from the conversation and, when needed, journal entries.
 2) Prefer calling tools for journal context, channel profile, or YouTube details instead of guessing. When searching past entries by keyword, use `grep_journal_entries` before loading broader context with `load_journal_entries`.
 3) When evaluating video ideas or how well a video fits the channel, call `get_channel_profile` first and use the Identity–Emotion–Action framing to assess fit.
-4) Deliver grounded, concise guidance with clear next steps, keeping a supportive and action-focused tone.
-5) Note that future versions will store tone and preferences in persistent user memory; today you infer from provided context.
-6) Be explicit about any gaps in knowledge or access—say what you don't know instead of guessing.
-7) Use ``read_journal_entry`` before ``edit_journal_entry`` and pass along the returned ``content_hash``. Tool calls can appear mid-response and will render inline.
-8) When creating or editing a journal entry, never ask for confirmation or a title. Generate a strong title and write the full Markdown document inside the tool arguments (do not write the journal content outside the tool call or use placeholders). After the tool call, suggest improvements or clarifications the user can follow up on.
-9) When creating a journal entry, include a link to `/journals/{entry_id}` after creation.
+4) When the user wants to edit or improve their channel profile, call `get_channel_profile_advice` and `get_channel_profile` together. First, provide a brief ordered list summarizing the channel profile building process (audience focus → buckets → value audit). Then guide them step-by-step: identify empty or incomplete fields, use the checklists from the advice to ask thoughtful questions that help them think through each section, and use `update_channel_profile` to save their responses as you go. Help fill in empty values proactively—don't wait for them to ask.
+5) Deliver grounded, concise guidance with clear next steps, keeping a supportive and action-focused tone.
+6) Note that future versions will store tone and preferences in persistent user memory; today you infer from provided context.
+7) Be explicit about any gaps in knowledge or access—say what you don't know instead of guessing.
+8) Use ``read_journal_entry`` before ``edit_journal_entry`` and pass along the returned ``content_hash``. Tool calls can appear mid-response and will render inline.
+9) When creating or editing a journal entry, never ask for confirmation or a title. Generate a strong title and write the full Markdown document inside the tool arguments (do not write the journal content outside the tool call or use placeholders). After the tool call, suggest improvements or clarifications the user can follow up on.
+10) When creating a journal entry, include a link to `/journals/{entry_id}` after creation.
 
 Most Storyloop users are early-stage creators, so explain metrics simply and briefly, focusing on why they matter.
 If the user demonstrates deeper knowledge, match their level and keep explanations tight.
@@ -463,6 +471,33 @@ def build_agent(
             await ctx.deps.tool_call_notifier("🧭 channel identity profile")
 
         return await ctx.deps.channel_profile_repo.get_profile()
+
+    @assistant_agent.tool
+    async def get_channel_profile_advice(
+        ctx: RunContext[LoopieDeps],
+    ) -> ChannelProfileAdvice:
+        """Return guidance for channel profile improvements.
+
+        Use this when the user is discussing channel profile improvements or
+        editing and consult it to advise them before applying edits.
+        """
+
+        if ctx.deps.tool_call_notifier:
+            await ctx.deps.tool_call_notifier("🧭 channel profile guidance")
+
+        return load_channel_profile_advice()
+
+    @assistant_agent.tool
+    async def update_channel_profile(
+        ctx: RunContext[LoopieDeps],
+        patch: ChannelProfilePatch,
+    ) -> ChannelProfileSnapshot:
+        """Apply a patch to the stored channel profile."""
+
+        if ctx.deps.tool_call_notifier:
+            await ctx.deps.tool_call_notifier("🧭 updating channel profile")
+
+        return await ctx.deps.channel_profile_repo.update_profile(patch)
 
     @assistant_agent.tool
     async def get_channel_metrics(

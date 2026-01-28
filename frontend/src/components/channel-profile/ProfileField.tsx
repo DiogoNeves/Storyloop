@@ -1,7 +1,7 @@
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { FieldDefinition } from "@/components/channel-profile/channelProfileContent";
+import type { FieldDefinition } from "@/api/channel";
 
 type ProfileFieldProps = {
   field: FieldDefinition;
