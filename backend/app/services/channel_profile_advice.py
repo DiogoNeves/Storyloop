@@ -135,12 +135,14 @@ CHANNEL_PROFILE_ADVICE = ChannelProfileAdvice(
     },
     checklists={
         "audienceFocus": ChecklistSection(
-            title="Mental checklist (while you write)",
+            title="Questions to guide your audience definition",
             items=[
-                "Start with who you want to serve (even if you lose some legacy viewers).",
-                "Describe them in human terms, not demographics.",
-                "Make it vivid: a real moment they're in (late-night laptop, stuck job, etc.).",
-                "This should make it obvious what to make next and what the value exchange is.",
+                "Are the people in your audience professionals or consumers?",
+                "What does your audience do for work?",
+                "What do the people in your audience do for fun?",
+                "How old are they?",
+                "Are they budget conscious?",
+                "Who is not in your audience?",
             ],
         ),
         "careNote": ChecklistSection(
@@ -162,12 +164,12 @@ CHANNEL_PROFILE_ADVICE = ChannelProfileAdvice(
             ],
         ),
         "bucketMental": ChecklistSection(
-            title="Mental checklist",
+            title="Segment your audience",
             items=[
-                "3-4 buckets max: distinct, nameable groups.",
-                "Each bucket can be described in one sentence.",
-                "Buckets are different enough to change what you make next.",
-                "It's okay if one bucket is a \"current/legacy\" audience-as long as you're clear about it.",
+                "Group the characteristics you listed into 3-4 audience segments.",
+                "Each segment should have a clear audience identity.",
+                "Add a description for each segment that helps you understand who they are.",
+                "These segments help you understand specifically who's attention you want when creating videos.",
             ],
         ),
         "bucketsLockedMental": ChecklistSection(
@@ -179,11 +181,11 @@ CHANNEL_PROFILE_ADVICE = ChannelProfileAdvice(
             ],
         ),
         "valueSpecificity": ChecklistSection(
-            title="Checklist for specificity",
+            title="Define your value proposition",
             items=[
-                "The emotion is precise, not vague.",
-                "The action can happen today without extra context.",
-                "Title/thumbnail should set the same expectation.",
+                "For each audience identity, define the emotion they feel when watching your videos.",
+                "Define the action they take after watching your videos.",
+                "Can you come up with video ideas that target these identities and make them feel these emotions?",
             ],
         ),
         "valueRealism": ChecklistSection(
