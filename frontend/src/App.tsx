@@ -113,6 +113,7 @@ function AppLayout() {
         className={cn(
           "relative flex min-h-[calc(100vh-4rem)] flex-1 overflow-y-auto sm:min-h-0 sm:flex-1 sm:overflow-hidden sm:pt-0",
           hasPendingSync ? "pt-[6.5rem]" : "pt-16",
+          isLoopieRoute ? "h-[100dvh] sm:h-auto" : null,
         )}
       >
         <div className="from-primary/8 pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b via-transparent to-transparent" />
