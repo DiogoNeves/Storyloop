@@ -16,7 +16,10 @@ export function LoopiePage() {
         </p>
       </section>
 
-      <LoopiePanel variant="page" className="min-h-[520px] flex-1" />
+      <LoopiePanel
+        variant="page"
+        className="flex-1 min-h-0 sm:min-h-[520px]"
+      />
     </div>
   );
 }
