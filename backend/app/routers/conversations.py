@@ -26,7 +26,7 @@ from app.db_helpers.conversations import (
 )
 from app.dependencies import get_asset_service, get_db
 from app.services.agent import build_loopie_deps
-from app.services.assets import AssetService
+from app.services.assets import AssetService, is_srt_mime_type, is_text_mime_type
 
 router = APIRouter()
 
@@ -242,6 +242,22 @@ def _build_user_prompt_parts(
             else:
                 parts.append(
                     f"PDF attachment '{record.original_filename}' has no extractable text."
+                )
+            continue
+
+        if is_text_mime_type(record.mime_type):
+            label = (
+                "SRT attachment"
+                if is_srt_mime_type(record.mime_type)
+                else "Text attachment"
+            )
+            if record.extracted_text:
+                parts.append(
+                    f"{label} '{record.original_filename}':\n{record.extracted_text}"
+                )
+            else:
+                parts.append(
+                    f"{label} '{record.original_filename}' has no extractable text."
                 )
 
     return parts

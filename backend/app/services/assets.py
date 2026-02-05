@@ -21,6 +21,14 @@ from app.services.base import DatabaseService
 
 MAX_IMAGE_EDGE_PX = 2000
 ASSET_URL_PREFIX = "/assets/"
+TEXT_ASSET_MIME_TYPES = frozenset(
+    {
+        "text/plain",
+        "text/srt",
+        "text/x-subrip",
+        "application/x-subrip",
+    }
+)
 
 
 @dataclass(slots=True)
@@ -50,8 +58,8 @@ class AssetService(DatabaseService):
     """Manage asset persistence on disk and metadata in SQLite.
 
     Stores files under `db_dir/assets/` using SHA-256 IDs derived from the stored bytes.
-    Images are resized before hashing to keep storage bounded; PDFs keep original bytes
-    but provide extracted text for agent context. Demo mode blocks file writes.
+    Images are resized before hashing to keep storage bounded; PDFs and text files keep
+    original bytes but provide extracted text for agent context. Demo mode blocks file writes.
     """
 
     def __init__(
@@ -185,6 +193,8 @@ class AssetService(DatabaseService):
         extracted_text = None
         if content_type == "application/pdf":
             extracted_text = _extract_pdf_text(data)
+        elif is_text_mime_type(content_type):
+            extracted_text = _extract_text_bytes(data)
 
         asset_hash = _sha256_hex(data)
         if expected_hash is not None and asset_hash != expected_hash:
@@ -322,6 +332,33 @@ def _extract_pdf_text(data: bytes) -> str | None:
     return joined or None
 
 
+def _extract_text_bytes(data: bytes) -> str | None:
+    try:
+        decoded = data.decode("utf-8")
+    except UnicodeDecodeError:
+        decoded = data.decode("utf-8", errors="replace")
+    cleaned = decoded.strip()
+    return cleaned or None
+
+
+def is_text_mime_type(mime_type: str) -> bool:
+    if not mime_type:
+        return False
+    normalized = mime_type.lower()
+    return normalized in TEXT_ASSET_MIME_TYPES
+
+
+def is_srt_mime_type(mime_type: str) -> bool:
+    if not mime_type:
+        return False
+    normalized = mime_type.lower()
+    return normalized in {
+        "text/srt",
+        "text/x-subrip",
+        "application/x-subrip",
+    }
+
+
 def _markdown_for_asset(filename: str, asset_id: str, mime_type: str) -> str:
     url = f"{ASSET_URL_PREFIX}{asset_id}"
     safe_label = filename or "asset"
@@ -353,5 +390,8 @@ __all__ = [
     "AssetRecord",
     "AssetService",
     "MAX_IMAGE_EDGE_PX",
+    "TEXT_ASSET_MIME_TYPES",
     "extract_asset_ids",
+    "is_srt_mime_type",
+    "is_text_mime_type",
 ]
