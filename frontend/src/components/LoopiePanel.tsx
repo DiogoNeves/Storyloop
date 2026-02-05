@@ -125,7 +125,8 @@ export function LoopieConversationContent({
       setUploadError(error.message);
     },
   });
-  const acceptTypes = "image/*,application/pdf";
+  const acceptTypes =
+    "image/*,application/pdf,text/plain,application/x-subrip,text/srt,text/x-subrip,.srt,.txt";
 
   const handleFilesSelected = useCallback(
     (files: FileList | File[]) => {
@@ -249,7 +250,7 @@ export function LoopieConversationContent({
               className="gap-2"
             >
               <ImagePlus className="h-4 w-4" />
-              Add image or PDF
+              Add an Image or a File
             </Button>
             <div className="flex items-center gap-2">
               {isUploading ? <span>Uploading…</span> : null}
@@ -429,4 +430,3 @@ export function LoopiePanel({
     />
   );
 }
-

@@ -1,12 +1,13 @@
 """Asset upload and retrieval endpoints.
 
-Accepts images and PDFs, supports optional client-provided SHA-256 IDs for dedupe,
-returns derived metadata, and streams stored bytes from disk.
+Accepts images, PDFs, and text-based files (TXT/SRT), supports optional client-provided
+SHA-256 IDs for dedupe, returns derived metadata, and streams stored bytes from disk.
 """
 
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
@@ -14,7 +15,7 @@ from fastapi.responses import FileResponse
 
 from app.dependencies import get_asset_service
 from app.routers.guards import require_non_demo
-from app.services.assets import AssetService
+from app.services.assets import AssetService, is_text_mime_type
 
 router = APIRouter(prefix="/assets", tags=["assets"])
 
@@ -104,11 +105,13 @@ async def _handle_upload(
             payload["alreadyExists"] = True
             return payload
 
-    content_type = file.content_type or ""
-    if not (content_type.startswith("image/") or content_type == "application/pdf"):
+    content_type = (file.content_type or "").split(";", 1)[0].strip().lower()
+    filename = file.filename or "upload"
+    normalized_type = _normalize_content_type(content_type, filename)
+    if not normalized_type:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only images and PDFs are supported.",
+            detail="Only images, PDFs, and text/SRT files are supported.",
         )
 
     data = await file.read()
@@ -116,8 +119,8 @@ async def _handle_upload(
     try:
         record, already_exists = await asyncio.to_thread(
             asset_service.create_asset,
-            original_filename=file.filename or "upload",
-            content_type=content_type,
+            original_filename=filename,
+            content_type=normalized_type,
             data=data,
             expected_hash=expected_hash,
         )
@@ -135,3 +138,19 @@ async def _handle_upload(
     payload = await asyncio.to_thread(asset_service.export_meta_payload, record)
     payload["alreadyExists"] = already_exists
     return payload
+
+
+def _normalize_content_type(content_type: str, filename: str) -> str | None:
+    if content_type.startswith("image/"):
+        return content_type
+    if content_type == "application/pdf":
+        return content_type
+    if is_text_mime_type(content_type):
+        return content_type
+    if content_type in {"application/octet-stream", ""}:
+        ext = Path(filename).suffix.lower()
+        if ext in {".txt", ".text"}:
+            return "text/plain"
+        if ext == ".srt":
+            return "application/x-subrip"
+    return None

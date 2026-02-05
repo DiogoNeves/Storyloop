@@ -22,8 +22,8 @@ export interface AssetMetaResponse {
 }
 
 export async function uploadAsset(file: File): Promise<AssetUploadResponse> {
-  // Only compute hash for non-image files (PDFs). Images are re-encoded server-side,
-  // so the client cannot predict the final stored hash.
+  // Only compute hash for non-image files (PDFs, text, SRT). Images are re-encoded
+  // server-side, so the client cannot predict the final stored hash.
   const isImage = file.type.startsWith("image/");
   const hash = isImage ? null : await computeSha256Hex(file);
   const formData = new FormData();

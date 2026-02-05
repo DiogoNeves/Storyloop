@@ -11,6 +11,7 @@ import argparse
 import asyncio
 import os
 import signal
+import socket
 import subprocess
 import sys
 from pathlib import Path
@@ -58,6 +59,52 @@ def build_frontend(prod: bool = False) -> int:
     return result.returncode
 
 
+def _parse_port(value: str, label: str) -> int:
+    try:
+        port = int(value)
+    except ValueError as exc:
+        raise ValueError(f"{label} must be an integer (got {value!r}).") from exc
+    if not 1 <= port <= 65535:
+        raise ValueError(f"{label} must be between 1 and 65535 (got {port}).")
+    return port
+
+
+def _port_available(host: str, port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        try:
+            sock.bind((host, port))
+        except OSError:
+            return False
+    return True
+
+
+def _validate_ports(
+    backend_host: str,
+    backend_port: int,
+    frontend_host: str,
+    frontend_port: int,
+) -> bool:
+    ok = True
+    if not _port_available(backend_host, backend_port):
+        print(
+            f"Backend port {backend_port} on {backend_host} is already in use.",
+            file=sys.stderr,
+        )
+        ok = False
+    if not _port_available(frontend_host, frontend_port):
+        print(
+            f"Frontend port {frontend_port} on {frontend_host} is already in use.",
+            file=sys.stderr,
+        )
+        ok = False
+    if not ok:
+        print(
+            "Set BACKEND_PORT/FRONTEND_PORT to override, or stop the process using the port.",
+            file=sys.stderr,
+        )
+    return ok
+
+
 async def main(prod: bool = False) -> int:
     if prod:
         # Set env file path for backend
@@ -74,16 +121,34 @@ async def main(prod: bool = False) -> int:
         # Ensure dev runs do not inherit a prod DOTENV_PATH from a prior session
         os.environ.pop("DOTENV_PATH", None)
 
-    backend_port = "8000" if prod else "8001"
+    backend_host = "127.0.0.1"
+    frontend_host = "127.0.0.1"
+    try:
+        backend_port = _parse_port(
+            os.getenv("BACKEND_PORT", "8000" if prod else "8001"),
+            "BACKEND_PORT",
+        )
+        frontend_port = _parse_port(
+            os.getenv("FRONTEND_PORT", "4173" if prod else "5173"),
+            "FRONTEND_PORT",
+        )
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    if not _validate_ports(
+        backend_host, backend_port, frontend_host, frontend_port
+    ):
+        return 1
     backend_cmd = [
         "uv",
         "run",
         "uvicorn",
         "app.main:app",
         "--host",
-        "127.0.0.1",
+        backend_host,
         "--port",
-        backend_port,
+        str(backend_port),
     ]
     if not prod:
         backend_cmd.append("--reload")
@@ -95,9 +160,9 @@ async def main(prod: bool = False) -> int:
             "preview",
             "--",
             "--host",
-            "127.0.0.1",
+            frontend_host,
             "--port",
-            "4173",
+            str(frontend_port),
         ]
     else:
         frontend_cmd = [
@@ -106,9 +171,9 @@ async def main(prod: bool = False) -> int:
             "dev",
             "--",
             "--host",
-            "127.0.0.1",
+            frontend_host,
             "--port",
-            "5173",
+            str(frontend_port),
         ]
 
     stop_event = asyncio.Event()
@@ -128,9 +193,33 @@ async def main(prod: bool = False) -> int:
 
     backend_task = asyncio.create_task(run_process(backend_cmd, BACKEND_DIR))
     frontend_task = asyncio.create_task(run_process(frontend_cmd, FRONTEND_DIR))
+    stop_task = asyncio.create_task(stop_event.wait())
 
     try:
-        await stop_event.wait()
+        done, pending = await asyncio.wait(
+            {backend_task, frontend_task, stop_task},
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        if stop_task not in done:
+            for task, label in (
+                (backend_task, "backend"),
+                (frontend_task, "frontend"),
+            ):
+                if task in done:
+                    try:
+                        exit_code = task.result()
+                    except Exception as exc:  # pragma: no cover - unexpected
+                        print(
+                            f"{label} process failed: {exc}",
+                            file=sys.stderr,
+                        )
+                        exit_code = 1
+                    else:
+                        print(
+                            f"{label} process exited with code {exit_code}.",
+                            file=sys.stderr,
+                        )
+            stop_event.set()
     finally:
         # Clean up signal handlers before cancelling tasks
         for sig in signals:
@@ -141,9 +230,10 @@ async def main(prod: bool = False) -> int:
 
         backend_task.cancel()
         frontend_task.cancel()
+        stop_task.cancel()
 
     results = await asyncio.gather(
-        backend_task, frontend_task, return_exceptions=True
+        backend_task, frontend_task, stop_task, return_exceptions=True
     )
 
     exit_codes = [0]

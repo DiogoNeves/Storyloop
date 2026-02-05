@@ -208,13 +208,13 @@ export function ActivityDraftCard({
                 }}
                 disabled={isUploading}
               >
-                {isUploading ? "Uploading…" : "Add image or PDF"}
+                {isUploading ? "Uploading…" : "Add an Image or a File"}
               </Button>
             </div>
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*,application/pdf"
+              accept="image/*,application/pdf,text/plain,application/x-subrip,text/srt,text/x-subrip,.srt,.txt"
               className="hidden"
               multiple
               onChange={(event) => {
