@@ -20,7 +20,7 @@ import {
 import type { Ctx } from "@milkdown/ctx";
 import { Milkdown, MilkdownProvider, useEditor } from "@milkdown/react";
 import { Fragment, type Node as ProseNode, type Mark } from "@milkdown/prose/model";
-import type { EditorView } from "@milkdown/prose/view";
+import { Decoration, DecorationSet, type EditorView } from "@milkdown/prose/view";
 import type { SerializerState } from "@milkdown/transformer";
 import { clipboard } from "@milkdown/plugin-clipboard";
 import { history } from "@milkdown/plugin-history";
@@ -125,6 +125,47 @@ const commonmarkWithSafeParagraph = (() => {
   return plugins;
 })();
 
+const HASHTAG_PATTERN = /(^|[\s([{])(#([A-Za-z0-9][A-Za-z0-9/-]*))/g;
+
+const createHashtagDecorations = (doc: ProseNode) => {
+  const decorations: Decoration[] = [];
+
+  doc.descendants((node, pos) => {
+    if (!node.isText || !node.text) {
+      return;
+    }
+
+    // Keep inline code unstyled so markdown snippets remain predictable.
+    if (node.marks.some((mark) => mark.type.name === "code")) {
+      return;
+    }
+
+    for (const match of node.text.matchAll(HASHTAG_PATTERN)) {
+      const matchedTag = match[2];
+      const matchIndex = match.index;
+      if (!matchedTag || typeof matchIndex !== "number") {
+        continue;
+      }
+
+      const prefixLength = (match[1] ?? "").length;
+      const from = pos + matchIndex + prefixLength;
+      const to = from + matchedTag.length;
+
+      decorations.push(
+        Decoration.inline(from, to, {
+          class: "journal-hashtag-chip",
+        }),
+      );
+    }
+  });
+
+  if (decorations.length === 0) {
+    return DecorationSet.empty;
+  }
+
+  return DecorationSet.create(doc, decorations);
+};
+
 interface JournalEntryEditorProps {
   initialValue: string;
   resetKey: string;
@@ -225,6 +266,7 @@ const JournalEntryEditorInner = forwardRef<
       editorViewRef.current = view;
       view.setProps({
         editable: () => isEditable,
+        decorations: (state) => createHashtagDecorations(state.doc),
       });
     });
   }, [editor, isEditable]);
