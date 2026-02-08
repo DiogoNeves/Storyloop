@@ -22,19 +22,37 @@ export function TagFilterSection({
   onTagSelect,
 }: TagFilterSectionProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const { journalTagCounts, videoTagCounts } = useMemo(() => {
-    const journalItems = items.filter((item) => item.category === "journal");
-    const videoItems = items.filter((item) => item.category === "content");
+  const { journalTagCounts, videoTagCounts, conversationTagCounts } = useMemo(
+    () => {
+      const journalItems = items.filter((item) => item.category === "journal");
+      const videoItems = items.filter((item) => item.category === "content");
+      const conversationItems = items.filter(
+        (item) => item.category === "conversation",
+      );
 
-    const journalTagCounts = collectTagCounts(journalItems);
-    const journalTags = new Set(journalTagCounts.map(({ tag }) => tag));
-    const videoTagCounts = collectTagCounts(videoItems).filter(
-      ({ tag }) => !journalTags.has(tag),
-    );
+      const journalTagCounts = collectTagCounts(journalItems);
+      const journalTags = new Set(journalTagCounts.map(({ tag }) => tag));
+      const videoTagCounts = collectTagCounts(videoItems);
+      const videoTags = new Set(videoTagCounts.map(({ tag }) => tag));
+      const conversationTagCounts = collectTagCounts(conversationItems).filter(
+        ({ tag }) => !journalTags.has(tag) && !videoTags.has(tag),
+      );
+      const uniqueVideoTagCounts = videoTagCounts.filter(
+        ({ tag }) => !journalTags.has(tag),
+      );
 
-    return { journalTagCounts, videoTagCounts };
-  }, [items]);
-  const hasTags = journalTagCounts.length > 0 || videoTagCounts.length > 0;
+      return {
+        journalTagCounts,
+        videoTagCounts: uniqueVideoTagCounts,
+        conversationTagCounts,
+      };
+    },
+    [items],
+  );
+  const hasTags =
+    journalTagCounts.length > 0 ||
+    videoTagCounts.length > 0 ||
+    conversationTagCounts.length > 0;
   const toggleIcon = isOpen ? (
     <ChevronUp className="h-4 w-4" aria-hidden="true" />
   ) : (
@@ -96,6 +114,12 @@ export function TagFilterSection({
               <TagGroup
                 heading="In Videos"
                 tagCounts={videoTagCounts}
+                activeTag={activeTag}
+                onTagSelect={onTagSelect}
+              />
+              <TagGroup
+                heading="In Conversations"
+                tagCounts={conversationTagCounts}
                 activeTag={activeTag}
                 onTagSelect={onTagSelect}
               />
