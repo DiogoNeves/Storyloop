@@ -160,10 +160,8 @@
   .journal-editor .journal-hashtag-chip {
     @apply inline-block rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground;
   }
-}
 
-@layer components {
-  .tag-archived {
+  .journal-editor .journal-hashtag-archived {
     @apply bg-red-100 text-red-700;
   }
 }
