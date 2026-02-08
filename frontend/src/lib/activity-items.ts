@@ -7,6 +7,7 @@ import {
   entryToActivityItem,
   type ActivityItem,
 } from "@/lib/types/entries";
+import { extractTagsFromContent } from "@/lib/activity-tags";
 
 const MAX_ACTIVITY_ITEMS = 50;
 
@@ -82,6 +83,7 @@ function buildConversationActivityItems(
           trimmedSummary && trimmedSummary.length > 0
             ? trimmedSummary
             : "Jump into this Loopie conversation to keep building.",
+        tags: extractTagsFromContent(title, trimmedSummary),
         date: conversation.lastTurnAt ?? conversation.createdAt,
         category: "conversation" as const,
       };
@@ -94,7 +96,11 @@ function buildDemoConversationItems(now: number): ActivityItem[] {
       id: "demo-conversation-1",
       title: "Loopie summarized your audience research sprint",
       summary:
-        "Loopie connected sentiment shifts across shorts, distilled the most replayed hooks, and drafted the next set of experiments for the July uploads.",
+        "Loopie connected sentiment shifts across shorts, distilled the most replayed hooks, and drafted the next set of experiments for the July uploads. #audience #hooks",
+      tags: extractTagsFromContent(
+        "Loopie summarized your audience research sprint",
+        "Loopie connected sentiment shifts across shorts, distilled the most replayed hooks, and drafted the next set of experiments for the July uploads. #audience #hooks",
+      ),
       date: new Date(now - 1000 * 60 * 35).toISOString(),
       category: "conversation",
     },
@@ -102,7 +108,11 @@ function buildDemoConversationItems(now: number): ActivityItem[] {
       id: "demo-conversation-2",
       title: "Quick check-in about pacing",
       summary:
-        "Loopie pinpointed the moment to trim and suggested a tighter intro beat.",
+        "Loopie pinpointed the moment to trim and suggested a tighter intro beat. #pacing",
+      tags: extractTagsFromContent(
+        "Quick check-in about pacing",
+        "Loopie pinpointed the moment to trim and suggested a tighter intro beat. #pacing",
+      ),
       date: new Date(now - 1000 * 60 * 90).toISOString(),
       category: "conversation",
     },
@@ -126,6 +136,7 @@ function buildVideoActivityItems(
     id: `youtube:${video.id}`,
     title: video.title,
     summary: video.description,
+    tags: extractTagsFromContent(video.title, video.description),
     date: video.publishedAt,
     category: "content" as const,
     linkUrl: video.url,

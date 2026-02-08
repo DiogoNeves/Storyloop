@@ -4,7 +4,7 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -26,6 +26,7 @@ import {
   ContentTypeTabs,
   type ContentTypeFilter,
 } from "@/components/ContentTypeTabs";
+import { TagFilterSection } from "@/components/TagFilterSection";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import {
   entriesMutations,
@@ -73,7 +74,8 @@ const seedActivityItems: ActivityItem[] = [
     id: "1",
     title: "Uploaded 'Behind the Scenes at Edit Bay'",
     summary:
-      "View duration lifted to 64%. Keep leaning into granular storytelling beats.",
+      "View duration lifted to 64%. Keep leaning into granular storytelling beats. #retention",
+    tags: ["retention"],
     date: new Date().toISOString(),
     category: "content",
   },
@@ -81,7 +83,8 @@ const seedActivityItems: ActivityItem[] = [
     id: "2",
     title: "Hook iteration working",
     summary:
-      "CTR climbed 14% week over week after testing the narrative teaser hook.",
+      "CTR climbed 14% week over week after testing the narrative teaser hook. #thumbnail",
+    tags: ["thumbnail"],
     date: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
     category: "journal",
   },
@@ -89,7 +92,8 @@ const seedActivityItems: ActivityItem[] = [
     id: "3",
     title: "Weekly journal draft",
     summary:
-      "Reflect on the edit pace experimentation and the impact on watch curve retention.",
+      "Reflect on the edit pace experimentation and the impact on watch curve retention. #strategy",
+    tags: ["strategy"],
     date: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
     category: "journal",
   },
@@ -152,6 +156,7 @@ function JournalPage() {
 
   const { publicOnly } = useSettings();
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeTag, setActiveTag] = useState<string | null>(null);
 
   const {
     activityItems,
@@ -421,13 +426,32 @@ function JournalPage() {
     return "We couldn't load saved entries.";
   }, [entriesQuery.error, entriesQuery.status]);
 
+  useEffect(() => {
+    if (!activeTag) {
+      return;
+    }
+    const hasTag = displayItems.some((item) =>
+      item.tags?.includes(activeTag),
+    );
+    if (!hasTag) {
+      setActiveTag(null);
+    }
+  }, [activeTag, displayItems]);
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 sm:gap-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <ContentTypeTabs
-          value={contentTypeFilter}
-          onChange={setContentTypeFilter}
-        />
+        <div className="flex flex-col gap-2">
+          <ContentTypeTabs
+            value={contentTypeFilter}
+            onChange={setContentTypeFilter}
+          />
+          <TagFilterSection
+            items={displayItems}
+            activeTag={activeTag}
+            onTagSelect={setActiveTag}
+          />
+        </div>
         <div className="w-full p-4 sm:max-w-[260px] md:p-1">
           <Input
             className="text-base sm:text-sm"
@@ -459,6 +483,7 @@ function JournalPage() {
         onConversationDelete={isDemo ? undefined : handleConversationDelete}
         deletingConversationIds={deletingConversationIds}
         searchQuery={searchQuery}
+        tagFilter={activeTag}
       />
     </div>
   );

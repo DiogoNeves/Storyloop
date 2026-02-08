@@ -1,3 +1,5 @@
+import { extractTagsFromContent } from "@/lib/activity-tags";
+
 /**
  * Entry types and transformation utilities.
  *
@@ -39,6 +41,7 @@ export interface ActivityItem {
   lastSmartUpdateAt?: string | null;
   promptBody?: string;
   promptFormat?: string;
+  tags?: string[];
   category: "content" | "journal" | "conversation";
   linkUrl?: string;
   thumbnailUrl?: string;
@@ -66,6 +69,11 @@ export function entryToActivityItem(entry: Entry): ActivityItem {
     lastSmartUpdateAt: entry.lastSmartUpdateAt ?? null,
     promptBody: entry.promptBody ?? undefined,
     promptFormat: entry.promptFormat ?? undefined,
+    tags: extractTagsFromContent(
+      entry.title,
+      entry.summary,
+      entry.promptBody,
+    ),
     category: entry.category,
     linkUrl: entry.linkUrl ?? undefined,
     thumbnailUrl: entry.thumbnailUrl ?? undefined,
