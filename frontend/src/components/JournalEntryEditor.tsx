@@ -389,8 +389,7 @@ const JournalEntryEditorInner = forwardRef<
 
       setMentionState((prev) => {
         if (
-          prev &&
-          prev.query === query &&
+          prev?.query === query &&
           prev.range.from === mentionFrom &&
           prev.range.to === selection.from
         ) {
@@ -404,7 +403,7 @@ const JournalEntryEditorInner = forwardRef<
         };
       });
 
-      if (!mentionState || mentionState.query !== query) {
+      if (mentionState?.query !== query) {
         setMentionActiveIndex(0);
       }
     },

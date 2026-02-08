@@ -2,11 +2,11 @@ import { useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type ChecklistCardProps = {
+interface ChecklistCardProps {
   title: string;
   items: string[];
   className?: string;
-};
+}
 
 export function ChecklistCard({ title, items, className }: ChecklistCardProps) {
   const [isExpanded, setIsExpanded] = useState(true);

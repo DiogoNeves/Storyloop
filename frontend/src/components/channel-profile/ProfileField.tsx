@@ -3,11 +3,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { FieldDefinition } from "@/api/channel";
 
-type ProfileFieldProps = {
+interface ProfileFieldProps {
   field: FieldDefinition;
   value: string;
   onChange: (value: string) => void;
-};
+}
 
 export function ProfileField({ field, value, onChange }: ProfileFieldProps) {
   return (

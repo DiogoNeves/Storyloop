@@ -21,19 +21,19 @@ export interface AudienceBucket {
 
 export type FieldKind = "input" | "textarea";
 
-export type ChecklistSection = {
+export interface ChecklistSection {
   title: string;
   items: string[];
-};
+}
 
-export type FieldDefinition = {
+export interface FieldDefinition {
   id: string;
   label: string;
   placeholder?: string;
   kind: FieldKind;
   className?: string;
   controlClassName?: string;
-};
+}
 
 export type ProfileFieldKey =
   | "audienceFocus"
@@ -50,11 +50,11 @@ export type BucketFieldDefinition = Omit<FieldDefinition, "id"> & {
   key: keyof AudienceBucket;
 };
 
-export type ChannelProfileAdvice = {
+export interface ChannelProfileAdvice {
   profileFields: Record<ProfileFieldKey, ProfileFieldDefinition>;
   bucketFields: Record<string, BucketFieldDefinition>;
   checklists: Record<string, ChecklistSection>;
-};
+}
 
 export interface ChannelProfile {
   audienceFocus?: string;

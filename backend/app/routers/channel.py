@@ -36,8 +36,8 @@ def get_channel_profile(
 
     return ChannelProfileSnapshot(
         profile=profile,
-        updatedAt=updated_at.isoformat() if updated_at else None,
-        contentHash=calculate_channel_profile_hash(profile),
+        updated_at=updated_at.isoformat() if updated_at else None,
+        content_hash=calculate_channel_profile_hash(profile),
     )
 
 
@@ -59,6 +59,6 @@ def update_channel_profile(
     updated_at = user_service.upsert_channel_profile(serialized)
     return ChannelProfileSnapshot(
         profile=payload,
-        updatedAt=updated_at.isoformat(),
-        contentHash=calculate_channel_profile_hash(payload),
+        updated_at=updated_at.isoformat(),
+        content_hash=calculate_channel_profile_hash(payload),
     )

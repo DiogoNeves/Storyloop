@@ -8,12 +8,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-type SectionCardProps = {
+interface SectionCardProps {
   title: string;
   description?: string;
   contentClassName?: string;
   children: ReactNode;
-};
+}
 
 export function SectionCard({
   title,
