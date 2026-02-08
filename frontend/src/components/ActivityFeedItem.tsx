@@ -7,7 +7,7 @@ import {
   getActivityCategoryLabel,
   getActivityDetailPath,
 } from "@/lib/activity-helpers";
-import { formatTagLabel, normalizeTag } from "@/lib/activity-tags";
+import { formatTagLabel } from "@/lib/activity-tags";
 import { useSync } from "@/hooks/useSync";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -94,10 +94,7 @@ export function ActivityFeedItem({
   );
   const tagLabels =
     item.category === "journal"
-      ? (item.tags ?? []).map((tag) => ({
-          value: formatTagLabel(tag),
-          isArchived: normalizeTag(tag) === "archived",
-        }))
+      ? (item.tags ?? []).map((tag) => formatTagLabel(tag))
       : [];
 
   const handleDetailClick = () => {
@@ -209,13 +206,10 @@ export function ActivityFeedItem({
               <div className="flex flex-wrap gap-2">
                 {tagLabels.map((tag) => (
                   <span
-                    key={`${item.id}-${tag.value}`}
-                    className={cn(
-                      "inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground",
-                      tag.isArchived && "tag-archived",
-                    )}
+                    key={`${item.id}-${tag}`}
+                    className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
                   >
-                    {tag.value}
+                    {tag}
                   </span>
                 ))}
               </div>
