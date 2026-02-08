@@ -35,6 +35,9 @@ from app.services.youtube_analytics import YoutubeAnalyticsService
 from app.services.youtube_oauth import YoutubeOAuthService
 
 
+ARCHIVED_TAG = "#archived"
+
+
 def _normalize_title(title: str) -> str:
     return title.strip()
 
@@ -75,6 +78,13 @@ def _to_journal_entry(
     )
 
 
+def _is_archived_entry(record: EntryRecord) -> bool:
+    archived_marker = ARCHIVED_TAG.lower()
+    title = record.title.lower()
+    summary = record.summary.lower()
+    return archived_marker in title or archived_marker in summary
+
+
 class JournalRepository:
     """Readonly accessors for journal entries scoped to the current user."""
 
@@ -100,7 +110,9 @@ class JournalRepository:
         def _fetch() -> list[JournalEntry]:
             records = self._entry_service.list_entries()
             filtered = [
-                record for record in records if record.category == "journal"
+                record
+                for record in records
+                if record.category == "journal" and not _is_archived_entry(record)
             ]
             if before:
                 cutoff = _parse_iso_datetime(before)
@@ -131,9 +143,12 @@ class JournalRepository:
             records = self._entry_service.search_entries(
                 keyword=keyword, category="journal", limit=limit
             )
+            filtered = [
+                record for record in records if not _is_archived_entry(record)
+            ]
             return [
                 _to_journal_entry(record, self._asset_service)
-                for record in records
+                for record in filtered
             ]
 
         return await anyio.to_thread.run_sync(_fetch)
@@ -147,6 +162,8 @@ class JournalRepository:
                 raise RuntimeError("Entry not found")
             if record.category != "journal":
                 raise RuntimeError("Entry is not a journal entry")
+            if _is_archived_entry(record):
+                raise RuntimeError("Entry is archived")
             return _to_journal_details(record)
 
         return await anyio.to_thread.run_sync(_fetch)
@@ -165,6 +182,8 @@ class JournalRepository:
                 raise RuntimeError("Entry not found")
             if record.category != "journal":
                 raise RuntimeError("Entry is not a journal entry")
+            if _is_archived_entry(record):
+                raise RuntimeError("Entry is archived")
             current_hash = _calculate_content_hash(record.title, record.summary)
             if current_hash != content_hash:
                 raise RuntimeError(
