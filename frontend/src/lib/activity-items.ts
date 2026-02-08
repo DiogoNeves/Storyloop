@@ -9,8 +9,6 @@ import {
 } from "@/lib/types/entries";
 import { extractTagsFromContent } from "@/lib/activity-tags";
 
-const MAX_ACTIVITY_ITEMS = 50;
-
 interface BuildActivityItemsOptions {
   entries?: Entry[] | null;
   conversations?: Conversation[] | null;
@@ -53,9 +51,7 @@ export function buildActivityItems({
     return true;
   });
 
-  return [...baseItems, ...uniqueVideoItems]
-    .sort(compareActivityItemsByPinnedDate)
-    .slice(0, MAX_ACTIVITY_ITEMS);
+  return [...baseItems, ...uniqueVideoItems].sort(compareActivityItemsByPinnedDate);
 }
 
 function buildConversationActivityItems(
