@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from hashlib import blake2s
 from typing import Any, Protocol, runtime_checkable
@@ -33,6 +34,13 @@ from app.services.agent_tools.models import (
 )
 from app.services.youtube_analytics import YoutubeAnalyticsService
 from app.services.youtube_oauth import YoutubeOAuthService
+
+
+ARCHIVED_TAG = "#archived"
+ARCHIVED_TAG_PATTERN = re.compile(
+    r"(?<![A-Za-z0-9/-])\\?#archived(?![A-Za-z0-9/-])",
+    re.IGNORECASE,
+)
 
 
 def _normalize_title(title: str) -> str:
@@ -75,6 +83,13 @@ def _to_journal_entry(
     )
 
 
+def _is_archived_entry(record: EntryRecord) -> bool:
+    return bool(
+        ARCHIVED_TAG_PATTERN.search(record.title)
+        or ARCHIVED_TAG_PATTERN.search(record.summary)
+    )
+
+
 class JournalRepository:
     """Readonly accessors for journal entries scoped to the current user."""
 
@@ -100,7 +115,9 @@ class JournalRepository:
         def _fetch() -> list[JournalEntry]:
             records = self._entry_service.list_entries()
             filtered = [
-                record for record in records if record.category == "journal"
+                record
+                for record in records
+                if record.category == "journal" and not _is_archived_entry(record)
             ]
             if before:
                 cutoff = _parse_iso_datetime(before)
@@ -128,12 +145,32 @@ class JournalRepository:
         """Search journal entries by keyword."""
 
         def _fetch() -> list[JournalEntry]:
+            if limit <= 0:
+                return []
+
+            query_limit = limit
             records = self._entry_service.search_entries(
-                keyword=keyword, category="journal", limit=limit
+                keyword=keyword,
+                category="journal",
+                limit=query_limit,
             )
+            filtered = [
+                record for record in records if not _is_archived_entry(record)
+            ]
+            while len(filtered) < limit and len(records) == query_limit:
+                query_limit *= 2
+                records = self._entry_service.search_entries(
+                    keyword=keyword,
+                    category="journal",
+                    limit=query_limit,
+                )
+                filtered = [
+                    record for record in records if not _is_archived_entry(record)
+                ]
+
             return [
                 _to_journal_entry(record, self._asset_service)
-                for record in records
+                for record in filtered[:limit]
             ]
 
         return await anyio.to_thread.run_sync(_fetch)
@@ -147,6 +184,8 @@ class JournalRepository:
                 raise RuntimeError("Entry not found")
             if record.category != "journal":
                 raise RuntimeError("Entry is not a journal entry")
+            if _is_archived_entry(record):
+                raise RuntimeError("Entry is archived")
             return _to_journal_details(record)
 
         return await anyio.to_thread.run_sync(_fetch)
@@ -165,6 +204,8 @@ class JournalRepository:
                 raise RuntimeError("Entry not found")
             if record.category != "journal":
                 raise RuntimeError("Entry is not a journal entry")
+            if _is_archived_entry(record):
+                raise RuntimeError("Entry is archived")
             current_hash = _calculate_content_hash(record.title, record.summary)
             if current_hash != content_hash:
                 raise RuntimeError(

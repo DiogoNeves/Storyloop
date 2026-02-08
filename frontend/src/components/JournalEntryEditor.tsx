@@ -126,6 +126,7 @@ const commonmarkWithSafeParagraph = (() => {
 })();
 
 const HASHTAG_PATTERN = /(^|[\s([{])(#([A-Za-z0-9][A-Za-z0-9/-]*))/g;
+const ARCHIVED_TAG = "#archived";
 
 const createHashtagDecorations = (doc: ProseNode) => {
   const decorations: Decoration[] = [];
@@ -150,10 +151,14 @@ const createHashtagDecorations = (doc: ProseNode) => {
       const prefixLength = (match[1] ?? "").length;
       const from = pos + matchIndex + prefixLength;
       const to = from + matchedTag.length;
+      const tagClass =
+        matchedTag.toLowerCase() === ARCHIVED_TAG
+          ? "journal-hashtag-chip journal-hashtag-archived"
+          : "journal-hashtag-chip";
 
       decorations.push(
         Decoration.inline(from, to, {
-          class: "journal-hashtag-chip",
+          class: tagClass,
         }),
       );
     }
