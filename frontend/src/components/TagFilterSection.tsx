@@ -13,14 +13,12 @@ interface TagFilterSectionProps {
   items: ActivityItem[];
   activeTag: string | null;
   onTagSelect: (tag: string | null) => void;
-  className?: string;
 }
 
 export function TagFilterSection({
   items,
   activeTag,
   onTagSelect,
-  className,
 }: TagFilterSectionProps) {
   const [isOpen, setIsOpen] = useState(false);
   const tagCounts = useMemo(() => collectTagCounts(items), [items]);
@@ -32,63 +30,67 @@ export function TagFilterSection({
   );
 
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
-      <div className="flex flex-wrap items-center gap-2">
+    <>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={() => setIsOpen((current) => !current)}
+        className={cn(
+          "gap-2 rounded-full px-3 py-2 font-medium shadow-none",
+          "hover:bg-transparent hover:text-foreground",
+          isOpen || activeTag ? "text-foreground" : "text-muted-foreground",
+        )}
+        aria-expanded={isOpen}
+        aria-controls="tag-filter-list"
+      >
+        <Hash className="h-4 w-4" aria-hidden="true" />
+        Tags
+        {toggleIcon}
+      </Button>
+      {activeTag ? (
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           size="sm"
-          onClick={() => setIsOpen((current) => !current)}
-          className="gap-2"
-          aria-expanded={isOpen}
-          aria-controls="tag-filter-list"
+          onClick={() => onTagSelect(null)}
+          className="gap-2 rounded-full px-3 py-2 text-foreground shadow-none hover:bg-primary/10"
         >
-          <Hash className="h-4 w-4" aria-hidden="true" />
-          Tags
-          {toggleIcon}
+          {formatTagLabel(activeTag)}
+          <span className="text-xs text-muted-foreground">Clear</span>
         </Button>
-        {activeTag ? (
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => onTagSelect(null)}
-            className="gap-2"
-          >
-            {formatTagLabel(activeTag)}
-            <span className="text-xs text-muted-foreground">Clear</span>
-          </Button>
-        ) : null}
-      </div>
+      ) : null}
       {isOpen ? (
         <div
           id="tag-filter-list"
-          className="flex flex-wrap items-center gap-2"
+          className="basis-full pt-1"
         >
-          <TagButton
-            label="All tags"
-            count={hasTags ? items.length : 0}
-            isSelected={!activeTag}
-            onClick={() => onTagSelect(null)}
-          />
-          {hasTags ? (
-            tagCounts.map((tagCount) => (
-              <TagButton
-                key={tagCount.tag}
-                label={formatTagLabel(tagCount.tag)}
-                count={tagCount.count}
-                isSelected={activeTag === tagCount.tag}
-                onClick={() => onTagSelect(tagCount.tag)}
-              />
-            ))
-          ) : (
-            <span className="text-xs text-muted-foreground">
-              No tags yet.
-            </span>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <TagButton
+              label="All tags"
+              count={hasTags ? items.length : 0}
+              isSelected={!activeTag}
+              onClick={() => onTagSelect(null)}
+            />
+            {hasTags ? (
+              tagCounts.map((tagCount) => (
+                <TagButton
+                  key={tagCount.tag}
+                  label={formatTagLabel(tagCount.tag)}
+                  count={tagCount.count}
+                  isSelected={activeTag === tagCount.tag}
+                  onClick={() => onTagSelect(tagCount.tag)}
+                />
+              ))
+            ) : (
+              <span className="text-xs text-muted-foreground">
+                No tags yet.
+              </span>
+            )}
+          </div>
         </div>
       ) : null}
-    </div>
+    </>
   );
 }
 
@@ -108,10 +110,15 @@ function TagButton({
   return (
     <Button
       type="button"
-      variant={isSelected ? "secondary" : "ghost"}
+      variant="ghost"
       size="sm"
       onClick={onClick}
-      className="gap-1"
+      className={cn(
+        "gap-1 rounded-full px-2.5 shadow-none",
+        isSelected
+          ? "text-foreground"
+          : "text-muted-foreground hover:text-foreground",
+      )}
     >
       <span>{label}</span>
       <span className="text-[10px] text-muted-foreground">{count}</span>
