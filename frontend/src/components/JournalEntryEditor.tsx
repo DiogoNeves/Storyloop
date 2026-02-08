@@ -153,7 +153,7 @@ const createHashtagDecorations = (doc: ProseNode) => {
       const to = from + matchedTag.length;
       const tagClass =
         matchedTag.toLowerCase() === ARCHIVED_TAG
-          ? "journal-hashtag-chip journal-hashtag-archived"
+          ? "journal-hashtag-chip tag-archived"
           : "journal-hashtag-chip";
 
       decorations.push(
