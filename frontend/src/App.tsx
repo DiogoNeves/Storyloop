@@ -83,8 +83,8 @@ const seedActivityItems: ActivityItem[] = [
     id: "2",
     title: "Hook iteration working",
     summary:
-      "CTR climbed 14% week over week after testing the narrative teaser hook. #thumbnail",
-    tags: ["thumbnail"],
+      "CTR climbed 14% week over week after testing the narrative teaser hook. #thumbnail #archived",
+    tags: ["thumbnail", "archived"],
     date: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
     category: "journal",
   },
