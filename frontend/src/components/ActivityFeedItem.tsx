@@ -7,6 +7,7 @@ import {
   getActivityCategoryLabel,
   getActivityDetailPath,
 } from "@/lib/activity-helpers";
+import { formatTagLabel } from "@/lib/activity-tags";
 import { useSync } from "@/hooks/useSync";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -91,6 +92,10 @@ export function ActivityFeedItem({
   const pinIcon = (
     <Pin className="h-4 w-4" fill={isPinned ? "currentColor" : "none"} />
   );
+  const tagLabels =
+    item.category === "journal"
+      ? (item.tags ?? []).map((tag) => formatTagLabel(tag))
+      : [];
 
   const handleDetailClick = () => {
     if (item.category === "conversation" && onConversationClick) {
@@ -196,6 +201,18 @@ export function ActivityFeedItem({
                 ) : null}
                 {truncatedSummary}
               </p>
+            ) : null}
+            {tagLabels.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {tagLabels.map((tag) => (
+                  <span
+                    key={`${item.id}-${tag}`}
+                    className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
             ) : null}
             {item.category === "content" ? (
               detailPath ? (
