@@ -154,9 +154,16 @@ class JournalRepository:
                 return []
 
             query_limit = limit
-            filtered: list[EntryRecord] = []
-
-            while True:
+            records = self._entry_service.search_entries(
+                keyword=keyword,
+                category="journal",
+                limit=query_limit,
+            )
+            filtered = [
+                record for record in records if not _is_archived_entry(record)
+            ]
+            while len(filtered) < limit and len(records) == query_limit:
+                query_limit *= 2
                 records = self._entry_service.search_entries(
                     keyword=keyword,
                     category="journal",
@@ -165,11 +172,6 @@ class JournalRepository:
                 filtered = [
                     record for record in records if not _is_archived_entry(record)
                 ]
-                if len(filtered) >= limit:
-                    break
-                if len(records) < query_limit:
-                    break
-                query_limit *= 2
 
             return [
                 _to_journal_entry(record, self._asset_service)
