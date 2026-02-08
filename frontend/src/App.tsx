@@ -440,8 +440,8 @@ function JournalPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 sm:gap-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
           <ContentTypeTabs
             value={contentTypeFilter}
             onChange={setContentTypeFilter}
