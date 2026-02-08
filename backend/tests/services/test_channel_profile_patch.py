@@ -1,5 +1,6 @@
 from app.services.channel_profile import (
     AudienceBucket,
+    AudienceBucketPatch,
     ChannelProfile,
     ChannelProfilePatch,
     apply_channel_profile_patch,
@@ -31,7 +32,9 @@ def test_patch_merges_bucket_updates_by_id() -> None:
         ]
     )
     patch = ChannelProfilePatch(
-        audienceBuckets=[{"id": "bucket-1", "name": "New name"}]
+        audienceBuckets=[
+            AudienceBucketPatch(id="bucket-1", name="New name")
+        ]
     )
 
     updated = apply_channel_profile_patch(current, patch)
@@ -45,7 +48,9 @@ def test_patch_adds_new_bucket_when_missing_id() -> None:
     current = ChannelProfile(
         audienceBuckets=[AudienceBucket(id="bucket-1", name="Existing")]
     )
-    patch = ChannelProfilePatch(audienceBuckets=[{"name": "New bucket"}])
+    patch = ChannelProfilePatch(
+        audienceBuckets=[AudienceBucketPatch(name="New bucket")]
+    )
 
     updated = apply_channel_profile_patch(current, patch)
 

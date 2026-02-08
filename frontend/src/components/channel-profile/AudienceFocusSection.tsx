@@ -3,11 +3,11 @@ import { ChecklistCard } from "@/components/channel-profile/ChecklistCard";
 import { ProfileField } from "@/components/channel-profile/ProfileField";
 import { SectionCard } from "@/components/channel-profile/SectionCard";
 
-type AudienceFocusSectionProps = {
+interface AudienceFocusSectionProps {
   advice: ChannelProfileAdvice;
   value: string;
   onChange: (value: string) => void;
-};
+}
 
 export function AudienceFocusSection({
   advice,

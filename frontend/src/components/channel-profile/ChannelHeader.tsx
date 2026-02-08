@@ -1,10 +1,10 @@
 import { Button } from "@/components/ui/button";
 
-type ChannelHeaderProps = {
+interface ChannelHeaderProps {
   lastUpdatedLabel: string;
   isSaving: boolean;
   onSave: () => void;
-};
+}
 
 export function ChannelHeader({
   lastUpdatedLabel,

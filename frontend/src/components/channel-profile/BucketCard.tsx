@@ -2,12 +2,12 @@ import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 
-type BucketCardProps = {
+interface BucketCardProps {
   title: string;
   showRemove?: boolean;
   onRemove?: () => void;
   children: ReactNode;
-};
+}
 
 export function BucketCard({
   title,

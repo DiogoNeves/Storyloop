@@ -33,14 +33,15 @@ if (!globalThis.ResizeObserver) {
 Object.defineProperty(window, "matchMedia", {
   writable: true,
   value: (query: string) => {
+    const noop = () => undefined;
     const mediaQuery = {
       matches: false,
       media: query,
       onchange: null,
-      addListener: () => {},
-      removeListener: () => {},
-      addEventListener: () => {},
-      removeEventListener: () => {},
+      addListener: noop,
+      removeListener: noop,
+      addEventListener: noop,
+      removeEventListener: noop,
       dispatchEvent: () => false,
     };
 

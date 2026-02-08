@@ -2,11 +2,11 @@ import type { AudienceBucket, BucketFieldDefinition } from "@/api/channel";
 import { buildBucketField } from "@/components/channel-profile/channelProfileContent";
 import { ProfileField } from "@/components/channel-profile/ProfileField";
 
-type BucketFieldProps = {
+interface BucketFieldProps {
   bucket: AudienceBucket;
   definition: BucketFieldDefinition;
   onUpdate: (bucketId: string, updates: Partial<AudienceBucket>) => void;
-};
+}
 
 export function BucketField({
   bucket,

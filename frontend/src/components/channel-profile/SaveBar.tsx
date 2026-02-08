@@ -1,12 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { StatusMessage } from "@/components/ui/status-message";
 
-type SaveBarProps = {
+interface SaveBarProps {
   saveMessage: string | null;
   saveError: string | null;
   hasLoadError: boolean;
   isSaving: boolean;
-};
+}
 
 export function SaveBar({
   saveMessage,

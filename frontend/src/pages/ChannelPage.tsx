@@ -47,16 +47,16 @@ const createEmptyProfile = (): ChannelProfile => ({
 
 const normalizeProfile = (profile: ChannelProfile | null): ChannelProfile => {
   const base = profile ?? createEmptyProfile();
-  const { personalConnectionConfirmed, bucketsLocked, ...baseProfile } = base;
+  const baseProfile: ChannelProfile = { ...base };
+  delete baseProfile.personalConnectionConfirmed;
+  delete baseProfile.bucketsLocked;
   const buckets = (baseProfile.audienceBuckets ?? []).map((bucket) => {
-    const {
-      careAndUnderstandingConfirmed,
-      personalConnection,
-      valueSpecific,
-      valueRealistic,
-      valueRepeatable,
-      ...bucketRest
-    } = bucket;
+    const bucketRest: AudienceBucket = { ...bucket };
+    delete bucketRest.careAndUnderstandingConfirmed;
+    delete bucketRest.personalConnection;
+    delete bucketRest.valueSpecific;
+    delete bucketRest.valueRealistic;
+    delete bucketRest.valueRepeatable;
     return {
       ...createEmptyBucket(),
       ...bucketRest,

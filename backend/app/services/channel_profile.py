@@ -183,8 +183,16 @@ class ChannelProfileSnapshot(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     profile: ChannelProfile | None = None
-    updated_at: str | None = Field(default=None, alias="updatedAt")
-    content_hash: str | None = Field(default=None, alias="contentHash")
+    updated_at: str | None = Field(
+        default=None,
+        validation_alias="updatedAt",
+        serialization_alias="updatedAt",
+    )
+    content_hash: str | None = Field(
+        default=None,
+        validation_alias="contentHash",
+        serialization_alias="contentHash",
+    )
 
 
 def calculate_channel_profile_hash(profile: ChannelProfile | None) -> str:

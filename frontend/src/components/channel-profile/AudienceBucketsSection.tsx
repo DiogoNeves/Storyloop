@@ -6,7 +6,7 @@ import { ChecklistCard } from "@/components/channel-profile/ChecklistCard";
 import { ProfileField } from "@/components/channel-profile/ProfileField";
 import { SectionCard } from "@/components/channel-profile/SectionCard";
 
-type AudienceBucketsSectionProps = {
+interface AudienceBucketsSectionProps {
   advice: ChannelProfileAdvice;
   buckets: AudienceBucket[];
   minBuckets: number;
@@ -18,7 +18,7 @@ type AudienceBucketsSectionProps = {
   onUpdateBucket: (bucketId: string, updates: Partial<AudienceBucket>) => void;
   onBucketsLockedNotesChange: (value: string) => void;
   onPersonalConnectionNotesChange: (value: string) => void;
-};
+}
 
 export function AudienceBucketsSection({
   advice,

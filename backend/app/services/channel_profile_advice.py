@@ -17,7 +17,6 @@ class ChecklistSection(BaseModel):
 class BaseField(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    id: str
     label: str
     placeholder: str | None = None
     kind: FieldKind
@@ -28,6 +27,7 @@ class BaseField(BaseModel):
 
 
 class ProfileField(BaseField):
+    id: str
     key: str
 
 

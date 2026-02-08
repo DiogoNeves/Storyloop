@@ -4,11 +4,11 @@ import { BucketField } from "@/components/channel-profile/BucketField";
 import { ChecklistCard } from "@/components/channel-profile/ChecklistCard";
 import { SectionCard } from "@/components/channel-profile/SectionCard";
 
-type ValueAuditSectionProps = {
+interface ValueAuditSectionProps {
   advice: ChannelProfileAdvice;
   buckets: AudienceBucket[];
   onUpdateBucket: (bucketId: string, updates: Partial<AudienceBucket>) => void;
-};
+}
 
 export function ValueAuditSection({
   advice,
@@ -24,8 +24,11 @@ export function ValueAuditSection({
       contentClassName="space-y-4"
     >
       {buckets.map((bucket, index) => {
+        const trimmedBucketName = bucket.name?.trim();
         const bucketLabel =
-          bucket.name?.trim() || `Audience bucket ${index + 1}`;
+          trimmedBucketName && trimmedBucketName.length > 0
+            ? trimmedBucketName
+            : `Audience bucket ${index + 1}`;
         return (
           <BucketCard key={`value-${bucket.id}`} title={bucketLabel}>
             <div className="grid gap-3 sm:grid-cols-2">

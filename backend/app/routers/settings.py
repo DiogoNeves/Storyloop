@@ -17,7 +17,10 @@ class SettingsResponse(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    smart_update_schedule_hours: int = Field(alias="smartUpdateScheduleHours")
+    smart_update_schedule_hours: int = Field(
+        validation_alias="smartUpdateScheduleHours",
+        serialization_alias="smartUpdateScheduleHours",
+    )
 
 
 class SettingsUpdate(BaseModel):
@@ -26,7 +29,9 @@ class SettingsUpdate(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     smart_update_schedule_hours: int = Field(
-        alias="smartUpdateScheduleHours", ge=1
+        ge=1,
+        validation_alias="smartUpdateScheduleHours",
+        serialization_alias="smartUpdateScheduleHours",
     )
 
 

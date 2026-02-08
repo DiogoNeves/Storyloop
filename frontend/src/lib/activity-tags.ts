@@ -29,7 +29,7 @@ export function extractTagsFromText(text: string): string[] {
 }
 
 export function extractTagsFromContent(
-  ...values: Array<string | null | undefined>
+  ...values: (string | null | undefined)[]
 ): string[] {
   const tags = new Set<string>();
   values.forEach((value) => {
