@@ -104,10 +104,10 @@ function buildDemoConversationItems(now: number): ActivityItem[] {
       id: "demo-conversation-2",
       title: "Quick check-in about pacing",
       summary:
-        "Loopie pinpointed the moment to trim and suggested a tighter intro beat. #pacing",
+        "Loopie pinpointed the moment to trim and suggested a tighter intro beat. #pacing #archived",
       tags: extractTagsFromContent(
         "Quick check-in about pacing",
-        "Loopie pinpointed the moment to trim and suggested a tighter intro beat. #pacing",
+        "Loopie pinpointed the moment to trim and suggested a tighter intro beat. #pacing #archived",
       ),
       date: new Date(now - 1000 * 60 * 90).toISOString(),
       category: "conversation",
