@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from hashlib import blake2s
 from typing import Any, Protocol, runtime_checkable
@@ -36,6 +37,7 @@ from app.services.youtube_oauth import YoutubeOAuthService
 
 
 ARCHIVED_TAG = "#archived"
+HASHTAG_PATTERN = re.compile(r"(^|[\s([{])(#([A-Za-z0-9][A-Za-z0-9/-]*))")
 
 
 def _normalize_title(title: str) -> str:
@@ -79,10 +81,18 @@ def _to_journal_entry(
 
 
 def _is_archived_entry(record: EntryRecord) -> bool:
-    archived_marker = ARCHIVED_TAG.lower()
-    title = record.title.lower()
-    summary = record.summary.lower()
-    return archived_marker in title or archived_marker in summary
+    return (
+        ARCHIVED_TAG in _extract_hashtags(record.title)
+        or ARCHIVED_TAG in _extract_hashtags(record.summary)
+    )
+
+
+def _extract_hashtags(text: str) -> set[str]:
+    return {
+        match.group(2).lower()
+        for match in HASHTAG_PATTERN.finditer(text)
+        if match.group(2)
+    }
 
 
 class JournalRepository:
@@ -140,15 +150,30 @@ class JournalRepository:
         """Search journal entries by keyword."""
 
         def _fetch() -> list[JournalEntry]:
-            records = self._entry_service.search_entries(
-                keyword=keyword, category="journal", limit=limit
-            )
-            filtered = [
-                record for record in records if not _is_archived_entry(record)
-            ]
+            if limit <= 0:
+                return []
+
+            query_limit = limit
+            filtered: list[EntryRecord] = []
+
+            while True:
+                records = self._entry_service.search_entries(
+                    keyword=keyword,
+                    category="journal",
+                    limit=query_limit,
+                )
+                filtered = [
+                    record for record in records if not _is_archived_entry(record)
+                ]
+                if len(filtered) >= limit:
+                    break
+                if len(records) < query_limit:
+                    break
+                query_limit *= 2
+
             return [
                 _to_journal_entry(record, self._asset_service)
-                for record in filtered
+                for record in filtered[:limit]
             ]
 
         return await anyio.to_thread.run_sync(_fetch)
