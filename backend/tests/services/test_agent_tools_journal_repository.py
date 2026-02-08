@@ -199,6 +199,14 @@ async def test_archived_detection_requires_exact_hashtag_match(
                 updated_at=now - timedelta(minutes=2),
                 category="journal",
             ),
+            EntryRecord(
+                id="entry-tag-escaped",
+                title="Escaped archive marker",
+                summary="Archived entry \\#archived",
+                occurred_at=now - timedelta(minutes=3),
+                updated_at=now - timedelta(minutes=3),
+                category="journal",
+            ),
         ]
     )
 
@@ -208,12 +216,22 @@ async def test_archived_detection_requires_exact_hashtag_match(
         keyword="retention",
         limit=10,
     )
+    archived_keyword_results = await repo.search_entries(
+        user_id="user-1",
+        keyword="#archived",
+        limit=10,
+    )
 
     assert [entry.id for entry in search_results] == [
         "entry-tag-suffix",
         "entry-tag-hyphen",
     ]
+    assert {
+        entry.id for entry in archived_keyword_results
+    }.isdisjoint({"entry-tag-exact", "entry-tag-escaped"})
     assert (await repo.get_entry("entry-tag-suffix")).id == "entry-tag-suffix"
     assert (await repo.get_entry("entry-tag-hyphen")).id == "entry-tag-hyphen"
     with pytest.raises(RuntimeError, match="Entry is archived"):
         await repo.get_entry("entry-tag-exact")
+    with pytest.raises(RuntimeError, match="Entry is archived"):
+        await repo.get_entry("entry-tag-escaped")
