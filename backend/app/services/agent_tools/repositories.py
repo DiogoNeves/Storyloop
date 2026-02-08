@@ -37,7 +37,10 @@ from app.services.youtube_oauth import YoutubeOAuthService
 
 
 ARCHIVED_TAG = "#archived"
-HASHTAG_PATTERN = re.compile(r"(^|[\s([{])(#([A-Za-z0-9][A-Za-z0-9/-]*))")
+ARCHIVED_TAG_PATTERN = re.compile(
+    r"(?<![A-Za-z0-9/-])\\?#archived(?![A-Za-z0-9/-])",
+    re.IGNORECASE,
+)
 
 
 def _normalize_title(title: str) -> str:
@@ -81,18 +84,10 @@ def _to_journal_entry(
 
 
 def _is_archived_entry(record: EntryRecord) -> bool:
-    return (
-        ARCHIVED_TAG in _extract_hashtags(record.title)
-        or ARCHIVED_TAG in _extract_hashtags(record.summary)
+    return bool(
+        ARCHIVED_TAG_PATTERN.search(record.title)
+        or ARCHIVED_TAG_PATTERN.search(record.summary)
     )
-
-
-def _extract_hashtags(text: str) -> set[str]:
-    return {
-        match.group(2).lower()
-        for match in HASHTAG_PATTERN.finditer(text)
-        if match.group(2)
-    }
 
 
 class JournalRepository:
