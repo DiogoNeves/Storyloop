@@ -142,9 +142,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[85vh] min-h-[520px] gap-0 overflow-hidden p-0">
-        <div className="grid h-full grid-cols-1 gap-0 md:grid-cols-[220px_1fr]">
-          <div className="border-b border-r bg-muted/50 md:border-b-0">
+      <DialogContent className="h-[85dvh] max-h-[85dvh] w-[calc(100vw-1rem)] max-w-4xl gap-0 overflow-hidden p-0 md:h-auto md:max-h-[85vh] md:min-h-[520px]">
+        <div className="grid h-full min-h-0 grid-cols-1 grid-rows-[auto_1fr] gap-0 md:grid-cols-[220px_1fr] md:grid-rows-1">
+          <div className="flex min-h-0 flex-col border-b border-r bg-muted/50 md:border-b-0">
             <DialogHeader className="px-6 py-4">
               <DialogTitle className="text-lg font-semibold">Settings</DialogTitle>
               <DialogDescription className="text-sm text-muted-foreground">
@@ -172,7 +172,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             </div>
           </div>
 
-          <div className="space-y-6 overflow-y-auto p-6">
+          <div className="min-h-0 space-y-6 overflow-y-auto overscroll-contain p-6 [-webkit-overflow-scrolling:touch]">
             {activeTab === "account" ? (
               <div className="space-y-4">
                 <div className="space-y-2">
