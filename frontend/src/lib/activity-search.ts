@@ -5,8 +5,6 @@ interface ActivitySearchOptions {
   tag?: string | null;
 }
 
-const ARCHIVED_TAG = "archived";
-
 export function filterActivityItems(
   items: ActivityItem[],
   query: string,
@@ -14,12 +12,8 @@ export function filterActivityItems(
 ): ActivityItem[] {
   const normalizedQuery = normalizeSearchText(query);
   const normalizedTag = options.tag ? normalizeTag(options.tag) : "";
-  const allowArchived = normalizedTag === ARCHIVED_TAG;
   if (!normalizedQuery) {
     return items.filter((item) => {
-      if (!allowArchived && itemHasTag(item, ARCHIVED_TAG)) {
-        return false;
-      }
       if (!normalizedTag) {
         return true;
       }
@@ -31,9 +25,6 @@ export function filterActivityItems(
 
   return items.filter((item) => {
     const searchText = buildActivitySearchText(item);
-    if (!allowArchived && itemHasTag(item, ARCHIVED_TAG)) {
-      return false;
-    }
     if (normalizedTag && !itemHasTag(item, normalizedTag)) {
       return false;
     }

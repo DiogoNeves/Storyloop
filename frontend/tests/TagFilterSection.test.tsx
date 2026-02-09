@@ -33,7 +33,7 @@ const items: ActivityItem[] = [
 ];
 
 describe("TagFilterSection", () => {
-  it("groups tags by journals/videos and de-duplicates shared tags to journals", async () => {
+  it("groups tags by source and de-duplicates shared tags to journals", async () => {
     const onTagSelect = vi.fn();
     const user = userEvent.setup();
 
@@ -49,10 +49,11 @@ describe("TagFilterSection", () => {
 
     expect(screen.getByText("In Journals")).toBeInTheDocument();
     expect(screen.getByText("In Videos")).toBeInTheDocument();
+    expect(screen.getByText("In Conversations")).toBeInTheDocument();
 
     expect(screen.getByText("#journalonly")).toBeInTheDocument();
     expect(screen.getByText("#videoonly")).toBeInTheDocument();
-    expect(screen.queryByText("#conversationonly")).not.toBeInTheDocument();
+    expect(screen.getByText("#conversationonly")).toBeInTheDocument();
     expect(screen.getAllByText("#shared")).toHaveLength(1);
   });
 });

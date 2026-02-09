@@ -36,6 +36,7 @@ class UserRecord:
     oauth_state: str | None
     oauth_state_created_at: datetime | None
     smart_update_interval_hours: int | None = None
+    show_archived: bool | None = None
 
 
 def _row_to_record(row: Row) -> UserRecord:
@@ -63,6 +64,9 @@ def _row_to_record(row: Row) -> UserRecord:
         oauth_state=row["oauth_state"],
         oauth_state_created_at=_parse_timestamp(row["oauth_state_created_at"]),
         smart_update_interval_hours=row["smart_update_interval_hours"],
+        show_archived=bool(row["show_archived"])
+        if row["show_archived"] is not None
+        else None,
     )
 
 
@@ -89,7 +93,8 @@ class UserService(DatabaseService):
                     credentials_error TEXT,
                     oauth_state TEXT,
                     oauth_state_created_at TEXT,
-                    smart_update_interval_hours INTEGER
+                    smart_update_interval_hours INTEGER,
+                    show_archived INTEGER
                 )
                 """
             )
@@ -104,6 +109,10 @@ class UserService(DatabaseService):
             if "smart_update_interval_hours" not in existing_columns:
                 connection.execute(
                     "ALTER TABLE users ADD COLUMN smart_update_interval_hours INTEGER"
+                )
+            if "show_archived" not in existing_columns:
+                connection.execute(
+                    "ALTER TABLE users ADD COLUMN show_archived INTEGER"
                 )
             if "channel_profile_json" not in existing_columns:
                 connection.execute(
@@ -166,6 +175,31 @@ class UserService(DatabaseService):
                     smart_update_interval_hours=excluded.smart_update_interval_hours
                 """,
                 (_DEFAULT_USER_ID, int(hours)),
+            )
+            connection.commit()
+
+    def get_show_archived(self) -> bool:
+        """Return whether archived journal entries should be shown in the feed."""
+        with closing(self._connection_factory()) as connection:
+            row = connection.execute(
+                "SELECT show_archived FROM users WHERE id = ?",
+                (_DEFAULT_USER_ID,),
+            ).fetchone()
+        if row is None or row["show_archived"] is None:
+            return False
+        return bool(row["show_archived"])
+
+    def set_show_archived(self, show_archived: bool) -> None:
+        """Persist whether archived journal entries are visible in the feed."""
+        with closing(self._connection_factory()) as connection:
+            connection.execute(
+                """
+                INSERT INTO users (id, show_archived)
+                VALUES (?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    show_archived=excluded.show_archived
+                """,
+                (_DEFAULT_USER_ID, int(show_archived)),
             )
             connection.commit()
 

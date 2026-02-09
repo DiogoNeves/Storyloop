@@ -95,3 +95,22 @@ def test_oauth_state_round_trip(
     assert cleared is not None
     assert cleared.oauth_state is None
     assert cleared.oauth_state_created_at is None
+
+
+def test_show_archived_round_trip(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    service = UserService(memory_connection_factory)
+    service.ensure_schema()
+
+    assert service.get_show_archived() is False
+
+    service.set_show_archived(True)
+    assert service.get_show_archived() is True
+
+    record = service.get_active_user()
+    assert record is not None
+    assert record.show_archived is True
+
+    service.set_show_archived(False)
+    assert service.get_show_archived() is False

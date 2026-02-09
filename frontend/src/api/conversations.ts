@@ -15,6 +15,7 @@ interface ConversationSummaryRecord extends ConversationRecord {
   last_turn_text: string | null;
   first_turn_text: string | null;
   turn_count: number;
+  tags?: string[];
 }
 
 interface TurnRecord {
@@ -42,6 +43,7 @@ export interface Conversation {
   lastTurnText?: string | null;
   firstTurnText?: string | null;
   turnCount?: number;
+  tags?: string[];
 }
 
 export interface ConversationTurn {
@@ -87,6 +89,7 @@ export const conversationQueries = createQueryKeys("conversations", {
         lastTurnText: record.last_turn_text,
         firstTurnText: record.first_turn_text,
         turnCount: record.turn_count,
+        tags: record.tags ?? [],
       }));
     },
   }),

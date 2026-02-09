@@ -6,10 +6,12 @@ export const DEFAULT_SMART_UPDATE_SCHEDULE_HOURS = 24;
 
 export interface SettingsResponse {
   smartUpdateScheduleHours: number;
+  showArchived: boolean;
 }
 
 export interface UpdateSettingsInput {
-  smartUpdateScheduleHours: number;
+  smartUpdateScheduleHours?: number;
+  showArchived?: boolean;
 }
 
 export const settingsQueries = createQueryKeys("settings", {

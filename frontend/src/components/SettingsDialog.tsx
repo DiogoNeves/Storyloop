@@ -60,6 +60,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const scheduleHours =
     settingsQuery.data?.smartUpdateScheduleHours ??
     DEFAULT_SMART_UPDATE_SCHEDULE_HOURS;
+  const showArchived = settingsQuery.data?.showArchived ?? false;
 
   useEffect(() => {
     setScheduleInput(String(scheduleHours));
@@ -267,6 +268,27 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                           <SelectItem value="system">System</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border bg-muted/50 p-4">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">Show archived journals</p>
+                      <p className="text-sm text-muted-foreground">
+                        Include archived journal entries in your activity feed.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="settings-show-archived" className="sr-only">
+                        Show archived journals
+                      </Label>
+                      <Switch
+                        id="settings-show-archived"
+                        checked={showArchived}
+                        disabled={settingsQuery.isLoading || scheduleMutation.isPending}
+                        onCheckedChange={(checked) => {
+                          scheduleMutation.mutate({ showArchived: checked });
+                        }}
+                      />
                     </div>
                   </div>
                 </div>

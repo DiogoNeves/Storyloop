@@ -16,6 +16,7 @@ export function useEntryEditing() {
   const [editingError, setEditingError] = useState<string | null>(null);
   const [deletingEntryId, setDeletingEntryId] = useState<string | null>(null);
   const [pinningEntryId, setPinningEntryId] = useState<string | null>(null);
+  const [archivingEntryId, setArchivingEntryId] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
 
@@ -68,6 +69,21 @@ export function useEntryEditing() {
       },
       onSettled: () => {
         setDeletingEntryId(null);
+      },
+    }),
+  );
+
+  const archiveEntryMutation = useMutation(
+    entriesMutations.update(queryClient, {
+      onError: (error) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "We couldn't update this entry. Please try again.";
+        setEditingError(message);
+      },
+      onSettled: () => {
+        setArchivingEntryId(null);
       },
     }),
   );
@@ -161,6 +177,22 @@ export function useEntryEditing() {
     [pinEntryMutation, pinningEntryId],
   );
 
+  const toggleArchive = useCallback(
+    async (id: string, nextArchived: boolean) => {
+      if (archivingEntryId) {
+        return;
+      }
+      setArchivingEntryId(id);
+      setEditingError(null);
+      try {
+        await archiveEntryMutation.mutateAsync({ id, archived: nextArchived });
+      } catch {
+        // handled in the mutation onError callback
+      }
+    },
+    [archiveEntryMutation, archivingEntryId],
+  );
+
   return {
     editingEntryId,
     editingDraft,
@@ -171,12 +203,15 @@ export function useEntryEditing() {
       deletingEntryId === id && deleteEntryMutation.isPending,
     isPinning: (id: string) =>
       pinningEntryId === id && pinEntryMutation.isPending,
+    isArchiving: (id: string) =>
+      archivingEntryId === id && archiveEntryMutation.isPending,
     startEdit,
     handleEditDraftChange,
     cancelEdit,
     submitEdit,
     deleteEntry,
     togglePin,
+    toggleArchive,
   };
 }
 
@@ -188,4 +223,3 @@ function toDateTimeLocalInput(date: string) {
   const adjusted = new Date(original.getTime() - offset * 60_000);
   return adjusted.toISOString().slice(0, 16);
 }
-

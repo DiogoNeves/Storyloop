@@ -16,6 +16,7 @@ from asyncache import cachedmethod
 from cachetools import TTLCache
 from googleapiclient.discovery import build
 
+from app.services.tags import extract_tags_from_values
 from app.services.youtube_identifier import build_lookup_candidates
 from app.utils.datetime import parse_datetime, parse_duration_seconds
 
@@ -201,6 +202,7 @@ class YoutubeVideo:
     thumbnail_url: str | None
     video_type: Literal["short", "live", "video"]
     privacy_status: str  # "public", "unlisted", "private"
+    tags: list[str]
     statistics: YoutubeVideoStatistics | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -214,6 +216,7 @@ class YoutubeVideo:
             "thumbnailUrl": self.thumbnail_url,
             "videoType": self.video_type,
             "privacyStatus": self.privacy_status,
+            "tags": self.tags,
         }
         if self.statistics is not None:
             result["statistics"] = self.statistics.to_dict()
@@ -308,6 +311,10 @@ class YoutubeVideo:
             thumbnail_url=thumbnail_url,
             video_type=video_type,
             privacy_status=privacy_status,
+            tags=extract_tags_from_values(
+                snippet.get("title", "Untitled video"),
+                snippet.get("description", ""),
+            ),
         )
 
 
