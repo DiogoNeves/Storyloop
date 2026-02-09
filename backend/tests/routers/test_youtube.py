@@ -214,6 +214,7 @@ async def test_get_video_detail_returns_video_with_transcript_none():
         "thumbnailUrl": "https://img.youtube.com/vi/vid001/hqdefault.jpg",
         "videoType": "video",
         "privacyStatus": "public",
+        "tags": [],
         "transcript": None,
         "statistics": {
             "viewCount": None,

@@ -27,6 +27,7 @@ from app.db_helpers.conversations import (
 from app.dependencies import get_asset_service, get_db
 from app.services.agent import build_loopie_deps
 from app.services.assets import AssetService, is_srt_mime_type, is_text_mime_type
+from app.services.tags import extract_tags_from_values
 
 router = APIRouter()
 
@@ -73,6 +74,7 @@ class ConversationListOut(ConversationOut):
     last_turn_text: str | None
     first_turn_text: str | None
     turn_count: int
+    tags: list[str] = Field(default_factory=list)
 
     @field_validator("last_turn_at", mode="before")
     @classmethod
@@ -270,7 +272,17 @@ def list_conversations(
     """List conversations with their most recent activity."""
     summaries = list_conversation_summaries(db)
     return [
-        ConversationListOut.model_validate(summary) for summary in summaries
+        ConversationListOut.model_validate(
+            {
+                **summary,
+                "tags": extract_tags_from_values(
+                    summary.get("title"),
+                    summary.get("first_turn_text"),
+                    summary.get("last_turn_text"),
+                ),
+            }
+        )
+        for summary in summaries
     ]
 
 

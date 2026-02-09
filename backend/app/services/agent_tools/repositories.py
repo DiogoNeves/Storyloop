@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from datetime import UTC, datetime
 from hashlib import blake2s
 from typing import Any, Protocol, runtime_checkable
@@ -11,6 +10,7 @@ from pydantic import ValidationError
 
 from app.services.assets import AssetService, extract_asset_ids
 from app.services.entries import EntryRecord, EntryService
+from app.services.tags import extract_tags_from_values
 from app.services.users import UserService
 from app.services.channel_profile import (
     ChannelProfile,
@@ -36,13 +36,6 @@ from app.services.youtube_analytics import YoutubeAnalyticsService
 from app.services.youtube_oauth import YoutubeOAuthService
 
 
-ARCHIVED_TAG = "#archived"
-ARCHIVED_TAG_PATTERN = re.compile(
-    r"(?<![A-Za-z0-9/-])\\?#archived(?![A-Za-z0-9/-])",
-    re.IGNORECASE,
-)
-
-
 def _normalize_title(title: str) -> str:
     return title.strip()
 
@@ -66,6 +59,9 @@ def _to_journal_details(record: EntryRecord) -> JournalEntryDetails:
         occurred_at=record.occurred_at.isoformat(),
         content_hash=_calculate_content_hash(record.title, record.summary),
         pinned=record.pinned,
+        tags=extract_tags_from_values(
+            record.title, record.summary, record.prompt_body
+        ),
     )
 
 
@@ -79,15 +75,15 @@ def _to_journal_entry(
         updated_at=record.updated_at.isoformat(),
         text=record.summary,
         pinned=record.pinned,
+        tags=extract_tags_from_values(
+            record.title, record.summary, record.prompt_body
+        ),
         attachments=_collect_attachments(asset_service, record.summary),
     )
 
 
 def _is_archived_entry(record: EntryRecord) -> bool:
-    return bool(
-        ARCHIVED_TAG_PATTERN.search(record.title)
-        or ARCHIVED_TAG_PATTERN.search(record.summary)
-    )
+    return bool(record.archived)
 
 
 class JournalRepository:
@@ -113,11 +109,11 @@ class JournalRepository:
         """
 
         def _fetch() -> list[JournalEntry]:
-            records = self._entry_service.list_entries()
+            records = self._entry_service.list_entries(include_archived=False)
             filtered = [
                 record
                 for record in records
-                if record.category == "journal" and not _is_archived_entry(record)
+                if record.category == "journal"
             ]
             if before:
                 cutoff = _parse_iso_datetime(before)
@@ -148,29 +144,15 @@ class JournalRepository:
             if limit <= 0:
                 return []
 
-            query_limit = limit
             records = self._entry_service.search_entries(
                 keyword=keyword,
                 category="journal",
-                limit=query_limit,
+                limit=limit,
+                include_archived=False,
             )
-            filtered = [
-                record for record in records if not _is_archived_entry(record)
-            ]
-            while len(filtered) < limit and len(records) == query_limit:
-                query_limit *= 2
-                records = self._entry_service.search_entries(
-                    keyword=keyword,
-                    category="journal",
-                    limit=query_limit,
-                )
-                filtered = [
-                    record for record in records if not _is_archived_entry(record)
-                ]
-
             return [
                 _to_journal_entry(record, self._asset_service)
-                for record in filtered[:limit]
+                for record in records[:limit]
             ]
 
         return await anyio.to_thread.run_sync(_fetch)
@@ -227,6 +209,7 @@ class JournalRepository:
                 pinned=payload.pinned
                 if payload.pinned is not None
                 else record.pinned,
+                archived=record.archived,
             )
             updated = self._entry_service.update_entry(updated_record)
             if not updated:
@@ -254,6 +237,7 @@ class JournalRepository:
                 last_smart_update_at=None,
                 category="journal",
                 pinned=payload.pinned if payload.pinned is not None else False,
+                archived=False,
             )
             saved = self._entry_service.save_new_entries([entry])
             if not saved:
@@ -351,6 +335,9 @@ class EntryRepository:
                 thumbnail_url=record.thumbnail_url,
                 video_id=record.video_id,
                 pinned=record.pinned,
+                tags=extract_tags_from_values(
+                    record.title, record.summary, record.prompt_body
+                ),
             )
 
         return await anyio.to_thread.run_sync(_fetch)
@@ -549,7 +536,11 @@ class YouTubeRepository:
                 description=video.description,
                 published_at=video.published_at.isoformat(),
                 url=video.url,
-                tags=[],
+                tags=getattr(
+                    video,
+                    "tags",
+                    extract_tags_from_values(video.title, video.description),
+                ),
             )
             for video in videos
         ]
@@ -568,7 +559,11 @@ class YouTubeRepository:
             description=video.description,
             published_at=video.published_at.isoformat(),
             url=video.url,
-            tags=[],
+            tags=getattr(
+                video,
+                "tags",
+                extract_tags_from_values(video.title, video.description),
+            ),
         )
 
     async def list_videos(
@@ -627,7 +622,11 @@ class YouTubeRepository:
                     description=video.description,
                     published_at=video.published_at.isoformat(),
                     url=video.url,
-                    tags=[],
+                    tags=getattr(
+                        video,
+                        "tags",
+                        extract_tags_from_values(video.title, video.description),
+                    ),
                 )
             )
             if len(filtered) >= limit:

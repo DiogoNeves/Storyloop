@@ -28,6 +28,7 @@ class EntryRecord:
     thumbnail_url: str | None = None
     video_id: str | None = None
     pinned: bool = False
+    archived: bool = False
 
 
 # Column definitions - single source of truth
@@ -45,6 +46,7 @@ ENTRY_COLUMNS = (
     "thumbnail_url",
     "video_id",
     "pinned",
+    "archived",
 )
 
 
@@ -73,6 +75,7 @@ def _row_to_record(row: Row) -> EntryRecord:
         thumbnail_url=row["thumbnail_url"],
         video_id=row["video_id"],
         pinned=bool(row["pinned"]),
+        archived=bool(row["archived"]),
     )
 
 
@@ -97,6 +100,7 @@ def _record_to_values(record: EntryRecord) -> tuple:
         record.thumbnail_url,
         record.video_id,
         int(record.pinned),
+        int(record.archived),
     )
 
 
@@ -121,7 +125,8 @@ class EntryService(DatabaseService):
                     link_url TEXT,
                     thumbnail_url TEXT,
                     video_id TEXT,
-                    pinned INTEGER NOT NULL DEFAULT 0
+                    pinned INTEGER NOT NULL DEFAULT 0,
+                    archived INTEGER NOT NULL DEFAULT 0
                 )
                 """
             )
@@ -156,6 +161,10 @@ class EntryService(DatabaseService):
             if "pinned" not in columns:
                 connection.execute(
                     "ALTER TABLE entries ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0"
+                )
+            if "archived" not in columns:
+                connection.execute(
+                    "ALTER TABLE entries ADD COLUMN archived INTEGER NOT NULL DEFAULT 0"
                 )
             if "updated_at" in columns or added_updated_at:
                 connection.execute(
@@ -259,6 +268,7 @@ class EntryService(DatabaseService):
         keyword: str,
         category: str = "journal",
         limit: int = 10,
+        include_archived: bool = True,
     ) -> list[EntryRecord]:
         """Search entries by keyword using the FTS5 trigram index."""
         normalized = keyword.strip()
@@ -272,6 +282,7 @@ class EntryService(DatabaseService):
         if not cleaned_tokens:
             return []
         match_query = " ".join(cleaned_tokens)
+        where_archived = "" if include_archived else "AND entries.archived = 0"
         with closing(self._connection_factory()) as connection:
             columns_str = ", ".join(f"entries.{col}" for col in ENTRY_COLUMNS)
             rows: Sequence[Row] = connection.execute(
@@ -281,6 +292,7 @@ class EntryService(DatabaseService):
                 JOIN entries_fts ON entries.rowid = entries_fts.rowid
                 WHERE entries_fts MATCH ?
                 AND entries.category = ?
+                {where_archived}
                 ORDER BY pinned DESC, datetime(updated_at) DESC
                 LIMIT ?
                 """,
@@ -314,14 +326,16 @@ class EntryService(DatabaseService):
             connection.commit()
         return inserted
 
-    def list_entries(self) -> list[EntryRecord]:
+    def list_entries(self, *, include_archived: bool = True) -> list[EntryRecord]:
         """Return all stored entries ordered by recency."""
+        where_clause = "" if include_archived else "WHERE archived = 0"
         with closing(self._connection_factory()) as connection:
             columns_str = ", ".join(ENTRY_COLUMNS)
             rows: Sequence[Row] = connection.execute(
                 f"""
                 SELECT {columns_str}
                 FROM entries
+                {where_clause}
                 ORDER BY pinned DESC, datetime(updated_at) DESC
                 """
             ).fetchall()

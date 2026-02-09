@@ -31,6 +31,7 @@ export interface CreateEntryInput {
   linkUrl?: string | null;
   thumbnailUrl?: string | null;
   pinned?: boolean;
+  archived?: boolean;
 }
 
 export interface UpdateEntryInput extends Partial<CreateEntryInput> {
@@ -305,6 +306,7 @@ function applyEntryPatch(
       ? { promptFormat: input.promptFormat ?? null }
       : {}),
     ...("pinned" in input ? { pinned: input.pinned! } : {}),
+    ...("archived" in input ? { archived: input.archived! } : {}),
     updatedAt,
   };
 }

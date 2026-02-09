@@ -15,6 +15,7 @@ interface BuildActivityItemsOptions {
   youtubeFeed?: YoutubeFeedResponse | null;
   contentTypeFilter: ContentTypeFilter;
   publicOnly: boolean;
+  showArchived: boolean;
   isDemo?: boolean;
   now?: number;
 }
@@ -25,6 +26,7 @@ export function buildActivityItems({
   youtubeFeed,
   contentTypeFilter,
   publicOnly,
+  showArchived,
   isDemo = false,
   now,
 }: BuildActivityItemsOptions): ActivityItem[] {
@@ -33,7 +35,17 @@ export function buildActivityItems({
     isDemo,
     now,
   );
-  const storedActivityItems = (entries ?? []).map(entryToActivityItem);
+  const storedActivityItems = (entries ?? [])
+    .map(entryToActivityItem)
+    .filter((item) => {
+      if (item.category !== "journal") {
+        return true;
+      }
+      if (showArchived) {
+        return true;
+      }
+      return !item.archived;
+    });
   const baseItems = [...conversationActivityItems, ...storedActivityItems];
 
   const videoItems = buildVideoActivityItems(
@@ -79,9 +91,13 @@ function buildConversationActivityItems(
           trimmedSummary && trimmedSummary.length > 0
             ? trimmedSummary
             : "Jump into this Loopie conversation to keep building.",
-        tags: extractTagsFromContent(title, trimmedSummary),
+        tags:
+          conversation.tags && conversation.tags.length > 0
+            ? conversation.tags
+            : extractTagsFromContent(title, trimmedSummary),
         date: conversation.lastTurnAt ?? conversation.createdAt,
         category: "conversation" as const,
+        archived: false,
       };
     });
 }
@@ -99,6 +115,7 @@ function buildDemoConversationItems(now: number): ActivityItem[] {
       ),
       date: new Date(now - 1000 * 60 * 35).toISOString(),
       category: "conversation",
+      archived: false,
     },
     {
       id: "demo-conversation-2",
@@ -111,6 +128,7 @@ function buildDemoConversationItems(now: number): ActivityItem[] {
       ),
       date: new Date(now - 1000 * 60 * 90).toISOString(),
       category: "conversation",
+      archived: false,
     },
   ];
 }
@@ -132,7 +150,10 @@ function buildVideoActivityItems(
     id: `youtube:${video.id}`,
     title: video.title,
     summary: video.description,
-    tags: extractTagsFromContent(video.title, video.description),
+    tags:
+      video.tags && video.tags.length > 0
+        ? video.tags
+        : extractTagsFromContent(video.title, video.description),
     date: video.publishedAt,
     category: "content" as const,
     linkUrl: video.url,
@@ -140,6 +161,7 @@ function buildVideoActivityItems(
     videoId: video.id,
     videoType: video.videoType,
     privacyStatus: video.privacyStatus,
+    archived: false,
   }));
 
   return videoItems.filter((item) => {

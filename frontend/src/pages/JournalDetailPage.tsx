@@ -5,6 +5,7 @@ import { Link, useLocation, useParams, useNavigate } from "react-router-dom";
 import useLocalStorageState from "use-local-storage-state";
 
 import { entriesMutations, entriesQueries, type Entry } from "@/api/entries";
+import { settingsQueries } from "@/api/settings";
 import { useJournalEntryDraft } from "@/hooks/useJournalEntryDraft";
 import { useActivityItems } from "@/hooks/useActivityItems";
 import { useEntryEditing } from "@/hooks/useEntryEditing";
@@ -466,10 +467,13 @@ export function JournalDetailPage() {
   const [publicOnly] = useLocalStorageState<boolean>("publicOnlyFilter", {
     defaultValue: true,
   });
+  const settingsQuery = useQuery(settingsQueries.all());
+  const showArchived = settingsQuery.data?.showArchived ?? false;
 
   const { activityItems, youtubeState } = useActivityItems({
     contentTypeFilter,
     publicOnly,
+    showArchived,
   });
 
   const adjacentVideos = useMemo(() => {

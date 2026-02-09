@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Bot, Pin } from "lucide-react";
+import { Archive, Bot, Pin } from "lucide-react";
 
 import { type ActivityItem } from "@/lib/types/entries";
 import {
@@ -37,6 +37,8 @@ interface ActivityFeedItemProps {
   isConversationDeleting?: boolean;
   onPinToggle?: () => void;
   isPinning?: boolean;
+  onArchiveToggle?: () => void;
+  isArchiving?: boolean;
   /** Whether this entry is pending sync (created offline) */
   isPendingSync?: boolean;
 }
@@ -51,6 +53,8 @@ export function ActivityFeedItem({
   isConversationDeleting,
   onPinToggle,
   isPinning = false,
+  onArchiveToggle,
+  isArchiving = false,
   isPendingSync,
 }: ActivityFeedItemProps) {
   const { isOnline } = useSync();
@@ -61,6 +65,8 @@ export function ActivityFeedItem({
   const isDeleteDisabled = !isOnline || isDeleting;
   const isPinned = item.category === "journal" && Boolean(item.pinned);
   const isPinDisabled = !isOnline || isPinning;
+  const isArchived = item.category === "journal" && Boolean(item.archived);
+  const isArchiveDisabled = !isOnline || isArchiving;
   const formattedDate = new Date(item.date).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
@@ -286,6 +292,7 @@ export function ActivityFeedItem({
         {onEdit ||
         onDelete ||
         onPinToggle ||
+        onArchiveToggle ||
         (item.category === "conversation" && onConversationDelete) ? (
           <div className="absolute bottom-2 right-4 hidden items-center gap-2 group-hover:flex">
             {onDelete ? (
@@ -371,6 +378,36 @@ export function ActivityFeedItem({
               >
                 {isConversationDeleting ? "Deleting…" : "Delete"}
               </button>
+            ) : null}
+            {onArchiveToggle ? (
+              isArchiveDisabled ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="cursor-not-allowed text-xs text-muted-foreground opacity-50">
+                      {isArchived ? "Unarchive" : "Archive"}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {!isOnline ? "You are offline" : "Updating..."}
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <button
+                  type="button"
+                  className={cn(
+                    "inline-flex items-center gap-1 text-xs transition-colors",
+                    isArchived
+                      ? "text-primary hover:text-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                  onClick={() => {
+                    onArchiveToggle();
+                  }}
+                >
+                  <Archive className="h-3.5 w-3.5" />
+                  {isArchived ? "Unarchive" : "Archive"}
+                </button>
+              )
             ) : null}
           </div>
         ) : null}

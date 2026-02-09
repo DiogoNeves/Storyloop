@@ -2,6 +2,7 @@ import {
   QueryClient,
   QueryClientProvider,
   useMutation,
+  useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -34,10 +35,12 @@ import {
   type Entry,
 } from "@/api/entries";
 import { deleteConversation } from "@/api/conversations";
+import { settingsQueries } from "@/api/settings";
 import {
   compareEntriesByPinnedDate,
   type ActivityItem,
 } from "@/lib/types/entries";
+import { extractTagsFromContent } from "@/lib/activity-tags";
 import { useActivityItems } from "@/hooks/useActivityItems";
 import { YoutubeAuthCallback } from "@/pages/YoutubeAuthCallback";
 import { VideoDetailPage } from "@/pages/VideoDetailPage";
@@ -78,6 +81,7 @@ const seedActivityItems: ActivityItem[] = [
     tags: ["retention"],
     date: new Date().toISOString(),
     category: "content",
+    archived: false,
   },
   {
     id: "2",
@@ -87,6 +91,7 @@ const seedActivityItems: ActivityItem[] = [
     tags: ["thumbnail"],
     date: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
     category: "journal",
+    archived: false,
   },
   {
     id: "3",
@@ -96,6 +101,7 @@ const seedActivityItems: ActivityItem[] = [
     tags: ["strategy"],
     date: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
     category: "journal",
+    archived: false,
   },
 ];
 
@@ -155,6 +161,8 @@ function JournalPage() {
     });
 
   const { publicOnly } = useSettings();
+  const settingsQuery = useQuery(settingsQueries.all());
+  const showArchived = settingsQuery.data?.showArchived ?? false;
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTag, setActiveTag] = useState<string | null>(null);
 
@@ -167,6 +175,7 @@ function JournalPage() {
   } = useActivityItems({
     contentTypeFilter,
     publicOnly,
+    showArchived,
   });
   const handleConversationClick = useCallback(
     async (conversationId: string) => {
@@ -332,6 +341,12 @@ function JournalPage() {
         const optimisticEntry: Entry = {
           ...entryInput,
           pinned: entryInput.pinned ?? false,
+          archived: false,
+          tags: extractTagsFromContent(
+            entryInput.title,
+            entryInput.summary,
+            entryInput.promptBody,
+          ),
           videoId: null,
           videoType: null,
           updatedAt: optimisticUpdatedAt,
@@ -375,6 +390,12 @@ function JournalPage() {
         const optimisticEntry: Entry = {
           ...entryInput,
           pinned: entryInput.pinned ?? false,
+          archived: false,
+          tags: extractTagsFromContent(
+            entryInput.title,
+            entryInput.summary,
+            entryInput.promptBody,
+          ),
           videoId: null,
           videoType: null,
           updatedAt: optimisticUpdatedAt,
