@@ -112,7 +112,7 @@ async def test_create_journal_entry_strips_text(
 
 
 @pytest.mark.asyncio
-async def test_search_entries_refills_limit_after_archived_filtering(
+async def test_search_entries_excludes_explicitly_archived_entries(
     memory_connection_factory,
 ) -> None:
     service = EntryService(memory_connection_factory)
@@ -124,18 +124,20 @@ async def test_search_entries_refills_limit_after_archived_filtering(
             EntryRecord(
                 id="entry-archived-newest",
                 title="Retention update",
-                summary="Newest note #archived retention",
+                summary="Newest note retention",
                 occurred_at=now,
                 updated_at=now,
                 category="journal",
+                archived=True,
             ),
             EntryRecord(
                 id="entry-archived-second",
                 title="Retention draft",
-                summary="Second newest #archived retention",
+                summary="Second newest retention",
                 occurred_at=now - timedelta(minutes=1),
                 updated_at=now - timedelta(minutes=1),
                 category="journal",
+                archived=True,
             ),
             EntryRecord(
                 id="entry-visible-first",
@@ -166,7 +168,7 @@ async def test_search_entries_refills_limit_after_archived_filtering(
 
 
 @pytest.mark.asyncio
-async def test_archived_detection_requires_exact_hashtag_match(
+async def test_hashtag_text_does_not_control_archive_visibility(
     memory_connection_factory,
 ) -> None:
     service = EntryService(memory_connection_factory)
@@ -176,36 +178,22 @@ async def test_archived_detection_requires_exact_hashtag_match(
     service.save_new_entries(
         [
             EntryRecord(
-                id="entry-tag-suffix",
+                id="entry-tag-active",
                 title="Retention notes",
-                summary="Investigating #archived2024 retention trends",
+                summary="Investigating #archived retention trends",
                 occurred_at=now,
                 updated_at=now,
                 category="journal",
+                archived=False,
             ),
             EntryRecord(
-                id="entry-tag-hyphen",
-                title="Retention ideas #archived-notes",
-                summary="Should stay visible",
+                id="entry-tag-archived",
+                title="Retention archive",
+                summary="Archived entry",
                 occurred_at=now - timedelta(minutes=1),
                 updated_at=now - timedelta(minutes=1),
                 category="journal",
-            ),
-            EntryRecord(
-                id="entry-tag-exact",
-                title="Retention archive",
-                summary="Archived entry #archived",
-                occurred_at=now - timedelta(minutes=2),
-                updated_at=now - timedelta(minutes=2),
-                category="journal",
-            ),
-            EntryRecord(
-                id="entry-tag-escaped",
-                title="Escaped archive marker",
-                summary="Archived entry \\#archived",
-                occurred_at=now - timedelta(minutes=3),
-                updated_at=now - timedelta(minutes=3),
-                category="journal",
+                archived=True,
             ),
         ]
     )
@@ -218,20 +206,14 @@ async def test_archived_detection_requires_exact_hashtag_match(
     )
     archived_keyword_results = await repo.search_entries(
         user_id="user-1",
-        keyword="#archived",
+        keyword="archived",
         limit=10,
     )
 
-    assert [entry.id for entry in search_results] == [
-        "entry-tag-suffix",
-        "entry-tag-hyphen",
+    assert [entry.id for entry in search_results] == ["entry-tag-active"]
+    assert [entry.id for entry in archived_keyword_results] == [
+        "entry-tag-active"
     ]
-    assert {
-        entry.id for entry in archived_keyword_results
-    }.isdisjoint({"entry-tag-exact", "entry-tag-escaped"})
-    assert (await repo.get_entry("entry-tag-suffix")).id == "entry-tag-suffix"
-    assert (await repo.get_entry("entry-tag-hyphen")).id == "entry-tag-hyphen"
+    assert (await repo.get_entry("entry-tag-active")).id == "entry-tag-active"
     with pytest.raises(RuntimeError, match="Entry is archived"):
-        await repo.get_entry("entry-tag-exact")
-    with pytest.raises(RuntimeError, match="Entry is archived"):
-        await repo.get_entry("entry-tag-escaped")
+        await repo.get_entry("entry-tag-archived")

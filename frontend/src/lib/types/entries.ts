@@ -1,5 +1,3 @@
-import { extractTagsFromContent } from "@/lib/activity-tags";
-
 /**
  * Entry types and transformation utilities.
  *
@@ -25,6 +23,8 @@ export interface Entry {
   videoId?: string | null;
   videoType?: "short" | "live" | "video" | null;
   pinned: boolean;
+  archived?: boolean;
+  tags?: string[];
 }
 
 /**
@@ -49,6 +49,7 @@ export interface ActivityItem {
   videoType?: "short" | "live" | "video";
   privacyStatus?: "public" | "unlisted" | "private";
   pinned?: boolean;
+  archived?: boolean;
 }
 
 /**
@@ -69,17 +70,14 @@ export function entryToActivityItem(entry: Entry): ActivityItem {
     lastSmartUpdateAt: entry.lastSmartUpdateAt ?? null,
     promptBody: entry.promptBody ?? undefined,
     promptFormat: entry.promptFormat ?? undefined,
-    tags: extractTagsFromContent(
-      entry.title,
-      entry.summary,
-      entry.promptBody,
-    ),
+    tags: entry.tags ?? [],
     category: entry.category,
     linkUrl: entry.linkUrl ?? undefined,
     thumbnailUrl: entry.thumbnailUrl ?? undefined,
     videoId: entry.videoId ?? undefined,
     videoType: entry.videoType ?? undefined,
     pinned: entry.pinned,
+    archived: entry.archived ?? false,
   };
 }
 

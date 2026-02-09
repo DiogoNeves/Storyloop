@@ -327,6 +327,18 @@ export function ActivityFeed({
                   ? isPinning(item.id)
                   : false
               }
+              onArchiveToggle={
+                isEditable && item.category === "journal"
+                  ? () => {
+                      void editingState.toggleArchive(item.id, !item.archived);
+                    }
+                  : undefined
+              }
+              isArchiving={
+                isEditable && item.category === "journal"
+                  ? editingState.isArchiving(item.id)
+                  : false
+              }
             />
           );
         })}

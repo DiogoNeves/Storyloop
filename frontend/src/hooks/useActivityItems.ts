@@ -11,11 +11,13 @@ import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
 interface UseActivityItemsOptions {
   contentTypeFilter: ContentTypeFilter;
   publicOnly: boolean;
+  showArchived: boolean;
 }
 
 export function useActivityItems({
   contentTypeFilter,
   publicOnly,
+  showArchived,
 }: UseActivityItemsOptions) {
   const { isDemo } = useAgentConversationContext();
   const entriesListQuery = useMemo(() => entriesQueries.all(), []);
@@ -40,6 +42,7 @@ export function useActivityItems({
         youtubeFeed: youtubeState.youtubeFeed,
         contentTypeFilter,
         publicOnly,
+        showArchived,
         isDemo,
       }),
     [
@@ -48,6 +51,7 @@ export function useActivityItems({
       entriesQuery.data,
       isDemo,
       publicOnly,
+      showArchived,
       youtubeState.youtubeFeed,
     ],
   );

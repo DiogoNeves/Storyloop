@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from app.dependencies import get_entry_service, get_smart_entry_manager
 from app.services import EntryRecord, EntryService
 from app.services.smart_entries import SmartEntryUpdateManager
+from app.services.tags import extract_tags_from_values
 
 router = APIRouter(prefix="/entries", tags=["entries"])
 
@@ -35,6 +36,7 @@ class EntryCreate(BaseModel):
     thumbnail_url: str | None = Field(default=None, alias="thumbnailUrl")
     video_id: str | None = Field(default=None, alias="videoId")
     pinned: bool = False
+    archived: bool = False
 
     @field_validator("title", mode="after")
     @classmethod
@@ -71,6 +73,8 @@ class EntryCreate(BaseModel):
     def _validate_prompt_fields(self) -> "EntryCreate":
         if self.prompt_format and not self.prompt_body:
             raise ValueError("promptBody is required when promptFormat is provided")
+        if self.category != "journal":
+            self.archived = False
         return self
 
 
@@ -94,6 +98,8 @@ class EntryResponse(BaseModel):
     thumbnail_url: str | None = Field(default=None, alias="thumbnailUrl")
     video_id: str | None = Field(default=None, alias="videoId")
     pinned: bool = False
+    archived: bool = False
+    tags: list[str] = Field(default_factory=list)
 
     @classmethod
     def from_record(cls, record: EntryRecord) -> "EntryResponse":
@@ -112,6 +118,10 @@ class EntryResponse(BaseModel):
                 "thumbnail_url": record.thumbnail_url,
                 "video_id": record.video_id,
                 "pinned": record.pinned,
+                "archived": record.archived,
+                "tags": extract_tags_from_values(
+                    record.title, record.summary, record.prompt_body
+                ),
             }
         )
 
@@ -131,6 +141,7 @@ class EntryUpdate(BaseModel):
     thumbnail_url: str | None = Field(default=None, alias="thumbnailUrl")
     video_id: str | None = Field(default=None, alias="videoId")
     pinned: bool | None = None
+    archived: bool | None = None
 
     @field_validator("title", mode="after")
     @classmethod
@@ -196,6 +207,7 @@ def _create_to_record(entry: EntryCreate) -> EntryRecord:
         thumbnail_url=entry.thumbnail_url,
         video_id=entry.video_id,
         pinned=entry.pinned,
+        archived=entry.archived if entry.category == "journal" else False,
     )
 
 
@@ -238,6 +250,7 @@ def _update_record(current: EntryRecord, updates: EntryUpdate) -> EntryRecord:
     occurred_at = _resolve_field(update_dict, "occurred_at", current.occurred_at)
     category = _resolve_field(update_dict, "category", current.category)
     pinned = _resolve_field(update_dict, "pinned", current.pinned)
+    archived = _resolve_field(update_dict, "archived", current.archived)
     link_url = _resolve_field(update_dict, "link_url", current.link_url, allow_none=True)
     thumbnail_url = _resolve_field(
         update_dict, "thumbnail_url", current.thumbnail_url, allow_none=True
@@ -258,6 +271,7 @@ def _update_record(current: EntryRecord, updates: EntryUpdate) -> EntryRecord:
         thumbnail_url=thumbnail_url,
         video_id=video_id,
         pinned=pinned,
+        archived=archived if category == "journal" else False,
     )
 
 

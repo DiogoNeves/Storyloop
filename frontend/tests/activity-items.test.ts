@@ -13,6 +13,8 @@ function createEntry(index: number): Entry {
     updatedAt: `2025-01-${day}T00:00:00.000Z`,
     category: "journal",
     pinned: false,
+    archived: false,
+    tags: [],
   };
 }
 
@@ -25,8 +27,47 @@ describe("buildActivityItems", () => {
       youtubeFeed: null,
       contentTypeFilter: "all",
       publicOnly: false,
+      showArchived: false,
     });
 
     expect(items).toHaveLength(75);
+  });
+
+  it("hides archived journals unless showArchived is enabled", () => {
+    const entries: Entry[] = [
+      {
+        ...createEntry(1),
+        id: "entry-active",
+        archived: false,
+      },
+      {
+        ...createEntry(2),
+        id: "entry-archived",
+        archived: true,
+      },
+    ];
+
+    const hidden = buildActivityItems({
+      entries,
+      conversations: [],
+      youtubeFeed: null,
+      contentTypeFilter: "all",
+      publicOnly: false,
+      showArchived: false,
+    });
+    expect(hidden.map((item) => item.id)).toEqual(["entry-active"]);
+
+    const shown = buildActivityItems({
+      entries,
+      conversations: [],
+      youtubeFeed: null,
+      contentTypeFilter: "all",
+      publicOnly: false,
+      showArchived: true,
+    });
+    expect(shown.map((item) => item.id)).toEqual([
+      "entry-archived",
+      "entry-active",
+    ]);
   });
 });

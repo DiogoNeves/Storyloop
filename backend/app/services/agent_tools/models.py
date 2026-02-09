@@ -12,6 +12,7 @@ class JournalEntry(BaseModel):
     updated_at: str
     text: str
     pinned: bool = False
+    tags: list[str] = Field(default_factory=list)
     attachments: list["JournalEntryAttachment"] = Field(default_factory=list)
 
 
@@ -24,6 +25,7 @@ class JournalEntryDetails(BaseModel):
     occurred_at: str
     content_hash: str
     pinned: bool = False
+    tags: list[str] = Field(default_factory=list)
 
 
 class JournalEntryInput(BaseModel):
@@ -59,6 +61,7 @@ class EntryDetails(BaseModel):
     thumbnail_url: str | None = None
     video_id: str | None = None
     pinned: bool = False
+    tags: list[str] = Field(default_factory=list)
 
 
 class JournalEntryAttachment(BaseModel):
