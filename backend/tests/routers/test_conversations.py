@@ -159,8 +159,14 @@ def test_list_conversations_includes_recent_turn(
     conversation_id = create_response.json()["id"]
 
     with memory_connection_factory() as connection:
-        insert_turn(connection, conversation_id, "user", "Hello", [])
-        insert_turn(connection, conversation_id, "assistant", "Final reply", [])
+        insert_turn(connection, conversation_id, "user", "Hello #hooks", [])
+        insert_turn(
+            connection,
+            conversation_id,
+            "assistant",
+            "Final reply #retention",
+            [],
+        )
 
     response = client.get("/conversations")
 
@@ -170,10 +176,11 @@ def test_list_conversations_includes_recent_turn(
     summary = body[0]
     assert summary["id"] == conversation_id
     assert summary["title"] == "Summary"
-    assert summary["first_turn_text"] == "Hello"
-    assert summary["last_turn_text"] == "Final reply"
+    assert summary["first_turn_text"] == "Hello #hooks"
+    assert summary["last_turn_text"] == "Final reply #retention"
     assert summary["last_turn_at"] is not None
     assert summary["turn_count"] == 2
+    assert summary["tags"] == ["hooks", "retention"]
 
 
 def test_get_turns_for_nonexistent_conversation(

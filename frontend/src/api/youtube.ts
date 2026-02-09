@@ -17,6 +17,7 @@ export interface YoutubeVideoResponse {
   thumbnailUrl: string | null;
   videoType: "short" | "live" | "video";
   privacyStatus: "public" | "unlisted" | "private";
+  tags?: string[];
   statistics?: YoutubeVideoStatistics;
 }
 

@@ -26,6 +26,7 @@ async def test_get_settings_returns_default_schedule() -> None:
         payload["smartUpdateScheduleHours"]
         == DEFAULT_SMART_UPDATE_INTERVAL_HOURS
     )
+    assert payload["showArchived"] is False
 
 
 @pytest.mark.asyncio
@@ -44,8 +45,18 @@ async def test_update_settings_persists_schedule() -> None:
                 "/settings/", json={"smartUpdateScheduleHours": 6}
             )
             followup = await client.get("/settings/")
+            archive_toggle = await client.put(
+                "/settings/", json={"showArchived": True}
+            )
+            followup_archive = await client.get("/settings/")
 
     assert update_response.status_code == 200
     assert update_response.json()["smartUpdateScheduleHours"] == 6
+    assert update_response.json()["showArchived"] is False
     assert followup.status_code == 200
     assert followup.json()["smartUpdateScheduleHours"] == 6
+    assert followup.json()["showArchived"] is False
+    assert archive_toggle.status_code == 200
+    assert archive_toggle.json()["showArchived"] is True
+    assert followup_archive.status_code == 200
+    assert followup_archive.json()["showArchived"] is True

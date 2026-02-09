@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.dependencies import get_smart_entry_manager, get_user_service
 from app.services.smart_entries import SmartEntryUpdateManager
@@ -21,6 +21,10 @@ class SettingsResponse(BaseModel):
         validation_alias="smartUpdateScheduleHours",
         serialization_alias="smartUpdateScheduleHours",
     )
+    show_archived: bool = Field(
+        validation_alias="showArchived",
+        serialization_alias="showArchived",
+    )
 
 
 class SettingsUpdate(BaseModel):
@@ -28,11 +32,26 @@ class SettingsUpdate(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    smart_update_schedule_hours: int = Field(
+    smart_update_schedule_hours: int | None = Field(
+        default=None,
         ge=1,
         validation_alias="smartUpdateScheduleHours",
         serialization_alias="smartUpdateScheduleHours",
     )
+    show_archived: bool | None = Field(
+        default=None,
+        validation_alias="showArchived",
+        serialization_alias="showArchived",
+    )
+
+    @model_validator(mode="after")
+    def _validate_non_empty(self) -> "SettingsUpdate":
+        if (
+            self.smart_update_schedule_hours is None
+            and self.show_archived is None
+        ):
+            raise ValueError("At least one setting must be provided.")
+        return self
 
 
 @router.get("/", response_model=SettingsResponse)
@@ -41,7 +60,8 @@ def get_settings(
 ) -> SettingsResponse:
     """Return the current settings for the active user."""
     return SettingsResponse(
-        smart_update_schedule_hours=user_service.get_smart_update_interval_hours()
+        smart_update_schedule_hours=user_service.get_smart_update_interval_hours(),
+        show_archived=user_service.get_show_archived(),
     )
 
 
@@ -52,13 +72,26 @@ async def update_settings(
     smart_entry_manager: SmartEntryUpdateManager = Depends(get_smart_entry_manager),
 ) -> SettingsResponse:
     """Update settings and trigger smart journal refresh if needed."""
-    previous_hours = user_service.get_smart_update_interval_hours()
-    user_service.set_smart_update_interval_hours(
+    current_hours = user_service.get_smart_update_interval_hours()
+    current_show_archived = user_service.get_show_archived()
+
+    next_hours = (
         payload.smart_update_schedule_hours
+        if payload.smart_update_schedule_hours is not None
+        else current_hours
     )
-    if previous_hours != payload.smart_update_schedule_hours:
+    next_show_archived = (
+        payload.show_archived
+        if payload.show_archived is not None
+        else current_show_archived
+    )
+
+    user_service.set_smart_update_interval_hours(next_hours)
+    user_service.set_show_archived(next_show_archived)
+    if current_hours != next_hours:
         await smart_entry_manager.run_due_updates()
 
     return SettingsResponse(
-        smart_update_schedule_hours=payload.smart_update_schedule_hours
+        smart_update_schedule_hours=next_hours,
+        show_archived=next_show_archived,
     )

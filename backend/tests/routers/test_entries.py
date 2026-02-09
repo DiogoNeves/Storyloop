@@ -124,6 +124,8 @@ def test_list_entries_returns_persisted_records(
     body = response.json()
     assert [item["id"] for item in body] == ["entry-1", "entry-2"]
     assert body[0]["pinned"] is True
+    assert body[0]["archived"] is False
+    assert body[0]["tags"] == []
 
 
 def test_get_entry_returns_single_record(
@@ -137,7 +139,7 @@ def test_get_entry_returns_single_record(
         {
             "id": "entry-1",
             "title": "Persisted entry",
-            "summary": "Stored for retrieval.",
+            "summary": "Stored for retrieval. #retention",
             "date": now.isoformat(),
             "category": "journal",
             "videoId": "linked-video",
@@ -152,6 +154,8 @@ def test_get_entry_returns_single_record(
     body = response.json()
     assert body["id"] == "entry-1"
     assert body["videoId"] == "linked-video"
+    assert body["archived"] is False
+    assert body["tags"] == ["retention"]
 
 
 def test_update_entry_allows_blank_summary(
@@ -210,6 +214,7 @@ def test_update_entry_modifies_record(
         "summary": "Updated summary.",
         "videoId": "video-123",
         "pinned": True,
+        "archived": True,
     }
 
     response = client.put("/entries/entry-1", json=update_payload)
@@ -219,6 +224,37 @@ def test_update_entry_modifies_record(
     assert body["summary"] == "Updated summary."
     assert body["videoId"] == "video-123"
     assert body["pinned"] is True
+    assert body["archived"] is True
+
+
+def test_non_journal_entries_cannot_be_archived(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    app = _create_test_app(memory_connection_factory)
+    client = TestClient(app)
+
+    now = datetime.now(tz=UTC)
+    payload = [
+        {
+            "id": "entry-content-1",
+            "title": "Video entry",
+            "summary": "Content summary",
+            "date": now.isoformat(),
+            "category": "content",
+            "archived": True,
+        }
+    ]
+
+    create_response = client.post("/entries/", json=payload)
+    assert create_response.status_code == 200
+    assert create_response.json()[0]["archived"] is False
+
+    update_response = client.put(
+        "/entries/entry-content-1",
+        json={"archived": True},
+    )
+    assert update_response.status_code == 200
+    assert update_response.json()["archived"] is False
 
 
 def test_delete_entry_removes_record(

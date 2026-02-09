@@ -101,6 +101,7 @@ def test_get_entry_returns_record(memory_connection_factory: SqliteConnectionFac
     fetched = service.get_entry("entry-get")
     assert fetched is not None
     assert fetched.video_id == "linked-video"
+    assert fetched.archived is False
 
 
 def test_update_entry_persists_changes(memory_connection_factory: SqliteConnectionFactory) -> None:
@@ -224,3 +225,45 @@ def test_search_entries_reflects_updates_and_deletes(
 
     assert service.delete_entry("entry-search-update") is True
     assert service.search_entries(keyword="retention", category="journal") == []
+
+
+def test_archive_filters_apply_when_requested(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    service = EntryService(memory_connection_factory)
+    service.ensure_schema()
+
+    now = datetime.now(tz=UTC)
+    service.save_new_entries(
+        [
+            EntryRecord(
+                id="entry-visible",
+                title="Visible",
+                summary="Retention insights",
+                occurred_at=now,
+                updated_at=now,
+                category="journal",
+                archived=False,
+            ),
+            EntryRecord(
+                id="entry-archived",
+                title="Archived",
+                summary="Retention archive",
+                occurred_at=now - timedelta(minutes=1),
+                updated_at=now - timedelta(minutes=1),
+                category="journal",
+                archived=True,
+            ),
+        ]
+    )
+
+    visible_only = service.list_entries(include_archived=False)
+    assert [entry.id for entry in visible_only] == ["entry-visible"]
+
+    visible_search = service.search_entries(
+        keyword="retention",
+        category="journal",
+        limit=10,
+        include_archived=False,
+    )
+    assert [entry.id for entry in visible_search] == ["entry-visible"]
