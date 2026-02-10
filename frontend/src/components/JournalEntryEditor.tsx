@@ -217,6 +217,7 @@ const JournalEntryEditorInner = forwardRef<
   const containerRef = useRef<HTMLDivElement | null>(null);
   const hasInitializedRef = useRef(false);
   const editorViewRef = useRef<EditorView | null>(null);
+  const linkTooltipRef = useRef<HTMLDivElement | null>(null);
   const mentionTooltipRef = useRef<HTMLDivElement | null>(null);
   const [selectionPosition, setSelectionPosition] = useState<{
     top: number;
@@ -587,7 +588,10 @@ const JournalEntryEditorInner = forwardRef<
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       const container = containerRef.current;
-      if (container && !container.contains(target)) {
+      const tooltip = linkTooltipRef.current;
+      const isClickInsideEditor = container?.contains(target) ?? false;
+      const isClickInsideTooltip = tooltip?.contains(target) ?? false;
+      if (!isClickInsideEditor && !isClickInsideTooltip) {
         setLinkTooltip(null);
       }
     };
@@ -928,6 +932,7 @@ const JournalEntryEditorInner = forwardRef<
         {linkTooltip && typeof document !== "undefined"
           ? createPortal(
               <div
+                ref={linkTooltipRef}
                 className="fixed z-[1000] flex -translate-x-1/2 flex-col items-center gap-2 rounded-lg border border-border bg-popover p-3 shadow-lg"
                 style={{
                   top: linkTooltip.position.top,
