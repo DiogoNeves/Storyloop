@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bot, Pin, SaveOff, Trash2 } from "lucide-react";
+import { Archive, Bot, Pin, SaveOff, Trash2 } from "lucide-react";
 import { Link, useLocation, useParams, useNavigate } from "react-router-dom";
 import useLocalStorageState from "use-local-storage-state";
 
@@ -153,11 +153,17 @@ export function JournalDetailPage() {
     deleteEntry,
     togglePin,
     isPinning,
+    toggleArchive,
+    isArchiving,
   } = editingState;
   const isPinned = Boolean(currentEntry?.pinned);
   const pinLabel = isPinned ? "Unpin entry" : "Pin entry";
   const isPinDisabled =
     !isOnline || (currentEntry ? isPinning(currentEntry.id) : false);
+  const isArchived = Boolean(currentEntry?.archived);
+  const archiveLabel = isArchived ? "Unarchive entry" : "Archive entry";
+  const isArchiveDisabled =
+    !isOnline || (currentEntry ? isArchiving(currentEntry.id) : false);
   const deletionInitiatedRef = useRef(false);
 
   const promptUpdateMutation = useMutation(
@@ -806,6 +812,29 @@ export function JournalDetailPage() {
                   className="h-4 w-4"
                   fill={isPinned ? "currentColor" : "none"}
                 />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                disabled={isArchiveDisabled}
+                title={
+                  isArchiveDisabled
+                    ? !isOnline
+                      ? "You are offline"
+                      : "Updating..."
+                    : undefined
+                }
+                onClick={() => {
+                  if (!currentEntry || isArchiveDisabled) {
+                    return;
+                  }
+                  void toggleArchive(currentEntry.id, !isArchived);
+                }}
+                aria-label={archiveLabel}
+                className={isArchived ? "text-primary" : "text-muted-foreground"}
+              >
+                <Archive className="h-4 w-4" />
               </Button>
               <Button
                 type="button"

@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -19,6 +20,7 @@ const useYouTubeFeedMock =
     ) => ReturnType<typeof useYouTubeFeedHook>
   >();
 const apiGetMock = vi.hoisted(() => vi.fn());
+const apiPutMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/components/LoopiePanel", () => ({
   LoopiePanel: () => <div data-testid="agent-panel" />,
@@ -40,6 +42,7 @@ vi.mock("@/components/JournalEntryEditor", async () => {
 vi.mock("@/api/client", () => ({
   apiClient: {
     get: apiGetMock,
+    put: apiPutMock,
   },
   API_BASE_URL: "http://localhost:8000",
 }));
@@ -93,6 +96,7 @@ function renderPage(ui: ReactElement) {
 describe("JournalDetailPage", () => {
   beforeEach(() => {
     apiGetMock.mockReset();
+    apiPutMock.mockReset();
     apiGetMock.mockImplementation((url: string) => {
       if (url.startsWith("/entries/")) {
         return Promise.resolve({ data: sampleEntry });
@@ -105,6 +109,19 @@ describe("JournalDetailPage", () => {
       }
       return Promise.resolve({ data: sampleEntry });
     });
+    apiPutMock.mockImplementation(
+      (url: string, payload: Record<string, unknown>) => {
+        if (url.startsWith("/entries/")) {
+          return Promise.resolve({
+            data: {
+              ...sampleEntry,
+              ...payload,
+            },
+          });
+        }
+        return Promise.resolve({ data: sampleEntry });
+      },
+    );
     useYouTubeFeedMock.mockReset();
     localStorage.clear();
   });
@@ -224,5 +241,87 @@ describe("JournalDetailPage", () => {
       /We couldn't load channel information./i,
     );
     expect(errors).toHaveLength(2);
+  });
+
+  it("archives an entry from the detail header", async () => {
+    useYouTubeFeedMock.mockReturnValue({
+      youtubeFeed: null,
+      youtubeError: null,
+      isLoading: false,
+      isLinked: false,
+      linkStatus: null,
+      channelId: null,
+    });
+
+    renderPage(<JournalDetailPage />);
+    const user = userEvent.setup();
+
+    const archiveButton = await screen.findByRole("button", {
+      name: /Archive entry/i,
+    });
+    await user.click(archiveButton);
+
+    await waitFor(() => {
+      expect(apiPutMock).toHaveBeenCalledWith(`/entries/${sampleEntry.id}`, {
+        archived: true,
+      });
+    });
+  });
+
+  it("unarchives an entry from the detail header", async () => {
+    const archivedEntry: Entry = {
+      ...sampleEntry,
+      archived: true,
+    };
+
+    apiGetMock.mockImplementation((url: string) => {
+      if (url.startsWith("/entries/")) {
+        return Promise.resolve({ data: archivedEntry });
+      }
+      if (url.startsWith("/entries")) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.startsWith("/conversations")) {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.resolve({ data: archivedEntry });
+    });
+
+    apiPutMock.mockImplementation(
+      (url: string, payload: Record<string, unknown>) => {
+        if (url.startsWith("/entries/")) {
+          return Promise.resolve({
+            data: {
+              ...archivedEntry,
+              ...payload,
+            },
+          });
+        }
+        return Promise.resolve({ data: archivedEntry });
+      },
+    );
+
+    useYouTubeFeedMock.mockReturnValue({
+      youtubeFeed: null,
+      youtubeError: null,
+      isLoading: false,
+      isLinked: false,
+      linkStatus: null,
+      channelId: null,
+    });
+
+    renderPage(<JournalDetailPage />);
+    const user = userEvent.setup();
+
+    const unarchiveButton = await screen.findByRole("button", {
+      name: /Unarchive entry/i,
+    });
+    await user.click(unarchiveButton);
+
+    await waitFor(() => {
+      expect(apiPutMock).toHaveBeenCalledWith(`/entries/${sampleEntry.id}`, {
+        archived: false,
+      });
+    });
   });
 });
