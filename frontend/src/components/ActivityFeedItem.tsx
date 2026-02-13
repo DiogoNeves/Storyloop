@@ -95,6 +95,7 @@ export function ActivityFeedItem({
   const detailPath = getActivityDetailPath(item);
   const categoryLabel = getActivityCategoryLabel(item.category);
   const pinLabel = isPinned ? "Unpin" : "Pin";
+  const archiveLabel = isArchived ? "Unarchive" : "Archive";
   const pinIcon = (
     <Pin className="h-4 w-4" fill={isPinned ? "currentColor" : "none"} />
   );
@@ -383,8 +384,8 @@ export function ActivityFeedItem({
               isArchiveDisabled ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="cursor-not-allowed text-xs text-muted-foreground opacity-50">
-                      {isArchived ? "Unarchive" : "Archive"}
+                    <span className="cursor-not-allowed text-muted-foreground opacity-50">
+                      <Archive className="h-3.5 w-3.5" />
                     </span>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -392,21 +393,26 @@ export function ActivityFeedItem({
                   </TooltipContent>
                 </Tooltip>
               ) : (
-                <button
-                  type="button"
-                  className={cn(
-                    "inline-flex items-center gap-1 text-xs transition-colors",
-                    isArchived
-                      ? "text-primary hover:text-foreground"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                  onClick={() => {
-                    onArchiveToggle();
-                  }}
-                >
-                  <Archive className="h-3.5 w-3.5" />
-                  {isArchived ? "Unarchive" : "Archive"}
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className={cn(
+                        "transition-colors",
+                        isArchived
+                          ? "text-primary hover:text-foreground"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                      onClick={() => {
+                        onArchiveToggle();
+                      }}
+                      aria-label={archiveLabel}
+                    >
+                      <Archive className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{archiveLabel}</TooltipContent>
+                </Tooltip>
               )
             ) : null}
           </div>
