@@ -417,8 +417,23 @@ export function JournalDetailPage() {
     return Number.isNaN(parsed.getTime()) ? null : parsed;
   }, [currentEntry?.date, currentEntry?.updatedAt]);
 
+  const archivedDateValue = useMemo(() => {
+    if (!currentEntry?.archivedAt) {
+      return null;
+    }
+    const parsed = new Date(currentEntry.archivedAt);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }, [currentEntry?.archivedAt]);
+
   const formattedUpdatedDate = updatedDateValue
     ? updatedDateValue.toLocaleString(undefined, {
+        dateStyle: "long",
+        timeStyle: "short",
+      })
+    : null;
+
+  const formattedArchivedDate = archivedDateValue
+    ? archivedDateValue.toLocaleString(undefined, {
         dateStyle: "long",
         timeStyle: "short",
       })
@@ -859,8 +874,14 @@ export function JournalDetailPage() {
         </div>
         <div className="flex flex-col gap-2 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
           <div className="flex flex-col gap-1">
-            {formattedUpdatedDate ? (
-              <span>Updated {formattedUpdatedDate}</span>
+            {isArchived ? (
+              formattedArchivedDate ? (
+                <span>{`Archived ${formattedArchivedDate}`}</span>
+              ) : (
+                <span>Archived date unavailable</span>
+              )
+            ) : formattedUpdatedDate ? (
+              <span>{`Updated ${formattedUpdatedDate}`}</span>
             ) : (
               <span>Entry date unavailable</span>
             )}

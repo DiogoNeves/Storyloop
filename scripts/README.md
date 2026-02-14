@@ -55,6 +55,9 @@ uv run python ../scripts/example_script.py
 
 - **`example_script.py`** – Example script for demonstration purposes.
   - Run with: `python scripts/example_script.py` (after activating venv)
+- **`backfill_archived_timestamps.py`** – Sets `entries.archived_at` to the current UTC timestamp for already archived rows that do not have one yet.
+  - Dry run: `python scripts/backfill_archived_timestamps.py --dry-run`
+  - Apply: `python scripts/backfill_archived_timestamps.py`
 
 ### Why Activation is Needed
 

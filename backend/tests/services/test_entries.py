@@ -102,6 +102,7 @@ def test_get_entry_returns_record(memory_connection_factory: SqliteConnectionFac
     assert fetched is not None
     assert fetched.video_id == "linked-video"
     assert fetched.archived is False
+    assert fetched.archived_at is None
 
 
 def test_update_entry_persists_changes(memory_connection_factory: SqliteConnectionFactory) -> None:
@@ -140,6 +141,32 @@ def test_update_entry_persists_changes(memory_connection_factory: SqliteConnecti
     assert reloaded.link_url == "https://example.com/content"
     assert reloaded.video_id == "vid-99"
     assert reloaded.pinned is True
+    assert reloaded.archived_at is None
+
+
+def test_round_trips_archived_at(memory_connection_factory: SqliteConnectionFactory) -> None:
+    service = EntryService(memory_connection_factory)
+    service.ensure_schema()
+
+    now = datetime.now(tz=UTC)
+    archived_at = now + timedelta(minutes=5)
+    record = EntryRecord(
+        id="entry-archived-at",
+        title="Archived entry",
+        summary="Stored with archived timestamp.",
+        occurred_at=now,
+        updated_at=now,
+        category="journal",
+        archived=True,
+        archived_at=archived_at,
+    )
+
+    service.save_new_entries([record])
+
+    fetched = service.get_entry("entry-archived-at")
+    assert fetched is not None
+    assert fetched.archived is True
+    assert fetched.archived_at == archived_at
 
 
 def test_delete_entry_removes_record(memory_connection_factory: SqliteConnectionFactory) -> None:
