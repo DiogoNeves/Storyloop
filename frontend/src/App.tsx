@@ -31,16 +31,21 @@ import { TagFilterSection } from "@/components/TagFilterSection";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import {
   entriesMutations,
-  type CreateEntryInput,
   type Entry,
 } from "@/api/entries";
 import { deleteConversation } from "@/api/conversations";
 import { settingsQueries } from "@/api/settings";
 import {
-  compareEntriesByPinnedDate,
   type ActivityItem,
 } from "@/lib/types/entries";
-import { extractTagsFromContent } from "@/lib/activity-tags";
+import {
+  buildJournalEntryInput,
+  buildOptimisticJournalEntry,
+  isLikelyNetworkError,
+  shouldClearActiveTag,
+  upsertSortedEntry,
+} from "@/lib/journal-page-logic";
+import { formatDateTimeLocalInput } from "@/lib/date-time";
 import { useActivityItems } from "@/hooks/useActivityItems";
 import { YoutubeAuthCallback } from "@/pages/YoutubeAuthCallback";
 import { VideoDetailPage } from "@/pages/VideoDetailPage";
@@ -245,27 +250,16 @@ function JournalPage() {
         }
         queryClient.setQueryData<Entry[]>(
           entriesListQuery.queryKey,
-          (current) => {
-            const next = (current ?? []).filter(
-              (entry) => entry.id !== savedEntry.id,
-            );
-            next.push(savedEntry);
-            next.sort(compareEntriesByPinnedDate);
-            return next;
-          },
+          (current) => upsertSortedEntry(current, savedEntry),
         );
       },
     }),
   );
 
-  const formatNowAsDateTimeLocal = useCallback(() => {
-    const now = new Date();
-    now.setSeconds(0);
-    now.setMilliseconds(0);
-    const offset = now.getTimezoneOffset();
-    const adjusted = new Date(now.getTime() - offset * 60_000);
-    return adjusted.toISOString().slice(0, 16);
-  }, []);
+  const formatNowAsDateTimeLocal = useCallback(
+    () => formatDateTimeLocalInput(new Date()),
+    [],
+  );
 
   const handleStartDraft = useCallback(
     (mode: EntryDraftMode) => {
@@ -313,22 +307,12 @@ function JournalPage() {
     }
 
     const trimmedPromptBody = (draft.promptBody ?? "").trim();
-    const trimmedPromptFormat = (draft.promptFormat ?? "").trim();
     if (trimmedPromptBody.length === 0) {
       setDraftError("Describe what Loopie should include before saving.");
       return;
     }
 
-    const entryInput: CreateEntryInput = {
-      id: crypto.randomUUID(),
-      title: trimmedTitle,
-      summary: "",
-      date: new Date(draft.date).toISOString(),
-      category: "journal",
-      pinned: false,
-      promptBody: trimmedPromptBody,
-      promptFormat: trimmedPromptFormat.length > 0 ? trimmedPromptFormat : null,
-    };
+    const entryInput = buildJournalEntryInput(draft, crypto.randomUUID());
     const optimisticUpdatedAt = new Date().toISOString();
 
     try {
@@ -337,31 +321,13 @@ function JournalPage() {
       if (!isOnline) {
         // Offline: queue for later sync
         await queueEntry(entryInput);
-        // Optimistically add to cache with proper Entry shape
-        const optimisticEntry: Entry = {
-          ...entryInput,
-          pinned: entryInput.pinned ?? false,
-          archived: false,
-          tags: extractTagsFromContent(
-            entryInput.title,
-            entryInput.summary,
-            entryInput.promptBody,
-          ),
-          videoId: null,
-          videoType: null,
-          updatedAt: optimisticUpdatedAt,
-          lastSmartUpdateAt: null,
-        };
+        const optimisticEntry = buildOptimisticJournalEntry(
+          entryInput,
+          optimisticUpdatedAt,
+        );
         queryClient.setQueryData<Entry[]>(
           entriesListQuery.queryKey,
-          (current) => {
-            const next = (current ?? []).filter(
-              (entry) => entry.id !== entryInput.id,
-            );
-            next.push(optimisticEntry);
-            next.sort(compareEntriesByPinnedDate);
-            return next;
-          },
+          (current) => upsertSortedEntry(current, optimisticEntry),
         );
         setDraft(null);
         return;
@@ -376,41 +342,20 @@ function JournalPage() {
       }
     } catch (error) {
       // Check if this is a network error (server unreachable)
-      const isNetworkError =
-        error instanceof Error &&
-        (error.message === "Network Error" ||
-          error.message.includes("Failed to fetch") ||
-          error.message.includes("NetworkError"));
+      const isNetworkError = isLikelyNetworkError(error);
 
       if (isNetworkError) {
         // Mark server as unreachable so UI shows offline indicator
         markServerUnreachable();
         // Silent fallback: queue entry + optimistic UI
         await queueEntry(entryInput);
-        const optimisticEntry: Entry = {
-          ...entryInput,
-          pinned: entryInput.pinned ?? false,
-          archived: false,
-          tags: extractTagsFromContent(
-            entryInput.title,
-            entryInput.summary,
-            entryInput.promptBody,
-          ),
-          videoId: null,
-          videoType: null,
-          updatedAt: optimisticUpdatedAt,
-          lastSmartUpdateAt: null,
-        };
+        const optimisticEntry = buildOptimisticJournalEntry(
+          entryInput,
+          optimisticUpdatedAt,
+        );
         queryClient.setQueryData<Entry[]>(
           entriesListQuery.queryKey,
-          (current) => {
-            const next = (current ?? []).filter(
-              (entry) => entry.id !== entryInput.id,
-            );
-            next.push(optimisticEntry);
-            next.sort(compareEntriesByPinnedDate);
-            return next;
-          },
+          (current) => upsertSortedEntry(current, optimisticEntry),
         );
         setDraft(null);
         return;
@@ -448,13 +393,7 @@ function JournalPage() {
   }, [entriesQuery.error, entriesQuery.status]);
 
   useEffect(() => {
-    if (!activeTag) {
-      return;
-    }
-    const hasTag = displayItems.some((item) =>
-      item.tags?.includes(activeTag),
-    );
-    if (!hasTag) {
+    if (shouldClearActiveTag(activeTag, displayItems)) {
       setActiveTag(null);
     }
   }, [activeTag, displayItems]);

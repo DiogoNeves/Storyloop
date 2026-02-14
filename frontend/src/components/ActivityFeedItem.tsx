@@ -3,11 +3,7 @@ import { Link } from "react-router-dom";
 import { Archive, Bot, Pin } from "lucide-react";
 
 import { type ActivityItem } from "@/lib/types/entries";
-import {
-  getActivityCategoryLabel,
-  getActivityDetailPath,
-} from "@/lib/activity-helpers";
-import { formatTagLabel } from "@/lib/activity-tags";
+import { buildActivityFeedItemViewModel } from "@/lib/activity-feed-item-view";
 import { useSync } from "@/hooks/useSync";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -60,53 +56,16 @@ export function ActivityFeedItem({
   const { isOnline } = useSync();
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
-  // Disable edit/delete when offline
-  const isEditDisabled = !isOnline;
-  const isDeleteDisabled = !isOnline || isDeleting;
-  const isPinned = item.category === "journal" && Boolean(item.pinned);
-  const isPinDisabled = !isOnline || isPinning;
-  const isArchived = item.category === "journal" && Boolean(item.archived);
-  const isArchiveDisabled = !isOnline || isArchiving;
-  const formattedDate = new Date(item.date).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
+  const view = buildActivityFeedItemViewModel({
+    item,
+    isOnline,
+    isDeleting,
+    isPinning,
+    isArchiving,
   });
-  const formattedCreatedDate = item.createdAt
-    ? new Date(item.createdAt).toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })
-    : null;
-  const titleText = item.title.trim();
-  const isSmartJournal = item.category === "journal" && Boolean(item.promptBody);
-  const summary = item.summary.trim();
-  const isSmartSummaryPlaceholder = isSmartJournal && summary.length === 0;
-  const summaryText = isSmartSummaryPlaceholder
-    ? "Loopie is preparing the first update…"
-    : summary;
-  const truncatedSummary =
-    summaryText.length > 280
-      ? `${summaryText.slice(0, 277).trimEnd()}…`
-      : summaryText;
-  const showThumbnail =
-    item.category === "content" && Boolean(item.thumbnailUrl);
-  const detailPath = getActivityDetailPath(item);
-  const categoryLabel = getActivityCategoryLabel(item.category);
-  const pinLabel = isPinned ? "Unpin" : "Pin";
-  const archiveLabel = isArchived ? "Unarchive" : "Archive";
-  const archiveDisabledReason = !isOnline ? "You are offline" : "Updating...";
-  const archiveDisabledAriaLabel = isArchived
-    ? "Archived. Unarchive unavailable."
-    : "Not archived. Archive unavailable.";
   const pinIcon = (
-    <Pin className="h-4 w-4" fill={isPinned ? "currentColor" : "none"} />
+    <Pin className="h-4 w-4" fill={view.isPinned ? "currentColor" : "none"} />
   );
-  const tagLabels =
-    item.category === "journal"
-      ? (item.tags ?? []).map((tag) => formatTagLabel(tag))
-      : [];
 
   const handleDetailClick = () => {
     if (item.category === "conversation" && onConversationClick) {
@@ -135,13 +94,13 @@ export function ActivityFeedItem({
                   <Bot className="h-4 w-4" aria-hidden="true" />
                   <span className="sr-only">Conversation</span>
                 </>
-              ) : isSmartJournal ? (
+              ) : view.isSmartJournal ? (
                 <>
                   <Bot className="h-4 w-4" aria-hidden="true" />
                   <span>journal</span>
                 </>
               ) : (
-                categoryLabel
+                view.categoryLabel
               )}
             </Badge>
             {item.videoType ? (
@@ -152,24 +111,26 @@ export function ActivityFeedItem({
           </div>
           <div className="flex items-center gap-2">
             {isPendingSync && <PendingSyncBadge />}
-            {formattedCreatedDate ? (
+            {view.formattedCreatedDate ? (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <time
                     className="cursor-default text-xs text-muted-foreground"
                     dateTime={item.date}
                   >
-                    {formattedDate}
+                    {view.formattedDate}
                   </time>
                 </TooltipTrigger>
-                <TooltipContent>Created: {formattedCreatedDate}</TooltipContent>
+                <TooltipContent>
+                  Created: {view.formattedCreatedDate}
+                </TooltipContent>
               </Tooltip>
             ) : (
               <time
                 className="text-xs text-muted-foreground"
                 dateTime={item.date}
               >
-                {formattedDate}
+                {view.formattedDate}
               </time>
             )}
           </div>
@@ -177,14 +138,14 @@ export function ActivityFeedItem({
         <div className="flex gap-4">
           <div className="flex min-w-0 flex-1 flex-col gap-2 pr-20">
             <h3 className="min-w-0 text-sm font-semibold leading-tight text-foreground">
-              {detailPath ? (
+              {view.detailPath ? (
                 <Link
-                  to={detailPath}
+                  to={view.detailPath}
                   className="block overflow-hidden truncate text-primary underline-offset-2 hover:underline"
                   onClick={handleDetailClick}
-                  title={titleText}
+                  title={view.titleText}
                 >
-                  {titleText}
+                  {view.titleText}
                 </Link>
               ) : item.linkUrl ? (
                 <a
@@ -192,30 +153,30 @@ export function ActivityFeedItem({
                   target="_blank"
                   rel="noopener noreferrer"
                   className="block overflow-hidden truncate text-primary underline-offset-2 hover:underline"
-                  title={titleText}
+                  title={view.titleText}
                 >
-                  {titleText}
+                  {view.titleText}
                 </a>
               ) : (
                 <span
                   className="block overflow-hidden truncate"
-                  title={titleText}
+                  title={view.titleText}
                 >
-                  {titleText}
+                  {view.titleText}
                 </span>
               )}
             </h3>
-            {summaryText.length > 0 ? (
+            {view.summaryText.length > 0 ? (
               <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                {isSmartSummaryPlaceholder ? (
+                {view.isSmartSummaryPlaceholder ? (
                   <span className="h-2 w-2 animate-ping rounded-full bg-primary" />
                 ) : null}
-                {truncatedSummary}
+                {view.truncatedSummary}
               </p>
             ) : null}
-            {tagLabels.length > 0 ? (
+            {view.tagLabels.length > 0 ? (
               <div className="flex flex-wrap gap-2">
-                {tagLabels.map((tag) => (
+                {view.tagLabels.map((tag) => (
                   <span
                     key={`${item.id}-${tag}`}
                     className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
@@ -226,9 +187,9 @@ export function ActivityFeedItem({
               </div>
             ) : null}
             {item.category === "content" ? (
-              detailPath ? (
+              view.detailPath ? (
                 <Link
-                  to={detailPath}
+                  to={view.detailPath}
                   className="mt-auto inline-flex pt-2 text-xs font-medium text-primary underline-offset-2 hover:underline"
                 >
                   View video details
@@ -245,10 +206,10 @@ export function ActivityFeedItem({
               ) : null
             ) : null}
           </div>
-          {showThumbnail && item.thumbnailUrl ? (
-            detailPath ? (
+          {view.showThumbnail && item.thumbnailUrl ? (
+            view.detailPath ? (
               <Link
-                to={detailPath}
+                to={view.detailPath}
                 className="relative h-24 w-24 shrink-0 overflow-hidden rounded-md border border-border sm:h-28 sm:w-28"
                 aria-label={`View details for ${item.title}`}
               >
@@ -286,7 +247,7 @@ export function ActivityFeedItem({
             )
           ) : null}
         </div>
-        {isPinned ? (
+        {view.isPinned ? (
           <span
             className="absolute bottom-2 right-4 text-primary opacity-90 transition-opacity group-hover:opacity-0"
             aria-hidden="true"
@@ -301,7 +262,7 @@ export function ActivityFeedItem({
         (item.category === "conversation" && onConversationDelete) ? (
           <div className="absolute bottom-2 right-4 hidden items-center gap-2 group-hover:flex">
             {onDelete ? (
-              isDeleteDisabled ? (
+              view.isDeleteDisabled ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="cursor-not-allowed text-xs text-muted-foreground opacity-50">
@@ -325,7 +286,7 @@ export function ActivityFeedItem({
               )
             ) : null}
             {onEdit ? (
-              isEditDisabled ? (
+              view.isEditDisabled ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="cursor-not-allowed text-xs text-muted-foreground opacity-50">
@@ -347,7 +308,7 @@ export function ActivityFeedItem({
               )
             ) : null}
             {onPinToggle ? (
-              isPinDisabled ? (
+              view.isPinDisabled ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="cursor-not-allowed text-muted-foreground opacity-50">
@@ -363,12 +324,12 @@ export function ActivityFeedItem({
                   type="button"
                   className={cn(
                     "transition-colors hover:text-foreground",
-                    isPinned ? "text-primary" : "text-muted-foreground",
+                    view.isPinned ? "text-primary" : "text-muted-foreground",
                   )}
                   onClick={() => {
                     onPinToggle();
                   }}
-                  aria-label={pinLabel}
+                  aria-label={view.pinLabel}
                 >
                   {pinIcon}
                 </button>
@@ -385,18 +346,18 @@ export function ActivityFeedItem({
               </button>
             ) : null}
             {onArchiveToggle ? (
-              isArchiveDisabled ? (
+              view.isArchiveDisabled ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span
                       className="inline-flex cursor-not-allowed items-center gap-1 text-xs text-muted-foreground opacity-50"
-                      aria-label={archiveDisabledAriaLabel}
+                      aria-label={view.archiveDisabledAriaLabel}
                     >
                       <Archive className="h-3.5 w-3.5" aria-hidden="true" />
-                      <span>{archiveLabel}</span>
+                      <span>{view.archiveLabel}</span>
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent>{`${archiveLabel} unavailable. ${archiveDisabledReason}`}</TooltipContent>
+                  <TooltipContent>{`${view.archiveLabel} unavailable. ${view.archiveDisabledReason}`}</TooltipContent>
                 </Tooltip>
               ) : (
                 <Tooltip>
@@ -405,19 +366,19 @@ export function ActivityFeedItem({
                       type="button"
                       className={cn(
                         "transition-colors",
-                        isArchived
+                        view.isArchived
                           ? "text-primary hover:text-foreground"
                           : "text-muted-foreground hover:text-foreground",
                       )}
                       onClick={() => {
                         onArchiveToggle();
                       }}
-                      aria-label={archiveLabel}
+                      aria-label={view.archiveLabel}
                     >
                       <Archive className="h-3.5 w-3.5" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent>{archiveLabel}</TooltipContent>
+                  <TooltipContent>{view.archiveLabel}</TooltipContent>
                 </Tooltip>
               )
             ) : null}
