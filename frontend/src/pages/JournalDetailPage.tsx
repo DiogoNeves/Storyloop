@@ -19,7 +19,6 @@ import { VideoLinkCard } from "@/components/VideoLinkCard";
 import { type ActivityDraft } from "@/components/ActivityFeed";
 import { SmartEntryDraftCard } from "@/components/SmartEntryDraftCard";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
@@ -749,12 +748,6 @@ export function JournalDetailPage() {
     const header = (
       <>
         <div className="space-y-2">
-          {isSmartEntry ? (
-            <Badge variant="secondary" className="w-fit bg-primary/10 text-primary">
-              <Bot className="h-4 w-4" aria-hidden="true" />
-              <span>journal</span>
-            </Badge>
-          ) : null}
           <div className="flex flex-col-reverse items-start gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
             <div className="flex w-full flex-1 items-start gap-3">
               <textarea
