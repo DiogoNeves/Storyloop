@@ -288,6 +288,43 @@ describe("JournalDetailPage", () => {
     });
   });
 
+  it("shows archived date copy for archived entries", async () => {
+    const archivedEntry: Entry = {
+      ...sampleEntry,
+      archived: true,
+      updatedAt: "2024-05-03T12:00:00Z",
+      archivedAt: "2024-05-02T09:30:00Z",
+    };
+
+    apiGetMock.mockImplementation((url: string) => {
+      if (url.startsWith("/entries/")) {
+        return Promise.resolve({ data: archivedEntry });
+      }
+      if (url.startsWith("/entries")) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.startsWith("/conversations")) {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.resolve({ data: archivedEntry });
+    });
+
+    useYouTubeFeedMock.mockReturnValue({
+      youtubeFeed: null,
+      youtubeError: null,
+      isLoading: false,
+      isLinked: false,
+      linkStatus: null,
+      channelId: null,
+    });
+
+    renderPage(<JournalDetailPage />);
+
+    expect(await screen.findByText(/Archived /i)).toBeInTheDocument();
+    expect(screen.queryByText(/Archived date unavailable/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Updated /i)).not.toBeInTheDocument();
+  });
+
   it("unarchives an entry from the detail header", async () => {
     const archivedEntry: Entry = {
       ...sampleEntry,

@@ -29,6 +29,7 @@ class EntryRecord:
     video_id: str | None = None
     pinned: bool = False
     archived: bool = False
+    archived_at: datetime | None = None
 
 
 # Column definitions - single source of truth
@@ -47,6 +48,7 @@ ENTRY_COLUMNS = (
     "video_id",
     "pinned",
     "archived",
+    "archived_at",
 )
 
 
@@ -60,6 +62,9 @@ def _row_to_record(row: Row) -> EntryRecord:
         datetime.fromisoformat(row["last_smart_update_at"])
         if row["last_smart_update_at"]
         else None
+    )
+    archived_at = (
+        datetime.fromisoformat(row["archived_at"]) if row["archived_at"] else None
     )
     return EntryRecord(
         id=row["id"],
@@ -76,6 +81,7 @@ def _row_to_record(row: Row) -> EntryRecord:
         video_id=row["video_id"],
         pinned=bool(row["pinned"]),
         archived=bool(row["archived"]),
+        archived_at=archived_at,
     )
 
 
@@ -101,6 +107,7 @@ def _record_to_values(record: EntryRecord) -> tuple:
         record.video_id,
         int(record.pinned),
         int(record.archived),
+        record.archived_at.isoformat() if record.archived_at else None,
     )
 
 
@@ -126,7 +133,8 @@ class EntryService(DatabaseService):
                     thumbnail_url TEXT,
                     video_id TEXT,
                     pinned INTEGER NOT NULL DEFAULT 0,
-                    archived INTEGER NOT NULL DEFAULT 0
+                    archived INTEGER NOT NULL DEFAULT 0,
+                    archived_at TEXT
                 )
                 """
             )
@@ -165,6 +173,10 @@ class EntryService(DatabaseService):
             if "archived" not in columns:
                 connection.execute(
                     "ALTER TABLE entries ADD COLUMN archived INTEGER NOT NULL DEFAULT 0"
+                )
+            if "archived_at" not in columns:
+                connection.execute(
+                    "ALTER TABLE entries ADD COLUMN archived_at TEXT"
                 )
             if "updated_at" in columns or added_updated_at:
                 connection.execute(

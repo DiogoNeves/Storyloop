@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from datetime import UTC, datetime, timedelta
 
 from fastapi import FastAPI
@@ -125,6 +126,7 @@ def test_list_entries_returns_persisted_records(
     assert [item["id"] for item in body] == ["entry-1", "entry-2"]
     assert body[0]["pinned"] is True
     assert body[0]["archived"] is False
+    assert body[0]["archivedAt"] is None
     assert body[0]["tags"] == []
 
 
@@ -155,6 +157,7 @@ def test_get_entry_returns_single_record(
     assert body["id"] == "entry-1"
     assert body["videoId"] == "linked-video"
     assert body["archived"] is False
+    assert body["archivedAt"] is None
     assert body["tags"] == ["retention"]
 
 
@@ -225,6 +228,86 @@ def test_update_entry_modifies_record(
     assert body["videoId"] == "video-123"
     assert body["pinned"] is True
     assert body["archived"] is True
+    assert body["archivedAt"] is not None
+
+
+def test_archiving_entry_sets_archived_at_and_preserves_it_on_later_edits(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    app = _create_test_app(memory_connection_factory)
+    client = TestClient(app)
+
+    now = datetime.now(tz=UTC)
+    payload = [
+        {
+            "id": "entry-archive-updated-at",
+            "title": "Archivable entry",
+            "summary": "Stored before archiving.",
+            "date": now.isoformat(),
+            "category": "journal",
+        }
+    ]
+
+    create_response = client.post("/entries/", json=payload)
+    assert create_response.status_code == 200
+    initial_updated_at = create_response.json()[0]["updatedAt"]
+
+    time.sleep(0.01)
+
+    archive_response = client.put(
+        "/entries/entry-archive-updated-at", json={"archived": True}
+    )
+    assert archive_response.status_code == 200
+    archived_body = archive_response.json()
+    assert archived_body["archived"] is True
+    assert archived_body["archivedAt"] is not None
+    assert archived_body["updatedAt"] != initial_updated_at
+    archived_at = archived_body["archivedAt"]
+
+    time.sleep(0.01)
+
+    edit_response = client.put(
+        "/entries/entry-archive-updated-at",
+        json={"summary": "Edited while archived."},
+    )
+    assert edit_response.status_code == 200
+    edited_body = edit_response.json()
+    assert edited_body["archived"] is True
+    assert edited_body["archivedAt"] == archived_at
+    assert edited_body["updatedAt"] != archived_body["updatedAt"]
+
+
+def test_unarchiving_entry_clears_archived_timestamp(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    app = _create_test_app(memory_connection_factory)
+    client = TestClient(app)
+
+    now = datetime.now(tz=UTC)
+    payload = [
+        {
+            "id": "entry-unarchive-clears-timestamp",
+            "title": "Archivable entry",
+            "summary": "Stored before unarchiving.",
+            "date": now.isoformat(),
+            "category": "journal",
+        }
+    ]
+    create_response = client.post("/entries/", json=payload)
+    assert create_response.status_code == 200
+
+    archive_response = client.put(
+        "/entries/entry-unarchive-clears-timestamp", json={"archived": True}
+    )
+    assert archive_response.status_code == 200
+    assert archive_response.json()["archivedAt"] is not None
+
+    unarchive_response = client.put(
+        "/entries/entry-unarchive-clears-timestamp", json={"archived": False}
+    )
+    assert unarchive_response.status_code == 200
+    assert unarchive_response.json()["archived"] is False
+    assert unarchive_response.json()["archivedAt"] is None
 
 
 def test_non_journal_entries_cannot_be_archived(
@@ -248,6 +331,7 @@ def test_non_journal_entries_cannot_be_archived(
     create_response = client.post("/entries/", json=payload)
     assert create_response.status_code == 200
     assert create_response.json()[0]["archived"] is False
+    assert create_response.json()[0]["archivedAt"] is None
 
     update_response = client.put(
         "/entries/entry-content-1",
@@ -255,6 +339,7 @@ def test_non_journal_entries_cannot_be_archived(
     )
     assert update_response.status_code == 200
     assert update_response.json()["archived"] is False
+    assert update_response.json()["archivedAt"] is None
 
 
 def test_delete_entry_removes_record(
