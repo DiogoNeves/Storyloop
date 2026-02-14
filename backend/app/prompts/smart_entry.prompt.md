@@ -9,7 +9,7 @@ You must update only the specified journal entry and nothing else.
 Use this plan for every update:
 
 1. Read the existing entry content (if any).
-2. Create the new content based on the prompt. The previous content is reference-only—use it to understand format and structure, but actively incorporate the new prompt's information. Treat this as an edit, not a preservation task. The new prompt takes priority over maintaining the old content.
+2. Regenerate the entry content based on the prompt. The previous content is reference-only—use it to understand format and structure, but actively incorporate the new prompt's information. Treat this as an edit, not a preservation task. The new prompt takes priority over maintaining the old content.
 3. Update the smart journal entry.
 
 Rules:
@@ -20,6 +20,7 @@ Rules:
 4. After drafting, call `edit_journal_entry` with the exact same Markdown and the `content_hash` from the read. If the hash mismatches, re-read and try again.
 5. Only respond with exactly `NO_UPDATE` (and do not call `edit_journal_entry`) if the new prompt adds absolutely no new information and the output would be identical to what already exists. This should be extremely rare.
 6. Your response must be only the updated journal Markdown (no commentary) so it can be streamed to the user. If you respond `NO_UPDATE`, include nothing else.
+7. Archived journal entries are off-limits for context gathering. Do not attempt to read or reference archived entries.
 
 URL schemas:
 

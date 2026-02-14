@@ -294,3 +294,50 @@ def test_archive_filters_apply_when_requested(
         include_archived=False,
     )
     assert [entry.id for entry in visible_search] == ["entry-visible"]
+
+
+def test_list_smart_entries_excludes_archived_and_non_journal_entries(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    service = EntryService(memory_connection_factory)
+    service.ensure_schema()
+
+    now = datetime.now(tz=UTC)
+    service.save_new_entries(
+        [
+            EntryRecord(
+                id="smart-visible-journal",
+                title="Visible smart",
+                summary="Visible smart journal entry.",
+                occurred_at=now,
+                updated_at=now,
+                category="journal",
+                prompt_body="Update with latest retention ideas.",
+                archived=False,
+            ),
+            EntryRecord(
+                id="smart-archived-journal",
+                title="Archived smart",
+                summary="Archived smart journal entry.",
+                occurred_at=now - timedelta(minutes=1),
+                updated_at=now - timedelta(minutes=1),
+                category="journal",
+                prompt_body="Update archived notes.",
+                archived=True,
+            ),
+            EntryRecord(
+                id="smart-visible-content",
+                title="Visible smart content",
+                summary="Smart entry in another category.",
+                occurred_at=now - timedelta(minutes=2),
+                updated_at=now - timedelta(minutes=2),
+                category="content",
+                prompt_body="Update content card.",
+                archived=False,
+            ),
+        ]
+    )
+
+    smart_entries = service.list_smart_entries()
+
+    assert [entry.id for entry in smart_entries] == ["smart-visible-journal"]

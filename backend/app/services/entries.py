@@ -363,6 +363,8 @@ class EntryService(DatabaseService):
                 SELECT {columns_str}
                 FROM entries
                 WHERE prompt_body IS NOT NULL
+                AND category = 'journal'
+                AND archived = 0
                 ORDER BY datetime(updated_at) DESC
                 """
             ).fetchall()

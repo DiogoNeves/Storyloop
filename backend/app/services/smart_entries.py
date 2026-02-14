@@ -149,6 +149,17 @@ class SmartEntryUpdateManager:
                             },
                         )
                         return
+                    if entry.archived:
+                        await self._publish(
+                            state,
+                            {
+                                "event": "error",
+                                "data": {
+                                    "message": "Archived entries cannot be updated."
+                                },
+                            },
+                        )
+                        return
                     if not entry.prompt_body:
                         await self._publish(
                             state,
@@ -297,5 +308,7 @@ def render_smart_entry_prompt(entry: EntryRecord) -> str:
         f"- Title: {entry.title}\n\n"
         "## What to include\n"
         f"{entry.prompt_body}{format_block}\n\n"
+        "Regenerate the entry for this run. "
+        "Treat previous entry content only as guidance for structure and context.\n"
         "Use read_journal_entry on the Entry ID before editing."
     )
