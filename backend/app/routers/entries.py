@@ -90,6 +90,7 @@ class EntryResponse(BaseModel):
     prompt_format: str | None = Field(default=None, alias="promptFormat")
     occurred_at: datetime = Field(alias="date")
     updated_at: datetime = Field(alias="updatedAt")
+    archived_at: datetime | None = Field(default=None, alias="archivedAt")
     last_smart_update_at: datetime | None = Field(
         default=None, alias="lastSmartUpdateAt"
     )
@@ -112,6 +113,7 @@ class EntryResponse(BaseModel):
                 "prompt_format": record.prompt_format,
                 "occurred_at": record.occurred_at,
                 "updated_at": record.updated_at,
+                "archived_at": record.archived_at,
                 "last_smart_update_at": record.last_smart_update_at,
                 "category": record.category,
                 "link_url": record.link_url,
@@ -193,6 +195,8 @@ def _create_to_record(entry: EntryCreate) -> EntryRecord:
 
     Pure function that transforms API models to domain models.
     """
+    archived = entry.archived if entry.category == "journal" else False
+    archived_at = datetime.now(tz=UTC) if archived else None
     return EntryRecord(
         id=entry.id,
         title=entry.title,
@@ -207,7 +211,8 @@ def _create_to_record(entry: EntryCreate) -> EntryRecord:
         thumbnail_url=entry.thumbnail_url,
         video_id=entry.video_id,
         pinned=entry.pinned,
-        archived=entry.archived if entry.category == "journal" else False,
+        archived=archived,
+        archived_at=archived_at,
     )
 
 
@@ -257,6 +262,15 @@ def _update_record(current: EntryRecord, updates: EntryUpdate) -> EntryRecord:
     )
     video_id = _resolve_field(update_dict, "video_id", current.video_id, allow_none=True)
 
+    now = datetime.now(tz=UTC)
+    next_archived = archived if category == "journal" else False
+    if category != "journal" or not next_archived:
+        archived_at = None
+    elif current.archived:
+        archived_at = current.archived_at
+    else:
+        archived_at = now
+
     return EntryRecord(
         id=current.id,
         title=title,
@@ -264,14 +278,15 @@ def _update_record(current: EntryRecord, updates: EntryUpdate) -> EntryRecord:
         prompt_body=prompt_body,
         prompt_format=prompt_format,
         occurred_at=occurred_at,
-        updated_at=datetime.now(tz=UTC),
+        updated_at=now,
         last_smart_update_at=current.last_smart_update_at,
         category=category,
         link_url=link_url,
         thumbnail_url=thumbnail_url,
         video_id=video_id,
         pinned=pinned,
-        archived=archived if category == "journal" else False,
+        archived=next_archived,
+        archived_at=archived_at,
     )
 
 

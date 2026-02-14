@@ -14,6 +14,7 @@ export interface Entry {
   summary: string;
   date: string;
   updatedAt: string;
+  archivedAt?: string | null;
   lastSmartUpdateAt?: string | null;
   promptBody?: string | null;
   promptFormat?: string | null;
