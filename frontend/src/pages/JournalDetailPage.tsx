@@ -19,7 +19,6 @@ import { VideoLinkCard } from "@/components/VideoLinkCard";
 import { type ActivityDraft } from "@/components/ActivityFeed";
 import { SmartEntryDraftCard } from "@/components/SmartEntryDraftCard";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
@@ -749,20 +748,22 @@ export function JournalDetailPage() {
     const header = (
       <>
         <div className="space-y-2">
-          {isSmartEntry ? (
-            <Badge variant="secondary" className="w-fit bg-primary/10 text-primary">
-              <Bot className="h-4 w-4" aria-hidden="true" />
-              <span>journal</span>
-            </Badge>
-          ) : null}
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="flex flex-1 items-start gap-3">
-              <input
-                className="w-full flex-1 border-none bg-transparent text-2xl font-semibold text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:text-muted-foreground"
+          <div className="flex flex-col-reverse items-start gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
+            <div className="flex w-full flex-1 items-start gap-3">
+              <textarea
+                className="line-clamp-2 w-full flex-1 resize-none border-none bg-transparent text-2xl font-semibold leading-tight text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:text-muted-foreground sm:line-clamp-none sm:min-h-[2.5rem]"
                 value={titleDraft}
-                onChange={(event) => setTitleDraft(event.target.value)}
+                onChange={(event) =>
+                  setTitleDraft(event.target.value.replace(/\r?\n/g, " "))
+                }
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                  }
+                }}
                 disabled={isSmartUpdating}
                 placeholder="Untitled entry"
+                rows={2}
               />
               {showSaveIndicator ? (
                 <span
@@ -779,7 +780,7 @@ export function JournalDetailPage() {
                 </span>
               ) : null}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex w-full items-center justify-end gap-2 sm:w-auto sm:justify-start">
               {showStopSmartUpdates ? stopSmartUpdatesButton : null}
               {editPromptButton}
               <CopyMarkdownButton
