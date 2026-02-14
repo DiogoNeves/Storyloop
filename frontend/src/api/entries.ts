@@ -294,6 +294,15 @@ function applyEntryPatch(
   input: UpdateEntryInput,
   updatedAt: string,
 ): Entry {
+  const nextArchived =
+    "archived" in input ? Boolean(input.archived) : Boolean(entry.archived);
+  const archivedAt =
+    "archived" in input
+      ? nextArchived
+        ? entry.archivedAt ?? updatedAt
+        : null
+      : entry.archivedAt ?? null;
+
   return {
     ...entry,
     ...("title" in input ? { title: input.title! } : {}),
@@ -307,6 +316,7 @@ function applyEntryPatch(
       : {}),
     ...("pinned" in input ? { pinned: input.pinned! } : {}),
     ...("archived" in input ? { archived: input.archived! } : {}),
+    archivedAt,
     updatedAt,
   };
 }

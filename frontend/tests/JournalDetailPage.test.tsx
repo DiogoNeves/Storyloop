@@ -293,6 +293,7 @@ describe("JournalDetailPage", () => {
       ...sampleEntry,
       archived: true,
       updatedAt: "2024-05-03T12:00:00Z",
+      archivedAt: "2024-05-02T09:30:00Z",
     };
 
     apiGetMock.mockImplementation((url: string) => {
@@ -320,6 +321,7 @@ describe("JournalDetailPage", () => {
     renderPage(<JournalDetailPage />);
 
     expect(await screen.findByText(/Archived /i)).toBeInTheDocument();
+    expect(screen.queryByText(/Archived date unavailable/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Updated /i)).not.toBeInTheDocument();
   });
 
