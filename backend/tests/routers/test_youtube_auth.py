@@ -117,6 +117,7 @@ def create_test_app() -> tuple[Any, FakeOAuthService, FakeYoutubeService]:
             "YOUTUBE_OAUTH_CLIENT_SECRET": "client-secret",
             "YOUTUBE_REDIRECT_URI": "http://localhost:8000/youtube/auth/callback",
             "CORS_ORIGINS": ["http://frontend.test"],
+            "SMART_ENTRIES_SCHEDULER_ENABLED": False,
         }
     )
     app = create_app(settings)
