@@ -506,6 +506,8 @@ async def stream_turn(
                         "assistant.turn.failed",
                         conversation_id=conversation_id,
                         user_turn_id=user_turn_id,
+                        error_type=type(exc).__name__,
+                        phase="run_assistant",
                         error=str(exc),
                     )
                     await event_queue.put(
@@ -539,7 +541,7 @@ async def stream_turn(
                         break
             except asyncio.CancelledError:
                 task.cancel()
-                with suppress(Exception):
+                with suppress(asyncio.CancelledError):
                     await task
                 raise
 

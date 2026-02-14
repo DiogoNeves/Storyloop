@@ -208,7 +208,11 @@ async def main(prod: bool = False) -> int:
                 if task in done:
                     try:
                         exit_code = task.result()
-                    except Exception as exc:  # pragma: no cover - unexpected
+                    except (
+                        asyncio.CancelledError,
+                        OSError,
+                        RuntimeError,
+                    ) as exc:  # pragma: no cover - unexpected
                         print(
                             f"{label} process failed: {exc}",
                             file=sys.stderr,
@@ -226,7 +230,8 @@ async def main(prod: bool = False) -> int:
             try:
                 loop.remove_signal_handler(sig)
             except (ValueError, RuntimeError):
-                pass
+                # Handler may not exist or loop may be closing.
+                continue
 
         backend_task.cancel()
         frontend_task.cancel()

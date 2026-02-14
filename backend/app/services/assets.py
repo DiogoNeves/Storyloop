@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import io
+import logging
 import re
 import tempfile
 from dataclasses import dataclass
@@ -14,10 +15,13 @@ from typing import Iterable
 from urllib.parse import urlparse
 
 from pypdf import PdfReader
-from PIL import Image
+from pypdf.errors import PyPdfError
+from PIL import Image, UnidentifiedImageError
 
 from app.db import SqliteConnectionFactory
 from app.services.base import DatabaseService
+
+logger = logging.getLogger(__name__)
 
 MAX_IMAGE_EDGE_PX = 2000
 ASSET_URL_PREFIX = "/assets/"
@@ -185,7 +189,7 @@ class AssetService(DatabaseService):
         if content_type.startswith("image/"):
             try:
                 processed = _process_image(data)
-            except Exception as exc:  # noqa: BLE001
+            except (UnidentifiedImageError, OSError, ValueError) as exc:
                 raise ValueError("Unable to process image upload.") from exc
             data = processed.data
             content_type = processed.mime_type
@@ -319,7 +323,11 @@ def _process_image(data: bytes) -> _ProcessedImage:
 def _extract_pdf_text(data: bytes) -> str | None:
     try:
         reader = PdfReader(io.BytesIO(data))
-    except Exception:  # noqa: BLE001
+    except (PyPdfError, OSError, ValueError) as exc:
+        logger.warning(
+            "assets.pdf_text_extraction_failed",
+            extra={"error_type": type(exc).__name__},
+        )
         return None
 
     text_chunks: list[str] = []
