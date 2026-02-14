@@ -112,6 +112,43 @@ async def test_create_journal_entry_strips_text(
 
 
 @pytest.mark.asyncio
+async def test_load_entries_excludes_archived_entries(
+    memory_connection_factory,
+) -> None:
+    service = EntryService(memory_connection_factory)
+    service.ensure_schema()
+
+    now = datetime.now(tz=UTC)
+    service.save_new_entries(
+        [
+            EntryRecord(
+                id="entry-visible",
+                title="Visible note",
+                summary="Visible content",
+                occurred_at=now,
+                updated_at=now,
+                category="journal",
+                archived=False,
+            ),
+            EntryRecord(
+                id="entry-archived",
+                title="Archived note",
+                summary="Archived content",
+                occurred_at=now - timedelta(minutes=1),
+                updated_at=now - timedelta(minutes=1),
+                category="journal",
+                archived=True,
+            ),
+        ]
+    )
+
+    repo = JournalRepository(service)
+    entries = await repo.load_entries(user_id="user-1", limit=10, before=None)
+
+    assert [entry.id for entry in entries] == ["entry-visible"]
+
+
+@pytest.mark.asyncio
 async def test_search_entries_excludes_explicitly_archived_entries(
     memory_connection_factory,
 ) -> None:
