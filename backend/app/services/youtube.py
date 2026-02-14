@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from collections.abc import AsyncIterator
 
@@ -16,9 +15,24 @@ from asyncache import cachedmethod
 from cachetools import TTLCache
 from googleapiclient.discovery import build
 
-from app.services.tags import extract_tags_from_values
 from app.services.youtube_identifier import build_lookup_candidates
-from app.utils.datetime import parse_datetime, parse_duration_seconds
+from app.services.youtube_models import (
+    YoutubeChannel,
+    YoutubeChannelStatistics,
+    YoutubeFeed,
+    YoutubeVideo,
+)
+from app.services.youtube_transformers import (
+    VideoDetailParseError,
+    build_videos_with_details,
+    extract_from_video_payload,
+    extract_durations_from_payload,
+    extract_live_broadcast_content_from_payload,
+    extract_privacy_status_from_payload,
+    extract_video_ids,
+    filter_and_sort_videos,
+    parse_video_detail_response,
+)
 
 if TYPE_CHECKING:  # pragma: no cover - imports for typing only
     from app.services.users import UserService
@@ -110,285 +124,6 @@ class YoutubeChannelNotFound(YoutubeError):
 
 class YoutubeAPIRequestError(YoutubeError):
     """Raised when the YouTube API responds with an unexpected error."""
-
-
-@dataclass(slots=True)
-class YoutubeChannelStatistics:
-    """Statistics for a YouTube channel."""
-
-    view_count: int | None
-    subscriber_count: int | None
-    video_count: int | None
-
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize the statistics into a JSON-friendly dictionary."""
-        return {
-            "viewCount": self.view_count,
-            "subscriberCount": self.subscriber_count,
-            "videoCount": self.video_count,
-        }
-
-    @classmethod
-    def from_api_response(cls, statistics: dict[str, Any] | None) -> "YoutubeChannelStatistics":
-        """Construct statistics from a YouTube API statistics response."""
-        if not statistics or not isinstance(statistics, dict):
-            return cls(view_count=None, subscriber_count=None, video_count=None)
-
-        def parse_int(value: Any) -> int | None:
-            if value is None:
-                return None
-            try:
-                return int(value)
-            except (ValueError, TypeError):
-                return None
-
-        # Note: subscriberCount may be hidden if channel has opted out
-        hidden_subscriber_count = statistics.get("hiddenSubscriberCount", False)
-        subscriber_count = None if hidden_subscriber_count else parse_int(statistics.get("subscriberCount"))
-
-        return cls(
-            view_count=parse_int(statistics.get("viewCount")),
-            subscriber_count=subscriber_count,
-            video_count=parse_int(statistics.get("videoCount")),
-        )
-
-
-@dataclass(slots=True)
-class YoutubeVideoStatistics:
-    """Statistics for a YouTube video."""
-
-    view_count: int | None
-    like_count: int | None
-    comment_count: int | None
-
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize the statistics into a JSON-friendly dictionary."""
-        return {
-            "viewCount": self.view_count,
-            "likeCount": self.like_count,
-            "commentCount": self.comment_count,
-        }
-
-    @classmethod
-    def from_api_response(cls, statistics: dict[str, Any] | None) -> "YoutubeVideoStatistics":
-        """Construct statistics from a YouTube API statistics response."""
-        if not statistics or not isinstance(statistics, dict):
-            return cls(view_count=None, like_count=None, comment_count=None)
-
-        def parse_int(value: Any) -> int | None:
-            if value is None:
-                return None
-            try:
-                return int(value)
-            except (ValueError, TypeError):
-                return None
-
-        return cls(
-            view_count=parse_int(statistics.get("viewCount")),
-            like_count=parse_int(statistics.get("likeCount")),
-            comment_count=parse_int(statistics.get("commentCount")),
-        )
-
-
-@dataclass(slots=True)
-class YoutubeVideo:
-    """Structured representation of a YouTube video."""
-
-    id: str
-    title: str
-    description: str
-    published_at: datetime
-    url: str
-    thumbnail_url: str | None
-    video_type: Literal["short", "live", "video"]
-    privacy_status: str  # "public", "unlisted", "private"
-    tags: list[str]
-    statistics: YoutubeVideoStatistics | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize the video into a JSON-friendly dictionary."""
-        result: dict[str, Any] = {
-            "id": self.id,
-            "title": self.title,
-            "description": self.description,
-            "publishedAt": self.published_at.isoformat(),
-            "url": self.url,
-            "thumbnailUrl": self.thumbnail_url,
-            "videoType": self.video_type,
-            "privacyStatus": self.privacy_status,
-            "tags": self.tags,
-        }
-        if self.statistics is not None:
-            result["statistics"] = self.statistics.to_dict()
-        return result
-
-    @classmethod
-    def from_playlist_item(cls, item: dict[str, Any]) -> YoutubeVideo | None:
-        """Construct a video instance from a playlistItems entry.
-
-        Docs: https://developers.google.com/youtube/v3/docs/playlistItems/list
-        """
-        snippet = item.get("snippet")
-        if not isinstance(snippet, dict):
-            logger.warning(
-                "Skipping playlist item without snippet data: %s", item
-            )
-            return None
-        resource = snippet.get("resourceId")
-        if not isinstance(resource, dict):
-            logger.warning(
-                "Skipping playlist item without resourceId: %s", resource
-            )
-            return None
-        video_id = resource.get("videoId")
-        if not video_id:
-            return None
-        published_at_raw = snippet.get("publishedAt")
-        try:
-            published_at = parse_datetime(published_at_raw)
-        except ValueError:
-            logger.warning(
-                "Skipping video %s due to unparseable timestamp: %s",
-                video_id,
-                published_at_raw,
-            )
-            return None
-        thumbnail_url = _select_thumbnail_url(
-            snippet.get("thumbnails"),
-            ("high", "medium", "standard", "default"),
-        )
-
-        # Extract live broadcast content from snippet
-        # liveBroadcastContent can be: "live" (currently live), "upcoming" (scheduled),
-        # or "none" (not live/regular video). Completed live streams become "none".
-        live_broadcast_content = snippet.get("liveBroadcastContent", "none")
-        is_live = live_broadcast_content in ("live", "upcoming")
-
-        # Extract duration from contentDetails
-        # Duration is fetched separately via videos.list API since playlistItems
-        # doesn't include it. Duration is in ISO 8601 format (e.g., "PT3M30S").
-        content_details = item.get("contentDetails", {})
-        duration_str = (
-            content_details.get("duration")
-            if isinstance(content_details, dict)
-            else None
-        )
-        duration_seconds = parse_duration_seconds(duration_str)
-
-        # YouTube Shorts are videos up to 3 minutes (180 seconds) with a vertical/square aspect ratio.
-        # Source: https://support.google.com/youtube/answer/15424877
-        # The playlistItems response does not expose aspect ratio, so we approximate using duration.
-        # Note: Live streams can also be Shorts (live Shorts), but live status takes precedence.
-        is_short = duration_seconds is not None and duration_seconds <= 180
-
-        # Log warning if duration is missing (could lead to misclassification)
-        if duration_str is None:
-            logger.debug(
-                "Video %s missing duration; defaulting to 'video' type",
-                video_id,
-            )
-
-        # Extract privacy status from snippet (added by _build_videos_with_details)
-        # Defaults to "public" if not available
-        privacy_status = snippet.get("privacyStatus", "public")
-
-        # Determine video type with priority: live > short > video
-        # This ensures live streams (including live Shorts) are correctly identified as "live"
-        video_url = f"https://www.youtube.com/watch?v={video_id}"
-        if is_live:
-            video_type: Literal["short", "live", "video"] = "live"
-        elif is_short:
-            video_type = "short"
-        else:
-            video_type = "video"
-
-        return cls(
-            id=video_id,
-            title=snippet.get("title", "Untitled video"),
-            description=snippet.get("description", ""),
-            published_at=published_at,
-            url=video_url,
-            thumbnail_url=thumbnail_url,
-            video_type=video_type,
-            privacy_status=privacy_status,
-            tags=extract_tags_from_values(
-                snippet.get("title", "Untitled video"),
-                snippet.get("description", ""),
-            ),
-        )
-
-
-@dataclass(slots=True)
-class YoutubeChannel:
-    """Channel metadata required to retrieve uploads."""
-
-    id: str
-    title: str
-    description: str | None
-    url: str
-    uploads_playlist_id: str
-    thumbnail_url: str | None
-
-    @classmethod
-    def from_api_item(cls, item: dict[str, Any]) -> YoutubeChannel | None:
-        """Construct channel data from a channels API response.
-
-        Docs: https://developers.google.com/youtube/v3/docs/channels/list
-        """
-        channel_id = item.get("id")
-        if not isinstance(channel_id, str) or not channel_id:
-            logger.warning("Encountered channel payload without id: %s", item)
-            return None
-        content_details = item.get("contentDetails")
-        uploads_playlist_id = (
-            content_details.get("relatedPlaylists", {}).get("uploads")
-            if isinstance(content_details, dict)
-            else None
-        )
-        if not uploads_playlist_id:
-            logger.warning(
-                "Channel %s is missing uploads playlist information", channel_id
-            )
-            return None
-        snippet = item.get("snippet")
-        snippet_dict: dict[str, Any] = (
-            snippet if isinstance(snippet, dict) else {}
-        )
-        thumbnail_url = _select_thumbnail_url(
-            snippet_dict.get("thumbnails"),
-            ("high", "medium", "default"),
-        )
-        return cls(
-            id=channel_id,
-            title=snippet_dict.get("title", "Unnamed channel"),
-            description=snippet_dict.get("description"),
-            url=f"https://www.youtube.com/channel/{channel_id}",
-            uploads_playlist_id=uploads_playlist_id,
-            thumbnail_url=thumbnail_url,
-        )
-
-
-@dataclass(slots=True)
-class YoutubeFeed:
-    """Channel metadata plus associated video uploads."""
-
-    channel_id: str
-    channel_title: str
-    channel_description: str | None
-    channel_url: str
-    channel_thumbnail_url: str | None
-    videos: list[YoutubeVideo]
-
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize the feed for API responses."""
-        return {
-            "channelId": self.channel_id,
-            "channelTitle": self.channel_title,
-            "channelDescription": self.channel_description,
-            "channelUrl": self.channel_url,
-            "channelThumbnailUrl": self.channel_thumbnail_url,
-            "videos": [video.to_dict() for video in self.videos],
-        }
 
 
 class YoutubeService:
@@ -613,22 +348,7 @@ class YoutubeService:
         self, playlist_items: list[dict[str, Any]]
     ) -> list[str]:
         """Extract video IDs from playlist items."""
-        video_ids: list[str] = []
-        for item in playlist_items:
-            if not isinstance(item, dict):
-                continue
-            snippet = item.get("snippet", {})
-            resource = (
-                snippet.get("resourceId", {})
-                if isinstance(snippet, dict)
-                else {}
-            )
-            video_id = (
-                resource.get("videoId") if isinstance(resource, dict) else None
-            )
-            if video_id:
-                video_ids.append(video_id)
-        return video_ids
+        return extract_video_ids(playlist_items)
 
     def _extract_from_payload(
         self,
@@ -650,49 +370,30 @@ class YoutubeService:
         Returns:
             Dict mapping video_id to extracted value
         """
-        result: dict[str, Any] = {}
-        video_items = video_payload.get("items", [])
-        if not isinstance(video_items, list):
-            return result
-
-        for video_item in video_items:
-            if not isinstance(video_item, dict):
-                continue
-            video_id = video_item.get("id")
-            parent = video_item.get(parent_key, {})
-            value = (
-                parent.get(child_key, default)
-                if isinstance(parent, dict)
-                else default
-            )
-            if video_id:
-                result[video_id] = value
-
-        return result
+        return extract_from_video_payload(
+            video_payload,
+            parent_key=parent_key,
+            child_key=child_key,
+            default=default,
+        )
 
     def _extract_durations_from_payload(
         self, video_payload: dict[str, Any]
     ) -> dict[str, str | None]:
         """Extract video durations from a videos.list API response."""
-        return self._extract_from_payload(
-            video_payload, "contentDetails", "duration", default=None
-        )
+        return extract_durations_from_payload(video_payload)
 
     def _extract_live_broadcast_content_from_payload(
         self, video_payload: dict[str, Any]
     ) -> dict[str, str]:
         """Extract liveBroadcastContent from a videos.list API response."""
-        return self._extract_from_payload(
-            video_payload, "snippet", "liveBroadcastContent", default="none"
-        )
+        return extract_live_broadcast_content_from_payload(video_payload)
 
     def _extract_privacy_status_from_payload(
         self, video_payload: dict[str, Any]
     ) -> dict[str, str]:
         """Extract privacyStatus from a videos.list API response."""
-        return self._extract_from_payload(
-            video_payload, "status", "privacyStatus", default="public"
-        )
+        return extract_privacy_status_from_payload(video_payload)
 
     async def _fetch_video_details(
         self, client: httpx.AsyncClient, video_ids: list[str]
@@ -754,44 +455,9 @@ class YoutubeService:
         privacy_status: dict[str, str],
     ) -> list[YoutubeVideo]:
         """Build YoutubeVideo objects from playlist items with duration, live content, and privacy data."""
-        videos: list[YoutubeVideo] = []
-        for item in playlist_items:
-            if not isinstance(item, dict):
-                continue
-            snippet = item.get("snippet", {})
-            resource = (
-                snippet.get("resourceId", {})
-                if isinstance(snippet, dict)
-                else {}
-            )
-            video_id = (
-                resource.get("videoId") if isinstance(resource, dict) else None
-            )
-            if not video_id:
-                continue
-
-            # Add duration to contentDetails if available
-            if isinstance(item.get("contentDetails"), dict):
-                if video_id in durations:
-                    item["contentDetails"]["duration"] = durations[video_id]
-            else:
-                item["contentDetails"] = {"duration": durations.get(video_id)}
-
-            # Update liveBroadcastContent from videos.list API if available
-            # This ensures we have the most up-to-date live status
-            if isinstance(snippet, dict) and video_id in live_content:
-                snippet["liveBroadcastContent"] = live_content[video_id]
-
-            # Add privacyStatus to snippet if available
-            if isinstance(snippet, dict) and video_id in privacy_status:
-                snippet["privacyStatus"] = privacy_status[video_id]
-
-            video = YoutubeVideo.from_playlist_item(item)
-            if video is None:
-                continue
-            videos.append(video)
-
-        return videos
+        return build_videos_with_details(
+            playlist_items, durations, live_content, privacy_status
+        )
 
     async def _fetch_videos(
         self,
@@ -857,16 +523,9 @@ class YoutubeService:
             built_videos = self._build_videos_with_details(
                 playlist_items, durations, live_content, privacy_status
             )
-
-            # Filter by video type if specified
-            if video_type:
-                built_videos = [
-                    v for v in built_videos if v.video_type == video_type
-                ]
-
-            # Sort by published date (newest first) to ensure consistent ordering
-            # This is important after filtering, as the order might be disrupted
-            built_videos.sort(key=lambda v: v.published_at, reverse=True)
+            built_videos = filter_and_sort_videos(
+                built_videos, video_type=video_type
+            )
 
             # Only take up to max_results videos
             videos = built_videos[:max_results]
@@ -1080,16 +739,9 @@ class YoutubeService:
             built_videos = self._build_videos_with_details(
                 playlist_items, durations, live_content, privacy_status
             )
-
-            # Filter by video type if specified
-            if video_type:
-                built_videos = [
-                    v for v in built_videos if v.video_type == video_type
-                ]
-
-            # Sort by published date (newest first) to ensure consistent ordering
-            # This is important after filtering, as the order might be disrupted
-            built_videos.sort(key=lambda v: v.published_at, reverse=True)
+            built_videos = filter_and_sort_videos(
+                built_videos, video_type=video_type
+            )
 
             videos = built_videos[:max_results]
 
@@ -1262,43 +914,10 @@ class YoutubeService:
         Raises:
             YoutubeAPIRequestError: If video not found or parsing fails
         """
-        if not isinstance(items, list) or not items:
-            raise YoutubeAPIRequestError(f"Video {video_id} not found")
-
-        # Find the video item matching the requested video_id
-        video_item = None
-        for item in items:
-            if isinstance(item, dict) and item.get("id") == video_id:
-                video_item = item
-                break
-
-        if video_item is None:
-            raise YoutubeAPIRequestError(f"Video {video_id} not found")
-
-        snippet = video_item.get("snippet", {})
-        content_details = video_item.get("contentDetails", {})
-        status = video_item.get("status", {})
-        statistics_data = video_item.get("statistics", {})
-
-        # Create a playlist item-like dict
-        playlist_item_like = {
-            "snippet": {
-                **snippet,
-                "resourceId": {"videoId": video_id},
-                "liveBroadcastContent": snippet.get("liveBroadcastContent", "none"),
-                "privacyStatus": status.get("privacyStatus", "public")
-                if isinstance(status, dict)
-                else "public",
-            },
-            "contentDetails": content_details,
-        }
-
-        video = YoutubeVideo.from_playlist_item(playlist_item_like)
-        if video is None:
-            raise YoutubeAPIRequestError(f"Failed to parse video {video_id}")
-
-        video.statistics = YoutubeVideoStatistics.from_api_response(statistics_data)
-        return video
+        try:
+            return parse_video_detail_response(items, video_id)
+        except VideoDetailParseError as exc:
+            raise YoutubeAPIRequestError(str(exc)) from exc
 
     async def _fetch_video_detail_with_api_key(
         self, video_id: str
@@ -1416,18 +1035,3 @@ class YoutubeService:
         channel_item = items[0]
         statistics_data = channel_item.get("statistics", {})
         return YoutubeChannelStatistics.from_api_response(statistics_data)
-
-
-def _select_thumbnail_url(
-    thumbnails: Any, preferred_order: tuple[str, ...]
-) -> str | None:
-    """Return the best available thumbnail URL from a thumbnails payload."""
-    if not isinstance(thumbnails, dict):
-        return None
-    for key in preferred_order:
-        candidate = thumbnails.get(key)
-        if isinstance(candidate, dict):
-            url = candidate.get("url")
-            if isinstance(url, str) and url:
-                return url
-    return None

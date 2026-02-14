@@ -13,6 +13,12 @@ import { useSmartEntryUpdate } from "@/hooks/useSmartEntryUpdate";
 import { useSync } from "@/hooks/useSync";
 import { compareEntriesByPinnedDate } from "@/lib/types/entries";
 import { cn } from "@/lib/utils";
+import {
+  buildPromptMarkdown,
+  deriveSaveIndicator,
+  findAdjacentVideos,
+} from "@/lib/journal-detail-logic";
+import { formatLongDateTime, parseValidDate } from "@/lib/date-time";
 import { useAgentConversationContext } from "@/context/AgentConversationContext";
 import { NavBar } from "@/components/NavBar";
 import { VideoLinkCard } from "@/components/VideoLinkCard";
@@ -399,67 +405,17 @@ export function JournalDetailPage() {
     }
   }, [currentEntry, entryQuery.isError, journalId, navigate, isDeleting]);
 
-  const createdDate: string | null = currentEntry?.date ?? null;
-  const journalDate = useMemo(() => {
-    if (!createdDate) {
-      return null;
-    }
-    const parsed = new Date(createdDate);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }, [createdDate]);
+  const journalDate = parseValidDate(currentEntry?.date ?? null);
+  const updatedDateValue = parseValidDate(
+    currentEntry?.updatedAt ?? currentEntry?.date,
+  );
+  const archivedDateValue = parseValidDate(currentEntry?.archivedAt);
+  const lastSmartUpdateDate = parseValidDate(currentEntry?.lastSmartUpdateAt);
 
-  const updatedDateValue = useMemo(() => {
-    const updatedDate = currentEntry?.updatedAt ?? currentEntry?.date;
-    if (!updatedDate) {
-      return null;
-    }
-    const parsed = new Date(updatedDate);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }, [currentEntry?.date, currentEntry?.updatedAt]);
-
-  const archivedDateValue = useMemo(() => {
-    if (!currentEntry?.archivedAt) {
-      return null;
-    }
-    const parsed = new Date(currentEntry.archivedAt);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }, [currentEntry?.archivedAt]);
-
-  const formattedUpdatedDate = updatedDateValue
-    ? updatedDateValue.toLocaleString(undefined, {
-        dateStyle: "long",
-        timeStyle: "short",
-      })
-    : null;
-
-  const formattedArchivedDate = archivedDateValue
-    ? archivedDateValue.toLocaleString(undefined, {
-        dateStyle: "long",
-        timeStyle: "short",
-      })
-    : null;
-
-  const formattedCreatedDate = journalDate
-    ? journalDate.toLocaleString(undefined, {
-        dateStyle: "long",
-        timeStyle: "short",
-      })
-    : null;
-
-  const lastSmartUpdateDate = useMemo(() => {
-    if (!currentEntry?.lastSmartUpdateAt) {
-      return null;
-    }
-    const parsed = new Date(currentEntry.lastSmartUpdateAt);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }, [currentEntry?.lastSmartUpdateAt]);
-
-  const formattedLastSmartUpdate = lastSmartUpdateDate
-    ? lastSmartUpdateDate.toLocaleString(undefined, {
-        dateStyle: "long",
-        timeStyle: "short",
-      })
-    : null;
+  const formattedUpdatedDate = formatLongDateTime(updatedDateValue);
+  const formattedArchivedDate = formatLongDateTime(archivedDateValue);
+  const formattedCreatedDate = formatLongDateTime(journalDate);
+  const formattedLastSmartUpdate = formatLongDateTime(lastSmartUpdateDate);
 
   const summarySource: string | null = currentEntry?.summary ?? null;
   const summaryText =
@@ -497,56 +453,11 @@ export function JournalDetailPage() {
   });
 
   const adjacentVideos = useMemo(() => {
-    if (!youtubeState.youtubeFeed?.videos || !journalDate) {
-      return { previous: null, next: null };
-    }
-
-    // Apply the same filtering logic as ActivityFeed
-    const filteredVideos = youtubeState.youtubeFeed.videos.filter((video) => {
-      // Filter by content type
-      if (!video.videoType) {
-        // Include items without videoType only if not filtering by type
-        if (contentTypeFilter !== "all") return false;
-      } else {
-        if (contentTypeFilter !== "all") {
-          if (video.videoType !== contentTypeFilter) return false;
-        }
-      }
-
-      // Filter by privacy status if "public only" is enabled
-      if (publicOnly) {
-        // Only include public videos (exclude unlisted and private)
-        if (video.privacyStatus !== "public") return false;
-      }
-
-      return true;
+    return findAdjacentVideos(youtubeState.youtubeFeed?.videos, {
+      journalDate,
+      contentTypeFilter,
+      publicOnly,
     });
-
-    const sortedVideos = [...filteredVideos].sort(
-      (a, b) =>
-        new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime(),
-    );
-
-    let previous: YoutubeVideoResponse | null = null;
-    let next: YoutubeVideoResponse | null = null;
-    const journalTime = journalDate.getTime();
-
-    for (const video of sortedVideos) {
-      const publishedTime = new Date(video.publishedAt).getTime();
-      if (Number.isNaN(publishedTime)) {
-        continue;
-      }
-      if (publishedTime <= journalTime) {
-        previous = video;
-        continue;
-      }
-      if (!next && publishedTime > journalTime) {
-        next = video;
-        break;
-      }
-    }
-
-    return { previous, next };
   }, [
     journalDate,
     youtubeState.youtubeFeed?.videos,
@@ -739,26 +650,11 @@ export function JournalDetailPage() {
       </Button>
     );
 
-    const showSaveIndicator =
-      autosaveStatus === "queued"
-        ? hasPendingUpdate
-        : autosaveStatus !== "idle" || hasPendingUpdate;
-    const saveIndicatorTone =
-      autosaveStatus === "error"
-        ? "text-destructive"
-        : autosaveStatus === "queued" || hasPendingUpdate
-          ? "text-amber-500"
-          : "text-muted-foreground";
-    const saveIndicatorMessage =
-      autosaveStatus === "saving"
-        ? "Saving..."
-        : autosaveStatus === "error"
-          ? autosaveError ?? "Saved locally, couldn’t sync yet."
-          : autosaveStatus === "dirty"
-            ? "Unsaved changes"
-            : hasPendingUpdate
-              ? "Saved locally, syncing soon."
-              : "Saved locally";
+    const saveIndicator = deriveSaveIndicator(
+      autosaveStatus,
+      autosaveError,
+      hasPendingUpdate,
+    );
 
     const header = (
       <>
@@ -780,16 +676,16 @@ export function JournalDetailPage() {
                 placeholder="Untitled entry"
                 rows={2}
               />
-              {showSaveIndicator ? (
+              {saveIndicator.show ? (
                 <span
-                  className={cn("mt-2 inline-flex items-center", saveIndicatorTone)}
-                  title={saveIndicatorMessage}
-                  aria-label={saveIndicatorMessage}
+                  className={cn("mt-2 inline-flex items-center", saveIndicator.tone)}
+                  title={saveIndicator.message}
+                  aria-label={saveIndicator.message}
                 >
                   <SaveOff
                     className={cn(
                       "h-4 w-4",
-                      autosaveStatus === "saving" && "animate-bounce",
+                      saveIndicator.isSaving && "animate-bounce",
                     )}
                   />
                 </span>
@@ -900,13 +796,10 @@ export function JournalDetailPage() {
       </>
     );
 
-    const promptMarkdown = (() => {
-      const promptBody = currentEntry.promptBody ?? "";
-      const promptFormat = currentEntry.promptFormat?.trim().length
-        ? currentEntry.promptFormat
-        : "No format guidance yet.";
-      return `## What to include\n\n${promptBody}\n\n## Format\n\n${promptFormat}`;
-    })();
+    const promptMarkdown = buildPromptMarkdown(
+      currentEntry.promptBody,
+      currentEntry.promptFormat,
+    );
 
     const promptTab = (
       <div className="space-y-4">
