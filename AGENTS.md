@@ -119,6 +119,13 @@ Tailscale is configured with HTTPS for testing PWA on phone. Access via Tailscal
 - Request review after checks pass, leave TODOs for follow-up
 - Use `gh` command for GitHub operations
 
+## Good code rubric
+
+- This repository did not begin with the Good Code rubric in place. For all new work, we should move toward it incrementally and improve what we can from now on.
+- `good-code-rubric.md` is required reading before introducing or modifying code.
+- Follow the rubric for coding decisions and reviews, while honoring current repo conventions.
+- Stack-specific exceptions and notes are documented in `good-code-rubric.md` (especially section: `Repository adaptation notes`).
+
 ## Do Not
 
 - Do not hard-code environment variables
