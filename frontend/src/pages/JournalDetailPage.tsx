@@ -753,7 +753,14 @@ export function JournalDetailPage() {
               <textarea
                 className="line-clamp-2 w-full flex-1 resize-none border-none bg-transparent text-2xl font-semibold leading-tight text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:text-muted-foreground sm:line-clamp-none sm:min-h-[2.5rem]"
                 value={titleDraft}
-                onChange={(event) => setTitleDraft(event.target.value)}
+                onChange={(event) =>
+                  setTitleDraft(event.target.value.replace(/\r?\n/g, " "))
+                }
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                  }
+                }}
                 disabled={isSmartUpdating}
                 placeholder="Untitled entry"
                 rows={2}

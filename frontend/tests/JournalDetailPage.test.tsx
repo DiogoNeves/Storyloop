@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -241,6 +241,26 @@ describe("JournalDetailPage", () => {
       /We couldn't load channel information./i,
     );
     expect(errors).toHaveLength(2);
+  });
+
+  it("normalizes new lines in the journal title input", async () => {
+    useYouTubeFeedMock.mockReturnValue({
+      youtubeFeed: null,
+      youtubeError: null,
+      isLoading: false,
+      isLinked: false,
+      linkStatus: null,
+      channelId: null,
+    });
+
+    renderPage(<JournalDetailPage />);
+
+    const titleInput = await screen.findByDisplayValue(sampleEntry.title);
+    fireEvent.change(titleInput, {
+      target: { value: "New\nvideo ideas" },
+    });
+
+    expect(titleInput).toHaveValue("New video ideas");
   });
 
   it("archives an entry from the detail header", async () => {
