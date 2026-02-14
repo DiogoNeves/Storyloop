@@ -859,7 +859,11 @@ export function JournalDetailPage() {
         <div className="flex flex-col gap-2 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
           <div className="flex flex-col gap-1">
             {formattedUpdatedDate ? (
-              <span>Updated {formattedUpdatedDate}</span>
+              <span>
+                {isArchived
+                  ? `Archived ${formattedUpdatedDate}`
+                  : `Updated ${formattedUpdatedDate}`}
+              </span>
             ) : (
               <span>Entry date unavailable</span>
             )}

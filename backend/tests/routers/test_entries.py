@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from datetime import UTC, datetime, timedelta
 
 from fastapi import FastAPI
@@ -225,6 +226,38 @@ def test_update_entry_modifies_record(
     assert body["videoId"] == "video-123"
     assert body["pinned"] is True
     assert body["archived"] is True
+
+
+def test_archiving_entry_refreshes_updated_at_timestamp(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    app = _create_test_app(memory_connection_factory)
+    client = TestClient(app)
+
+    now = datetime.now(tz=UTC)
+    payload = [
+        {
+            "id": "entry-archive-updated-at",
+            "title": "Archivable entry",
+            "summary": "Stored before archiving.",
+            "date": now.isoformat(),
+            "category": "journal",
+        }
+    ]
+
+    create_response = client.post("/entries/", json=payload)
+    assert create_response.status_code == 200
+    initial_updated_at = create_response.json()[0]["updatedAt"]
+
+    time.sleep(0.01)
+
+    archive_response = client.put(
+        "/entries/entry-archive-updated-at", json={"archived": True}
+    )
+    assert archive_response.status_code == 200
+    archived_body = archive_response.json()
+    assert archived_body["archived"] is True
+    assert archived_body["updatedAt"] != initial_updated_at
 
 
 def test_non_journal_entries_cannot_be_archived(
