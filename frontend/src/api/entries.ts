@@ -5,7 +5,12 @@ import {
 } from "@tanstack/react-query";
 
 import { API_BASE_URL, apiClient } from "@/api/client";
-import { compareEntriesByPinnedDate, type Entry } from "@/lib/types/entries";
+import {
+  compareEntriesByPinnedDate,
+  parseEntries,
+  parseEntry,
+  type Entry,
+} from "@/lib/types/entries";
 
 /**
  * Entry API helpers aligned with the currently implemented backend routes.
@@ -68,16 +73,16 @@ export const entriesQueries = createQueryKeys("entries", {
   all: () => ({
     queryKey: ["entries"],
     queryFn: async (): Promise<Entry[]> => {
-      const { data } = await apiClient.get<Entry[]>("/entries");
-      return data;
+      const { data } = await apiClient.get<unknown>("/entries");
+      return parseEntries(data);
     },
   }),
   /** Fetch a single entry by ID, mirroring `GET /entries/{id}`. */
   byId: (id: string) => ({
     queryKey: ["entries", id],
     queryFn: async (): Promise<Entry> => {
-      const { data } = await apiClient.get<Entry>(`/entries/${id}`);
-      return data;
+      const { data } = await apiClient.get<unknown>(`/entries/${id}`);
+      return parseEntry(data);
     },
   }),
 });
@@ -86,16 +91,17 @@ export const entriesQueries = createQueryKeys("entries", {
 export async function createEntry(
   input: CreateEntryInput,
 ): Promise<Entry | null> {
-  const { data } = await apiClient.post<Entry[]>("/entries", [input]);
-  return data.length > 0 ? data[0] : null;
+  const { data } = await apiClient.post<unknown>("/entries", [input]);
+  const entries = parseEntries(data);
+  return entries.length > 0 ? entries[0] : null;
 }
 
 export async function updateEntry({
   id,
   ...input
 }: UpdateEntryInput): Promise<Entry> {
-  const { data } = await apiClient.put<Entry>(`/entries/${id}`, input);
-  return data;
+  const { data } = await apiClient.put<unknown>(`/entries/${id}`, input);
+  return parseEntry(data);
 }
 
 export async function deleteEntry(id: string): Promise<void> {
