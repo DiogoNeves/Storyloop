@@ -6,6 +6,10 @@ from fastapi import APIRouter, Depends, Query
 
 from app.dependencies import YoutubeAuthDeps, get_youtube_auth_deps
 from app.routers.errors import handle_youtube_error
+from app.routers.youtube_presenters import (
+    present_channel_feed,
+    present_video_detail,
+)
 from app.services.youtube import YoutubeError
 
 router = APIRouter(prefix="/youtube", tags=["youtube"])
@@ -35,7 +39,7 @@ async def list_channel_videos(
         )
     except YoutubeError as exc:
         raise handle_youtube_error(exc) from exc
-    return feed.to_dict()
+    return present_channel_feed(feed)
 
 
 @router.get("/videos/{video_id}")
@@ -57,9 +61,6 @@ async def get_video_detail(
             user_service=deps.user_service,
             oauth_service=deps.oauth_service,
         )
-        # Convert to dict and add transcript field (null for now, can be extended later)
-        video_dict = video.to_dict()
-        video_dict["transcript"] = None
-        return video_dict
+        return present_video_detail(video)
     except YoutubeError as exc:
         raise handle_youtube_error(exc) from exc
