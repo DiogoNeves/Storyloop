@@ -132,11 +132,37 @@ const commonmarkWithSafeParagraph = (() => {
 
 const HASHTAG_PATTERN = /(^|[\s([{])(#([A-Za-z0-9][A-Za-z0-9/-]*))/g;
 const ARCHIVED_TAG = "#archived";
+const DOC_TEXT_BLOCK_SEPARATOR = "\n";
+const DOC_TEXT_LEAF_SEPARATOR = "\n";
 
 interface TagSuggestionState {
   from: number;
   to: number;
   suffix: string;
+}
+
+function getCharacterAfterPosition(doc: ProseNode, position: number): string {
+  return doc.textBetween(
+    position,
+    Math.min(position + 1, doc.content.size),
+    DOC_TEXT_BLOCK_SEPARATOR,
+    DOC_TEXT_LEAF_SEPARATOR,
+  );
+}
+
+function hasSuffixAtPosition(
+  doc: ProseNode,
+  position: number,
+  suffix: string,
+): boolean {
+  const suffixEnd = Math.min(position + suffix.length, doc.content.size);
+  const existingSuffix = doc.textBetween(
+    position,
+    suffixEnd,
+    DOC_TEXT_BLOCK_SEPARATOR,
+    DOC_TEXT_LEAF_SEPARATOR,
+  );
+  return existingSuffix === suffix;
 }
 
 const createHashtagDecorations = (
@@ -437,8 +463,19 @@ const JournalEntryEditorInner = forwardRef<
       }
 
       const parentStart = selection.$from.start();
-      const textBefore = doc.textBetween(parentStart, selection.from, "\n", "\n");
-      const candidate = findTagCandidate(textBefore, parentStart, selection.from);
+      const textBefore = doc.textBetween(
+        parentStart,
+        selection.from,
+        DOC_TEXT_BLOCK_SEPARATOR,
+        DOC_TEXT_LEAF_SEPARATOR,
+      );
+      const textAfter = getCharacterAfterPosition(doc, selection.from);
+      const candidate = findTagCandidate(
+        textBefore,
+        parentStart,
+        selection.from,
+        textAfter,
+      );
       if (!candidate) {
         setTagSuggestion(null);
         return;
@@ -821,6 +858,15 @@ const JournalEntryEditorInner = forwardRef<
 
             if (event.key === "Tab" && tagSuggestion?.suffix) {
               event.preventDefault();
+              if (
+                hasSuffixAtPosition(
+                  view.state.doc,
+                  tagSuggestion.to,
+                  tagSuggestion.suffix,
+                )
+              ) {
+                return true;
+              }
               const tr = view.state.tr.insertText(tagSuggestion.suffix, tagSuggestion.to);
               view.dispatch(tr);
               return true;

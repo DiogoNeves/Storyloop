@@ -4,13 +4,28 @@ export interface TagCandidate {
   query: string;
 }
 
+const TAG_TOKEN_CHARACTER = /^[A-Za-z0-9/-]$/;
+
+function isTagTokenCharacter(value: string | undefined): boolean {
+  return Boolean(value) && TAG_TOKEN_CHARACTER.test(value);
+}
+
+function isCursorInsideTagToken(textAfterCursor: string): boolean {
+  return isTagTokenCharacter(textAfterCursor[0]);
+}
+
 export function findTagCandidate(
   textBeforeCursor: string,
   parentStart: number,
   cursorPosition: number,
+  textAfterCursor = "",
 ): TagCandidate | null {
   const match = textBeforeCursor.match(/(?:^|[\s([{])#([A-Za-z0-9][A-Za-z0-9/-]*)$/);
   if (!match?.[1]) {
+    return null;
+  }
+
+  if (isCursorInsideTagToken(textAfterCursor)) {
     return null;
   }
 
