@@ -90,6 +90,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   // Initialize store and service
   useEffect(() => {
+    let isMounted = true;
     const store = new IdbSyncStore();
     storeRef.current = store;
 
@@ -115,14 +116,24 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     store
       .init()
       .then(() => {
+        if (!isMounted) {
+          return;
+        }
         setIsInitialized(true);
       })
       .catch((error: unknown) => {
+        if (!isMounted) {
+          return;
+        }
         console.warn("IndexedDB unavailable, offline sync disabled:", error);
         setIsOfflineSyncAvailable(false);
         // Still mark as initialized so app can work without offline sync
         setIsInitialized(true);
       });
+
+    return () => {
+      isMounted = false;
+    };
   }, [queryClient]);
 
   // Refresh pending entries when initialization completes
