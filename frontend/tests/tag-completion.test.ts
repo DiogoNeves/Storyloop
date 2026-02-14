@@ -23,6 +23,24 @@ describe("findTagCandidate", () => {
     });
   });
 
+  it("returns null when cursor is inside an existing hashtag token", () => {
+    expect(findTagCandidate("hello #ret", 0, 10, "e")).toBeNull();
+    expect(findTagCandidate("hello #project/", 0, 15, "s")).toBeNull();
+  });
+
+  it("keeps completion available at hashtag token boundaries", () => {
+    expect(findTagCandidate("hello #ret", 0, 10, " ")).toEqual({
+      from: 7,
+      to: 10,
+      query: "ret",
+    });
+    expect(findTagCandidate("hello #project/storyloop", 0, 24, "")).toEqual({
+      from: 7,
+      to: 24,
+      query: "project/storyloop",
+    });
+  });
+
   it("returns null when the cursor is no longer in a hashtag token", () => {
     expect(findTagCandidate("hello #ret ", 0, 11)).toBeNull();
   });
