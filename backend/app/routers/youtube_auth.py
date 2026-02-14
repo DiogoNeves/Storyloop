@@ -45,14 +45,17 @@ References:
 
 from __future__ import annotations
 
+import logging
 import secrets
 from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
+from google.auth.exceptions import GoogleAuthError
 from google.oauth2.credentials import Credentials
 from pydantic import BaseModel
+from requests import RequestException
 
 from app.dependencies import (
     get_user_service,
@@ -65,6 +68,7 @@ from app.services.youtube import YoutubeConfigurationError, YoutubeService
 from app.services.youtube_oauth import YoutubeOAuthService
 
 router = APIRouter(prefix="/youtube/auth", tags=["youtube"])
+logger = logging.getLogger(__name__)
 
 
 class CompleteAuthRequest(BaseModel):
@@ -111,7 +115,11 @@ def _complete_oauth_flow(
     flow = oauth_service.create_flow(state=state)
     try:
         flow.fetch_token(code=code)
-    except Exception as exc:  # pragma: no cover - passthrough for Google errors
+    except (GoogleAuthError, RequestException, ValueError) as exc:
+        logger.warning(
+            "youtube_auth.token_exchange_failed",
+            extra={"error_type": type(exc).__name__},
+        )
         error_detail = str(exc)
         raise HTTPException(
             status_code=400,

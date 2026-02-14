@@ -23,7 +23,11 @@ from typing import TYPE_CHECKING, Any
 
 import anyio
 from cachetools import TTLCache
+from google.auth.exceptions import GoogleAuthError
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+
+from app.services.youtube import YoutubeConfigurationError
 
 if TYPE_CHECKING:
     from app.services.users import UserService
@@ -33,6 +37,15 @@ logger = logging.getLogger(__name__)
 
 ANALYTICS_CACHE_TTL = 600  # 10 minutes
 ANALYTICS_CACHE_SIZE = 256
+ANALYTICS_RECOVERABLE_ERRORS = (
+    GoogleAuthError,
+    HttpError,
+    KeyError,
+    TypeError,
+    ValueError,
+    IndexError,
+    OSError,
+)
 
 
 @dataclass(slots=True)
@@ -51,6 +64,17 @@ class VideoAnalytics:
     subscribers_lost: int | None
     views_7d: int | None
     views_28d: int | None
+
+
+def _empty_video_analytics(video_id: str) -> VideoAnalytics:
+    return VideoAnalytics(
+        video_id=video_id,
+        average_view_percentage=None,
+        subscribers_gained=None,
+        subscribers_lost=None,
+        views_7d=None,
+        views_28d=None,
+    )
 
 
 class YoutubeAnalyticsService:
@@ -118,14 +142,7 @@ class YoutubeAnalyticsService:
         credentials = await self._get_credentials()
         if credentials is None:
             logger.debug("No OAuth credentials available for analytics")
-            return VideoAnalytics(
-                video_id=video_id,
-                average_view_percentage=None,
-                subscribers_gained=None,
-                subscribers_lost=None,
-                views_7d=None,
-                views_28d=None,
-            )
+            return _empty_video_analytics(video_id)
 
         return await anyio.to_thread.run_sync(
             lambda: self._fetch_analytics_sync(credentials, video_id, published_at)
@@ -166,16 +183,24 @@ class YoutubeAnalyticsService:
                 video_id, response, published_at, end_date_7d
             )
 
-        except Exception as e:
-            logger.warning(f"Failed to fetch analytics for {video_id}: {e}")
-            return VideoAnalytics(
-                video_id=video_id,
-                average_view_percentage=None,
-                subscribers_gained=None,
-                subscribers_lost=None,
-                views_7d=None,
-                views_28d=None,
+        except ANALYTICS_RECOVERABLE_ERRORS as exc:
+            logger.warning(
+                "youtube_analytics.fetch_failed",
+                extra={
+                    "video_id": video_id,
+                    "error_type": type(exc).__name__,
+                },
             )
+            return _empty_video_analytics(video_id)
+        except Exception as exc:  # noqa: BLE001 - external API boundary
+            logger.exception(
+                "youtube_analytics.fetch_failed_unexpected",
+                extra={
+                    "video_id": video_id,
+                    "error_type": type(exc).__name__,
+                },
+            )
+            return _empty_video_analytics(video_id)
 
     def _parse_analytics_response(
         self,
@@ -263,8 +288,22 @@ class YoutubeAnalyticsService:
                     )
                 )
             return credentials
-        except Exception as e:
-            logger.warning(f"Failed to get OAuth credentials: {e}")
+        except (
+            GoogleAuthError,
+            TypeError,
+            ValueError,
+            YoutubeConfigurationError,
+        ) as exc:
+            logger.warning(
+                "youtube_analytics.credentials_unavailable",
+                extra={"error_type": type(exc).__name__},
+            )
+            return None
+        except Exception as exc:  # noqa: BLE001 - external auth boundary
+            logger.exception(
+                "youtube_analytics.credentials_unexpected_error",
+                extra={"error_type": type(exc).__name__},
+            )
             return None
 
 

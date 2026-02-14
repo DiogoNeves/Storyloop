@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import logging
 from contextlib import closing
 from dataclasses import dataclass
 from datetime import datetime
+import sqlite3
 from sqlite3 import Row
 from typing import Iterable, Sequence
 
 from app.services.base import DatabaseService
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -200,8 +204,13 @@ class EntryService(DatabaseService):
                     if detail_row is not None and detail_row["value"] != "full":
                         connection.execute("DROP TABLE entries_fts")
                         has_fts = False
-                except Exception:
-                    pass
+                except sqlite3.OperationalError as exc:
+                    logger.warning(
+                        "entries.ensure_schema.fts_config_lookup_failed",
+                        extra={"error_type": type(exc).__name__},
+                    )
+                    connection.execute("DROP TABLE IF EXISTS entries_fts")
+                    has_fts = False
             if not has_fts:
                 connection.execute(
                     """
