@@ -115,15 +115,6 @@ export default defineConfig({
           ) {
             return "vendor-editor";
           }
-          if (
-            id.includes("react-markdown") ||
-            id.includes("remark-") ||
-            id.includes("rehype-") ||
-            id.includes("mdast-") ||
-            id.includes("micromark")
-          ) {
-            return "vendor-markdown";
-          }
           if (id.includes("lucide-react")) {
             return "vendor-icons";
           }

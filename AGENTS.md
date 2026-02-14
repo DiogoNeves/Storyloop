@@ -129,6 +129,7 @@ Tailscale is configured with HTTPS for testing PWA on phone. Access via Tailscal
 ## Do Not
 
 - Do not hard-code environment variables
+- Do not use `make prod` to debug/test new functionality unless explicitly asked, use `make dev` instead
 - Do not skip type checking (`ruff`, `mypy`) before backend PRs (activate `backend/.venv` first)
 - Do not add shadcn components manually (use `pnpm dlx shadcn` command)
 - Do not commit partial work without flagging TODOs
