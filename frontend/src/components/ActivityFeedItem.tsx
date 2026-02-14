@@ -95,6 +95,11 @@ export function ActivityFeedItem({
   const detailPath = getActivityDetailPath(item);
   const categoryLabel = getActivityCategoryLabel(item.category);
   const pinLabel = isPinned ? "Unpin" : "Pin";
+  const archiveLabel = isArchived ? "Unarchive" : "Archive";
+  const archiveDisabledReason = !isOnline ? "You are offline" : "Updating...";
+  const archiveDisabledAriaLabel = isArchived
+    ? "Archived. Unarchive unavailable."
+    : "Not archived. Archive unavailable.";
   const pinIcon = (
     <Pin className="h-4 w-4" fill={isPinned ? "currentColor" : "none"} />
   );
@@ -383,30 +388,37 @@ export function ActivityFeedItem({
               isArchiveDisabled ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="cursor-not-allowed text-xs text-muted-foreground opacity-50">
-                      {isArchived ? "Unarchive" : "Archive"}
+                    <span
+                      className="inline-flex cursor-not-allowed items-center gap-1 text-xs text-muted-foreground opacity-50"
+                      aria-label={archiveDisabledAriaLabel}
+                    >
+                      <Archive className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>{archiveLabel}</span>
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent>
-                    {!isOnline ? "You are offline" : "Updating..."}
-                  </TooltipContent>
+                  <TooltipContent>{`${archiveLabel} unavailable. ${archiveDisabledReason}`}</TooltipContent>
                 </Tooltip>
               ) : (
-                <button
-                  type="button"
-                  className={cn(
-                    "inline-flex items-center gap-1 text-xs transition-colors",
-                    isArchived
-                      ? "text-primary hover:text-foreground"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                  onClick={() => {
-                    onArchiveToggle();
-                  }}
-                >
-                  <Archive className="h-3.5 w-3.5" />
-                  {isArchived ? "Unarchive" : "Archive"}
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className={cn(
+                        "transition-colors",
+                        isArchived
+                          ? "text-primary hover:text-foreground"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                      onClick={() => {
+                        onArchiveToggle();
+                      }}
+                      aria-label={archiveLabel}
+                    >
+                      <Archive className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{archiveLabel}</TooltipContent>
+                </Tooltip>
               )
             ) : null}
           </div>
