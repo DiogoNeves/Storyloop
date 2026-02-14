@@ -7,8 +7,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal
 
+from app.services.youtube_datetime import (
+    parse_youtube_duration_seconds,
+    parse_youtube_published_at,
+)
 from app.services.tags import extract_tags_from_values
-from app.utils.datetime import parse_datetime, parse_duration_seconds
 
 logger = logging.getLogger(__name__)
 
@@ -150,7 +153,7 @@ class YoutubeVideo:
 
         published_at_raw = snippet.get("publishedAt")
         try:
-            published_at = parse_datetime(published_at_raw)
+            published_at = parse_youtube_published_at(published_at_raw)
         except ValueError:
             logger.warning(
                 "Skipping video %s due to unparseable timestamp: %s",
@@ -171,7 +174,7 @@ class YoutubeVideo:
             if isinstance(content_details, dict)
             else None
         )
-        duration_seconds = parse_duration_seconds(duration_str)
+        duration_seconds = parse_youtube_duration_seconds(duration_str)
         is_short = duration_seconds is not None and duration_seconds <= 180
         if duration_str is None:
             logger.debug(
