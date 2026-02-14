@@ -81,7 +81,6 @@ export default defineConfig({
   },
   envDir: resolve(__dirname, ".."), // Load .env from project root
   build: {
-    chunkSizeWarningLimit: 700,
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -103,7 +102,10 @@ export default defineConfig({
           ) {
             return "vendor-ui";
           }
-          if (id.includes("react-router-dom") || id.includes("@remix-run/router")) {
+          if (
+            id.includes("react-router-dom") ||
+            id.includes("@remix-run/router")
+          ) {
             return "vendor-router";
           }
           if (
