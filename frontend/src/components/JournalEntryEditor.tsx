@@ -38,6 +38,11 @@ import { ExternalLink, Pencil } from "lucide-react";
 import { useAssetUpload } from "@/hooks/useAssetUpload";
 import type { ActivityItem } from "@/lib/types/entries";
 import { filterActivityItems } from "@/lib/activity-search";
+import { extractTagsFromText, normalizeTag } from "@/lib/activity-tags";
+import {
+  findTagCandidate,
+  findTagCompletion
+} from "@/lib/tag-completion";
 import { getActivityDetailPath } from "@/lib/activity-helpers";
 import { findMentionCandidate } from "@/lib/mention-search";
 import { cn } from "@/lib/utils";
@@ -127,8 +132,43 @@ const commonmarkWithSafeParagraph = (() => {
 
 const HASHTAG_PATTERN = /(^|[\s([{])(#([A-Za-z0-9][A-Za-z0-9/-]*))/g;
 const ARCHIVED_TAG = "#archived";
+const DOC_TEXT_BLOCK_SEPARATOR = "\n";
+const DOC_TEXT_LEAF_SEPARATOR = "\n";
 
-const createHashtagDecorations = (doc: ProseNode) => {
+interface TagSuggestionState {
+  from: number;
+  to: number;
+  suffix: string;
+}
+
+function getCharacterAfterPosition(doc: ProseNode, position: number): string {
+  return doc.textBetween(
+    position,
+    Math.min(position + 1, doc.content.size),
+    DOC_TEXT_BLOCK_SEPARATOR,
+    DOC_TEXT_LEAF_SEPARATOR,
+  );
+}
+
+function hasSuffixAtPosition(
+  doc: ProseNode,
+  position: number,
+  suffix: string,
+): boolean {
+  const suffixEnd = Math.min(position + suffix.length, doc.content.size);
+  const existingSuffix = doc.textBetween(
+    position,
+    suffixEnd,
+    DOC_TEXT_BLOCK_SEPARATOR,
+    DOC_TEXT_LEAF_SEPARATOR,
+  );
+  return existingSuffix === suffix;
+}
+
+const createHashtagDecorations = (
+  doc: ProseNode,
+  tagSuggestion: TagSuggestionState | null,
+) => {
   const decorations: Decoration[] = [];
 
   doc.descendants((node, pos) => {
@@ -163,6 +203,18 @@ const createHashtagDecorations = (doc: ProseNode) => {
       );
     }
   });
+
+  if (tagSuggestion?.suffix) {
+    decorations.push(
+      Decoration.widget(tagSuggestion.to, () => {
+        const suggestion = document.createElement("span");
+        suggestion.className =
+          "pointer-events-none select-none text-muted-foreground/50";
+        suggestion.textContent = tagSuggestion.suffix;
+        return suggestion;
+      }),
+    );
+  }
 
   if (decorations.length === 0) {
     return DecorationSet.empty;
@@ -199,6 +251,7 @@ interface MentionState {
   range: { from: number; to: number };
 }
 
+
 const JournalEntryEditorInner = forwardRef<
   JournalEntryEditorHandle,
   JournalEntryEditorProps
@@ -233,6 +286,11 @@ const JournalEntryEditorInner = forwardRef<
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editLinkText, setEditLinkText] = useState("");
   const [editLinkUrl, setEditLinkUrl] = useState("");
+  const [tagSuggestion, setTagSuggestion] = useState<TagSuggestionState | null>(
+    null,
+  );
+  const [isTagSuggestionDismissed, setIsTagSuggestionDismissed] =
+    useState(false);
 
   const editorInitialValue = useMemo(() => initialValue, [initialValue]);
 
@@ -272,10 +330,10 @@ const JournalEntryEditorInner = forwardRef<
       editorViewRef.current = view;
       view.setProps({
         editable: () => isEditable,
-        decorations: (state) => createHashtagDecorations(state.doc),
+        decorations: (state) => createHashtagDecorations(state.doc, tagSuggestion),
       });
     });
-  }, [editor, isEditable]);
+  }, [editor, isEditable, tagSuggestion]);
 
   useImperativeHandle(
     ref,
@@ -389,6 +447,69 @@ const JournalEntryEditorInner = forwardRef<
       setMentionActiveIndex(0);
     },
     [editor, mentionState],
+  );
+
+  const updateTagSuggestionFromView = useCallback(
+    (view: EditorView) => {
+      if (!isEditable || isTagSuggestionDismissed) {
+        setTagSuggestion(null);
+        return;
+      }
+
+      const { selection, doc } = view.state;
+      if (!selection.empty) {
+        setTagSuggestion(null);
+        return;
+      }
+
+      const parentStart = selection.$from.start();
+      const textBefore = doc.textBetween(
+        parentStart,
+        selection.from,
+        DOC_TEXT_BLOCK_SEPARATOR,
+        DOC_TEXT_LEAF_SEPARATOR,
+      );
+      const textAfter = getCharacterAfterPosition(doc, selection.from);
+      const candidate = findTagCandidate(
+        textBefore,
+        parentStart,
+        selection.from,
+        textAfter,
+      );
+      if (!candidate) {
+        setTagSuggestion(null);
+        return;
+      }
+
+      const availableTags = new Set<string>();
+      activityItems.forEach((item) => {
+        (item.tags ?? []).forEach((tag) => {
+          const normalized = normalizeTag(tag);
+          if (normalized) {
+            availableTags.add(normalized);
+          }
+        });
+      });
+
+      extractTagsFromText(doc.textBetween(0, doc.content.size, "\n", "\n")).forEach(
+        (tag) => {
+          availableTags.add(tag);
+        },
+      );
+
+      const completion = findTagCompletion(candidate.query, [...availableTags]);
+      if (!completion) {
+        setTagSuggestion(null);
+        return;
+      }
+
+      setTagSuggestion({
+        from: candidate.from,
+        to: candidate.to,
+        suffix: completion,
+      });
+    },
+    [activityItems, isEditable, isTagSuggestionDismissed],
   );
 
   const updateMentionFromView = useCallback(
@@ -621,6 +742,7 @@ const JournalEntryEditorInner = forwardRef<
         setSelectionPosition(null);
         setMentionState(null);
         setMentionActiveIndex(0);
+        setTagSuggestion(null);
         return;
       }
 
@@ -629,6 +751,7 @@ const JournalEntryEditorInner = forwardRef<
         setSelectionPosition(null);
         setMentionState(null);
         setMentionActiveIndex(0);
+        setTagSuggestion(null);
         return;
       }
 
@@ -660,6 +783,7 @@ const JournalEntryEditorInner = forwardRef<
         instance.action((ctx: Ctx) => {
           const view = ctx.get(editorViewCtx);
           updateMentionFromView(view);
+          updateTagSuggestionFromView(view);
         });
       }
     };
@@ -668,7 +792,7 @@ const JournalEntryEditorInner = forwardRef<
     return () => {
       document.removeEventListener("selectionchange", handleSelectionChange);
     };
-  }, [editor, isEditable, linkTooltip, updateMentionFromView]);
+  }, [editor, isEditable, linkTooltip, updateMentionFromView, updateTagSuggestionFromView]);
 
   useEffect(() => {
     const instance = editor.get();
@@ -690,7 +814,9 @@ const JournalEntryEditorInner = forwardRef<
 
     const view = activeView;
     const handleEditorInput = () => {
+      setIsTagSuggestionDismissed(false);
       updateMentionFromView(view);
+      updateTagSuggestionFromView(view);
     };
 
     view.dom.addEventListener("input", handleEditorInput);
@@ -700,7 +826,7 @@ const JournalEntryEditorInner = forwardRef<
       view.dom.removeEventListener("input", handleEditorInput);
       view.dom.removeEventListener("compositionend", handleEditorInput);
     };
-  }, [editor, updateMentionFromView]);
+  }, [editor, updateMentionFromView, updateTagSuggestionFromView]);
 
   useEffect(() => {
     if (!mentionState || mentionSuggestions.length === 0) {
@@ -724,6 +850,28 @@ const JournalEntryEditorInner = forwardRef<
       view.setProps({
         handleKeyDown: (_view, event) => {
           if (!mentionState) {
+            if (event.key === "Escape") {
+              setIsTagSuggestionDismissed(true);
+              setTagSuggestion(null);
+              return false;
+            }
+
+            if (event.key === "Tab" && tagSuggestion?.suffix) {
+              event.preventDefault();
+              if (
+                hasSuffixAtPosition(
+                  view.state.doc,
+                  tagSuggestion.to,
+                  tagSuggestion.suffix,
+                )
+              ) {
+                return true;
+              }
+              const tr = view.state.tr.insertText(tagSuggestion.suffix, tagSuggestion.to);
+              view.dispatch(tr);
+              return true;
+            }
+
             return false;
           }
 
@@ -773,6 +921,7 @@ const JournalEntryEditorInner = forwardRef<
     mentionActiveIndex,
     mentionState,
     mentionSuggestions,
+    tagSuggestion,
   ]);
 
   const handlePaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
