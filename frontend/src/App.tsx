@@ -5,7 +5,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -47,12 +47,6 @@ import {
 } from "@/lib/journal-page-logic";
 import { formatDateTimeLocalInput } from "@/lib/date-time";
 import { useActivityItems } from "@/hooks/useActivityItems";
-import { YoutubeAuthCallback } from "@/pages/YoutubeAuthCallback";
-import { VideoDetailPage } from "@/pages/VideoDetailPage";
-import { JournalDetailPage } from "@/pages/JournalDetailPage";
-import { ConversationDetailPage } from "@/pages/ConversationDetailPage";
-import { LoopiePage } from "@/pages/LoopiePage";
-import { ChannelPage } from "@/pages/ChannelPage";
 import { Input } from "@/components/ui/input";
 import {
   AgentConversationProvider,
@@ -65,6 +59,37 @@ import { useSync } from "@/hooks/useSync";
 import { SyncStatusBanner } from "@/components/SyncStatusBanner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+
+const ChannelPage = lazy(() =>
+  import("@/pages/ChannelPage").then((module) => ({
+    default: module.ChannelPage,
+  })),
+);
+const ConversationDetailPage = lazy(() =>
+  import("@/pages/ConversationDetailPage").then((module) => ({
+    default: module.ConversationDetailPage,
+  })),
+);
+const JournalDetailPage = lazy(() =>
+  import("@/pages/JournalDetailPage").then((module) => ({
+    default: module.JournalDetailPage,
+  })),
+);
+const LoopiePage = lazy(() =>
+  import("@/pages/LoopiePage").then((module) => ({
+    default: module.LoopiePage,
+  })),
+);
+const VideoDetailPage = lazy(() =>
+  import("@/pages/VideoDetailPage").then((module) => ({
+    default: module.VideoDetailPage,
+  })),
+);
+const YoutubeAuthCallback = lazy(() =>
+  import("@/pages/YoutubeAuthCallback").then((module) => ({
+    default: module.YoutubeAuthCallback,
+  })),
+);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -457,31 +482,39 @@ export function App() {
           <SettingsProvider>
             <SyncProvider>
               <AgentConversationProvider>
-                <Routes>
-                  <Route path="/" element={<AppLayout />}>
-                    <Route index element={<JournalPage />} />
-                    <Route path="journal" element={<JournalPage />} />
-                    <Route path="channel" element={<ChannelPage />} />
-                    <Route path="loopie" element={<LoopiePage />} />
-                  </Route>
-                  <Route path="/journals/new" element={<JournalDetailPage />} />
-                  <Route
-                    path="/videos/:videoId"
-                    element={<VideoDetailPage />}
-                  />
-                  <Route
-                    path="/journals/:journalId"
-                    element={<JournalDetailPage />}
-                  />
-                  <Route
-                    path="/conversations/:conversationId"
-                    element={<ConversationDetailPage />}
-                  />
-                  <Route
-                    path="/auth/callback"
-                    element={<YoutubeAuthCallback />}
-                  />
-                </Routes>
+                <Suspense
+                  fallback={
+                    <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
+                      Loading…
+                    </div>
+                  }
+                >
+                  <Routes>
+                    <Route path="/" element={<AppLayout />}>
+                      <Route index element={<JournalPage />} />
+                      <Route path="journal" element={<JournalPage />} />
+                      <Route path="channel" element={<ChannelPage />} />
+                      <Route path="loopie" element={<LoopiePage />} />
+                    </Route>
+                    <Route path="/journals/new" element={<JournalDetailPage />} />
+                    <Route
+                      path="/videos/:videoId"
+                      element={<VideoDetailPage />}
+                    />
+                    <Route
+                      path="/journals/:journalId"
+                      element={<JournalDetailPage />}
+                    />
+                    <Route
+                      path="/conversations/:conversationId"
+                      element={<ConversationDetailPage />}
+                    />
+                    <Route
+                      path="/auth/callback"
+                      element={<YoutubeAuthCallback />}
+                    />
+                  </Routes>
+                </Suspense>
               </AgentConversationProvider>
             </SyncProvider>
           </SettingsProvider>

@@ -84,16 +84,49 @@ export default defineConfig({
     chunkSizeWarningLimit: 700,
     rollupOptions: {
       output: {
-        manualChunks: {
-          "vendor-react": ["react", "react-dom"],
-          "vendor-tanstack": ["@tanstack/react-query"],
-          "vendor-ui": [
-            "@radix-ui/react-dialog",
-            "@radix-ui/react-label",
-            "@radix-ui/react-slot",
-            "@radix-ui/react-switch",
-            "@radix-ui/react-tooltip",
-          ],
+        manualChunks(id) {
+          if (!id.includes("node_modules")) {
+            return undefined;
+          }
+
+          if (id.includes("/react/") || id.includes("/react-dom/")) {
+            return "vendor-react";
+          }
+          if (id.includes("@tanstack/react-query")) {
+            return "vendor-tanstack";
+          }
+          if (
+            id.includes("@radix-ui/") ||
+            id.includes("class-variance-authority") ||
+            id.includes("tailwind-merge") ||
+            id.includes("clsx")
+          ) {
+            return "vendor-ui";
+          }
+          if (id.includes("react-router-dom") || id.includes("@remix-run/router")) {
+            return "vendor-router";
+          }
+          if (
+            id.includes("@milkdown/") ||
+            id.includes("prosemirror") ||
+            id.includes("@codemirror/")
+          ) {
+            return "vendor-editor";
+          }
+          if (
+            id.includes("react-markdown") ||
+            id.includes("remark-") ||
+            id.includes("rehype-") ||
+            id.includes("mdast-") ||
+            id.includes("micromark")
+          ) {
+            return "vendor-markdown";
+          }
+          if (id.includes("lucide-react")) {
+            return "vendor-icons";
+          }
+
+          return undefined;
         },
       },
     },
