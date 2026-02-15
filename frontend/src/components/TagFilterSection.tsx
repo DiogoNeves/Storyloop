@@ -67,7 +67,7 @@ export function TagFilterSection({
         size="sm"
         onClick={() => setIsOpen((current) => !current)}
         className={cn(
-          "gap-2 rounded-full px-3 py-2 font-medium shadow-none",
+          "gap-1 rounded-full px-2 py-2 font-medium shadow-none sm:gap-2 sm:px-3",
           "hover:bg-transparent hover:text-foreground",
           isOpen || activeTag ? "text-foreground" : "text-muted-foreground",
         )}
@@ -84,7 +84,7 @@ export function TagFilterSection({
           variant="ghost"
           size="sm"
           onClick={() => onTagSelect(null)}
-          className="gap-2 rounded-full px-3 py-2 text-foreground shadow-none hover:bg-primary/10"
+          className="gap-1 rounded-full px-2 py-2 text-foreground shadow-none hover:bg-primary/10 sm:gap-2 sm:px-3"
         >
           {formatTagLabel(activeTag)}
           <span className="text-xs text-muted-foreground">Clear</span>
