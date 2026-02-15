@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowUp, Bot, ImagePlus, RotateCcw, Square, WifiOff } from "lucide-react";
+import {
+  ArrowUp,
+  Bot,
+  ImagePlus,
+  Mic,
+  RotateCcw,
+  Square,
+  WifiOff,
+} from "lucide-react";
 
 import { useAgentConversationContext } from "@/context/AgentConversationContext";
 import {
@@ -11,7 +19,9 @@ import {
 import { getActivityCategoryLabel } from "@/lib/activity-helpers";
 import { cn } from "@/lib/utils";
 import { useAssetUpload } from "@/hooks/useAssetUpload";
+import { useAudioDictation } from "@/hooks/useAudioDictation";
 import { useSync } from "@/hooks/useSync";
+import { appendTranscribedText } from "@/lib/dictation";
 import { AssetAttachmentList } from "@/components/chat/AssetAttachmentList";
 
 import { Button } from "./ui/button";
@@ -69,15 +79,18 @@ export function LoopieConversationContent({
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { isOnline } = useSync();
-
-  const isTextareaDisabled = disabled || state.composer.status === "responding";
-  const isSendDisabled =
-    disabled ||
-    state.composer.status !== "idle" ||
-    (inputValue.trim() === "" && attachments.length === 0);
-  const showStopButton =
-    state.composer.status === "sending" ||
-    state.composer.status === "responding";
+  const {
+    status: dictationStatus,
+    isSupported: isDictationSupported,
+    errorMessage: dictationError,
+    toggleDictation,
+    clearError: clearDictationError,
+  } = useAudioDictation({
+    mode: "loopie",
+    onTranscription: (text) => {
+      setInputValue((previous) => appendTranscribedText(previous, text));
+    },
+  });
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -138,6 +151,26 @@ export function LoopieConversationContent({
     },
     [uploadFiles],
   );
+  const isTextareaDisabled =
+    disabled ||
+    state.composer.status === "responding" ||
+    dictationStatus === "transcribing";
+  const isDictating = dictationStatus === "recording";
+  const isTranscribingDictation = dictationStatus === "transcribing";
+  const isDictationDisabled =
+    (!isDictating && !isDictationSupported) ||
+    disabled ||
+    isUploading ||
+    state.composer.status !== "idle" ||
+    isTranscribingDictation;
+  const isSendDisabled =
+    disabled ||
+    state.composer.status !== "idle" ||
+    dictationStatus !== "idle" ||
+    (inputValue.trim() === "" && attachments.length === 0);
+  const showStopButton =
+    state.composer.status === "sending" ||
+    state.composer.status === "responding";
 
   const composerLabel =
     state.composer.status === "responding"
@@ -205,6 +238,9 @@ export function LoopieConversationContent({
           ) : null}
           {uploadError ? (
             <p className="text-xs text-destructive">{uploadError}</p>
+          ) : null}
+          {dictationError ? (
+            <p className="text-xs text-destructive">{dictationError}</p>
           ) : null}
           {!isOnline && (
             <div className="flex items-center gap-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
@@ -307,6 +343,33 @@ export function LoopieConversationContent({
                   ? "Loopie is thinking"
                   : "Shift + Enter"}
               </span>
+              <Button
+                type="button"
+                variant={isDictating ? "destructive" : "secondary"}
+                size="icon"
+                onClick={() => {
+                  if (isDictationDisabled && !isDictating) {
+                    return;
+                  }
+                  clearDictationError();
+                  void toggleDictation();
+                }}
+                disabled={isDictationDisabled}
+                className={cn(
+                  "h-9 w-9 rounded-full p-0 shadow-lg transition",
+                  isDictating && "animate-pulse",
+                )}
+                aria-label={isDictating ? "Stop dictation" : "Dictate message"}
+                title={
+                  !isDictationSupported
+                    ? "Dictation is not supported in this browser"
+                    : isTranscribingDictation
+                      ? "Transcribing recording..."
+                      : undefined
+                }
+              >
+                <Mic className="h-4 w-4" />
+              </Button>
               {showStopButton ? (
                 <Button
                   type="button"

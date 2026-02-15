@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Archive, Bot, Pin, SaveOff, Trash2 } from "lucide-react";
+import { Archive, Bot, Mic, Pin, SaveOff, Trash2 } from "lucide-react";
 import { Link, useLocation, useParams, useNavigate } from "react-router-dom";
 import useLocalStorageState from "use-local-storage-state";
 
@@ -9,6 +9,7 @@ import { settingsQueries } from "@/api/settings";
 import { useJournalEntryDraft } from "@/hooks/useJournalEntryDraft";
 import { useActivityItems } from "@/hooks/useActivityItems";
 import { useEntryEditing } from "@/hooks/useEntryEditing";
+import { useAudioDictation } from "@/hooks/useAudioDictation";
 import { useSmartEntryUpdate } from "@/hooks/useSmartEntryUpdate";
 import { useSync } from "@/hooks/useSync";
 import { compareEntriesByPinnedDate } from "@/lib/types/entries";
@@ -58,6 +59,9 @@ export function JournalDetailPage() {
   const [promptError, setPromptError] = useState<string | null>(null);
   const [isStopDialogOpen, setIsStopDialogOpen] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [noteDictationNotice, setNoteDictationNotice] = useState<string | null>(
+    null,
+  );
   const { setFocus } = useAgentConversationContext();
   const editorRef = useRef<JournalEntryEditorHandle | null>(null);
   const titleInputRef = useRef<HTMLInputElement | null>(null);
@@ -91,6 +95,8 @@ export function JournalDetailPage() {
     setTitleDraft,
     setSummaryDraft,
     editorInitialSummary,
+    editorResetNonce,
+    applyDictatedSummary,
     autosaveStatus,
     autosaveError,
   } = useJournalEntryDraft({
@@ -98,6 +104,24 @@ export function JournalDetailPage() {
     isNewEntryRoute,
     isSmartEntry,
     isSmartUpdating,
+  });
+  const {
+    status: noteDictationStatus,
+    isSupported: isNoteDictationSupported,
+    errorMessage: noteDictationError,
+    toggleDictation: toggleNoteDictation,
+    clearError: clearNoteDictationError,
+  } = useAudioDictation({
+    mode: "journal_note",
+    onTranscription: (text, fallbackUsed) => {
+      applyDictatedSummary(text);
+      setNoteDictationNotice(
+        fallbackUsed
+          ? "Used the raw transcript because markdown cleanup failed."
+          : null,
+      );
+      editorRef.current?.focus();
+    },
   });
 
   // Focus title input when creating a new entry (especially important on mobile)
@@ -219,6 +243,10 @@ export function JournalDetailPage() {
       setCreateError(null);
     }
   }, [isNewEntryRoute]);
+
+  useEffect(() => {
+    setNoteDictationNotice(null);
+  }, [currentEntry?.id]);
 
   useEffect(() => {
     if (!currentEntry || !isSmartEntry) {
@@ -601,6 +629,17 @@ export function JournalDetailPage() {
     }
 
     const promptActionsDisabled = !isOnline || isPromptUpdating || isSmartUpdating;
+    const editorResetKey = `${currentEntry.id}-${editorResetNonce}`;
+    const isNoteEmpty = summaryDraft.trim().length === 0;
+    const isNoteDictating = noteDictationStatus === "recording";
+    const isNoteDictationTranscribing = noteDictationStatus === "transcribing";
+    const showDictateNoteButton = !isSmartEntry && isNoteEmpty;
+    const isNoteDictationDisabled =
+      !isNoteDictating &&
+      (!isOnline ||
+        !isNoteDictationSupported ||
+        isNoteDictationTranscribing ||
+        isSmartUpdating);
 
     const editDisabledReason = !isOnline
       ? "You are offline"
@@ -884,7 +923,7 @@ export function JournalDetailPage() {
           <JournalEntryEditor
             ref={editorRef}
             initialValue={editorInitialSummary}
-            resetKey={currentEntry.id}
+            resetKey={editorResetKey}
             onChange={setSummaryDraft}
             isEditable={!isSmartUpdating}
             activityItems={activityItems}
@@ -893,7 +932,7 @@ export function JournalDetailPage() {
           <JournalEntryEditor
             ref={editorRef}
             initialValue={editorInitialSummary}
-            resetKey={currentEntry.id}
+            resetKey={editorResetKey}
             onChange={setSummaryDraft}
             isEditable={!isSmartUpdating}
             activityItems={activityItems}
@@ -910,6 +949,46 @@ export function JournalDetailPage() {
             No notes saved for this journal entry.
           </p>
         )}
+        {showDictateNoteButton ? (
+          <div className="mt-10 flex min-h-36 items-end justify-center">
+            <Button
+              type="button"
+              size="lg"
+              onClick={() => {
+                if (isNoteDictationDisabled && !isNoteDictating) {
+                  return;
+                }
+                clearNoteDictationError();
+                void toggleNoteDictation();
+              }}
+              disabled={isNoteDictationDisabled}
+              title={
+                !isOnline
+                  ? "You are offline"
+                  : !isNoteDictationSupported
+                    ? "Dictation is not supported in this browser"
+                    : undefined
+              }
+              className={cn(
+                "h-14 min-w-[16rem] gap-2 px-8 text-base font-semibold shadow-lg",
+                isNoteDictating && "animate-pulse",
+              )}
+            >
+              <Mic className="h-5 w-5" />
+              {isNoteDictating
+                ? "Stop dictation"
+                : isNoteDictationTranscribing
+                  ? "Transcribing…"
+                  : "Dictate your note"}
+            </Button>
+          </div>
+        ) : null}
+        {noteDictationNotice ? (
+          <p className="text-xs text-muted-foreground">{noteDictationNotice}</p>
+        ) : null}
+        {noteDictationError ? (
+          <p className="text-xs text-destructive">{noteDictationError}</p>
+        ) : null}
         {isSmartUpdating && smartUpdateToolCall ? (
           <p className="text-xs text-muted-foreground">{smartUpdateToolCall}</p>
         ) : null}
