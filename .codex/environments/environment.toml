@@ -6,6 +6,8 @@ name = "Storyloop"
 script = '''
 cd backend && uv sync
 cd ../frontend && pnpm install
+cd ..
+ln -sfn /Users/diogoneves/Projects/tools/Storyloop/.env .env
 '''
 
 [[actions]]

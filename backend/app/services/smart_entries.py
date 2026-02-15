@@ -278,6 +278,8 @@ class SmartEntryUpdateManager:
                     logfire.error(
                         "smart_entry.update.failed",
                         entry_id=entry_id,
+                        error_type=type(exc).__name__,
+                        phase="run_update",
                         error=str(exc),
                     )
                     await self._publish(
