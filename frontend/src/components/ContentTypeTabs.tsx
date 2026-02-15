@@ -22,7 +22,7 @@ function ContentTypeTab({ label, isSelected, onClick }: ContentTypeTabProps) {
       variant="ghost"
       size="sm"
       className={cn(
-        "rounded-full px-4 py-2 font-medium transition-colors",
+        "rounded-full px-3 py-2 font-medium transition-colors sm:px-4",
         "hover:bg-primary/10 hover:text-foreground",
         isSelected
           ? "bg-primary/10 text-foreground shadow-none"
@@ -41,7 +41,7 @@ export function ContentTypeTabs({
   onChange,
 }: ContentTypeTabsProps) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-1 sm:gap-2">
       <ContentTypeTab
         label="All"
         value="all"
