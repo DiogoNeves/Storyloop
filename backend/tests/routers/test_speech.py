@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.routers.speech import router as speech_router
+from app.services.speech_to_text import SpeechToTextProviderError
 
 
 @dataclass
@@ -38,7 +39,19 @@ class _FakeSpeechService:
         return self.result
 
 
-def _create_app(*, service: _FakeSpeechService | None) -> FastAPI:
+class _FailingSpeechService:
+    def transcribe_dictation(
+        self,
+        *,
+        audio_bytes: bytes,
+        filename: str,
+        content_type: str | None,
+        mode: str,
+    ) -> _FakeSpeechResult:
+        raise SpeechToTextProviderError("Could not transcribe audio.")
+
+
+def _create_app(*, service: object | None) -> FastAPI:
     app = FastAPI()
     if service is not None:
         app.state.speech_to_text_service = service
@@ -108,3 +121,31 @@ def test_transcribe_audio_requires_service_configuration() -> None:
 
     assert response.status_code == 503
     assert response.json()["detail"] == "Speech-to-text service is not configured"
+
+
+def test_transcribe_audio_returns_413_for_oversized_files() -> None:
+    app = _create_app(service=_FakeSpeechService())
+    client = TestClient(app)
+
+    response = client.post(
+        "/speech/transcriptions",
+        data={"mode": "loopie"},
+        files={"file": ("clip.webm", b"a" * ((25 * 1024 * 1024) + 1), "audio/webm")},
+    )
+
+    assert response.status_code == 413
+    assert response.json()["detail"] == "Audio file is too large. Maximum supported size is 25MB."
+
+
+def test_transcribe_audio_maps_provider_errors_to_502() -> None:
+    app = _create_app(service=_FailingSpeechService())
+    client = TestClient(app)
+
+    response = client.post(
+        "/speech/transcriptions",
+        data={"mode": "loopie"},
+        files={"file": ("clip.webm", b"audio-bytes", "audio/webm")},
+    )
+
+    assert response.status_code == 502
+    assert response.json()["detail"] == "Could not transcribe audio."

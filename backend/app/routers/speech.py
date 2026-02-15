@@ -11,7 +11,12 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.dependencies import get_speech_to_text_service
-from app.services.speech_to_text import SpeechDictationMode, SpeechToTextService
+from app.services.speech_to_text import (
+    SpeechDictationMode,
+    SpeechToTextProviderError,
+    SpeechToTextResponseError,
+    SpeechToTextService,
+)
 
 router = APIRouter(prefix="/speech", tags=["speech"])
 
@@ -32,6 +37,9 @@ _AUDIO_MIME_TYPES = frozenset(
         "video/mp4",
     }
 )
+_MAX_AUDIO_UPLOAD_BYTES = 25 * 1024 * 1024
+_READ_CHUNK_BYTES = 1024 * 1024
+
 _AUDIO_EXTENSIONS = frozenset(
     {
         ".flac",
@@ -80,12 +88,7 @@ async def transcribe_audio(
             ),
         )
 
-    audio_bytes = await file.read()
-    if not audio_bytes:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Audio file is empty.",
-        )
+    audio_bytes = await _read_audio_upload(file)
 
     transcribe = partial(
         speech_service.transcribe_dictation,
@@ -102,7 +105,7 @@ async def transcribe_audio(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
-    except RuntimeError as exc:
+    except (SpeechToTextProviderError, SpeechToTextResponseError) as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=str(exc),
@@ -126,3 +129,30 @@ def _is_supported_audio_upload(*, content_type: str, filename: str) -> bool:
 
     suffix = Path(filename).suffix.lower()
     return suffix in _AUDIO_EXTENSIONS
+
+
+async def _read_audio_upload(file: UploadFile) -> bytes:
+    chunks: list[bytes] = []
+    total_bytes = 0
+
+    while True:
+        chunk = await file.read(_READ_CHUNK_BYTES)
+        if not chunk:
+            break
+
+        total_bytes += len(chunk)
+        if total_bytes > _MAX_AUDIO_UPLOAD_BYTES:
+            raise HTTPException(
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                detail="Audio file is too large. Maximum supported size is 25MB.",
+            )
+        chunks.append(chunk)
+
+    audio_bytes = b"".join(chunks)
+    if not audio_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Audio file is empty.",
+        )
+
+    return audio_bytes

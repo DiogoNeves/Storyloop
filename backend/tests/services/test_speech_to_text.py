@@ -9,7 +9,11 @@ import pytest
 from openai import OpenAIError
 
 from app.services import speech_to_text
-from app.services.speech_to_text import SpeechToTextService
+from app.services.speech_to_text import (
+    SpeechToTextProviderError,
+    SpeechToTextResponseError,
+    SpeechToTextService,
+)
 
 
 @dataclass
@@ -107,7 +111,7 @@ def test_transcribe_raises_runtime_error_when_openai_fails() -> None:
     transcriptions_api = _FakeTranscriptionsAPI([OpenAIError("transcription failed")])
     service = SpeechToTextService(cast(Any, _FakeClient(transcriptions_api)))
 
-    with pytest.raises(RuntimeError, match="Could not transcribe audio"):
+    with pytest.raises(SpeechToTextProviderError, match="Could not transcribe audio"):
         service.transcribe_dictation(
             audio_bytes=b"audio-bytes",
             filename="recording.webm",
@@ -120,7 +124,7 @@ def test_transcribe_raises_runtime_error_when_transcript_is_empty() -> None:
     transcriptions_api = _FakeTranscriptionsAPI(["   "])
     service = SpeechToTextService(cast(Any, _FakeClient(transcriptions_api)))
 
-    with pytest.raises(RuntimeError, match="Could not transcribe audio"):
+    with pytest.raises(SpeechToTextResponseError, match="Could not transcribe audio"):
         service.transcribe_dictation(
             audio_bytes=b"audio-bytes",
             filename="recording.webm",
