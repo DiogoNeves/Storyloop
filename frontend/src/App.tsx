@@ -437,7 +437,7 @@ function JournalPage() {
             onTagSelect={setActiveTag}
           />
         </div>
-        <div className="w-full p-4 sm:max-w-[260px] md:p-1">
+        <div className="w-full px-4 pb-1 pt-2 sm:max-w-[260px] sm:p-0 md:p-1">
           <Input
             className="text-base sm:text-sm"
             value={searchQuery}
