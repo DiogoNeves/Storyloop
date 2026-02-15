@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -51,6 +51,74 @@ describe("ActivityFeedItem archive control", () => {
   });
 });
 
+describe("ActivityFeedItem summary preview", () => {
+  it("renders journal markdown formatting instead of raw markdown markers", () => {
+    renderActivityFeedItem({
+      summary: "Use **bold** with `code`",
+      category: "journal",
+    });
+
+    const preview = screen.getByTestId("activity-preview-body");
+    expect(preview.querySelector("strong")).not.toBeNull();
+    expect(preview.querySelector("code")).not.toBeNull();
+    expect(within(preview).queryByText("**bold**")).not.toBeInTheDocument();
+  });
+
+  it("renders conversation markdown formatting", () => {
+    renderActivityFeedItem({
+      summary: "1. First item\n2. **Second item**",
+      category: "conversation",
+    });
+
+    const preview = screen.getByTestId("activity-preview-body");
+    expect(preview.querySelector("strong")).not.toBeNull();
+  });
+
+  it("keeps content summaries as plain text for performance", () => {
+    renderActivityFeedItem({
+      summary: "Use **bold** but keep raw markers",
+      category: "content",
+    });
+
+    const preview = screen.getByTestId("activity-preview-body");
+    expect(preview.querySelector("strong")).toBeNull();
+    expect(within(preview).getByText("Use **bold** but keep raw markers"));
+  });
+
+  it("applies a three-line clamp to the preview body", () => {
+    renderActivityFeedItem({
+      summary:
+        "Paragraph one.\n\nParagraph two with **markdown**.\n\nParagraph three.",
+      category: "journal",
+    });
+
+    const preview = screen.getByTestId("activity-preview-body");
+    expect(preview.querySelector(".line-clamp-3")).not.toBeNull();
+  });
+
+  it("renders markdown links as non-clickable text", () => {
+    renderActivityFeedItem({
+      summary: "[Open docs](https://example.com)",
+      category: "journal",
+    });
+
+    const preview = screen.getByTestId("activity-preview-body");
+    expect(preview.querySelectorAll("a")).toHaveLength(0);
+    expect(within(preview).getByText("Open docs")).toBeInTheDocument();
+  });
+
+  it("shows the smart-summary placeholder pulse for empty smart journals", () => {
+    renderActivityFeedItem({
+      summary: "   ",
+      category: "journal",
+      promptBody: "Summarize my week",
+    });
+
+    const preview = screen.getByTestId("activity-preview-body");
+    expect(preview.querySelector(".animate-ping")).not.toBeNull();
+  });
+});
+
 function renderActivityFeedItem(overrides: Partial<ActivityItem>) {
   const item: ActivityItem = {
     id: "journal-1",
@@ -63,7 +131,7 @@ function renderActivityFeedItem(overrides: Partial<ActivityItem>) {
     ...overrides,
   };
 
-  render(
+  return render(
     <TooltipProvider>
       <MemoryRouter>
         <ActivityFeedItem item={item} onArchiveToggle={vi.fn()} />
