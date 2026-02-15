@@ -1,5 +1,5 @@
 import { createQueryKeys } from "@lukemorales/query-key-factory";
-
+import { z } from "zod";
 
 import { API_BASE_URL, apiClient } from "@/api/client";
 import type { AgentFocus, AgentMessageRole } from "@/lib/types/agent";
@@ -35,6 +35,47 @@ interface TurnAttachmentRecord {
   height?: number | null;
 }
 
+const agentMessageRoleSchema = z.enum([
+  "user",
+  "assistant",
+  "system",
+  "tool",
+]);
+
+const turnAttachmentRecordSchema = z.object({
+  id: z.string(),
+  url: z.string(),
+  filename: z.string(),
+  mimeType: z.string(),
+  width: z.number().nullable().optional(),
+  height: z.number().nullable().optional(),
+});
+
+const conversationRecordSchema = z.object({
+  id: z.string(),
+  title: z.string().nullable(),
+  created_at: z.string(),
+});
+
+const conversationSummaryRecordSchema = conversationRecordSchema.extend({
+  last_turn_at: z.string().nullable(),
+  last_turn_text: z.string().nullable(),
+  first_turn_text: z.string().nullable(),
+  turn_count: z.number(),
+  tags: z.array(z.string()).optional(),
+});
+
+const turnRecordSchema = z.object({
+  id: z.string(),
+  role: agentMessageRoleSchema,
+  text: z.string(),
+  created_at: z.string(),
+  attachments: z.array(turnAttachmentRecordSchema).optional(),
+});
+
+const conversationSummaryRecordsSchema = conversationSummaryRecordSchema.array();
+const turnRecordsSchema = turnRecordSchema.array();
+
 export interface Conversation {
   id: string;
   title: string | null;
@@ -54,8 +95,6 @@ export interface ConversationTurn {
   attachments?: TurnAttachmentRecord[];
 }
 
-
-
 export async function createConversation(
   title?: string | null,
 ): Promise<Conversation> {
@@ -65,11 +104,12 @@ export async function createConversation(
       : {
         title,
       };
-  const { data } = await apiClient.post<ConversationRecord>("/conversations", payload);
+  const { data } = await apiClient.post<unknown>("/conversations", payload);
+  const record: ConversationRecord = conversationRecordSchema.parse(data);
   return {
-    id: data.id,
-    title: data.title,
-    createdAt: data.created_at,
+    id: record.id,
+    title: record.title,
+    createdAt: record.created_at,
   };
 }
 
@@ -78,10 +118,12 @@ export const conversationQueries = createQueryKeys("conversations", {
   list: () => ({
     queryKey: ["conversations"],
     queryFn: async (): Promise<Conversation[]> => {
-      const { data } = await apiClient.get<ConversationSummaryRecord[]>(
+      const { data } = await apiClient.get<unknown>(
         "/conversations",
       );
-      return data.map((record) => ({
+      const records: ConversationSummaryRecord[] =
+        conversationSummaryRecordsSchema.parse(data);
+      return records.map((record) => ({
         id: record.id,
         title: record.title,
         createdAt: record.created_at,
@@ -102,10 +144,11 @@ export async function deleteConversation(conversationId: string): Promise<void> 
 export async function listConversationTurns(
   conversationId: string,
 ): Promise<ConversationTurn[]> {
-  const { data } = await apiClient.get<TurnRecord[]>(
+  const { data } = await apiClient.get<unknown>(
     `/conversations/${conversationId}/turns`,
   );
-  return data.map((turn) => ({
+  const turns: TurnRecord[] = turnRecordsSchema.parse(data);
+  return turns.map((turn) => ({
     id: turn.id,
     role: turn.role,
     text: turn.text,

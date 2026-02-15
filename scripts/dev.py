@@ -15,11 +15,27 @@ import socket
 import subprocess
 import sys
 from pathlib import Path
+import shutil
 from typing import Sequence
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 BACKEND_DIR = ROOT_DIR / "backend"
 FRONTEND_DIR = ROOT_DIR / "frontend"
+ENV_EXAMPLE_PATH = ROOT_DIR / ".env.example"
+ENV_PATH = ROOT_DIR / ".env"
+ENV_PROD_PATH = ROOT_DIR / ".env.prod"
+
+
+def _ensure_env_file(env_path: Path, source: Path | None = None) -> None:
+    if env_path.exists():
+        return
+
+    template = source if source is not None else ENV_EXAMPLE_PATH
+    if not template.exists():
+        return
+
+    shutil.copy(template, env_path)
+    print(f"Created {env_path.name} from {template.name}")
 
 
 def load_env_file(path: Path) -> None:
@@ -107,10 +123,11 @@ def _validate_ports(
 
 async def main(prod: bool = False) -> int:
     if prod:
-        # Set env file path for backend
+        # Ensure environment files exist and load fallback configuration for production mode
+        _ensure_env_file(ENV_PATH)
+        _ensure_env_file(ENV_PROD_PATH, ENV_PATH)
         os.environ["DOTENV_PATH"] = ".env.prod"
-        # Load shared env so frontend build sees VITE_* values
-        load_env_file(ROOT_DIR / ".env.prod")
+        load_env_file(ENV_PROD_PATH)
         # Build frontend with prod mode (uses .env.prod)
         build_result = build_frontend(prod=True)
         if build_result != 0:
@@ -119,7 +136,19 @@ async def main(prod: bool = False) -> int:
         print("Frontend built successfully.\n")
     else:
         # Ensure dev runs do not inherit a prod DOTENV_PATH from a prior session
+        _ensure_env_file(ENV_PATH)
         os.environ.pop("DOTENV_PATH", None)
+        load_env_file(ENV_PATH)
+
+    youtube_demo_mode = os.getenv("YOUTUBE_DEMO_MODE")
+    if (
+        not os.getenv("YOUTUBE_API_KEY")
+        and (youtube_demo_mode is None or youtube_demo_mode.strip() == "")
+    ):
+        os.environ["YOUTUBE_DEMO_MODE"] = "true"
+        print(
+            "YOUTUBE_API_KEY is not set. Enabling YOUTUBE_DEMO_MODE for local execution."
+        )
 
     backend_host = "127.0.0.1"
     frontend_host = "127.0.0.1"
