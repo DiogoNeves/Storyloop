@@ -13,6 +13,7 @@ interface UseAudioDictationOptions {
 interface UseAudioDictationResult {
   status: AudioDictationStatus;
   inputLevel: number;
+  elapsedSeconds: number;
   isSupported: boolean;
   errorMessage: string | null;
   startDictation: () => Promise<void>;
@@ -30,6 +31,7 @@ const RECORDER_MIME_TYPES = [
 const INPUT_LEVEL_NOISE_FLOOR = 0.004;
 const INPUT_LEVEL_DYNAMIC_RANGE = 0.06;
 const INPUT_LEVEL_PREVIOUS_WEIGHT = 0.2;
+const INPUT_LEVEL_UPDATE_INTERVAL_MS = 33;
 
 export function useAudioDictation({
   mode,
@@ -42,10 +44,16 @@ export function useAudioDictation({
   const analyserRef = useRef<AnalyserNode | null>(null);
   const mediaSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const levelBufferRef = useRef(0);
+  const lastLevelCommitRef = useRef(0);
+  const lastLevelCommitAtRef = useRef(0);
+  const startedAtRef = useRef<number | null>(null);
+  const lastElapsedSecondsRef = useRef(0);
   const isMountedRef = useRef(true);
 
   const [status, setStatus] = useState<AudioDictationStatus>("idle");
   const [inputLevel, setInputLevel] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const isSupported =
@@ -71,6 +79,9 @@ export function useAudioDictation({
       void context.close();
     }
 
+    levelBufferRef.current = 0;
+    lastLevelCommitRef.current = 0;
+    lastLevelCommitAtRef.current = 0;
     setInputLevel(0);
   }, []);
 
@@ -122,11 +133,30 @@ export function useAudioDictation({
           1,
         );
 
-        setInputLevel(
-          (previous) =>
-            previous * INPUT_LEVEL_PREVIOUS_WEIGHT +
-            normalizedLevel * (1 - INPUT_LEVEL_PREVIOUS_WEIGHT),
+        levelBufferRef.current =
+          levelBufferRef.current * INPUT_LEVEL_PREVIOUS_WEIGHT +
+          normalizedLevel * (1 - INPUT_LEVEL_PREVIOUS_WEIGHT);
+
+        const now = performance.now();
+        const hasElapsedInterval =
+          now - lastLevelCommitAtRef.current >= INPUT_LEVEL_UPDATE_INTERVAL_MS;
+        const levelDelta = Math.abs(
+          levelBufferRef.current - lastLevelCommitRef.current,
         );
+        if (hasElapsedInterval || levelDelta > 0.08) {
+          lastLevelCommitAtRef.current = now;
+          lastLevelCommitRef.current = levelBufferRef.current;
+          setInputLevel(levelBufferRef.current);
+        }
+
+        if (startedAtRef.current !== null) {
+          const elapsed = Math.floor((now - startedAtRef.current) / 1000);
+          if (elapsed !== lastElapsedSecondsRef.current) {
+            lastElapsedSecondsRef.current = elapsed;
+            setElapsedSeconds(elapsed);
+          }
+        }
+
         animationFrameRef.current = requestAnimationFrame(measureLevel);
       };
 
@@ -164,6 +194,9 @@ export function useAudioDictation({
         }
         setErrorMessage("No audio was captured. Please try again.");
         setStatus("idle");
+        setElapsedSeconds(0);
+        startedAtRef.current = null;
+        lastElapsedSecondsRef.current = 0;
         return;
       }
 
@@ -187,12 +220,18 @@ export function useAudioDictation({
 
         onTranscription(normalizedText, result.fallbackUsed);
         setStatus("idle");
+        setElapsedSeconds(0);
+        startedAtRef.current = null;
+        lastElapsedSecondsRef.current = 0;
       } catch (error) {
         if (!isMountedRef.current) {
           return;
         }
         setErrorMessage(getDictationErrorMessage(error));
         setStatus("idle");
+        setElapsedSeconds(0);
+        startedAtRef.current = null;
+        lastElapsedSecondsRef.current = 0;
       }
     },
     [mode, onTranscription, releaseStream],
@@ -212,6 +251,9 @@ export function useAudioDictation({
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
+      startedAtRef.current = performance.now();
+      lastElapsedSecondsRef.current = 0;
+      setElapsedSeconds(0);
       startInputLevelTracking(stream);
 
       const preferredType = getSupportedRecorderType();
@@ -233,6 +275,9 @@ export function useAudioDictation({
         }
         setErrorMessage("Recording failed. Please try again.");
         setStatus("idle");
+        setElapsedSeconds(0);
+        startedAtRef.current = null;
+        lastElapsedSecondsRef.current = 0;
         mediaRecorderRef.current = null;
         chunksRef.current = [];
         releaseStream();
@@ -246,6 +291,9 @@ export function useAudioDictation({
     } catch (error) {
       releaseStream();
       setStatus("idle");
+      setElapsedSeconds(0);
+      startedAtRef.current = null;
+      lastElapsedSecondsRef.current = 0;
       setErrorMessage(getDictationErrorMessage(error));
     }
   }, [
@@ -282,6 +330,9 @@ export function useAudioDictation({
       if (recorder?.state === "recording") {
         recorder.stop();
       }
+      startedAtRef.current = null;
+      lastElapsedSecondsRef.current = 0;
+      setElapsedSeconds(0);
       stopInputLevelTracking();
       releaseStream();
     };
@@ -290,6 +341,7 @@ export function useAudioDictation({
   return {
     status,
     inputLevel,
+    elapsedSeconds,
     isSupported,
     errorMessage,
     startDictation,

@@ -18,6 +18,7 @@ import {
   buildPromptMarkdown,
   deriveSaveIndicator,
   findAdjacentVideos,
+  isEffectivelyEmptyNoteContent,
 } from "@/lib/journal-detail-logic";
 import { formatLongDateTime, parseValidDate } from "@/lib/date-time";
 import { useAgentConversationContext } from "@/context/AgentConversationContext";
@@ -47,7 +48,7 @@ import {
 } from "@/components/JournalEntryEditor";
 import { NewEntryHeader } from "@/components/NewEntryHeader";
 import { CopyMarkdownButton } from "@/components/CopyMarkdownButton";
-import { VoiceReactiveOverlay } from "@/components/ui/voice-reactive-overlay";
+import { VoiceWave } from "@/components/ui/voice-wave";
 
 export function JournalDetailPage() {
   const { journalId } = useParams<{ journalId: string }>();
@@ -109,6 +110,7 @@ export function JournalDetailPage() {
   const {
     status: noteDictationStatus,
     inputLevel: noteDictationInputLevel,
+    elapsedSeconds: noteDictationElapsedSeconds,
     isSupported: isNoteDictationSupported,
     errorMessage: noteDictationError,
     toggleDictation: toggleNoteDictation,
@@ -448,8 +450,8 @@ export function JournalDetailPage() {
   const formattedLastSmartUpdate = formatLongDateTime(lastSmartUpdateDate);
 
   const summarySource: string | null = currentEntry?.summary ?? null;
-  const summaryText =
-    typeof summarySource === "string" ? summarySource.trim() : "";
+  const summaryText = typeof summarySource === "string" ? summarySource : "";
+  const hasSavedSummary = !isEffectivelyEmptyNoteContent(summaryText);
   const getCopyMarkdown = useCallback(() => {
     const heading =
       titleDraft.trim().length > 0 ? titleDraft.trim() : "Untitled entry";
@@ -632,7 +634,7 @@ export function JournalDetailPage() {
 
     const promptActionsDisabled = !isOnline || isPromptUpdating || isSmartUpdating;
     const editorResetKey = `${currentEntry.id}-${editorResetNonce}`;
-    const isNoteEmpty = summaryDraft.trim().length === 0;
+    const isNoteEmpty = isEffectivelyEmptyNoteContent(summaryDraft);
     const isNoteDictating = noteDictationStatus === "recording";
     const isNoteDictationTranscribing = noteDictationStatus === "transcribing";
     const showDictateNoteButton = !isSmartEntry && isNoteEmpty;
@@ -905,7 +907,7 @@ export function JournalDetailPage() {
       isSmartEntry &&
       !isSmartUpdating &&
       !currentEntry.lastSmartUpdateAt &&
-      summaryText.length === 0;
+      !hasSavedSummary;
 
     const contentTab = (
       <>
@@ -930,7 +932,7 @@ export function JournalDetailPage() {
             isEditable={!isSmartUpdating}
             activityItems={activityItems}
           />
-        ) : summaryText.length > 0 ? (
+        ) : hasSavedSummary ? (
           <JournalEntryEditor
             ref={editorRef}
             initialValue={editorInitialSummary}
@@ -975,18 +977,23 @@ export function JournalDetailPage() {
                 "relative h-14 min-w-[16rem] gap-2 overflow-hidden px-8 text-base font-semibold shadow-lg",
               )}
             >
-              <VoiceReactiveOverlay
-                active={isNoteDictating}
-                inputLevel={noteDictationInputLevel}
-                tone="primary"
-                className="rounded-md"
-              />
-              <Mic className="h-5 w-5" />
-              {isNoteDictating
-                ? "Stop dictation"
-                : isNoteDictationTranscribing
-                  ? "Transcribing…"
-                  : "Dictate your note"}
+              {isNoteDictating ? (
+                <span className="pointer-events-none absolute inset-x-3 top-1/2 -translate-y-1/2">
+                  <VoiceWave
+                    active={true}
+                    inputLevel={noteDictationInputLevel}
+                    className="h-6 w-full text-primary-foreground/90"
+                  />
+                </span>
+              ) : null}
+              <span className="relative z-10 flex items-center gap-2">
+                <Mic className="h-5 w-5" />
+                {isNoteDictating
+                  ? `Stop dictation (${formatDuration(noteDictationElapsedSeconds)})`
+                  : isNoteDictationTranscribing
+                    ? "Transcribing…"
+                    : "Dictate your note"}
+              </span>
             </Button>
           </div>
         ) : null}
@@ -1083,3 +1090,10 @@ export function JournalDetailPage() {
 }
 
 export default JournalDetailPage;
+
+function formatDuration(seconds: number): string {
+  const normalizedSeconds = Math.max(0, seconds);
+  const minutes = Math.floor(normalizedSeconds / 60);
+  const remainingSeconds = normalizedSeconds % 60;
+  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
+}

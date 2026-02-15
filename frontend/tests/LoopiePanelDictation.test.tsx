@@ -46,6 +46,7 @@ describe("LoopieConversationContent dictation", () => {
       ({ onTranscription }: { onTranscription: (text: string) => void }) => ({
         status: "idle",
         inputLevel: 0,
+        elapsedSeconds: 0,
         isSupported: true,
         errorMessage: null,
         startDictation: vi.fn(),

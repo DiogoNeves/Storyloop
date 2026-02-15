@@ -4,6 +4,7 @@ import {
   buildPromptMarkdown,
   deriveSaveIndicator,
   findAdjacentVideos,
+  isEffectivelyEmptyNoteContent,
 } from "@/lib/journal-detail-logic";
 import { parseValidDate } from "@/lib/date-time";
 
@@ -69,5 +70,14 @@ describe("journal-detail-logic", () => {
     const indicator = deriveSaveIndicator("queued", null, true);
     expect(indicator.show).toBe(true);
     expect(indicator.message).toBe("Saved locally, syncing soon.");
+  });
+
+  it("detects placeholder-only note content as empty", () => {
+    expect(isEffectivelyEmptyNoteContent("")).toBe(true);
+    expect(isEffectivelyEmptyNoteContent("   ")).toBe(true);
+    expect(isEffectivelyEmptyNoteContent("<br />")).toBe(true);
+    expect(isEffectivelyEmptyNoteContent("<br/><br>")).toBe(true);
+    expect(isEffectivelyEmptyNoteContent("&nbsp;\u200b")).toBe(true);
+    expect(isEffectivelyEmptyNoteContent("actual note")).toBe(false);
   });
 });

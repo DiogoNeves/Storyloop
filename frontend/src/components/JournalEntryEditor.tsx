@@ -45,6 +45,7 @@ import {
 } from "@/lib/tag-completion";
 import { getActivityDetailPath } from "@/lib/activity-helpers";
 import { findMentionCandidate } from "@/lib/mention-search";
+import { shouldSkipInitialMarkdownUpdate } from "@/lib/editor-markdown-update";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -268,7 +269,7 @@ const JournalEntryEditorInner = forwardRef<
     ref,
   ) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const hasInitializedRef = useRef(false);
+  const hasSeenFirstMarkdownUpdateRef = useRef(false);
   const editorViewRef = useRef<EditorView | null>(null);
   const linkTooltipRef = useRef<HTMLDivElement | null>(null);
   const mentionTooltipRef = useRef<HTMLDivElement | null>(null);
@@ -295,7 +296,7 @@ const JournalEntryEditorInner = forwardRef<
   const editorInitialValue = useMemo(() => initialValue, [initialValue]);
 
   useEffect(() => {
-    hasInitializedRef.current = false;
+    hasSeenFirstMarkdownUpdateRef.current = false;
   }, [resetKey]);
 
   const editor = useEditor(
@@ -305,8 +306,18 @@ const JournalEntryEditorInner = forwardRef<
           ctx.set(rootCtx, root);
           ctx.set(defaultValueCtx, editorInitialValue);
           ctx.get(listenerCtx).markdownUpdated((_ctx: Ctx, markdown: string) => {
-            if (!hasInitializedRef.current) {
-              hasInitializedRef.current = true;
+            const shouldSkip = shouldSkipInitialMarkdownUpdate({
+              hasSeenFirstMarkdownUpdate:
+                hasSeenFirstMarkdownUpdateRef.current,
+              initialValue: editorInitialValue,
+              nextMarkdown: markdown,
+            });
+
+            if (!hasSeenFirstMarkdownUpdateRef.current) {
+              hasSeenFirstMarkdownUpdateRef.current = true;
+            }
+
+            if (shouldSkip) {
               return;
             }
             onChange(markdown);
