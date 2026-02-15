@@ -11,6 +11,7 @@ from openai import OpenAIError
 from app.config import Settings
 
 SpeechDictationMode = Literal["loopie", "journal_note"]
+AudioPayload = bytes | bytearray
 _TRANSCRIPTION_MODEL = "gpt-4o-mini-transcribe"
 
 _LOOPIE_TRANSCRIPTION_PROMPT = """Transcribe the audio directly.
@@ -89,7 +90,7 @@ class SpeechToTextService:
     def transcribe_dictation(
         self,
         *,
-        audio_bytes: bytes,
+        audio_bytes: AudioPayload,
         filename: str,
         content_type: str | None,
         mode: SpeechDictationMode,
@@ -110,7 +111,7 @@ class SpeechToTextService:
     def _transcribe_audio(
         self,
         *,
-        audio_bytes: bytes,
+        audio_bytes: AudioPayload,
         filename: str,
         content_type: str | None,
         mode: SpeechDictationMode,

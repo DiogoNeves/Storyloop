@@ -131,8 +131,8 @@ def _is_supported_audio_upload(*, content_type: str, filename: str) -> bool:
     return suffix in _AUDIO_EXTENSIONS
 
 
-async def _read_audio_upload(file: UploadFile) -> bytes:
-    chunks: list[bytes] = []
+async def _read_audio_upload(file: UploadFile) -> bytearray:
+    audio_buffer = bytearray()
     total_bytes = 0
 
     while True:
@@ -146,13 +146,12 @@ async def _read_audio_upload(file: UploadFile) -> bytes:
                 status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                 detail="Audio file is too large. Maximum supported size is 25MB.",
             )
-        chunks.append(chunk)
+        audio_buffer.extend(chunk)
 
-    audio_bytes = b"".join(chunks)
-    if not audio_bytes:
+    if not audio_buffer:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Audio file is empty.",
         )
 
-    return audio_bytes
+    return audio_buffer
