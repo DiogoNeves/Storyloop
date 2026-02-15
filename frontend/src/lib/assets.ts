@@ -1,15 +1,6 @@
 import { API_BASE_URL } from "@/api/client";
 
-export const ASSET_PATH_PREFIX = "/assets/";
-
-export interface AssetAttachment {
-  id: string;
-  url: string;
-  filename: string;
-  mimeType: string;
-  width?: number | null;
-  height?: number | null;
-}
+const ASSET_PATH_PREFIX = "/assets/";
 
 export function isAssetPath(value?: string | null): value is string {
   return typeof value === "string" && value.startsWith(ASSET_PATH_PREFIX);

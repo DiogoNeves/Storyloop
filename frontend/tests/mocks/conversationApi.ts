@@ -1,6 +1,6 @@
 import { vi } from "vitest";
 
-export const mockConversationList = vi.fn().mockResolvedValue([]);
+const mockConversationList = vi.fn().mockResolvedValue([]);
 export const mockCreateConversation = vi.fn().mockResolvedValue({
   id: "conversation-mock",
   title: "Loopie mock conversation",

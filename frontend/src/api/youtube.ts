@@ -129,7 +129,7 @@ const youtubeUnlinkResponseSchema = z.object({
   success: z.boolean(),
 });
 
-export async function fetchChannelVideos(
+async function fetchChannelVideos(
   channel: string,
   videoType?: "short" | "video" | "live" | null,
 ): Promise<YoutubeFeedResponse> {
@@ -152,21 +152,21 @@ export async function fetchVideoDetail(
   return youtubeVideoDetailResponseSchema.parse(response.data);
 }
 
-export async function startLink(): Promise<YoutubeAuthStartResponse> {
+async function startLink(): Promise<YoutubeAuthStartResponse> {
   const response = await apiClient.post<unknown>(
     "/youtube/auth/start",
   );
   return youtubeAuthStartResponseSchema.parse(response.data);
 }
 
-export async function linkStatus(): Promise<YoutubeLinkStatusResponse> {
+async function linkStatus(): Promise<YoutubeLinkStatusResponse> {
   const response = await apiClient.get<unknown>(
     "/youtube/auth/status",
   );
   return youtubeLinkStatusResponseSchema.parse(response.data);
 }
 
-export async function completeLink(
+async function completeLink(
   request: YoutubeCompleteLinkRequest,
 ): Promise<YoutubeCompleteLinkResponse> {
   const response = await apiClient.post<unknown>(
@@ -176,7 +176,7 @@ export async function completeLink(
   return youtubeCompleteLinkResponseSchema.parse(response.data);
 }
 
-export async function unlinkAccount(): Promise<YoutubeUnlinkResponse> {
+async function unlinkAccount(): Promise<YoutubeUnlinkResponse> {
   const response = await apiClient.post<unknown>(
     "/youtube/auth/unlink",
   );

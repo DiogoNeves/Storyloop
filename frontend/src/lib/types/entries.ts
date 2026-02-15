@@ -30,7 +30,7 @@ export interface Entry {
   tags?: string[];
 }
 
-export const entrySchema = z.object({
+const entrySchema = z.object({
   id: z.string(),
   title: z.string(),
   summary: z.string(),
