@@ -22,6 +22,8 @@ const useYouTubeFeedMock =
 const apiGetMock = vi.hoisted(() => vi.fn());
 const apiPutMock = vi.hoisted(() => vi.fn());
 const useAudioDictationMock = vi.hoisted(() => vi.fn());
+const journalEditorFocusMock = vi.hoisted(() => vi.fn());
+const journalEditorFocusAtEndMock = vi.hoisted(() => vi.fn());
 const journalEditorOnChangeRef = vi.hoisted(() => ({
   current: null as null | ((markdown: string) => void),
 }));
@@ -34,14 +36,22 @@ vi.mock("@/components/JournalEntryEditor", async () => {
   const React = await import("react");
 
   const JournalEntryEditor = React.forwardRef<
-    HTMLDivElement,
+    { focus: () => void; focusAtEnd: () => void },
     Record<string, unknown>
   >((props, ref) => {
     journalEditorOnChangeRef.current =
       typeof props.onChange === "function"
         ? (props.onChange as (markdown: string) => void)
         : null;
-    return <div ref={ref} data-testid="journal-editor" />;
+    React.useImperativeHandle(
+      ref,
+      () => ({
+        focus: journalEditorFocusMock,
+        focusAtEnd: journalEditorFocusAtEndMock,
+      }),
+      [],
+    );
+    return <div data-testid="journal-editor" />;
   });
 
   JournalEntryEditor.displayName = "JournalEntryEditor";
@@ -110,6 +120,8 @@ function renderPage(ui: ReactElement) {
 describe("JournalDetailPage", () => {
   beforeEach(() => {
     journalEditorOnChangeRef.current = null;
+    journalEditorFocusMock.mockReset();
+    journalEditorFocusAtEndMock.mockReset();
     apiGetMock.mockReset();
     apiPutMock.mockReset();
     apiGetMock.mockImplementation((url: string) => {
@@ -288,6 +300,34 @@ describe("JournalDetailPage", () => {
     });
 
     expect(titleInput).toHaveValue("New video ideas");
+  });
+
+  it("focuses the editor at the end when clicking the empty trailing area", async () => {
+    useYouTubeFeedMock.mockReturnValue({
+      youtubeFeed: null,
+      youtubeError: null,
+      isLoading: false,
+      isLinked: false,
+      linkStatus: null,
+      channelId: null,
+    });
+
+    renderPage(<JournalDetailPage />);
+
+    expect(
+      await screen.findByDisplayValue(sampleEntry.title),
+    ).toBeInTheDocument();
+
+    const editor = screen.getByTestId("journal-editor");
+    const scrollBody = editor.closest(".overflow-y-auto");
+    expect(scrollBody).not.toBeNull();
+    if (!scrollBody) {
+      return;
+    }
+
+    fireEvent.click(scrollBody, { clientY: 10 });
+
+    expect(journalEditorFocusAtEndMock).toHaveBeenCalledTimes(1);
   });
 
   it("archives an entry from the detail header", async () => {
