@@ -22,6 +22,7 @@ export function TagFilterSection({
   onTagSelect,
 }: TagFilterSectionProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isVideoGroupExpanded, setIsVideoGroupExpanded] = useState(false);
   const { journalTagCounts, videoTagCounts, conversationTagCounts } = useMemo(
     () => {
       const journalItems = items.filter((item) => item.category === "journal");
@@ -53,11 +54,20 @@ export function TagFilterSection({
     journalTagCounts.length > 0 ||
     videoTagCounts.length > 0 ||
     conversationTagCounts.length > 0;
+  const isVideoTagActive =
+    activeTag !== null && videoTagCounts.some(({ tag }) => tag === activeTag);
   const toggleIcon = isOpen ? (
     <ChevronUp className="h-4 w-4" aria-hidden="true" />
   ) : (
     <ChevronDown className="h-4 w-4" aria-hidden="true" />
   );
+
+  const handleToggleTags = () => {
+    if (isOpen) {
+      setIsVideoGroupExpanded(false);
+    }
+    setIsOpen((current) => !current);
+  };
 
   return (
     <>
@@ -65,7 +75,7 @@ export function TagFilterSection({
         type="button"
         variant="ghost"
         size="sm"
-        onClick={() => setIsOpen((current) => !current)}
+        onClick={handleToggleTags}
         className={cn(
           "gap-1 rounded-full px-2 py-2 font-medium shadow-none sm:gap-2 sm:px-3",
           "hover:bg-transparent hover:text-foreground",
@@ -116,6 +126,11 @@ export function TagFilterSection({
                 tagCounts={videoTagCounts}
                 activeTag={activeTag}
                 onTagSelect={onTagSelect}
+                collapsible
+                isExpanded={isVideoGroupExpanded || isVideoTagActive}
+                onToggleExpanded={() =>
+                  setIsVideoGroupExpanded((current) => !current)
+                }
               />
               <TagGroup
                 heading="In Conversations"
@@ -172,6 +187,9 @@ interface TagGroupProps {
   tagCounts: TagCount[];
   activeTag: string | null;
   onTagSelect: (tag: string | null) => void;
+  collapsible?: boolean;
+  isExpanded?: boolean;
+  onToggleExpanded?: () => void;
 }
 
 function TagGroup({
@@ -179,7 +197,12 @@ function TagGroup({
   tagCounts,
   activeTag,
   onTagSelect,
+  collapsible = false,
+  isExpanded = true,
+  onToggleExpanded,
 }: TagGroupProps) {
+  const showTags = !collapsible || isExpanded || tagCounts.length === 0;
+
   return (
     <section className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2">
@@ -187,22 +210,41 @@ function TagGroup({
           {heading}
         </p>
         <div className="h-px flex-1 bg-border" aria-hidden="true" />
+        {collapsible && tagCounts.length > 0 ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onToggleExpanded}
+            className="h-6 gap-1 rounded-full px-2 text-xs text-muted-foreground shadow-none hover:text-foreground"
+            aria-expanded={isExpanded}
+          >
+            {isExpanded ? "Hide tags" : "Show tags"}
+            {isExpanded ? (
+              <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
+          </Button>
+        ) : null}
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        {tagCounts.length > 0 ? (
-          tagCounts.map((tagCount) => (
-            <TagButton
-              key={tagCount.tag}
-              label={formatTagLabel(tagCount.tag)}
-              count={tagCount.count}
-              isSelected={activeTag === tagCount.tag}
-              onClick={() => onTagSelect(tagCount.tag)}
-            />
-          ))
-        ) : (
-          <span className="text-xs text-muted-foreground">No tags.</span>
-        )}
-      </div>
+      {showTags ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {tagCounts.length > 0 ? (
+            tagCounts.map((tagCount) => (
+              <TagButton
+                key={tagCount.tag}
+                label={formatTagLabel(tagCount.tag)}
+                count={tagCount.count}
+                isSelected={activeTag === tagCount.tag}
+                onClick={() => onTagSelect(tagCount.tag)}
+              />
+            ))
+          ) : (
+            <span className="text-xs text-muted-foreground">No tags.</span>
+          )}
+        </div>
+      ) : null}
     </section>
   );
 }
