@@ -136,6 +136,8 @@ const HASHTAG_PATTERN = /(^|[\s([{])(#([A-Za-z0-9][A-Za-z0-9/-]*))/g;
 const ARCHIVED_TAG = "#archived";
 const DOC_TEXT_BLOCK_SEPARATOR = "\n";
 const DOC_TEXT_LEAF_SEPARATOR = "\n";
+const TASK_LIST_ITEM_SELECTOR = 'li[data-item-type="task"]';
+const TASK_LIST_CHECKBOX_TOGGLE_ZONE_PX = 28;
 
 interface TagSuggestionState {
   from: number;
@@ -165,6 +167,45 @@ function hasSuffixAtPosition(
     DOC_TEXT_LEAF_SEPARATOR,
   );
   return existingSuffix === suffix;
+}
+
+function isTaskCheckboxToggleClick(
+  event: MouseEvent,
+  taskListElement: Element,
+): boolean {
+  const itemRect = taskListElement.getBoundingClientRect();
+  return event.clientX <= itemRect.left + TASK_LIST_CHECKBOX_TOGGLE_ZONE_PX;
+}
+
+function toggleTaskListItemFromDOM(
+  view: EditorView,
+  taskListElement: Element,
+): boolean {
+  const taskListItemPos = view.posAtDOM(taskListElement, 0);
+  if (taskListItemPos === null || taskListItemPos < 0) {
+    return false;
+  }
+
+  const { state } = view;
+  const $taskListItem = state.doc.resolve(taskListItemPos);
+
+  for (let depth = $taskListItem.depth; depth > 0; depth -= 1) {
+    const node = $taskListItem.node(depth);
+    if (node.type.name !== "list_item" || node.attrs.checked == null) {
+      continue;
+    }
+
+    const nodePos = $taskListItem.before(depth);
+    const tr = state.tr.setNodeMarkup(nodePos, undefined, {
+      ...node.attrs,
+      checked: !Boolean(node.attrs.checked),
+    });
+    view.dispatch(tr);
+    view.focus();
+    return true;
+  }
+
+  return false;
 }
 
 const createHashtagDecorations = (
@@ -604,7 +645,7 @@ const JournalEntryEditorInner = forwardRef<
     [isEditable, linkTooltip, mentionState],
   );
 
-  // Handle link clicks
+  // Handle link and task list clicks
   useEffect(() => {
     const instance = editor.get();
     if (!instance) {
@@ -634,9 +675,28 @@ const JournalEntryEditorInner = forwardRef<
       };
       
       const handleClick = (event: MouseEvent) => {
-        const target = event.target as HTMLElement;
+        const targetNode = event.target;
+        if (!(targetNode instanceof Element)) {
+          return;
+        }
+        const target = targetNode as HTMLElement;
         const linkElement = target.closest("a");
-        
+
+        if (!linkElement?.href && isEditable) {
+          const taskListElement = target.closest(TASK_LIST_ITEM_SELECTOR);
+          if (
+            taskListElement &&
+            isTaskCheckboxToggleClick(event, taskListElement)
+          ) {
+            event.preventDefault();
+            const didToggle = toggleTaskListItemFromDOM(view, taskListElement);
+            if (didToggle) {
+              setLinkTooltip(null);
+              return;
+            }
+          }
+        }
+
         if (linkElement?.href && container) {
           // Handle cmd/ctrl+click or middle mouse button to open immediately
           if (handleMiddleMouseOrModifierClick(event)) {
@@ -723,7 +783,7 @@ const JournalEntryEditorInner = forwardRef<
     return () => {
       cleanup?.();
     };
-  }, [editor]);
+  }, [editor, isEditable]);
 
   // Close tooltip when clicking outside
   useEffect(() => {

@@ -1,4 +1,11 @@
-import { Children, memo, useMemo, type HTMLAttributes } from "react";
+import {
+  Children,
+  isValidElement,
+  memo,
+  useMemo,
+  type HTMLAttributes,
+  type ReactNode,
+} from "react";
 
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -22,6 +29,39 @@ type MarkdownCodeProps = HTMLAttributes<HTMLElement> & {
   node?: unknown;
 };
 
+type MarkdownListItemProps = HTMLAttributes<HTMLLIElement> & {
+  checked?: boolean | null;
+};
+
+const TASK_LIST_ITEM_CLASSNAME = "task-list-item";
+
+function extractTaskListPayload(
+  children: ReactNode,
+): { checked: boolean; content: ReactNode[] } | null {
+  const nodes = Children.toArray(children);
+  if (nodes.length === 0) {
+    return null;
+  }
+
+  const [firstNode, ...restNodes] = nodes;
+  if (
+    !isValidElement<{ checked?: boolean }>(firstNode) ||
+    firstNode.type !== "input"
+  ) {
+    return null;
+  }
+
+  const content = [...restNodes];
+  if (typeof content[0] === "string") {
+    content[0] = content[0].replace(/^\s+/, "");
+  }
+
+  return {
+    checked: Boolean(firstNode.props.checked),
+    content,
+  };
+}
+
 const MARKDOWN_PREVIEW_COMPONENTS: Components = {
   h1: ({ children }) => <span className="font-medium">{children} </span>,
   h2: ({ children }) => <span className="font-medium">{children} </span>,
@@ -35,7 +75,16 @@ const MARKDOWN_PREVIEW_COMPONENTS: Components = {
   del: ({ children }) => <del>{children}</del>,
   ul: ({ children }) => <span>{children}</span>,
   ol: ({ children }) => <span>{children}</span>,
-  li: ({ children }) => <span>&bull; {children} </span>,
+  li: ({ children, className, checked }: MarkdownListItemProps) => {
+    const isTaskListItem = className?.includes(TASK_LIST_ITEM_CLASSNAME);
+    if (isTaskListItem) {
+      const taskItem = extractTaskListPayload(children);
+      const isChecked = taskItem ? taskItem.checked : Boolean(checked);
+      const content = taskItem ? taskItem.content : children;
+      return <span>{isChecked ? "☑" : "☐"} {content} </span>;
+    }
+    return <span>&bull; {children} </span>;
+  },
   blockquote: ({ children }) => <span>{children} </span>,
   a: ({ children }) => (
     <span className="underline decoration-primary/60 underline-offset-2">
