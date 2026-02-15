@@ -7,13 +7,10 @@ script = '''
 cd backend && uv sync
 cd ../frontend && pnpm install
 cd ..
+mkdir data/
+cp /Users/diogoneves/Projects/tools/Storyloop/data/dev-storyloop.db ./data/dev-storyloop.db
 ln -sfn /Users/diogoneves/Projects/tools/Storyloop/.env .env
 '''
-
-[[actions]]
-name = "Run"
-icon = "run"
-command = "make prod"
 
 [[actions]]
 name = "Dev"
