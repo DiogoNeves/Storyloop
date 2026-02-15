@@ -54,6 +54,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 from google.auth.exceptions import GoogleAuthError
 from google.oauth2.credentials import Credentials
+from oauthlib.oauth2.rfc6749.errors import OAuth2Error  # type: ignore[import-untyped]
 from pydantic import BaseModel
 from requests import RequestException
 
@@ -115,7 +116,7 @@ def _complete_oauth_flow(
     flow = oauth_service.create_flow(state=state)
     try:
         flow.fetch_token(code=code)
-    except (GoogleAuthError, RequestException, ValueError) as exc:
+    except (GoogleAuthError, OAuth2Error, RequestException, ValueError) as exc:
         logger.warning(
             "youtube_auth.token_exchange_failed",
             extra={"error_type": type(exc).__name__},
