@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { MouseEventHandler, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -10,6 +10,7 @@ interface StickyHeaderScrollableCardProps {
   footerStickToBottomWhenShort?: boolean;
   className?: string;
   bodyClassName?: string;
+  onBodyClick?: MouseEventHandler<HTMLDivElement>;
 }
 
 export function StickyHeaderScrollableCard({
@@ -20,6 +21,7 @@ export function StickyHeaderScrollableCard({
   footerStickToBottomWhenShort = false,
   className,
   bodyClassName,
+  onBodyClick,
 }: StickyHeaderScrollableCardProps) {
   // For lg screens with sticky header, we need a different structure:
   // header is outside scroll container and fixed, separator is between header and scroll area
@@ -42,6 +44,7 @@ export function StickyHeaderScrollableCard({
             "scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto p-6 pt-4",
             bodyClassName,
           )}
+          onClick={onBodyClick}
         >
           {children}
 
@@ -70,6 +73,7 @@ export function StickyHeaderScrollableCard({
           "scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto p-6",
           bodyClassName,
         )}
+        onClick={onBodyClick}
       >
         {header ? (
           <>
@@ -94,7 +98,6 @@ export function StickyHeaderScrollableCard({
     </section>
   );
 }
-
 
 
 

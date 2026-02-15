@@ -20,6 +20,7 @@ import {
 import type { Ctx } from "@milkdown/ctx";
 import { Milkdown, MilkdownProvider, useEditor } from "@milkdown/react";
 import { Fragment, type Node as ProseNode, type Mark } from "@milkdown/prose/model";
+import { TextSelection } from "@milkdown/prose/state";
 import { Decoration, DecorationSet, type EditorView } from "@milkdown/prose/view";
 import type { SerializerState } from "@milkdown/transformer";
 import { clipboard } from "@milkdown/plugin-clipboard";
@@ -235,6 +236,7 @@ interface JournalEntryEditorProps {
 
 export interface JournalEntryEditorHandle {
   focus: () => void;
+  focusAtEnd: () => void;
 }
 
 interface LinkTooltipState {
@@ -356,6 +358,18 @@ const JournalEntryEditorInner = forwardRef<
         }
         instance.action((ctx: Ctx) => {
           const view = ctx.get(editorViewCtx);
+          view.focus();
+        });
+      },
+      focusAtEnd: () => {
+        const instance = editor.get();
+        if (!instance) {
+          return;
+        }
+        instance.action((ctx: Ctx) => {
+          const view = ctx.get(editorViewCtx);
+          const selectionAtEnd = TextSelection.atEnd(view.state.doc);
+          view.dispatch(view.state.tr.setSelection(selectionAtEnd).scrollIntoView());
           view.focus();
         });
       },

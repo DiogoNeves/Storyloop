@@ -1,4 +1,11 @@
-import { useCallback, useMemo, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useMemo,
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+} from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Archive, Bot, Mic, Pin, SaveOff, Trash2 } from "lucide-react";
 import { Link, useLocation, useParams, useNavigate } from "react-router-dom";
@@ -66,6 +73,7 @@ export function JournalDetailPage() {
   );
   const { setFocus } = useAgentConversationContext();
   const editorRef = useRef<JournalEntryEditorHandle | null>(null);
+  const editorContainerRef = useRef<HTMLDivElement | null>(null);
   const titleInputRef = useRef<HTMLInputElement | null>(null);
 
   const isNewEntryRoute =
@@ -452,6 +460,32 @@ export function JournalDetailPage() {
   const summarySource: string | null = currentEntry?.summary ?? null;
   const summaryText = typeof summarySource === "string" ? summarySource : "";
   const hasSavedSummary = !isEffectivelyEmptyNoteContent(summaryText);
+
+  const focusEditorFromTrailingSpace = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      if (isNewEntryRoute || activeTab !== "content" || isSmartUpdating) {
+        return;
+      }
+
+      if (event.target !== event.currentTarget) {
+        return;
+      }
+
+      const editorContainer = editorContainerRef.current;
+      if (!editorContainer) {
+        return;
+      }
+
+      const editorRect = editorContainer.getBoundingClientRect();
+      if (event.clientY <= editorRect.bottom) {
+        return;
+      }
+
+      editorRef.current?.focusAtEnd();
+    },
+    [activeTab, isNewEntryRoute, isSmartUpdating],
+  );
+
   const getCopyMarkdown = useCallback(() => {
     const heading =
       titleDraft.trim().length > 0 ? titleDraft.trim() : "Untitled entry";
@@ -908,6 +942,7 @@ export function JournalDetailPage() {
       !isSmartUpdating &&
       !currentEntry.lastSmartUpdateAt &&
       !hasSavedSummary;
+    const shouldRenderEditor = !isSmartUpdating && (!isSmartEntry || hasSavedSummary);
 
     const contentTab = (
       <>
@@ -923,24 +958,17 @@ export function JournalDetailPage() {
               Loopie is drafting this update…
             </div>
           )
-        ) : !isSmartEntry ? (
-          <JournalEntryEditor
-            ref={editorRef}
-            initialValue={editorInitialSummary}
-            resetKey={editorResetKey}
-            onChange={setSummaryDraft}
-            isEditable={!isSmartUpdating}
-            activityItems={activityItems}
-          />
-        ) : hasSavedSummary ? (
-          <JournalEntryEditor
-            ref={editorRef}
-            initialValue={editorInitialSummary}
-            resetKey={editorResetKey}
-            onChange={setSummaryDraft}
-            isEditable={!isSmartUpdating}
-            activityItems={activityItems}
-          />
+        ) : shouldRenderEditor ? (
+          <div ref={editorContainerRef}>
+            <JournalEntryEditor
+              ref={editorRef}
+              initialValue={editorInitialSummary}
+              resetKey={editorResetKey}
+              onChange={setSummaryDraft}
+              isEditable={!isSmartUpdating}
+              activityItems={activityItems}
+            />
+          </div>
         ) : showWaitingForFirstUpdate ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Bot className="h-4 w-4 animate-bounce text-primary" />
@@ -1066,6 +1094,7 @@ export function JournalDetailPage() {
         stickyHeaderAt="lg"
         footerStickToBottomWhenShort={true}
         footer={footer}
+        onBodyClick={focusEditorFromTrailingSpace}
       >
         {body}
       </StickyHeaderScrollableCard>
