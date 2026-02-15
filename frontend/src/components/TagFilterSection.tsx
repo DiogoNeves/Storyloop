@@ -54,7 +54,7 @@ export function TagFilterSection({
     journalTagCounts.length > 0 ||
     videoTagCounts.length > 0 ||
     conversationTagCounts.length > 0;
-  const isVideoTagActive =
+  const selectedVideoTagCount =
     activeTag !== null && videoTagCounts.some(({ tag }) => tag === activeTag);
   const toggleIcon = isOpen ? (
     <ChevronUp className="h-4 w-4" aria-hidden="true" />
@@ -127,7 +127,8 @@ export function TagFilterSection({
                 activeTag={activeTag}
                 onTagSelect={onTagSelect}
                 collapsible
-                isExpanded={isVideoGroupExpanded || isVideoTagActive}
+                isExpanded={isVideoGroupExpanded}
+                selectedCount={selectedVideoTagCount ? 1 : 0}
                 onToggleExpanded={() =>
                   setIsVideoGroupExpanded((current) => !current)
                 }
@@ -189,6 +190,7 @@ interface TagGroupProps {
   onTagSelect: (tag: string | null) => void;
   collapsible?: boolean;
   isExpanded?: boolean;
+  selectedCount?: number;
   onToggleExpanded?: () => void;
 }
 
@@ -199,6 +201,7 @@ function TagGroup({
   onTagSelect,
   collapsible = false,
   isExpanded = true,
+  selectedCount = 0,
   onToggleExpanded,
 }: TagGroupProps) {
   const showTags = !collapsible || isExpanded || tagCounts.length === 0;
@@ -228,6 +231,11 @@ function TagGroup({
           </Button>
         ) : null}
       </div>
+      {collapsible && !isExpanded && selectedCount > 0 ? (
+        <p className="text-xs text-muted-foreground">
+          {selectedCount} tags selected
+        </p>
+      ) : null}
       {showTags ? (
         <div className="flex flex-wrap items-center gap-2">
           {tagCounts.length > 0 ? (
