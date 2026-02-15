@@ -131,6 +131,7 @@ describe("JournalDetailPage", () => {
     useAudioDictationMock.mockReset();
     useAudioDictationMock.mockReturnValue({
       status: "idle",
+      inputLevel: 0,
       isSupported: true,
       errorMessage: null,
       startDictation: vi.fn(),
@@ -454,6 +455,7 @@ describe("JournalDetailPage", () => {
     useAudioDictationMock.mockImplementation(
       ({ onTranscription }: { onTranscription: (text: string) => void }) => ({
         status: "idle",
+        inputLevel: 0,
         isSupported: true,
         errorMessage: null,
         startDictation: vi.fn(),

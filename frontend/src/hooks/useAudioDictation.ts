@@ -12,6 +12,7 @@ interface UseAudioDictationOptions {
 
 interface UseAudioDictationResult {
   status: AudioDictationStatus;
+  inputLevel: number;
   isSupported: boolean;
   errorMessage: string | null;
   startDictation: () => Promise<void>;
@@ -26,6 +27,9 @@ const RECORDER_MIME_TYPES = [
   "audio/mp4",
   "audio/ogg",
 ] as const;
+const INPUT_LEVEL_NOISE_FLOOR = 0.004;
+const INPUT_LEVEL_DYNAMIC_RANGE = 0.06;
+const INPUT_LEVEL_PREVIOUS_WEIGHT = 0.2;
 
 export function useAudioDictation({
   mode,
@@ -34,9 +38,14 @@ export function useAudioDictation({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const mediaSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
   const isMountedRef = useRef(true);
 
   const [status, setStatus] = useState<AudioDictationStatus>("idle");
+  const [inputLevel, setInputLevel] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const isSupported =
@@ -45,7 +54,89 @@ export function useAudioDictation({
     typeof navigator !== "undefined" &&
     typeof navigator.mediaDevices?.getUserMedia === "function";
 
+  const stopInputLevelTracking = useCallback(() => {
+    if (animationFrameRef.current !== null) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+
+    mediaSourceRef.current?.disconnect();
+    mediaSourceRef.current = null;
+    analyserRef.current?.disconnect();
+    analyserRef.current = null;
+
+    const context = audioContextRef.current;
+    audioContextRef.current = null;
+    if (context) {
+      void context.close();
+    }
+
+    setInputLevel(0);
+  }, []);
+
+  const startInputLevelTracking = useCallback(
+    (stream: MediaStream) => {
+      const audioContextConstructor =
+        typeof window !== "undefined"
+          ? (window.AudioContext ??
+            // WebKit fallback for Safari.
+            (window as Window & { webkitAudioContext?: typeof AudioContext })
+              .webkitAudioContext)
+          : undefined;
+
+      if (!audioContextConstructor) {
+        return;
+      }
+
+      const audioContext = new audioContextConstructor();
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.85;
+
+      const mediaSource = audioContext.createMediaStreamSource(stream);
+      mediaSource.connect(analyser);
+
+      const samples = new Uint8Array(analyser.fftSize);
+      audioContextRef.current = audioContext;
+      analyserRef.current = analyser;
+      mediaSourceRef.current = mediaSource;
+
+      const measureLevel = () => {
+        const activeAnalyser = analyserRef.current;
+        if (!activeAnalyser || !isMountedRef.current) {
+          return;
+        }
+
+        activeAnalyser.getByteTimeDomainData(samples);
+        let sumSquares = 0;
+        for (const sample of samples) {
+          const normalized = (sample - 128) / 128;
+          sumSquares += normalized * normalized;
+        }
+        const rms = Math.sqrt(sumSquares / samples.length);
+        const normalizedLevel = Math.min(
+          Math.max(
+            (rms - INPUT_LEVEL_NOISE_FLOOR) / INPUT_LEVEL_DYNAMIC_RANGE,
+            0,
+          ),
+          1,
+        );
+
+        setInputLevel(
+          (previous) =>
+            previous * INPUT_LEVEL_PREVIOUS_WEIGHT +
+            normalizedLevel * (1 - INPUT_LEVEL_PREVIOUS_WEIGHT),
+        );
+        animationFrameRef.current = requestAnimationFrame(measureLevel);
+      };
+
+      measureLevel();
+    },
+    [],
+  );
+
   const releaseStream = useCallback(() => {
+    stopInputLevelTracking();
     const stream = streamRef.current;
     if (!stream) {
       return;
@@ -53,7 +144,7 @@ export function useAudioDictation({
 
     stream.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
-  }, []);
+  }, [stopInputLevelTracking]);
 
   const clearError = useCallback(() => {
     setErrorMessage(null);
@@ -121,6 +212,7 @@ export function useAudioDictation({
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
+      startInputLevelTracking(stream);
 
       const preferredType = getSupportedRecorderType();
       const recorder = preferredType
@@ -156,7 +248,13 @@ export function useAudioDictation({
       setStatus("idle");
       setErrorMessage(getDictationErrorMessage(error));
     }
-  }, [finalizeRecording, isSupported, releaseStream, status]);
+  }, [
+    finalizeRecording,
+    isSupported,
+    releaseStream,
+    startInputLevelTracking,
+    status,
+  ]);
 
   const stopDictation = useCallback(() => {
     const recorder = mediaRecorderRef.current;
@@ -184,12 +282,14 @@ export function useAudioDictation({
       if (recorder?.state === "recording") {
         recorder.stop();
       }
+      stopInputLevelTracking();
       releaseStream();
     };
-  }, [releaseStream]);
+  }, [releaseStream, stopInputLevelTracking]);
 
   return {
     status,
+    inputLevel,
     isSupported,
     errorMessage,
     startDictation,

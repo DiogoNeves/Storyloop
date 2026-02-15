@@ -23,6 +23,7 @@ import { useAudioDictation } from "@/hooks/useAudioDictation";
 import { useSync } from "@/hooks/useSync";
 import { appendTranscribedText } from "@/lib/dictation";
 import { AssetAttachmentList } from "@/components/chat/AssetAttachmentList";
+import { VoiceReactiveOverlay } from "@/components/ui/voice-reactive-overlay";
 
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
@@ -81,6 +82,7 @@ export function LoopieConversationContent({
   const { isOnline } = useSync();
   const {
     status: dictationStatus,
+    inputLevel: dictationInputLevel,
     isSupported: isDictationSupported,
     errorMessage: dictationError,
     toggleDictation,
@@ -356,8 +358,7 @@ export function LoopieConversationContent({
                 }}
                 disabled={isDictationDisabled}
                 className={cn(
-                  "h-9 w-9 rounded-full p-0 shadow-lg transition",
-                  isDictating && "animate-pulse",
+                  "relative h-9 w-9 overflow-hidden rounded-full p-0 shadow-lg transition",
                 )}
                 aria-label={isDictating ? "Stop dictation" : "Dictate message"}
                 title={
@@ -368,6 +369,12 @@ export function LoopieConversationContent({
                       : undefined
                 }
               >
+                <VoiceReactiveOverlay
+                  active={isDictating}
+                  inputLevel={dictationInputLevel}
+                  tone="destructive"
+                  className="rounded-full"
+                />
                 <Mic className="h-4 w-4" />
               </Button>
               {showStopButton ? (
