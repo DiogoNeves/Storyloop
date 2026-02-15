@@ -74,6 +74,17 @@ describe("ActivityFeedItem summary preview", () => {
     expect(preview.querySelector("strong")).not.toBeNull();
   });
 
+  it("renders markdown task list items with checkbox markers", () => {
+    renderActivityFeedItem({
+      summary: "- [ ] Draft intro\n- [x] Publish update",
+      category: "journal",
+    });
+
+    const preview = screen.getByTestId("activity-preview-body");
+    expect(within(preview).getByText("☐ Draft intro")).toBeInTheDocument();
+    expect(within(preview).getByText("☑ Publish update")).toBeInTheDocument();
+  });
+
   it("keeps content summaries as plain text for performance", () => {
     renderActivityFeedItem({
       summary: "Use **bold** but keep raw markers",
