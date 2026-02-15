@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 from google.oauth2.credentials import Credentials
 from httpx import ASGITransport, AsyncClient
+from oauthlib.oauth2.rfc6749.errors import InvalidGrantError  # type: ignore[import-untyped]
 
 from app.config import Settings
 from app.main import create_app
@@ -29,11 +30,14 @@ class FakeCredentials(Credentials):
 
 
 class FakeFlow:
-    def __init__(self, *, state: str) -> None:
+    def __init__(
+        self, *, state: str, token_error: Exception | None = None
+    ) -> None:
         self._state = state
         self._credentials = FakeCredentials()
         self.authorization_called = False
         self.fetched_code: str | None = None
+        self._token_error = token_error
 
     def authorization_url(self, **_: Any) -> tuple[str, str]:
         self.authorization_called = True
@@ -43,6 +47,8 @@ class FakeFlow:
         )
 
     def fetch_token(self, *, code: str) -> None:
+        if self._token_error is not None:
+            raise self._token_error
         self.fetched_code = code
 
     @property
@@ -55,10 +61,13 @@ class FakeOAuthService:
         self.latest_flow: FakeFlow | None = None
         self._credentials = FakeCredentials()
         self.refreshed = False
+        self.token_error: Exception | None = None
 
     def create_flow(self, *, state: str | None = None) -> FakeFlow:
         flow_state = state or "generated-state"
-        self.latest_flow = FakeFlow(state=flow_state)
+        self.latest_flow = FakeFlow(
+            state=flow_state, token_error=self.token_error
+        )
         return self.latest_flow
 
     def serialize_credentials(self, credentials: FakeCredentials) -> str:
@@ -291,6 +300,30 @@ async def test_complete_post_exchanges_code_and_updates_user() -> None:
     assert record.credentials_json is not None
     assert record.channel_id == "UC123"
     assert record.oauth_state is None
+
+
+@pytest.mark.asyncio
+async def test_complete_post_maps_oauth2_error_to_client_failure() -> None:
+    app, _, fake_youtube = create_test_app()
+    app.state.youtube_oauth_service.token_error = InvalidGrantError(
+        description="Code was already redeemed."
+    )
+    async with app.router.lifespan_context(app):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://testserver"
+        ) as client:
+            user_service: UserService = app.state.user_service
+            now = datetime.now(tz=UTC) - timedelta(minutes=5)
+            user_service.save_oauth_state("state-token", now)
+            response = await client.post(
+                "/youtube/auth/complete",
+                json={"code": "expired-code", "state": "state-token"},
+            )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["detail"].startswith("Failed to exchange OAuth code:")
+    assert fake_youtube.called is False
 
 
 @pytest.mark.asyncio
