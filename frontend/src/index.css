@@ -119,6 +119,42 @@
     @apply leading-7;
   }
 
+  .journal-editor .milkdown li[data-item-type="task"] {
+    @apply list-none pl-8;
+    position: relative;
+    cursor: text;
+  }
+
+  .journal-editor .milkdown li[data-item-type="task"]::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.35rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    border: 1.5px solid hsl(var(--border));
+    border-radius: 0.35rem;
+    background-color: transparent;
+    box-sizing: border-box;
+    transition:
+      background-color 120ms ease,
+      border-color 120ms ease,
+      color 120ms ease;
+  }
+
+  .journal-editor .milkdown li[data-item-type="task"][data-checked="true"]::before {
+    content: "✓";
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1;
+    border-color: hsl(var(--primary));
+    background-color: hsl(var(--primary) / 0.16);
+    color: hsl(var(--primary));
+  }
+
   .journal-editor .milkdown blockquote {
     @apply mb-4 mt-2 border-l-2 border-primary/40 bg-primary/5 px-4 py-3 italic last:mb-0;
   }
