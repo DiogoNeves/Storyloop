@@ -26,7 +26,6 @@ export interface ActivityFeedItemViewModel {
   isSmartJournal: boolean;
   summaryText: string;
   isSmartSummaryPlaceholder: boolean;
-  truncatedSummary: string;
   showThumbnail: boolean;
   detailPath: string | null;
   categoryLabel: string;
@@ -71,10 +70,6 @@ export function buildActivityFeedItemViewModel({
   const summaryText = isSmartSummaryPlaceholder
     ? "Loopie is preparing the first update…"
     : summary;
-  const truncatedSummary =
-    summaryText.length > 280
-      ? `${summaryText.slice(0, 277).trimEnd()}…`
-      : summaryText;
 
   const showThumbnail = item.category === "content" && Boolean(item.thumbnailUrl);
   const detailPath = getActivityDetailPath(item);
@@ -103,7 +98,6 @@ export function buildActivityFeedItemViewModel({
     isSmartJournal,
     summaryText,
     isSmartSummaryPlaceholder,
-    truncatedSummary,
     showThumbnail,
     detailPath,
     categoryLabel,

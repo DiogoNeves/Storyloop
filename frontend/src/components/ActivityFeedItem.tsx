@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { PendingSyncBadge } from "@/components/ui/pending-sync-badge";
 import { DeleteConversationDialog } from "@/components/DeleteConversationDialog";
+import { ActivityMarkdownPreview } from "@/components/ActivityMarkdownPreview";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -167,12 +168,11 @@ export function ActivityFeedItem({
               )}
             </h3>
             {view.summaryText.length > 0 ? (
-              <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                {view.isSmartSummaryPlaceholder ? (
-                  <span className="h-2 w-2 animate-ping rounded-full bg-primary" />
-                ) : null}
-                {view.truncatedSummary}
-              </p>
+              <ActivityMarkdownPreview
+                text={view.summaryText}
+                category={item.category}
+                showPlaceholderPulse={view.isSmartSummaryPlaceholder}
+              />
             ) : null}
             {view.tagLabels.length > 0 ? (
               <div className="flex flex-wrap gap-2">
