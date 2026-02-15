@@ -21,6 +21,7 @@ const useYouTubeFeedMock =
   >();
 const apiGetMock = vi.hoisted(() => vi.fn());
 const apiPutMock = vi.hoisted(() => vi.fn());
+const useAudioDictationMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/components/LoopiePanel", () => ({
   LoopiePanel: () => <div data-testid="agent-panel" />,
@@ -50,6 +51,10 @@ vi.mock("@/api/client", () => ({
 vi.mock("@/hooks/useYouTubeFeed", () => ({
   useYouTubeFeed: (videoType?: "short" | "video" | "live" | null) =>
     useYouTubeFeedMock(videoType),
+}));
+
+vi.mock("@/hooks/useAudioDictation", () => ({
+  useAudioDictation: useAudioDictationMock,
 }));
 
 const sampleEntry: Entry = {
@@ -123,6 +128,16 @@ describe("JournalDetailPage", () => {
       },
     );
     useYouTubeFeedMock.mockReset();
+    useAudioDictationMock.mockReset();
+    useAudioDictationMock.mockReturnValue({
+      status: "idle",
+      isSupported: true,
+      errorMessage: null,
+      startDictation: vi.fn(),
+      stopDictation: vi.fn(),
+      toggleDictation: vi.fn(),
+      clearError: vi.fn(),
+    });
     localStorage.clear();
   });
 
@@ -380,5 +395,104 @@ describe("JournalDetailPage", () => {
         archived: false,
       });
     });
+  });
+
+  it("shows a dictate button when the note body is empty", async () => {
+    const emptyEntry: Entry = {
+      ...sampleEntry,
+      summary: "",
+    };
+
+    apiGetMock.mockImplementation((url: string) => {
+      if (url.startsWith("/entries/")) {
+        return Promise.resolve({ data: emptyEntry });
+      }
+      if (url.startsWith("/entries")) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.startsWith("/conversations")) {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.resolve({ data: emptyEntry });
+    });
+
+    useYouTubeFeedMock.mockReturnValue({
+      youtubeFeed: null,
+      youtubeError: null,
+      isLoading: false,
+      isLinked: false,
+      linkStatus: null,
+      channelId: null,
+    });
+
+    renderPage(<JournalDetailPage />);
+
+    expect(
+      await screen.findByRole("button", { name: /Dictate your note/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("inserts dictated note content and autosaves the entry", async () => {
+    const emptyEntry: Entry = {
+      ...sampleEntry,
+      summary: "",
+    };
+
+    apiGetMock.mockImplementation((url: string) => {
+      if (url.startsWith("/entries/")) {
+        return Promise.resolve({ data: emptyEntry });
+      }
+      if (url.startsWith("/entries")) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.startsWith("/conversations")) {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.resolve({ data: emptyEntry });
+    });
+
+    useAudioDictationMock.mockImplementation(
+      ({ onTranscription }: { onTranscription: (text: string) => void }) => ({
+        status: "idle",
+        isSupported: true,
+        errorMessage: null,
+        startDictation: vi.fn(),
+        stopDictation: vi.fn(),
+        clearError: vi.fn(),
+        toggleDictation: vi.fn(() => {
+          onTranscription("Dictated note body");
+          return Promise.resolve();
+        }),
+      }),
+    );
+
+    useYouTubeFeedMock.mockReturnValue({
+      youtubeFeed: null,
+      youtubeError: null,
+      isLoading: false,
+      isLinked: false,
+      linkStatus: null,
+      channelId: null,
+    });
+
+    renderPage(<JournalDetailPage />);
+    const user = userEvent.setup();
+
+    const dictateButton = await screen.findByRole("button", {
+      name: /Dictate your note/i,
+    });
+    await user.click(dictateButton);
+
+    await waitFor(
+      () => {
+        expect(apiPutMock).toHaveBeenCalledWith(
+          `/entries/${sampleEntry.id}`,
+          expect.objectContaining({
+            summary: "Dictated note body",
+          }),
+        );
+      },
+      { timeout: 4000 },
+    );
   });
 });

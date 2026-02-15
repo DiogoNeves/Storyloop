@@ -18,10 +18,12 @@ from app.db_helpers.conversations import init_conversation_tables
 from app.routers import api_router
 from app.services import (
     EntryService,
+    SpeechToTextService,
     UserService,
     YoutubeOAuthService,
     YoutubeService,
     build_agent,
+    build_speech_to_text_service,
     build_smart_entry_agent,
 )
 from app.services.assets import AssetService
@@ -100,6 +102,9 @@ def build_lifespan(
     # Initialize AI agent (optional, returns None if OPENAI_API_KEY not set)
     assistant_agent = build_agent(active_settings)
     smart_entry_agent = build_smart_entry_agent(active_settings)
+    speech_to_text_service: SpeechToTextService | None = (
+        build_speech_to_text_service(active_settings)
+    )
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -126,6 +131,7 @@ def build_lifespan(
         )
         app.state.assistant_agent = assistant_agent
         app.state.smart_entry_agent = smart_entry_agent
+        app.state.speech_to_text_service = speech_to_text_service
         smart_entry_manager = SmartEntryUpdateManager(
             app, entry_service, user_service
         )

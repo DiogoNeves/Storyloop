@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useDebouncedAutosave } from "@/hooks/useDebouncedAutosave";
 import type { Entry } from "@/api/entries";
@@ -19,6 +19,7 @@ export function useJournalEntryDraft({
   const [titleDraft, setTitleDraft] = useState("");
   const [summaryDraft, setSummaryDraft] = useState("");
   const [editorInitialSummary, setEditorInitialSummary] = useState("");
+  const [editorResetNonce, setEditorResetNonce] = useState(0);
 
   const autosave = useDebouncedAutosave({
     entryId: currentEntry?.id ?? null,
@@ -41,6 +42,7 @@ export function useJournalEntryDraft({
       setTitleDraft("");
       setSummaryDraft("");
       setEditorInitialSummary("");
+      setEditorResetNonce(0);
       lastEntryIdRef.current = null;
       resetAutosave("", "");
       return;
@@ -57,6 +59,7 @@ export function useJournalEntryDraft({
       setTitleDraft(nextTitle);
       setSummaryDraft(nextSummary);
       setEditorInitialSummary(nextSummary);
+      setEditorResetNonce(0);
       resetAutosave(nextTitle, nextSummary);
     }
   }, [
@@ -92,12 +95,20 @@ export function useJournalEntryDraft({
     titleDraft,
   ]);
 
+  const applyDictatedSummary = useCallback((nextSummary: string) => {
+    setSummaryDraft(nextSummary);
+    setEditorInitialSummary(nextSummary);
+    setEditorResetNonce((current) => current + 1);
+  }, []);
+
   return {
     titleDraft,
     summaryDraft,
     setTitleDraft,
     setSummaryDraft,
     editorInitialSummary,
+    editorResetNonce,
+    applyDictatedSummary,
     autosaveStatus,
     autosaveError,
   };

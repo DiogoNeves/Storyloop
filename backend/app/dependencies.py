@@ -11,6 +11,7 @@ from fastapi import Depends, HTTPException, Request
 
 from app.services import (
     EntryService,
+    SpeechToTextService,
     UserService,
     YoutubeOAuthService,
     YoutubeService,
@@ -43,6 +44,18 @@ def get_smart_entry_manager(request: Request) -> SmartEntryUpdateManager:
 def get_asset_service(request: Request) -> AssetService:
     """Extract AssetService from application state."""
     return request.app.state.asset_service
+
+
+def get_speech_to_text_service(request: Request) -> SpeechToTextService:
+    """Extract SpeechToTextService from application state."""
+
+    service = getattr(request.app.state, "speech_to_text_service", None)
+    if service is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Speech-to-text service is not configured",
+        )
+    return service
 
 
 def get_youtube_service(request: Request) -> YoutubeService:
