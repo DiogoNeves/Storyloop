@@ -76,7 +76,7 @@ describe("TagFilterSection", () => {
     await user.click(screen.getByRole("button", { name: /tags/i }));
 
     expect(screen.getByRole("button", { name: /show tags/i })).toBeInTheDocument();
-    expect(screen.getByText("1 tags selected")).toBeInTheDocument();
+    expect(screen.getByText("1 tag selected")).toBeInTheDocument();
     expect(screen.getAllByText("#videoonly")).toHaveLength(1);
 
     await user.click(screen.getByRole("button", { name: /show tags/i }));
@@ -86,7 +86,7 @@ describe("TagFilterSection", () => {
 
     await user.click(screen.getByRole("button", { name: /hide tags/i }));
 
-    expect(screen.getByText("1 tags selected")).toBeInTheDocument();
+    expect(screen.getByText("1 tag selected")).toBeInTheDocument();
     expect(screen.getAllByText("#videoonly")).toHaveLength(1);
   });
 });

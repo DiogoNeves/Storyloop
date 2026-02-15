@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, Hash } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, pluralize } from "@/lib/utils";
 import {
   type TagCount,
   collectTagCounts,
@@ -55,7 +55,9 @@ export function TagFilterSection({
     videoTagCounts.length > 0 ||
     conversationTagCounts.length > 0;
   const selectedVideoTagCount =
-    activeTag !== null && videoTagCounts.some(({ tag }) => tag === activeTag);
+    activeTag !== null && videoTagCounts.some(({ tag }) => tag === activeTag)
+      ? 1
+      : 0;
   const toggleIcon = isOpen ? (
     <ChevronUp className="h-4 w-4" aria-hidden="true" />
   ) : (
@@ -128,7 +130,7 @@ export function TagFilterSection({
                 onTagSelect={onTagSelect}
                 collapsible
                 isExpanded={isVideoGroupExpanded}
-                selectedCount={selectedVideoTagCount ? 1 : 0}
+                selectedCount={selectedVideoTagCount}
                 onToggleExpanded={() =>
                   setIsVideoGroupExpanded((current) => !current)
                 }
@@ -233,7 +235,7 @@ function TagGroup({
       </div>
       {collapsible && !isExpanded && selectedCount > 0 ? (
         <p className="text-xs text-muted-foreground">
-          {selectedCount} tags selected
+          {selectedCount} {pluralize("tag", selectedCount)} selected
         </p>
       ) : null}
       {showTags ? (
