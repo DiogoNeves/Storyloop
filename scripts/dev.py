@@ -41,12 +41,33 @@ async def run_process(command: Sequence[str], cwd: Path) -> int:
     process = await asyncio.create_subprocess_exec(
         *command,
         cwd=str(cwd),
+        start_new_session=True,
     )
     try:
         return await process.wait()
-    finally:
+    except asyncio.CancelledError:
         if process.returncode is None:
-            process.terminate()
+            _terminate_process(process)
+            try:
+                await asyncio.wait_for(process.wait(), timeout=5)
+            except asyncio.TimeoutError:
+                _kill_process(process)
+                await process.wait()
+        raise
+
+
+def _terminate_process(process: asyncio.subprocess.Process) -> None:
+    if hasattr(os, "killpg"):
+        os.killpg(process.pid, signal.SIGTERM)
+        return
+    process.terminate()
+
+
+def _kill_process(process: asyncio.subprocess.Process) -> None:
+    if hasattr(os, "killpg"):
+        os.killpg(process.pid, signal.SIGKILL)
+        return
+    process.kill()
 
 
 def build_frontend(prod: bool = False) -> int:
@@ -54,7 +75,7 @@ def build_frontend(prod: bool = False) -> int:
     print("Building frontend...")
     cmd = ["pnpm", "build"]
     if prod:
-        cmd.extend(["--", "--mode", "prod"])
+        cmd.extend(["--mode", "prod"])
     result = subprocess.run(cmd, cwd=str(FRONTEND_DIR))
     return result.returncode
 
@@ -105,21 +126,49 @@ def _validate_ports(
     return ok
 
 
-async def main(prod: bool = False) -> int:
+def _load_runtime_env(prod: bool) -> None:
     if prod:
-        # Set env file path for backend
-        os.environ["DOTENV_PATH"] = ".env.prod"
-        # Load shared env so frontend build sees VITE_* values
-        load_env_file(ROOT_DIR / ".env.prod")
+        env_prod_path = ROOT_DIR / ".env.prod"
+        if env_prod_path.exists():
+            os.environ["DOTENV_PATH"] = ".env.prod"
+            load_env_file(env_prod_path)
+            return
+        print(
+            ".env.prod not found. Falling back to .env for make prod.",
+            file=sys.stderr,
+        )
+
+    os.environ.pop("DOTENV_PATH", None)
+    load_env_file(ROOT_DIR / ".env")
+
+
+def _ensure_youtube_mode() -> None:
+    if os.getenv("YOUTUBE_API_KEY"):
+        return
+
+    demo_mode_raw = os.getenv("YOUTUBE_DEMO_MODE", "")
+    demo_mode = demo_mode_raw.strip().lower()
+    if demo_mode in {"1", "true", "yes", "on"}:
+        return
+
+    os.environ["YOUTUBE_DEMO_MODE"] = "true"
+    print(
+        "YOUTUBE_API_KEY not set. Enabling YOUTUBE_DEMO_MODE=true for local run.",
+        file=sys.stderr,
+    )
+
+
+async def main(prod: bool = False) -> int:
+    _load_runtime_env(prod=prod)
+    _ensure_youtube_mode()
+
+    if prod:
         # Build frontend with prod mode (uses .env.prod)
         build_result = build_frontend(prod=True)
         if build_result != 0:
             print("Frontend build failed!", file=sys.stderr)
             return build_result
         print("Frontend built successfully.\n")
-    else:
-        # Ensure dev runs do not inherit a prod DOTENV_PATH from a prior session
-        os.environ.pop("DOTENV_PATH", None)
 
     backend_host = "127.0.0.1"
     frontend_host = "127.0.0.1"
@@ -156,9 +205,9 @@ async def main(prod: bool = False) -> int:
     if prod:
         frontend_cmd = [
             "pnpm",
-            "run",
+            "exec",
+            "vite",
             "preview",
-            "--",
             "--host",
             frontend_host,
             "--port",
@@ -167,9 +216,8 @@ async def main(prod: bool = False) -> int:
     else:
         frontend_cmd = [
             "pnpm",
-            "run",
-            "dev",
-            "--",
+            "exec",
+            "vite",
             "--host",
             frontend_host,
             "--port",
@@ -177,10 +225,13 @@ async def main(prod: bool = False) -> int:
         ]
 
     stop_event = asyncio.Event()
+    signal_received = False
     loop = asyncio.get_running_loop()
     signals = (signal.SIGINT, signal.SIGTERM)
 
     def signal_handler() -> None:
+        nonlocal signal_received
+        signal_received = True
         stop_event.set()
 
     # Register signal handlers
@@ -196,7 +247,7 @@ async def main(prod: bool = False) -> int:
     stop_task = asyncio.create_task(stop_event.wait())
 
     try:
-        done, pending = await asyncio.wait(
+        done, _pending = await asyncio.wait(
             {backend_task, frontend_task, stop_task},
             return_when=asyncio.FIRST_COMPLETED,
         )
@@ -233,24 +284,21 @@ async def main(prod: bool = False) -> int:
         stop_task.cancel()
 
     results = await asyncio.gather(
-        backend_task, frontend_task, stop_task, return_exceptions=True
+        backend_task, frontend_task, return_exceptions=True
     )
+
+    if signal_received:
+        return 0
 
     exit_codes = [0]
     for result in results:
-        if isinstance(result, Exception):
-            if not isinstance(result, asyncio.CancelledError):
-                print(f"Process exited with error: {result}", file=sys.stderr)
-                exit_codes.append(1)
+        if isinstance(result, asyncio.CancelledError):
+            continue
+        if isinstance(result, BaseException):
+            print(f"Process exited with error: {result}", file=sys.stderr)
+            exit_codes.append(1)
         elif isinstance(result, int):
             exit_codes.append(result)
-        else:
-            # Handle other BaseException types (shouldn't happen, but type checker needs this)
-            print(
-                f"Process exited with unexpected error: {result}",
-                file=sys.stderr,
-            )
-            exit_codes.append(1)
 
     return max(exit_codes)
 
