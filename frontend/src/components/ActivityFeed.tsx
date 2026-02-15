@@ -1,23 +1,17 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import type { ActivityItem } from "@/lib/types/entries";
-import type {
-  YoutubeFeedResponse,
-  YoutubeLinkStatusResponse,
-} from "@/api/youtube";
 import { useEntryEditing } from "@/hooks/useEntryEditing";
 import { useSync } from "@/hooks/useSync";
 import { cn } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LinkYouTubeAccountCard } from "@/components/LinkYouTubeAccountCard";
 import { ActivityFeedItem } from "./ActivityFeedItem";
 import { ActivityDraftCard } from "./ActivityDraftCard";
 import { SmartEntryDraftCard } from "./SmartEntryDraftCard";
-import { InfoModal } from "./InfoModal";
-import { ActivityFeedInfo } from "./ActivityFeedInfo";
 import { isActivityEditable } from "@/lib/activity-helpers";
 import { filterActivityItems } from "@/lib/activity-search";
 import { channelQueries } from "@/api/channel";
@@ -37,9 +31,7 @@ export interface ActivityDraft {
 
 interface ActivityFeedProps {
   items: ActivityItem[];
-  youtubeFeed?: YoutubeFeedResponse | null;
   isLinked?: boolean;
-  linkStatus?: YoutubeLinkStatusResponse | null;
   youtubeError?: string | null;
   draft?: ActivityDraft | null;
   onStartDraft?: (mode: EntryDraftMode) => void;
@@ -60,9 +52,7 @@ interface ActivityFeedProps {
 
 export function ActivityFeed({
   items,
-  youtubeFeed,
   isLinked = false,
-  linkStatus,
   youtubeError,
   draft,
   onStartDraft,
@@ -84,7 +74,6 @@ export function ActivityFeed({
   const { pendingEntries } = useSync();
   const channelProfileQuery = useQuery(channelQueries.profile());
   const { togglePin, isPinning } = editingState;
-  const [thumbnailError, setThumbnailError] = useState(false);
 
   const shouldShowChannelBanner =
     channelProfileQuery.isSuccess && !channelProfileQuery.data?.profile;
@@ -94,19 +83,6 @@ export function ActivityFeed({
     () => new Set(pendingEntries.map((e) => e.id)),
     [pendingEntries],
   );
-
-  const channelThumbnailUrl = youtubeFeed?.channelThumbnailUrl?.trim() ?? null;
-  const isValidUrl =
-    channelThumbnailUrl &&
-    (channelThumbnailUrl.startsWith("http://") ||
-      channelThumbnailUrl.startsWith("https://"));
-  const shouldShowThumbnail =
-    isValidUrl && channelThumbnailUrl.length > 0 && !thumbnailError;
-
-  // Reset thumbnail error when the URL changes
-  useEffect(() => {
-    setThumbnailError(false);
-  }, [channelThumbnailUrl]);
 
   const filteredItems = useMemo(
     () => filterActivityItems(items, searchQuery, { tag: tagFilter }),
@@ -120,69 +96,25 @@ export function ActivityFeed({
         className,
       )}
     >
-      <CardHeader className="flex flex-row justify-between gap-4 p-4 sm:flex-row sm:items-start sm:p-6">
-        <div className="flex items-start gap-3">
-          {shouldShowThumbnail ? (
-            <img
-              src={channelThumbnailUrl}
-              alt={`${youtubeFeed?.channelTitle ?? "YouTube"} channel thumbnail`}
-              className="h-12 w-12 shrink-0 rounded-full"
-              loading="lazy"
-              onError={() => setThumbnailError(true)}
-            />
-          ) : null}
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <CardTitle className="text-lg">Recent Activity</CardTitle>
-              <InfoModal
-                title="About the Activity Feed"
-                description="Learn how to use the activity feed for journaling"
-                triggerLabel="Learn more about the activity feed"
-              >
-                <ActivityFeedInfo />
-              </InfoModal>
-            </div>
-            {youtubeFeed?.channelUrl ? (
-              <a
-                href={youtubeFeed.channelUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs font-medium text-primary underline-offset-2 hover:underline"
-              >
-                View {youtubeFeed?.channelTitle ?? "YouTube"} on YouTube
-              </a>
-            ) : linkStatus?.channel?.url ? (
-              <a
-                href={linkStatus.channel.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs font-medium text-primary underline-offset-2 hover:underline"
-              >
-                View {linkStatus.channel.title ?? "YouTube"} on YouTube
-              </a>
-            ) : null}
-          </div>
-        </div>
-        <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onStartDraft?.("smart")}
-              disabled={Boolean(draft)}
-              className="self-start sm:self-auto"
-            >
-              + smart entry
-            </Button>
-            <Button
-              type="button"
-              onClick={() => onStartDraft?.("standard")}
-              disabled={Boolean(draft)}
-              className="self-start sm:self-auto"
-            >
-              + entry
-            </Button>
-          </div>
+      <CardHeader className="flex w-full flex-row items-center justify-end gap-2 space-y-0 p-4 sm:p-6">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onStartDraft?.("smart")}
+            disabled={Boolean(draft)}
+            className="self-start sm:self-auto"
+          >
+            + smart entry
+          </Button>
+          <Button
+            type="button"
+            onClick={() => onStartDraft?.("standard")}
+            disabled={Boolean(draft)}
+            className="self-start sm:self-auto"
+          >
+            + entry
+          </Button>
         </div>
       </CardHeader>
       <CardContent className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-6 pt-0 sm:px-6 sm:pr-2">
