@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal, Protocol, cast
+from typing import Literal, Protocol, TypedDict, cast
 
 from openai import OpenAI
 from openai import OpenAIError
@@ -11,6 +11,7 @@ from openai import OpenAIError
 from app.config import Settings
 
 SpeechDictationMode = Literal["loopie", "journal_note"]
+AudioPayload = bytes | bytearray
 _TRANSCRIPTION_MODEL = "gpt-4o-mini-transcribe"
 
 _LOOPIE_TRANSCRIPTION_PROMPT = """Transcribe the audio directly.
@@ -52,8 +53,20 @@ class SpeechTranscriptionResult:
     fallback_used: bool = False
 
 
+class SpeechToTextError(Exception):
+    """Base exception raised for speech-to-text failures."""
+
+
+class SpeechToTextProviderError(SpeechToTextError):
+    """Raised when the upstream provider request fails."""
+
+
+class SpeechToTextResponseError(SpeechToTextError):
+    """Raised when the provider response cannot be parsed."""
+
+
 class _TranscriptionsApi(Protocol):
-    def create(self, **kwargs: object) -> Any: ...
+    def create(self, **kwargs: object) -> object: ...
 
 
 class _AudioApi(Protocol):
@@ -62,6 +75,10 @@ class _AudioApi(Protocol):
 
 class _SpeechClient(Protocol):
     audio: _AudioApi
+
+
+class _TranscriptionResponseDict(TypedDict, total=False):
+    text: str
 
 
 class SpeechToTextService:
@@ -73,7 +90,7 @@ class SpeechToTextService:
     def transcribe_dictation(
         self,
         *,
-        audio_bytes: bytes,
+        audio_bytes: AudioPayload,
         filename: str,
         content_type: str | None,
         mode: SpeechDictationMode,
@@ -94,7 +111,7 @@ class SpeechToTextService:
     def _transcribe_audio(
         self,
         *,
-        audio_bytes: bytes,
+        audio_bytes: AudioPayload,
         filename: str,
         content_type: str | None,
         mode: SpeechDictationMode,
@@ -112,21 +129,22 @@ class SpeechToTextService:
                 response_format="json",
             )
         except OpenAIError as exc:
-            raise RuntimeError("Could not transcribe audio.") from exc
+            raise SpeechToTextProviderError("Could not transcribe audio.") from exc
 
         transcript = _extract_response_text(response)
         if not transcript:
-            raise RuntimeError("Could not transcribe audio.")
+            raise SpeechToTextResponseError("Could not transcribe audio.")
         return transcript
 
 
-def _extract_response_text(response: Any) -> str:
+def _extract_response_text(response: object) -> str:
     text = getattr(response, "text", None)
     if isinstance(text, str):
         return text.strip()
 
     if isinstance(response, dict):
-        dict_text = response.get("text")
+        typed_response = cast(_TranscriptionResponseDict, response)
+        dict_text = typed_response.get("text")
         if isinstance(dict_text, str):
             return dict_text.strip()
 
