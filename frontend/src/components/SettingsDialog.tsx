@@ -7,7 +7,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { NotebookPen, UserRound } from "lucide-react";
+import { CircleHelp, NotebookPen, UserRound } from "lucide-react";
 
 import {
   DEFAULT_SMART_UPDATE_SCHEDULE_HOURS,
@@ -36,13 +36,14 @@ import {
 } from "@/components/ui/select";
 import { StatusMessage } from "@/components/ui/status-message";
 import { cn } from "@/lib/utils";
+import { ActivityFeedInfo } from "@/components/ActivityFeedInfo";
 
 interface SettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-type SettingsTab = "account" | "journal";
+type SettingsTab = "account" | "journal" | "help";
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const queryClient = useQueryClient();
@@ -133,6 +134,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     () => [
       { key: "account", label: "Account", icon: UserRound },
       { key: "journal", label: "Journal", icon: NotebookPen },
+      { key: "help", label: "Help", icon: CircleHelp },
     ] satisfies { key: SettingsTab; label: string; icon: typeof UserRound }[],
     [],
   );
@@ -148,7 +150,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             <DialogHeader className="px-6 py-4">
               <DialogTitle className="text-lg font-semibold">Settings</DialogTitle>
               <DialogDescription className="text-sm text-muted-foreground">
-                Manage your account and journal preferences.
+                Manage your account, journal preferences, and help guides.
               </DialogDescription>
             </DialogHeader>
             <div className="flex flex-col gap-1 px-2 py-3">
@@ -325,6 +327,20 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     </div>
                   </div>
                   <StatusMessage type="error" message={scheduleError} />
+                </div>
+              </div>
+            ) : null}
+
+            {activeTab === "help" ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <h3 className="text-base font-semibold">Help</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Guidance for understanding and using your activity feed.
+                  </p>
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <ActivityFeedInfo />
                 </div>
               </div>
             ) : null}

@@ -426,7 +426,7 @@ function JournalPage() {
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 sm:gap-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1 sm:gap-2">
           <ContentTypeTabs
             value={contentTypeFilter}
             onChange={setContentTypeFilter}
@@ -437,7 +437,7 @@ function JournalPage() {
             onTagSelect={setActiveTag}
           />
         </div>
-        <div className="w-full p-4 sm:max-w-[260px] md:p-1">
+        <div className="w-full px-4 pb-1 pt-2 sm:max-w-[260px] sm:p-0 md:p-1">
           <Input
             className="text-base sm:text-sm"
             value={searchQuery}
@@ -451,9 +451,7 @@ function JournalPage() {
       <ActivityFeed
         className="flex-1"
         items={displayItems}
-        youtubeFeed={youtubeState.youtubeFeed}
         isLinked={youtubeState.isLinked}
-        linkStatus={youtubeState.linkStatus}
         youtubeError={youtubeState.youtubeError}
         draft={draft}
         onStartDraft={handleStartDraft}
