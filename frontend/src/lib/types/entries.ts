@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 /**
  * Entry types and transformation utilities.
  *
@@ -26,6 +28,36 @@ export interface Entry {
   pinned: boolean;
   archived?: boolean;
   tags?: string[];
+}
+
+export const entrySchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  summary: z.string(),
+  date: z.string(),
+  updatedAt: z.string(),
+  archivedAt: z.string().nullable().optional(),
+  lastSmartUpdateAt: z.string().nullable().optional(),
+  promptBody: z.string().nullable().optional(),
+  promptFormat: z.string().nullable().optional(),
+  category: z.enum(["content", "journal"]),
+  linkUrl: z.string().nullable().optional(),
+  thumbnailUrl: z.string().nullable().optional(),
+  videoId: z.string().nullable().optional(),
+  videoType: z.enum(["short", "live", "video"]).nullable().optional(),
+  pinned: z.boolean(),
+  archived: z.boolean().optional(),
+  tags: z.array(z.string()).optional(),
+});
+
+const entriesSchema = entrySchema.array();
+
+export function parseEntry(value: unknown): Entry {
+  return entrySchema.parse(value);
+}
+
+export function parseEntries(value: unknown): Entry[] {
+  return entriesSchema.parse(value);
 }
 
 /**

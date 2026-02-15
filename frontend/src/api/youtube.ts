@@ -1,4 +1,5 @@
 import { createQueryKeys } from "@lukemorales/query-key-factory";
+import { z } from "zod";
 
 import { apiClient } from "@/api/client";
 
@@ -68,58 +69,118 @@ export interface YoutubeUnlinkResponse {
   success: boolean;
 }
 
+const youtubeVideoStatisticsSchema = z.object({
+  viewCount: z.number().nullable(),
+  likeCount: z.number().nullable(),
+  commentCount: z.number().nullable(),
+});
+
+const youtubeVideoResponseSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string(),
+  publishedAt: z.string(),
+  url: z.string(),
+  thumbnailUrl: z.string().nullable(),
+  videoType: z.enum(["short", "live", "video"]),
+  privacyStatus: z.enum(["public", "unlisted", "private"]),
+  tags: z.array(z.string()).optional(),
+  statistics: youtubeVideoStatisticsSchema.optional(),
+});
+
+const youtubeVideoDetailResponseSchema = youtubeVideoResponseSchema.extend({
+  transcript: z.string().nullable(),
+});
+
+const youtubeFeedResponseSchema = z.object({
+  channelId: z.string(),
+  channelTitle: z.string(),
+  channelDescription: z.string().nullable(),
+  channelUrl: z.string(),
+  channelThumbnailUrl: z.string().nullable(),
+  videos: z.array(youtubeVideoResponseSchema),
+});
+
+const youtubeAuthStartResponseSchema = z.object({
+  authorizationUrl: z.string(),
+  state: z.string(),
+});
+
+const youtubeChannelLinkSchema = z.object({
+  id: z.string(),
+  title: z.string().nullable(),
+  url: z.string().nullable(),
+  thumbnailUrl: z.string().nullable(),
+  updatedAt: z.string().nullable(),
+});
+
+const youtubeLinkStatusResponseSchema = z.object({
+  linked: z.boolean(),
+  refreshNeeded: z.boolean(),
+  channel: youtubeChannelLinkSchema.nullable(),
+  statusMessage: z.string().nullable(),
+});
+
+const youtubeCompleteLinkResponseSchema = z.object({
+  success: z.boolean(),
+});
+
+const youtubeUnlinkResponseSchema = z.object({
+  success: z.boolean(),
+});
+
 export async function fetchChannelVideos(
   channel: string,
   videoType?: "short" | "video" | "live" | null,
-) {
+): Promise<YoutubeFeedResponse> {
   const params: { channel: string; videoType?: string } = { channel };
   if (videoType) {
     params.videoType = videoType;
   }
-  const response = await apiClient.get<YoutubeFeedResponse>("/youtube/videos", {
+  const response = await apiClient.get<unknown>("/youtube/videos", {
     params,
   });
-  return response.data;
+  return youtubeFeedResponseSchema.parse(response.data);
 }
 
 export async function fetchVideoDetail(
   videoId: string,
 ): Promise<YoutubeVideoDetailResponse> {
-  const response = await apiClient.get<YoutubeVideoDetailResponse>(
+  const response = await apiClient.get<unknown>(
     `/youtube/videos/${videoId}`,
   );
-  return response.data;
+  return youtubeVideoDetailResponseSchema.parse(response.data);
 }
 
 export async function startLink(): Promise<YoutubeAuthStartResponse> {
-  const response = await apiClient.post<YoutubeAuthStartResponse>(
+  const response = await apiClient.post<unknown>(
     "/youtube/auth/start",
   );
-  return response.data;
+  return youtubeAuthStartResponseSchema.parse(response.data);
 }
 
 export async function linkStatus(): Promise<YoutubeLinkStatusResponse> {
-  const response = await apiClient.get<YoutubeLinkStatusResponse>(
+  const response = await apiClient.get<unknown>(
     "/youtube/auth/status",
   );
-  return response.data;
+  return youtubeLinkStatusResponseSchema.parse(response.data);
 }
 
 export async function completeLink(
   request: YoutubeCompleteLinkRequest,
 ): Promise<YoutubeCompleteLinkResponse> {
-  const response = await apiClient.post<YoutubeCompleteLinkResponse>(
+  const response = await apiClient.post<unknown>(
     "/youtube/auth/complete",
     request,
   );
-  return response.data;
+  return youtubeCompleteLinkResponseSchema.parse(response.data);
 }
 
 export async function unlinkAccount(): Promise<YoutubeUnlinkResponse> {
-  const response = await apiClient.post<YoutubeUnlinkResponse>(
+  const response = await apiClient.post<unknown>(
     "/youtube/auth/unlink",
   );
-  return response.data;
+  return youtubeUnlinkResponseSchema.parse(response.data);
 }
 
 export const youtubeQueries = createQueryKeys("youtube", {

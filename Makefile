@@ -1,15 +1,25 @@
 .PHONY: dev backend prod build test test-backend test-frontend lint lint-backend lint-frontend seed
 
+ensure-env:
+	@if [ ! -f .env ]; then \
+		cp .env.example .env; \
+		echo "Created .env from .env.example"; \
+	fi
+	@if [ ! -f .env.prod ]; then \
+		cp .env.example .env.prod; \
+		echo "Created .env.prod from .env.example"; \
+	fi
+
 backend:
 	cd backend && uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8001
 
-dev:
+dev: ensure-env
 	python scripts/dev.py
 
 build:
 	cd frontend && pnpm build
 
-prod:
+prod: ensure-env
 	python scripts/dev.py --prod
 
 test:
