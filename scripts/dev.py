@@ -38,12 +38,6 @@ def _ensure_env_file(env_path: Path, source: Path | None = None) -> None:
     print(f"Created {env_path.name} from {template.name}")
 
 
-def _is_truthy(value: str | None) -> bool:
-    if value is None:
-        return False
-    return value.strip().lower() in {"1", "true", "yes", "on"}
-
-
 def load_env_file(path: Path) -> None:
     if not path.exists():
         return
@@ -146,8 +140,10 @@ async def main(prod: bool = False) -> int:
         os.environ.pop("DOTENV_PATH", None)
         load_env_file(ENV_PATH)
 
-    if not os.getenv("YOUTUBE_API_KEY") and not _is_truthy(
-        os.getenv("YOUTUBE_DEMO_MODE")
+    youtube_demo_mode = os.getenv("YOUTUBE_DEMO_MODE")
+    if (
+        not os.getenv("YOUTUBE_API_KEY")
+        and (youtube_demo_mode is None or youtube_demo_mode.strip() == "")
     ):
         os.environ["YOUTUBE_DEMO_MODE"] = "true"
         print(
