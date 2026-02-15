@@ -96,7 +96,7 @@ export function ActivityFeed({
         className,
       )}
     >
-      <CardHeader className="flex w-full flex-row items-center justify-end gap-2 space-y-0 p-4 sm:p-6">
+      <CardHeader className="flex w-full flex-row items-center justify-end gap-2 space-y-0 px-4 pb-3 pt-1 sm:p-6">
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
