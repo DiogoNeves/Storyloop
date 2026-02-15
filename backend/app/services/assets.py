@@ -189,7 +189,12 @@ class AssetService(DatabaseService):
         if content_type.startswith("image/"):
             try:
                 processed = _process_image(data)
-            except (UnidentifiedImageError, OSError, ValueError) as exc:
+            except (
+                Image.DecompressionBombError,
+                UnidentifiedImageError,
+                OSError,
+                ValueError,
+            ) as exc:
                 raise ValueError("Unable to process image upload.") from exc
             data = processed.data
             content_type = processed.mime_type
