@@ -24,9 +24,9 @@ export function NavBar({ onOpenSettings }: NavBarProps) {
   const channel = linkStatusQuery.data?.channel;
   const channelThumbnailUrl = channel?.thumbnailUrl?.trim() ?? null;
   const hasValidThumbnail =
-    Boolean(channelThumbnailUrl) &&
-    (channelThumbnailUrl?.startsWith("http://") ||
-      channelThumbnailUrl?.startsWith("https://"));
+    channelThumbnailUrl !== null &&
+    (channelThumbnailUrl.startsWith("http://") ||
+      channelThumbnailUrl.startsWith("https://"));
   const shouldShowProfileImage =
     Boolean(linkStatusQuery.data?.linked) && hasValidThumbnail && !thumbnailError;
 
