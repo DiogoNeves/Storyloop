@@ -47,6 +47,7 @@ import {
 } from "@/components/JournalEntryEditor";
 import { NewEntryHeader } from "@/components/NewEntryHeader";
 import { CopyMarkdownButton } from "@/components/CopyMarkdownButton";
+import { VoiceReactiveOverlay } from "@/components/ui/voice-reactive-overlay";
 
 export function JournalDetailPage() {
   const { journalId } = useParams<{ journalId: string }>();
@@ -107,6 +108,7 @@ export function JournalDetailPage() {
   });
   const {
     status: noteDictationStatus,
+    inputLevel: noteDictationInputLevel,
     isSupported: isNoteDictationSupported,
     errorMessage: noteDictationError,
     toggleDictation: toggleNoteDictation,
@@ -970,10 +972,15 @@ export function JournalDetailPage() {
                     : undefined
               }
               className={cn(
-                "h-14 min-w-[16rem] gap-2 px-8 text-base font-semibold shadow-lg",
-                isNoteDictating && "animate-pulse",
+                "relative h-14 min-w-[16rem] gap-2 overflow-hidden px-8 text-base font-semibold shadow-lg",
               )}
             >
+              <VoiceReactiveOverlay
+                active={isNoteDictating}
+                inputLevel={noteDictationInputLevel}
+                tone="primary"
+                className="rounded-md"
+              />
               <Mic className="h-5 w-5" />
               {isNoteDictating
                 ? "Stop dictation"

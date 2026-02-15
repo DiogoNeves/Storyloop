@@ -13,13 +13,24 @@ from app.config import Settings
 SpeechDictationMode = Literal["loopie", "journal_note"]
 _TRANSCRIPTION_MODEL = "gpt-4o-mini-transcribe"
 _MARKDOWN_CLEANUP_MODEL = "gpt-4o-mini"
+_NOTE_DECISION_MODEL = "gpt-4o-mini"
+
+_NOTE_DECISION_INSTRUCTIONS = """Decide whether a transcript should be reformatted into a structured markdown journal note.
+
+Return exactly one token:
+- FORMAT_NOTE: only when the transcript is clearly a coherent note with enough context to confidently structure it.
+- TRANSCRIBE_ONLY: when uncertain, ambiguous, too fragmentary, or likely better as plain transcript.
+
+If you are not highly confident, return TRANSCRIBE_ONLY.
+"""
 
 _MARKDOWN_CLEANUP_INSTRUCTIONS = """You rewrite dictated speech into a polished markdown note body.
 
 Rules:
 - Preserve meaning exactly. Do not invent facts.
 - Output valid markdown only.
-- Do not include a title or top-level heading.
+- Do not include a top-level (#) heading.
+- Use short section titles (##) when the content clearly has multiple themes.
 - Do not use code fences.
 - Use short paragraphs.
 - Use bullet points only when the transcript clearly implies a list.
@@ -61,9 +72,11 @@ class SpeechToTextService:
         client: _SpeechClient,
         *,
         markdown_cleanup_model: str = _MARKDOWN_CLEANUP_MODEL,
+        note_decision_model: str = _NOTE_DECISION_MODEL,
     ) -> None:
         self._client = client
         self._markdown_cleanup_model = markdown_cleanup_model
+        self._note_decision_model = note_decision_model
 
     def transcribe_dictation(
         self,
@@ -87,11 +100,33 @@ class SpeechToTextService:
         if mode == "loopie":
             return SpeechTranscriptionResult(text=transcript, fallback_used=False)
 
+        if not self._should_format_as_markdown_note(transcript):
+            return SpeechTranscriptionResult(text=transcript, fallback_used=False)
+
         formatted_text, fallback_used = self._format_as_markdown_note(transcript)
         return SpeechTranscriptionResult(
             text=formatted_text,
             fallback_used=fallback_used,
         )
+
+    def _should_format_as_markdown_note(self, transcript: str) -> bool:
+        if len(transcript.split()) < 12:
+            return False
+
+        try:
+            response = self._client.responses.create(
+                model=self._note_decision_model,
+                temperature=0,
+                input=[
+                    {"role": "system", "content": _NOTE_DECISION_INSTRUCTIONS},
+                    {"role": "user", "content": transcript},
+                ],
+            )
+        except OpenAIError:
+            return False
+
+        decision = _normalize_note_decision(getattr(response, "output_text", None))
+        return decision == "format_note"
 
     def _transcribe_audio(
         self,
@@ -160,6 +195,15 @@ def _normalize_markdown_body(value: str | None) -> str:
             normalized = "\n".join(lines[1:-1]).strip()
 
     return normalized
+
+
+def _normalize_note_decision(value: str | None) -> str:
+    normalized = (value or "").strip().lower()
+    if "format_note" in normalized:
+        return "format_note"
+    if "transcribe_only" in normalized:
+        return "transcribe_only"
+    return "transcribe_only"
 
 
 def build_speech_to_text_service(
