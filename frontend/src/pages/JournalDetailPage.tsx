@@ -1118,7 +1118,6 @@ export function JournalDetailPage() {
   );
 }
 
-export default JournalDetailPage;
 
 function formatDuration(seconds: number): string {
   const normalizedSeconds = Math.max(0, seconds);

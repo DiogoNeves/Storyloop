@@ -38,7 +38,7 @@ export function filterActivityItems(
   });
 }
 
-export function buildActivitySearchText(item: ActivityItem): string {
+function buildActivitySearchText(item: ActivityItem): string {
   // Search over both title and summary/description content.
   const tagText = (item.tags ?? []).map((tag) => `#${tag}`).join(" ");
   return normalizeSearchText(`${item.title} ${item.summary} ${tagText}`);

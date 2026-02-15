@@ -104,7 +104,7 @@ export async function updateEntry({
   return parseEntry(data);
 }
 
-export async function deleteEntry(id: string): Promise<void> {
+async function deleteEntry(id: string): Promise<void> {
   await apiClient.delete(`/entries/${id}`);
 }
 

@@ -268,7 +268,6 @@ export function VideoDetailPage() {
   );
 }
 
-export default VideoDetailPage;
 
 type DescriptionLine =
   | {

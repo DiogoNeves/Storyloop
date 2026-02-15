@@ -427,7 +427,7 @@ export function LoopieConversationContent({
   );
 }
 
-export function LoopiePanelView({
+function LoopiePanelView({
   state,
   adapter,
   focus,

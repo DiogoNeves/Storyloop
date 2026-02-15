@@ -8,7 +8,7 @@ export type ResolvedBucketField = BucketFieldDefinition & {
   key: keyof AudienceBucket;
 };
 
-export const bucketFieldId = (bucketId: string, field: string) =>
+const bucketFieldId = (bucketId: string, field: string) =>
   `bucket-${bucketId}-${field}`;
 
 export const buildBucketField = (

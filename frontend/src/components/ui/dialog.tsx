@@ -9,8 +9,6 @@ type DialogPortalProps = DialogPrimitive.DialogPortalProps & {
 
 const Dialog = DialogPrimitive.Root;
 
-const DialogTrigger = DialogPrimitive.Trigger;
-
 const DialogPortal = ({ className, children, ...props }: DialogPortalProps) => (
   <DialogPrimitive.Portal {...props}>
     <div className={cn("fixed inset-0 z-50 flex items-center justify-center", className)}>
@@ -111,13 +109,9 @@ DialogDescription.displayName = DialogPrimitive.Description.displayName;
 
 export {
   Dialog,
-  DialogPortal,
-  DialogOverlay,
-  DialogTrigger,
   DialogContent,
   DialogHeader,
   DialogFooter,
   DialogTitle,
   DialogDescription,
 };
-
