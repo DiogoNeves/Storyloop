@@ -198,7 +198,7 @@ function toggleTaskListItemFromDOM(
     const nodePos = $taskListItem.before(depth);
     const tr = state.tr.setNodeMarkup(nodePos, undefined, {
       ...node.attrs,
-      checked: !Boolean(node.attrs.checked),
+      checked: !node.attrs.checked,
     });
     view.dispatch(tr);
     view.focus();
