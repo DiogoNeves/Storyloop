@@ -23,7 +23,7 @@ import { useAudioDictation } from "@/hooks/useAudioDictation";
 import { useSync } from "@/hooks/useSync";
 import { appendTranscribedText } from "@/lib/dictation";
 import { AssetAttachmentList } from "@/components/chat/AssetAttachmentList";
-import { VoiceReactiveOverlay } from "@/components/ui/voice-reactive-overlay";
+import { VoiceWave } from "@/components/ui/voice-wave";
 
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
@@ -83,8 +83,10 @@ export function LoopieConversationContent({
   const {
     status: dictationStatus,
     inputLevel: dictationInputLevel,
+    elapsedSeconds: dictationElapsedSeconds,
     isSupported: isDictationSupported,
     errorMessage: dictationError,
+    stopDictation,
     toggleDictation,
     clearError: clearDictationError,
   } = useAudioDictation({
@@ -306,6 +308,33 @@ export function LoopieConversationContent({
               ) : null}
             </div>
           </div>
+          {isDictating ? (
+            <div className="rounded-xl border border-border/50 bg-background/40 px-3 py-2">
+              <div className="flex items-center gap-3">
+                <VoiceWave
+                  active={true}
+                  inputLevel={dictationInputLevel}
+                  className="h-6 flex-1 text-foreground"
+                />
+                <span className="min-w-[2.75rem] text-xs tabular-nums text-muted-foreground">
+                  {formatDuration(dictationElapsedSeconds)}
+                </span>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="secondary"
+                  onClick={stopDictation}
+                  className="h-8 w-8 rounded-full p-0"
+                  aria-label="Stop dictation"
+                >
+                  <Square className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          ) : null}
+          {isTranscribingDictation ? (
+            <p className="text-xs text-muted-foreground">Transcribing dictation…</p>
+          ) : null}
           <div className="relative flex select-none items-end rounded-2xl border border-border/50 bg-muted/30 shadow-sm focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20">
             <Textarea
               id="agent-composer"
@@ -345,38 +374,30 @@ export function LoopieConversationContent({
                   ? "Loopie is thinking"
                   : "Shift + Enter"}
               </span>
-              <Button
-                type="button"
-                variant={isDictating ? "destructive" : "secondary"}
-                size="icon"
-                onClick={() => {
-                  if (isDictationDisabled && !isDictating) {
-                    return;
-                  }
-                  clearDictationError();
-                  void toggleDictation();
-                }}
-                disabled={isDictationDisabled}
-                className={cn(
-                  "relative h-9 w-9 overflow-hidden rounded-full p-0 shadow-lg transition",
-                )}
-                aria-label={isDictating ? "Stop dictation" : "Dictate message"}
-                title={
-                  !isDictationSupported
-                    ? "Dictation is not supported in this browser"
-                    : isTranscribingDictation
-                      ? "Transcribing recording..."
+              {dictationStatus === "idle" ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon"
+                  onClick={() => {
+                    if (isDictationDisabled) {
+                      return;
+                    }
+                    clearDictationError();
+                    void toggleDictation();
+                  }}
+                  disabled={isDictationDisabled}
+                  className="relative h-9 w-9 overflow-hidden rounded-full p-0 shadow-lg transition"
+                  aria-label="Dictate message"
+                  title={
+                    !isDictationSupported
+                      ? "Dictation is not supported in this browser"
                       : undefined
-                }
-              >
-                <VoiceReactiveOverlay
-                  active={isDictating}
-                  inputLevel={dictationInputLevel}
-                  tone="destructive"
-                  className="rounded-full"
-                />
-                <Mic className="h-4 w-4" />
-              </Button>
+                  }
+                >
+                  <Mic className="h-4 w-4" />
+                </Button>
+              ) : null}
               {showStopButton ? (
                 <Button
                   type="button"
@@ -499,4 +520,11 @@ export function LoopiePanel({
       className={className}
     />
   );
+}
+
+function formatDuration(seconds: number): string {
+  const normalizedSeconds = Math.max(0, seconds);
+  const minutes = Math.floor(normalizedSeconds / 60);
+  const remainingSeconds = normalizedSeconds % 60;
+  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
 }

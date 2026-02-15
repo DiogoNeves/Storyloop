@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useDebouncedAutosave } from "@/hooks/useDebouncedAutosave";
 import type { Entry } from "@/api/entries";
+import { isEffectivelyEmptyNoteContent } from "@/lib/journal-detail-logic";
 
 interface UseJournalEntryDraftOptions {
   currentEntry: Entry | null;
@@ -17,7 +18,7 @@ export function useJournalEntryDraft({
   isSmartUpdating,
 }: UseJournalEntryDraftOptions) {
   const [titleDraft, setTitleDraft] = useState("");
-  const [summaryDraft, setSummaryDraft] = useState("");
+  const [summaryDraft, setSummaryDraftState] = useState("");
   const [editorInitialSummary, setEditorInitialSummary] = useState("");
   const [editorResetNonce, setEditorResetNonce] = useState(0);
 
@@ -40,7 +41,7 @@ export function useJournalEntryDraft({
   useEffect(() => {
     if (isNewEntryRoute) {
       setTitleDraft("");
-      setSummaryDraft("");
+      setSummaryDraftState("");
       setEditorInitialSummary("");
       setEditorResetNonce(0);
       lastEntryIdRef.current = null;
@@ -55,9 +56,9 @@ export function useJournalEntryDraft({
     if (lastEntryIdRef.current !== currentEntry.id) {
       lastEntryIdRef.current = currentEntry.id;
       const nextTitle = currentEntry.title ?? "";
-      const nextSummary = currentEntry.summary ?? "";
+      const nextSummary = normalizeSummaryDraft(currentEntry.summary);
       setTitleDraft(nextTitle);
-      setSummaryDraft(nextSummary);
+      setSummaryDraftState(nextSummary);
       setEditorInitialSummary(nextSummary);
       setEditorResetNonce(0);
       resetAutosave(nextTitle, nextSummary);
@@ -78,11 +79,11 @@ export function useJournalEntryDraft({
     if (autosaveStatus !== "idle") {
       return;
     }
-    const nextSummary = currentEntry.summary ?? "";
+    const nextSummary = normalizeSummaryDraft(currentEntry.summary);
     if (summaryDraft === nextSummary) {
       return;
     }
-    setSummaryDraft(nextSummary);
+    setSummaryDraftState(nextSummary);
     setEditorInitialSummary(nextSummary);
     resetAutosave(titleDraft, nextSummary);
   }, [
@@ -96,9 +97,14 @@ export function useJournalEntryDraft({
   ]);
 
   const applyDictatedSummary = useCallback((nextSummary: string) => {
-    setSummaryDraft(nextSummary);
-    setEditorInitialSummary(nextSummary);
+    const normalizedSummary = normalizeSummaryDraft(nextSummary);
+    setSummaryDraftState(normalizedSummary);
+    setEditorInitialSummary(normalizedSummary);
     setEditorResetNonce((current) => current + 1);
+  }, []);
+
+  const setSummaryDraft = useCallback((nextSummary: string) => {
+    setSummaryDraftState(normalizeSummaryDraft(nextSummary));
   }, []);
 
   return {
@@ -112,4 +118,12 @@ export function useJournalEntryDraft({
     autosaveStatus,
     autosaveError,
   };
+}
+
+function normalizeSummaryDraft(value: string | null | undefined): string {
+  if (isEffectivelyEmptyNoteContent(value)) {
+    return "";
+  }
+
+  return value ?? "";
 }

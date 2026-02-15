@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -22,6 +22,9 @@ const useYouTubeFeedMock =
 const apiGetMock = vi.hoisted(() => vi.fn());
 const apiPutMock = vi.hoisted(() => vi.fn());
 const useAudioDictationMock = vi.hoisted(() => vi.fn());
+const journalEditorOnChangeRef = vi.hoisted(() => ({
+  current: null as null | ((markdown: string) => void),
+}));
 
 vi.mock("@/components/LoopiePanel", () => ({
   LoopiePanel: () => <div data-testid="agent-panel" />,
@@ -33,7 +36,13 @@ vi.mock("@/components/JournalEntryEditor", async () => {
   const JournalEntryEditor = React.forwardRef<
     HTMLDivElement,
     Record<string, unknown>
-  >((_props, ref) => <div ref={ref} data-testid="journal-editor" />);
+  >((props, ref) => {
+    journalEditorOnChangeRef.current =
+      typeof props.onChange === "function"
+        ? (props.onChange as (markdown: string) => void)
+        : null;
+    return <div ref={ref} data-testid="journal-editor" />;
+  });
 
   JournalEntryEditor.displayName = "JournalEntryEditor";
 
@@ -100,6 +109,7 @@ function renderPage(ui: ReactElement) {
 
 describe("JournalDetailPage", () => {
   beforeEach(() => {
+    journalEditorOnChangeRef.current = null;
     apiGetMock.mockReset();
     apiPutMock.mockReset();
     apiGetMock.mockImplementation((url: string) => {
@@ -132,6 +142,7 @@ describe("JournalDetailPage", () => {
     useAudioDictationMock.mockReturnValue({
       status: "idle",
       inputLevel: 0,
+      elapsedSeconds: 0,
       isSupported: true,
       errorMessage: null,
       startDictation: vi.fn(),
@@ -433,6 +444,41 @@ describe("JournalDetailPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows a dictate button when the note body only has placeholders", async () => {
+    const emptyPlaceholderEntry: Entry = {
+      ...sampleEntry,
+      summary: "<br />",
+    };
+
+    apiGetMock.mockImplementation((url: string) => {
+      if (url.startsWith("/entries/")) {
+        return Promise.resolve({ data: emptyPlaceholderEntry });
+      }
+      if (url.startsWith("/entries")) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.startsWith("/conversations")) {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.resolve({ data: emptyPlaceholderEntry });
+    });
+
+    useYouTubeFeedMock.mockReturnValue({
+      youtubeFeed: null,
+      youtubeError: null,
+      isLoading: false,
+      isLinked: false,
+      linkStatus: null,
+      channelId: null,
+    });
+
+    renderPage(<JournalDetailPage />);
+
+    expect(
+      await screen.findByRole("button", { name: /Dictate your note/i }),
+    ).toBeInTheDocument();
+  });
+
   it("inserts dictated note content and autosaves the entry", async () => {
     const emptyEntry: Entry = {
       ...sampleEntry,
@@ -456,6 +502,7 @@ describe("JournalDetailPage", () => {
       ({ onTranscription }: { onTranscription: (text: string) => void }) => ({
         status: "idle",
         inputLevel: 0,
+        elapsedSeconds: 0,
         isSupported: true,
         errorMessage: null,
         startDictation: vi.fn(),
@@ -491,6 +538,39 @@ describe("JournalDetailPage", () => {
           `/entries/${sampleEntry.id}`,
           expect.objectContaining({
             summary: "Dictated note body",
+          }),
+        );
+      },
+      { timeout: 4000 },
+    );
+  });
+
+  it("saves an empty summary when delete-all emits placeholder markdown", async () => {
+    useYouTubeFeedMock.mockReturnValue({
+      youtubeFeed: null,
+      youtubeError: null,
+      isLoading: false,
+      isLinked: false,
+      linkStatus: null,
+      channelId: null,
+    });
+
+    renderPage(<JournalDetailPage />);
+
+    expect(
+      await screen.findByDisplayValue(sampleEntry.title),
+    ).toBeInTheDocument();
+
+    act(() => {
+      journalEditorOnChangeRef.current?.("<br />");
+    });
+
+    await waitFor(
+      () => {
+        expect(apiPutMock).toHaveBeenCalledWith(
+          `/entries/${sampleEntry.id}`,
+          expect.objectContaining({
+            summary: "",
           }),
         );
       },

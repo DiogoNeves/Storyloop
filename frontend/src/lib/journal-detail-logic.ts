@@ -10,6 +10,8 @@ interface SaveIndicatorView {
   isSaving: boolean;
 }
 
+const EMPTY_NOTE_TOKEN_PATTERN = /(<br\s*\/?>|&nbsp;|\u200b|\u200c|\u200d)/gi;
+
 export function buildPromptMarkdown(
   promptBody: string | null | undefined,
   promptFormat: string | null | undefined,
@@ -101,4 +103,13 @@ export function deriveSaveIndicator(
     message,
     isSaving: autosaveStatus === "saving",
   };
+}
+
+export function isEffectivelyEmptyNoteContent(value: string | null | undefined): boolean {
+  if (!value) {
+    return true;
+  }
+
+  const normalized = value.replace(EMPTY_NOTE_TOKEN_PATTERN, "").trim();
+  return normalized.length === 0;
 }
