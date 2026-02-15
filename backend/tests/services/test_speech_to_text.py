@@ -8,6 +8,7 @@ from typing import Any, cast
 import pytest
 from openai import OpenAIError
 
+from app.services import speech_to_text
 from app.services.speech_to_text import SpeechToTextService
 
 
@@ -16,53 +17,35 @@ class _FakeTranscriptionResponse:
     text: str
 
 
-@dataclass
-class _FakeCleanupResponse:
-    output_text: str
-
-
 class _FakeTranscriptionsAPI:
-    def __init__(self, text: str) -> None:
-        self._text = text
-
-    def create(self, **_kwargs: object) -> _FakeTranscriptionResponse:
-        return _FakeTranscriptionResponse(text=self._text)
-
-
-class _FakeAudioAPI:
-    def __init__(self, text: str) -> None:
-        self.transcriptions = _FakeTranscriptionsAPI(text)
-
-
-class _FakeResponsesAPI:
     def __init__(self, outputs: list[str | Exception] | None = None) -> None:
-        self._outputs = outputs or []
+        self._outputs = outputs or ["transcript"]
+        self.calls: list[dict[str, object]] = []
 
-    def create(self, **_kwargs: object) -> _FakeCleanupResponse:
+    def create(self, **kwargs: object) -> _FakeTranscriptionResponse:
+        self.calls.append(dict(kwargs))
         if not self._outputs:
-            return _FakeCleanupResponse(output_text="")
+            return _FakeTranscriptionResponse(text="")
 
         next_output = self._outputs.pop(0)
         if isinstance(next_output, Exception):
             raise next_output
-        return _FakeCleanupResponse(output_text=next_output)
+        return _FakeTranscriptionResponse(text=next_output)
 
 
-class _FailingResponsesAPI:
-    def create(self, **_kwargs: object) -> _FakeCleanupResponse:
-        raise OpenAIError("cleanup failed")
+class _FakeAudioAPI:
+    def __init__(self, transcriptions_api: _FakeTranscriptionsAPI) -> None:
+        self.transcriptions = transcriptions_api
 
 
 class _FakeClient:
-    def __init__(self, transcript: str, cleanup_api: object) -> None:
-        self.audio = _FakeAudioAPI(transcript)
-        self.responses = cleanup_api
+    def __init__(self, transcriptions_api: _FakeTranscriptionsAPI) -> None:
+        self.audio = _FakeAudioAPI(transcriptions_api)
 
 
 def test_transcribe_loopie_returns_raw_transcript() -> None:
-    service = SpeechToTextService(
-        cast(Any, _FakeClient("  draft for loopie  ", _FakeResponsesAPI([])))
-    )
+    transcriptions_api = _FakeTranscriptionsAPI(["  draft for loopie  "])
+    service = SpeechToTextService(cast(Any, _FakeClient(transcriptions_api)))
 
     result = service.transcribe_dictation(
         audio_bytes=b"audio-bytes",
@@ -73,24 +56,16 @@ def test_transcribe_loopie_returns_raw_transcript() -> None:
 
     assert result.text == "draft for loopie"
     assert result.fallback_used is False
+    assert transcriptions_api.calls[0]["prompt"] == (
+        speech_to_text._LOOPIE_TRANSCRIPTION_PROMPT
+    )
 
 
-def test_transcribe_journal_note_returns_cleaned_markdown() -> None:
-    transcript = (
-        "Today I reviewed retention drop offs, listed experiments, and noted "
-        "next actions for tomorrow's filming session."
+def test_transcribe_journal_note_uses_transcription_prompt_only() -> None:
+    transcriptions_api = _FakeTranscriptionsAPI(
+        ["## Summary\n\nCaptured with markdown formatting."]
     )
-    service = SpeechToTextService(
-        cast(
-            Any,
-            _FakeClient(
-                transcript,
-                _FakeResponsesAPI(
-                    ["FORMAT_NOTE", "Polished paragraph.\n\n- Action item"]
-                ),
-            ),
-        )
-    )
+    service = SpeechToTextService(cast(Any, _FakeClient(transcriptions_api)))
 
     result = service.transcribe_dictation(
         audio_bytes=b"audio-bytes",
@@ -99,69 +74,65 @@ def test_transcribe_journal_note_returns_cleaned_markdown() -> None:
         mode="journal_note",
     )
 
-    assert result.text == "Polished paragraph.\n\n- Action item"
+    assert result.text == "## Summary\n\nCaptured with markdown formatting."
     assert result.fallback_used is False
-
-
-def test_transcribe_journal_note_uses_raw_transcript_on_cleanup_failure() -> None:
-    transcript = (
-        "Today I reviewed retention drop offs, listed experiments, and noted "
-        "next actions for tomorrow's filming session."
-    )
-    service = SpeechToTextService(
-        cast(
-            Any,
-            _FakeClient(
-                transcript,
-                _FakeResponsesAPI(["FORMAT_NOTE", OpenAIError("cleanup failed")]),
-            ),
-        )
+    assert transcriptions_api.calls[0]["prompt"] == (
+        speech_to_text._JOURNAL_NOTE_TRANSCRIPTION_PROMPT
     )
 
-    result = service.transcribe_dictation(
+
+def test_transcribe_modes_use_different_prompts() -> None:
+    transcriptions_api = _FakeTranscriptionsAPI(["one", "two"])
+    service = SpeechToTextService(cast(Any, _FakeClient(transcriptions_api)))
+
+    service.transcribe_dictation(
+        audio_bytes=b"audio-bytes",
+        filename="recording.webm",
+        content_type="audio/webm",
+        mode="loopie",
+    )
+    service.transcribe_dictation(
         audio_bytes=b"audio-bytes",
         filename="recording.webm",
         content_type="audio/webm",
         mode="journal_note",
     )
 
-    assert result.text == transcript
-    assert result.fallback_used is True
+    assert transcriptions_api.calls[0]["prompt"] != transcriptions_api.calls[1][
+        "prompt"
+    ]
 
 
-def test_transcribe_journal_note_strips_wrapping_code_fence() -> None:
-    transcript = (
-        "Today I reviewed retention drop offs, listed experiments, and noted "
-        "next actions for tomorrow's filming session."
-    )
-    service = SpeechToTextService(
-        cast(
-            Any,
-            _FakeClient(
-                transcript,
-                _FakeResponsesAPI(
-                    ["FORMAT_NOTE", "```markdown\nPolished paragraph\n```"]
-                ),
-            ),
+def test_transcribe_raises_runtime_error_when_openai_fails() -> None:
+    transcriptions_api = _FakeTranscriptionsAPI([OpenAIError("transcription failed")])
+    service = SpeechToTextService(cast(Any, _FakeClient(transcriptions_api)))
+
+    with pytest.raises(RuntimeError, match="Could not transcribe audio"):
+        service.transcribe_dictation(
+            audio_bytes=b"audio-bytes",
+            filename="recording.webm",
+            content_type="audio/webm",
+            mode="loopie",
         )
-    )
 
-    result = service.transcribe_dictation(
-        audio_bytes=b"audio-bytes",
-        filename="recording.webm",
-        content_type="audio/webm",
-        mode="journal_note",
-    )
 
-    assert result.text == "Polished paragraph"
-    assert result.fallback_used is False
+def test_transcribe_raises_runtime_error_when_transcript_is_empty() -> None:
+    transcriptions_api = _FakeTranscriptionsAPI(["   "])
+    service = SpeechToTextService(cast(Any, _FakeClient(transcriptions_api)))
+
+    with pytest.raises(RuntimeError, match="Could not transcribe audio"):
+        service.transcribe_dictation(
+            audio_bytes=b"audio-bytes",
+            filename="recording.webm",
+            content_type="audio/webm",
+            mode="loopie",
+        )
 
 
 @pytest.mark.parametrize("mode", ["invalid", "", "notes"])
 def test_transcribe_raises_for_unsupported_mode(mode: str) -> None:
-    service = SpeechToTextService(
-        cast(Any, _FakeClient("voice memo transcript", _FakeResponsesAPI([])))
-    )
+    transcriptions_api = _FakeTranscriptionsAPI(["voice memo transcript"])
+    service = SpeechToTextService(cast(Any, _FakeClient(transcriptions_api)))
 
     with pytest.raises(ValueError, match="Unsupported dictation mode"):
         service.transcribe_dictation(
@@ -170,25 +141,3 @@ def test_transcribe_raises_for_unsupported_mode(mode: str) -> None:
             content_type="audio/webm",
             mode=mode,  # type: ignore[arg-type]
         )
-
-
-def test_transcribe_journal_note_returns_plain_transcript_when_uncertain() -> None:
-    service = SpeechToTextService(
-        cast(
-            Any,
-            _FakeClient(
-                "fragment maybe note maybe not",
-                _FakeResponsesAPI(["TRANSCRIBE_ONLY"]),
-            ),
-        )
-    )
-
-    result = service.transcribe_dictation(
-        audio_bytes=b"audio-bytes",
-        filename="recording.webm",
-        content_type="audio/webm",
-        mode="journal_note",
-    )
-
-    assert result.text == "fragment maybe note maybe not"
-    assert result.fallback_used is False

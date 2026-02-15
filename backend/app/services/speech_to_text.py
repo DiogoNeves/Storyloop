@@ -1,4 +1,4 @@
-"""Speech-to-text services backed by OpenAI models."""
+"""Speech-to-text services backed by OpenAI transcription models."""
 
 from __future__ import annotations
 
@@ -12,31 +12,36 @@ from app.config import Settings
 
 SpeechDictationMode = Literal["loopie", "journal_note"]
 _TRANSCRIPTION_MODEL = "gpt-4o-mini-transcribe"
-_MARKDOWN_CLEANUP_MODEL = "gpt-4o-mini"
-_NOTE_DECISION_MODEL = "gpt-4o-mini"
 
-_NOTE_DECISION_INSTRUCTIONS = """Decide whether a transcript should be reformatted into a structured markdown journal note.
-
-Return exactly one token:
-- FORMAT_NOTE: only when the transcript is clearly a coherent note with enough context to confidently structure it.
-- TRANSCRIBE_ONLY: when uncertain, ambiguous, too fragmentary, or likely better as plain transcript.
-
-If you are not highly confident, return TRANSCRIBE_ONLY.
-"""
-
-_MARKDOWN_CLEANUP_INSTRUCTIONS = """You rewrite dictated speech into a polished markdown note body.
+_LOOPIE_TRANSCRIPTION_PROMPT = """Transcribe the audio directly.
 
 Rules:
-- Preserve meaning exactly. Do not invent facts.
-- Output valid markdown only.
-- Do not include a top-level (#) heading.
-- Use short section titles (##) when the content clearly has multiple themes.
-- Do not use code fences.
-- Use short paragraphs.
-- Use bullet points only when the transcript clearly implies a list.
-- Remove filler words and obvious disfluencies.
-- Keep tone natural and direct.
+- Keep it as close as possible to what was spoken.
+- Preserve meaning and wording.
+- Add normal punctuation and capitalization for readability.
+- Do not rewrite into a structured note.
 """
+
+_JOURNAL_NOTE_TRANSCRIPTION_PROMPT = """Transcribe dictated journal content.
+
+Rules:
+- Preserve meaning exactly. Do not invent details.
+- Decide whether this is a full note dictation:
+  - Treat as a full note when there are multiple complete thoughts or roughly 25+ words.
+  - Treat as uncertain when it is very short, fragmentary, or ambiguous.
+- If it is a full note, format as markdown note body:
+  - Use short section headings (##) based on the content themes.
+  - Use bullets for implied lists, action items, or grouped points.
+  - Keep concise paragraphs.
+  - Do not add a top-level (#) title.
+  - Do not use code fences.
+- If uncertain, return a direct transcription instead of formatting.
+"""
+
+_PROMPT_BY_MODE: dict[SpeechDictationMode, str] = {
+    "loopie": _LOOPIE_TRANSCRIPTION_PROMPT,
+    "journal_note": _JOURNAL_NOTE_TRANSCRIPTION_PROMPT,
+}
 
 
 @dataclass(frozen=True)
@@ -55,28 +60,15 @@ class _AudioApi(Protocol):
     transcriptions: _TranscriptionsApi
 
 
-class _ResponsesApi(Protocol):
-    def create(self, **kwargs: object) -> Any: ...
-
-
 class _SpeechClient(Protocol):
     audio: _AudioApi
-    responses: _ResponsesApi
 
 
 class SpeechToTextService:
-    """Run audio transcription and optional markdown cleanup."""
+    """Run audio transcription for Loopie and journal dictation."""
 
-    def __init__(
-        self,
-        client: _SpeechClient,
-        *,
-        markdown_cleanup_model: str = _MARKDOWN_CLEANUP_MODEL,
-        note_decision_model: str = _NOTE_DECISION_MODEL,
-    ) -> None:
+    def __init__(self, client: _SpeechClient) -> None:
         self._client = client
-        self._markdown_cleanup_model = markdown_cleanup_model
-        self._note_decision_model = note_decision_model
 
     def transcribe_dictation(
         self,
@@ -88,45 +80,16 @@ class SpeechToTextService:
     ) -> SpeechTranscriptionResult:
         """Transcribe an uploaded recording for a supported dictation mode."""
 
-        if mode not in {"loopie", "journal_note"}:
+        if mode not in _PROMPT_BY_MODE:
             raise ValueError("Unsupported dictation mode.")
 
         transcript = self._transcribe_audio(
             audio_bytes=audio_bytes,
             filename=filename,
             content_type=content_type,
+            mode=mode,
         )
-
-        if mode == "loopie":
-            return SpeechTranscriptionResult(text=transcript, fallback_used=False)
-
-        if not self._should_format_as_markdown_note(transcript):
-            return SpeechTranscriptionResult(text=transcript, fallback_used=False)
-
-        formatted_text, fallback_used = self._format_as_markdown_note(transcript)
-        return SpeechTranscriptionResult(
-            text=formatted_text,
-            fallback_used=fallback_used,
-        )
-
-    def _should_format_as_markdown_note(self, transcript: str) -> bool:
-        if len(transcript.split()) < 12:
-            return False
-
-        try:
-            response = self._client.responses.create(
-                model=self._note_decision_model,
-                temperature=0,
-                input=[
-                    {"role": "system", "content": _NOTE_DECISION_INSTRUCTIONS},
-                    {"role": "user", "content": transcript},
-                ],
-            )
-        except OpenAIError:
-            return False
-
-        decision = _normalize_note_decision(getattr(response, "output_text", None))
-        return decision == "format_note"
+        return SpeechTranscriptionResult(text=transcript, fallback_used=False)
 
     def _transcribe_audio(
         self,
@@ -134,6 +97,7 @@ class SpeechToTextService:
         audio_bytes: bytes,
         filename: str,
         content_type: str | None,
+        mode: SpeechDictationMode,
     ) -> str:
         if not audio_bytes:
             raise ValueError("Audio file is empty.")
@@ -144,66 +108,32 @@ class SpeechToTextService:
             response = self._client.audio.transcriptions.create(
                 file=(filename, audio_bytes, normalized_type),
                 model=_TRANSCRIPTION_MODEL,
+                prompt=_PROMPT_BY_MODE[mode],
                 response_format="json",
             )
         except OpenAIError as exc:
             raise RuntimeError("Could not transcribe audio.") from exc
 
-        transcript = str(getattr(response, "text", "")).strip()
+        transcript = _extract_response_text(response)
         if not transcript:
             raise RuntimeError("Could not transcribe audio.")
         return transcript
 
-    def _format_as_markdown_note(self, transcript: str) -> tuple[str, bool]:
-        try:
-            response = self._client.responses.create(
-                model=self._markdown_cleanup_model,
-                temperature=0,
-                input=[
-                    {
-                        "role": "system",
-                        "content": _MARKDOWN_CLEANUP_INSTRUCTIONS,
-                    },
-                    {
-                        "role": "user",
-                        "content": transcript,
-                    },
-                ],
-            )
-        except OpenAIError:
-            return transcript, True
 
-        cleaned_text = _normalize_markdown_body(
-            getattr(response, "output_text", None)
-        )
-        if not cleaned_text:
-            return transcript, True
-        return cleaned_text, False
+def _extract_response_text(response: Any) -> str:
+    text = getattr(response, "text", None)
+    if isinstance(text, str):
+        return text.strip()
 
+    if isinstance(response, dict):
+        dict_text = response.get("text")
+        if isinstance(dict_text, str):
+            return dict_text.strip()
 
-def _normalize_markdown_body(value: str | None) -> str:
-    if value is None:
-        return ""
+    if isinstance(response, str):
+        return response.strip()
 
-    normalized = value.strip()
-    if not normalized:
-        return ""
-
-    if normalized.startswith("```") and normalized.endswith("```"):
-        lines = normalized.splitlines()
-        if len(lines) >= 2:
-            normalized = "\n".join(lines[1:-1]).strip()
-
-    return normalized
-
-
-def _normalize_note_decision(value: str | None) -> str:
-    normalized = (value or "").strip().lower()
-    if "format_note" in normalized:
-        return "format_note"
-    if "transcribe_only" in normalized:
-        return "transcribe_only"
-    return "transcribe_only"
+    return ""
 
 
 def build_speech_to_text_service(
