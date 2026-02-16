@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import useLocalStorageState from "use-local-storage-state";
@@ -20,7 +20,6 @@ import { isActivityEditable } from "@/lib/activity-helpers";
 import { filterActivityItems } from "@/lib/activity-search";
 import { channelQueries } from "@/api/channel";
 import {
-  getTodayEntryDisplayTitle,
   isTodayEntryForCurrentUtcDay,
   normalizeTodayChecklistMarkdown,
 } from "@/lib/today-entry";
@@ -102,6 +101,7 @@ export function ActivityFeed({
     [items],
   );
   const [todaySummaryDraft, setTodaySummaryDraft] = useState("- [ ]");
+  const lastSyncedTodayEntryIdRef = useRef<string | null>(null);
   const {
     reset: resetTodayAutosave,
     status: todayAutosaveStatus,
@@ -125,6 +125,7 @@ export function ActivityFeed({
 
   useEffect(() => {
     if (!todayEntry) {
+      lastSyncedTodayEntryIdRef.current = null;
       return;
     }
     let normalizedSummary = "- [ ]";
@@ -133,9 +134,29 @@ export function ActivityFeed({
     } catch {
       normalizedSummary = "- [ ]";
     }
-    setTodaySummaryDraft(normalizedSummary);
-    resetTodayAutosave(todayEntry.title, normalizedSummary);
-  }, [resetTodayAutosave, todayEntry]);
+
+    const isDifferentEntry = lastSyncedTodayEntryIdRef.current !== todayEntry.id;
+    if (isDifferentEntry) {
+      lastSyncedTodayEntryIdRef.current = todayEntry.id;
+      setTodaySummaryDraft(normalizedSummary);
+      resetTodayAutosave(todayEntry.title, normalizedSummary);
+      return;
+    }
+
+    if (todayAutosaveStatus === "dirty" || todayAutosaveStatus === "saving") {
+      return;
+    }
+
+    if (todaySummaryDraft !== normalizedSummary) {
+      setTodaySummaryDraft(normalizedSummary);
+      resetTodayAutosave(todayEntry.title, normalizedSummary);
+    }
+  }, [
+    resetTodayAutosave,
+    todayAutosaveStatus,
+    todayEntry,
+    todaySummaryDraft,
+  ]);
 
   const itemsForFeed = useMemo(() => {
     if (!todayEntriesEnabled || !showTodaySection || !todayEntry) {
@@ -228,18 +249,10 @@ export function ActivityFeed({
         ) : null}
         {todayEntriesEnabled && showTodaySection ? (
           <div className="space-y-2 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
               <Badge variant="secondary" className="bg-primary/10 text-primary">
                 today
               </Badge>
-              {todayEntry ? (
-                <span className="text-xs text-muted-foreground">
-                  {getTodayEntryDisplayTitle(
-                    todayEntry.id,
-                    todayEntry.createdAt ?? todayEntry.date,
-                  )}
-                </span>
-              ) : null}
             </div>
             {todayEntry ? (
               <>
