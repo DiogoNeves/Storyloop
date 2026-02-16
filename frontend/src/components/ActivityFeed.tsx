@@ -47,6 +47,7 @@ interface ActivityFeedProps {
   deletingConversationIds?: Set<string>;
   searchQuery: string;
   tagFilter?: string | null;
+  tagFilters?: string[];
   className?: string;
 }
 
@@ -68,6 +69,7 @@ export function ActivityFeed({
   deletingConversationIds,
   searchQuery,
   tagFilter,
+  tagFilters,
   className,
 }: ActivityFeedProps) {
   const editingState = useEntryEditing();
@@ -85,8 +87,12 @@ export function ActivityFeed({
   );
 
   const filteredItems = useMemo(
-    () => filterActivityItems(items, searchQuery, { tag: tagFilter }),
-    [items, searchQuery, tagFilter],
+    () =>
+      filterActivityItems(items, searchQuery, {
+        tag: tagFilter,
+        tags: tagFilters,
+      }),
+    [items, searchQuery, tagFilter, tagFilters],
   );
 
   return (

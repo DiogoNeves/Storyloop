@@ -3,6 +3,7 @@ import type { ActivityItem } from "@/lib/types/entries";
 
 interface ActivitySearchOptions {
   tag?: string | null;
+  tags?: string[];
 }
 
 export function filterActivityItems(
@@ -11,13 +12,13 @@ export function filterActivityItems(
   options: ActivitySearchOptions = {},
 ): ActivityItem[] {
   const normalizedQuery = normalizeSearchText(query);
-  const normalizedTag = options.tag ? normalizeTag(options.tag) : "";
+  const normalizedTags = normalizeSelectedTags(options);
   if (!normalizedQuery) {
     return items.filter((item) => {
-      if (!normalizedTag) {
+      if (normalizedTags.length === 0) {
         return true;
       }
-      return itemHasTag(item, normalizedTag);
+      return itemHasAnyTag(item, normalizedTags);
     });
   }
 
@@ -25,7 +26,7 @@ export function filterActivityItems(
 
   return items.filter((item) => {
     const searchText = buildActivitySearchText(item);
-    if (normalizedTag && !itemHasTag(item, normalizedTag)) {
+    if (normalizedTags.length > 0 && !itemHasAnyTag(item, normalizedTags)) {
       return false;
     }
     return terms.every((term) => {
@@ -59,4 +60,28 @@ function itemHasTag(item: ActivityItem, tag: string): boolean {
     return true;
   }
   return (item.tags ?? []).some((itemTag) => normalizeTag(itemTag) === tag);
+}
+
+function itemHasAnyTag(item: ActivityItem, tags: string[]): boolean {
+  if (tags.length === 0) {
+    return true;
+  }
+  return tags.some((tag) => itemHasTag(item, tag));
+}
+
+function normalizeSelectedTags(options: ActivitySearchOptions): string[] {
+  const selectedTags = [
+    ...(options.tag ? [options.tag] : []),
+    ...(options.tags ?? []),
+  ];
+  const uniqueTags = new Set<string>();
+
+  selectedTags.forEach((tag) => {
+    const normalized = normalizeTag(tag);
+    if (normalized) {
+      uniqueTags.add(normalized);
+    }
+  });
+
+  return [...uniqueTags];
 }
