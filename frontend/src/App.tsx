@@ -193,6 +193,8 @@ function JournalPage() {
   const { publicOnly } = useSettings();
   const settingsQuery = useQuery(settingsQueries.all());
   const showArchived = settingsQuery.data?.showArchived ?? false;
+  const activityFeedSortDate =
+    settingsQuery.data?.activityFeedSortDate ?? "created";
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTags, setActiveTags] = useState<string[]>([]);
 
@@ -206,6 +208,7 @@ function JournalPage() {
     contentTypeFilter,
     publicOnly,
     showArchived,
+    activityFeedSortDate,
   });
   const handleConversationClick = useCallback(
     async (conversationId: string) => {

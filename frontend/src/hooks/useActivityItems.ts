@@ -12,12 +12,14 @@ interface UseActivityItemsOptions {
   contentTypeFilter: ContentTypeFilter;
   publicOnly: boolean;
   showArchived: boolean;
+  activityFeedSortDate: "created" | "modified";
 }
 
 export function useActivityItems({
   contentTypeFilter,
   publicOnly,
   showArchived,
+  activityFeedSortDate,
 }: UseActivityItemsOptions) {
   const { isDemo } = useAgentConversationContext();
   const entriesListQuery = useMemo(() => entriesQueries.all(), []);
@@ -43,6 +45,7 @@ export function useActivityItems({
         contentTypeFilter,
         publicOnly,
         showArchived,
+        activityFeedSortDate,
         isDemo,
       }),
     [
@@ -52,6 +55,7 @@ export function useActivityItems({
       isDemo,
       publicOnly,
       showArchived,
+      activityFeedSortDate,
       youtubeState.youtubeFeed,
     ],
   );

@@ -511,11 +511,14 @@ export function JournalDetailPage() {
   });
   const settingsQuery = useQuery(settingsQueries.all());
   const showArchived = settingsQuery.data?.showArchived ?? false;
+  const activityFeedSortDate =
+    settingsQuery.data?.activityFeedSortDate ?? "created";
 
   const { activityItems, youtubeState } = useActivityItems({
     contentTypeFilter,
     publicOnly,
     showArchived,
+    activityFeedSortDate,
   });
 
   const adjacentVideos = useMemo(() => {
