@@ -33,7 +33,7 @@ const items: ActivityItem[] = [
 ];
 
 describe("TagFilterSection", () => {
-  it("groups tags by source and de-duplicates shared tags to journals", async () => {
+  it("starts video tags collapsed and expands on demand", async () => {
     const onTagSelect = vi.fn();
     const user = userEvent.setup();
 
@@ -52,8 +52,41 @@ describe("TagFilterSection", () => {
     expect(screen.getByText("In Conversations")).toBeInTheDocument();
 
     expect(screen.getByText("#journalonly")).toBeInTheDocument();
-    expect(screen.getByText("#videoonly")).toBeInTheDocument();
+    expect(screen.queryByText("#videoonly")).not.toBeInTheDocument();
     expect(screen.getByText("#conversationonly")).toBeInTheDocument();
     expect(screen.getAllByText("#shared")).toHaveLength(1);
+
+    await user.click(screen.getByRole("button", { name: /show tags/i }));
+
+    expect(screen.getByText("#videoonly")).toBeInTheDocument();
+  });
+
+  it("allows collapsing video tags when a video tag is active and shows selected count", async () => {
+    const onTagSelect = vi.fn();
+    const user = userEvent.setup();
+
+    render(
+      <TagFilterSection
+        items={items}
+        activeTag="videoonly"
+        onTagSelect={onTagSelect}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /tags/i }));
+
+    expect(screen.getByRole("button", { name: /show tags/i })).toBeInTheDocument();
+    expect(screen.getByText("1 tag selected")).toBeInTheDocument();
+    expect(screen.getAllByText("#videoonly")).toHaveLength(1);
+
+    await user.click(screen.getByRole("button", { name: /show tags/i }));
+
+    expect(screen.getByRole("button", { name: /hide tags/i })).toBeInTheDocument();
+    expect(screen.getAllByText("#videoonly")).toHaveLength(2);
+
+    await user.click(screen.getByRole("button", { name: /hide tags/i }));
+
+    expect(screen.getByText("1 tag selected")).toBeInTheDocument();
+    expect(screen.getAllByText("#videoonly")).toHaveLength(1);
   });
 });
