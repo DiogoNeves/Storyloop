@@ -10,6 +10,7 @@ const items: ActivityItem[] = [
     summary: "Exploring pixelation and speech bubble overlays.",
     date: "2024-05-12T15:30:00.000Z",
     category: "journal",
+    tags: ["village", "ai"],
   },
   {
     id: "conversation-1",
@@ -18,6 +19,7 @@ const items: ActivityItem[] = [
       "Loopie connected sentiment shifts across shorts and drafted experiments.",
     date: "2024-05-11T12:00:00.000Z",
     category: "conversation",
+    tags: ["audience"],
   },
   {
     id: "content-1",
@@ -25,6 +27,7 @@ const items: ActivityItem[] = [
     summary: "Story-focused cold open lifted AVD to 71%.",
     date: "2024-05-10T09:00:00.000Z",
     category: "content",
+    tags: ["premiere", "story"],
   },
 ];
 
@@ -48,5 +51,18 @@ describe("filterActivityItems", () => {
   it("does not match non-substring sequences", () => {
     const result = filterActivityItems(items, "ctav");
     expect(result).toHaveLength(0);
+  });
+
+  it("filters by any selected tag", () => {
+    const result = filterActivityItems(items, "", { tags: ["audience", "story"] });
+    expect(result.map((item) => item.id)).toEqual([
+      "conversation-1",
+      "content-1",
+    ]);
+  });
+
+  it("applies selected tags and query together", () => {
+    const result = filterActivityItems(items, "season", { tags: ["story"] });
+    expect(result.map((item) => item.id)).toEqual(["content-1"]);
   });
 });

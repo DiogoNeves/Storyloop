@@ -6,7 +6,7 @@ import {
   buildJournalEntryInput,
   buildOptimisticJournalEntry,
   isLikelyNetworkError,
-  shouldClearActiveTag,
+  pruneInactiveTags,
 } from "@/lib/journal-page-logic";
 
 describe("journal-page-logic", () => {
@@ -55,7 +55,7 @@ describe("journal-page-logic", () => {
     expect(isLikelyNetworkError(new Error("validation failed"))).toBe(false);
   });
 
-  it("checks whether active tag should be cleared", () => {
+  it("removes selected tags that are no longer present", () => {
     const items: ActivityItem[] = [
       {
         id: "1",
@@ -67,7 +67,10 @@ describe("journal-page-logic", () => {
       },
     ];
 
-    expect(shouldClearActiveTag("strategy", items)).toBe(false);
-    expect(shouldClearActiveTag("retention", items)).toBe(true);
+    expect(pruneInactiveTags(["strategy"], items)).toEqual(["strategy"]);
+    expect(pruneInactiveTags(["strategy", "retention"], items)).toEqual([
+      "strategy",
+    ]);
+    expect(pruneInactiveTags([], items)).toEqual([]);
   });
 });

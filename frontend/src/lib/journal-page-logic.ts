@@ -62,12 +62,21 @@ export function isLikelyNetworkError(error: unknown): boolean {
   );
 }
 
-export function shouldClearActiveTag(
-  activeTag: string | null,
+export function pruneInactiveTags(
+  activeTags: string[],
   displayItems: ActivityItem[],
-): boolean {
-  if (!activeTag) {
-    return false;
+): string[] {
+  if (activeTags.length === 0) {
+    return activeTags;
   }
-  return !displayItems.some((item) => item.tags?.includes(activeTag));
+
+  const visibleTags = new Set<string>();
+  displayItems.forEach((item) => {
+    (item.tags ?? []).forEach((tag) => visibleTags.add(tag));
+  });
+
+  const nextActiveTags = activeTags.filter((tag) => visibleTags.has(tag));
+  return nextActiveTags.length === activeTags.length
+    ? activeTags
+    : nextActiveTags;
 }

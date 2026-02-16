@@ -23,6 +23,14 @@ const items: ActivityItem[] = [
     tags: ["shared", "videoonly"],
   },
   {
+    id: "video-2",
+    title: "Video 2",
+    summary: "Testing #videoextra",
+    date: "2025-01-02T12:00:00.000Z",
+    category: "content",
+    tags: ["videoextra"],
+  },
+  {
     id: "conversation-1",
     title: "Conversation",
     summary: "Testing #conversationonly",
@@ -34,18 +42,20 @@ const items: ActivityItem[] = [
 
 describe("TagFilterSection", () => {
   it("starts video tags collapsed and expands on demand", async () => {
-    const onTagSelect = vi.fn();
+    const onTagToggle = vi.fn();
+    const onClearTags = vi.fn();
     const user = userEvent.setup();
 
     render(
       <TagFilterSection
         items={items}
-        activeTag={null}
-        onTagSelect={onTagSelect}
+        activeTags={[]}
+        onTagToggle={onTagToggle}
+        onClearTags={onClearTags}
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: /tags/i }));
+    await user.click(screen.getByRole("button", { name: /^tags$/i }));
 
     expect(screen.getByText("In Journals")).toBeInTheDocument();
     expect(screen.getByText("In Videos")).toBeInTheDocument();
@@ -61,32 +71,40 @@ describe("TagFilterSection", () => {
     expect(screen.getByText("#videoonly")).toBeInTheDocument();
   });
 
-  it("allows collapsing video tags when a video tag is active and shows selected count", async () => {
-    const onTagSelect = vi.fn();
+  it("allows collapsing with multiple selected video tags and shows selected count", async () => {
+    const onTagToggle = vi.fn();
+    const onClearTags = vi.fn();
     const user = userEvent.setup();
 
     render(
       <TagFilterSection
         items={items}
-        activeTag="videoonly"
-        onTagSelect={onTagSelect}
+        activeTags={["videoonly", "videoextra", "shared"]}
+        onTagToggle={onTagToggle}
+        onClearTags={onClearTags}
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: /tags/i }));
+    await user.click(screen.getByRole("button", { name: /^tags$/i }));
 
     expect(screen.getByRole("button", { name: /show tags/i })).toBeInTheDocument();
-    expect(screen.getByText("1 tag selected")).toBeInTheDocument();
-    expect(screen.getAllByText("#videoonly")).toHaveLength(1);
+    expect(screen.getByText("2 tags selected")).toBeInTheDocument();
+    expect(screen.queryByText("#videoonly")).not.toBeInTheDocument();
+    expect(screen.queryByText("#videoextra")).not.toBeInTheDocument();
+    expect(screen.getAllByText("#shared")).toHaveLength(1);
 
     await user.click(screen.getByRole("button", { name: /show tags/i }));
 
     expect(screen.getByRole("button", { name: /hide tags/i })).toBeInTheDocument();
-    expect(screen.getAllByText("#videoonly")).toHaveLength(2);
+    expect(screen.getByText("#videoonly")).toBeInTheDocument();
+    expect(screen.getByText("#videoextra")).toBeInTheDocument();
+    expect(screen.getAllByText("#shared")).toHaveLength(1);
 
     await user.click(screen.getByRole("button", { name: /hide tags/i }));
 
-    expect(screen.getByText("1 tag selected")).toBeInTheDocument();
-    expect(screen.getAllByText("#videoonly")).toHaveLength(1);
+    expect(screen.getByText("2 tags selected")).toBeInTheDocument();
+    expect(screen.queryByText("#videoonly")).not.toBeInTheDocument();
+    expect(screen.queryByText("#videoextra")).not.toBeInTheDocument();
+    expect(screen.getAllByText("#shared")).toHaveLength(1);
   });
 });
