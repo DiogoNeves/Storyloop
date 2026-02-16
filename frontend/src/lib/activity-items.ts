@@ -1,5 +1,6 @@
 import type { Conversation } from "@/api/conversations";
 import type { Entry } from "@/api/entries";
+import type { ActivityFeedSortDate } from "@/api/settings";
 import type { YoutubeFeedResponse } from "@/api/youtube";
 import type { ContentTypeFilter } from "@/components/ContentTypeTabs";
 import {
@@ -16,6 +17,7 @@ interface BuildActivityItemsOptions {
   contentTypeFilter: ContentTypeFilter;
   publicOnly: boolean;
   showArchived: boolean;
+  activityFeedSortDate: ActivityFeedSortDate;
   isDemo?: boolean;
   now?: number;
 }
@@ -27,6 +29,7 @@ export function buildActivityItems({
   contentTypeFilter,
   publicOnly,
   showArchived,
+  activityFeedSortDate,
   isDemo = false,
   now,
 }: BuildActivityItemsOptions): ActivityItem[] {
@@ -37,6 +40,7 @@ export function buildActivityItems({
   );
   const storedActivityItems = (entries ?? [])
     .map(entryToActivityItem)
+    .map((item) => applySortDateToStoredItem(item, activityFeedSortDate))
     .filter((item) => {
       if (item.category !== "journal") {
         return true;
@@ -177,4 +181,21 @@ function buildVideoActivityItems(
 
     return true;
   });
+}
+
+function applySortDateToStoredItem(
+  item: ActivityItem,
+  activityFeedSortDate: ActivityFeedSortDate,
+): ActivityItem {
+  if (activityFeedSortDate === "modified") {
+    return {
+      ...item,
+      date: item.updatedAt ?? item.createdAt ?? item.date,
+    };
+  }
+
+  return {
+    ...item,
+    date: item.createdAt ?? item.updatedAt ?? item.date,
+  };
 }

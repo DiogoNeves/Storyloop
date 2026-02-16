@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -25,6 +27,10 @@ class SettingsResponse(BaseModel):
         validation_alias="showArchived",
         serialization_alias="showArchived",
     )
+    activity_feed_sort_date: Literal["created", "modified"] = Field(
+        validation_alias="activityFeedSortDate",
+        serialization_alias="activityFeedSortDate",
+    )
 
 
 class SettingsUpdate(BaseModel):
@@ -43,12 +49,18 @@ class SettingsUpdate(BaseModel):
         validation_alias="showArchived",
         serialization_alias="showArchived",
     )
+    activity_feed_sort_date: Literal["created", "modified"] | None = Field(
+        default=None,
+        validation_alias="activityFeedSortDate",
+        serialization_alias="activityFeedSortDate",
+    )
 
     @model_validator(mode="after")
     def _validate_non_empty(self) -> "SettingsUpdate":
         if (
             self.smart_update_schedule_hours is None
             and self.show_archived is None
+            and self.activity_feed_sort_date is None
         ):
             raise ValueError("At least one setting must be provided.")
         return self
@@ -62,6 +74,7 @@ def get_settings(
     return SettingsResponse(
         smart_update_schedule_hours=user_service.get_smart_update_interval_hours(),
         show_archived=user_service.get_show_archived(),
+        activity_feed_sort_date=user_service.get_activity_feed_sort_date(),
     )
 
 
@@ -74,6 +87,7 @@ async def update_settings(
     """Update settings and trigger smart journal refresh if needed."""
     current_hours = user_service.get_smart_update_interval_hours()
     current_show_archived = user_service.get_show_archived()
+    current_sort_date = user_service.get_activity_feed_sort_date()
 
     next_hours = (
         payload.smart_update_schedule_hours
@@ -85,13 +99,20 @@ async def update_settings(
         if payload.show_archived is not None
         else current_show_archived
     )
+    next_sort_date = (
+        payload.activity_feed_sort_date
+        if payload.activity_feed_sort_date is not None
+        else current_sort_date
+    )
 
     user_service.set_smart_update_interval_hours(next_hours)
     user_service.set_show_archived(next_show_archived)
+    user_service.set_activity_feed_sort_date(next_sort_date)
     if current_hours != next_hours:
         await smart_entry_manager.run_due_updates()
 
     return SettingsResponse(
         smart_update_schedule_hours=next_hours,
         show_archived=next_show_archived,
+        activity_feed_sort_date=next_sort_date,
     )

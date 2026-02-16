@@ -7,11 +7,14 @@ from contextlib import closing
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from sqlite3 import Row
+from typing import Literal
 
 from app.services.base import DatabaseService
 
 _DEFAULT_USER_ID = "active"
 DEFAULT_SMART_UPDATE_INTERVAL_HOURS = 24
+DEFAULT_ACTIVITY_FEED_SORT_DATE: Literal["created", "modified"] = "created"
+ALLOWED_ACTIVITY_FEED_SORT_DATES = {"created", "modified"}
 
 
 @dataclass(slots=True)
@@ -37,6 +40,7 @@ class UserRecord:
     oauth_state_created_at: datetime | None
     smart_update_interval_hours: int | None = None
     show_archived: bool | None = None
+    activity_feed_sort_date: Literal["created", "modified"] | None = None
 
 
 def _row_to_record(row: Row) -> UserRecord:
@@ -67,6 +71,11 @@ def _row_to_record(row: Row) -> UserRecord:
         show_archived=bool(row["show_archived"])
         if row["show_archived"] is not None
         else None,
+        activity_feed_sort_date=(
+            row["activity_feed_sort_date"]
+            if row["activity_feed_sort_date"] in ALLOWED_ACTIVITY_FEED_SORT_DATES
+            else None
+        ),
     )
 
 
@@ -94,7 +103,8 @@ class UserService(DatabaseService):
                     oauth_state TEXT,
                     oauth_state_created_at TEXT,
                     smart_update_interval_hours INTEGER,
-                    show_archived INTEGER
+                    show_archived INTEGER,
+                    activity_feed_sort_date TEXT
                 )
                 """
             )
@@ -113,6 +123,10 @@ class UserService(DatabaseService):
             if "show_archived" not in existing_columns:
                 connection.execute(
                     "ALTER TABLE users ADD COLUMN show_archived INTEGER"
+                )
+            if "activity_feed_sort_date" not in existing_columns:
+                connection.execute(
+                    "ALTER TABLE users ADD COLUMN activity_feed_sort_date TEXT"
                 )
             if "channel_profile_json" not in existing_columns:
                 connection.execute(
@@ -200,6 +214,40 @@ class UserService(DatabaseService):
                     show_archived=excluded.show_archived
                 """,
                 (_DEFAULT_USER_ID, int(show_archived)),
+            )
+            connection.commit()
+
+    def get_activity_feed_sort_date(self) -> Literal["created", "modified"]:
+        """Return whether activity feed entries sort by created or modified date."""
+        with closing(self._connection_factory()) as connection:
+            row = connection.execute(
+                "SELECT activity_feed_sort_date FROM users WHERE id = ?",
+                (_DEFAULT_USER_ID,),
+            ).fetchone()
+        if row is None:
+            return DEFAULT_ACTIVITY_FEED_SORT_DATE
+
+        value = row["activity_feed_sort_date"]
+        if value not in ALLOWED_ACTIVITY_FEED_SORT_DATES:
+            return DEFAULT_ACTIVITY_FEED_SORT_DATE
+        return value
+
+    def set_activity_feed_sort_date(
+        self, sort_date: Literal["created", "modified"]
+    ) -> None:
+        """Persist whether activity feed entries sort by created or modified date."""
+        if sort_date not in ALLOWED_ACTIVITY_FEED_SORT_DATES:
+            raise ValueError("Activity feed sort date must be 'created' or 'modified'.")
+
+        with closing(self._connection_factory()) as connection:
+            connection.execute(
+                """
+                INSERT INTO users (id, activity_feed_sort_date)
+                VALUES (?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    activity_feed_sort_date=excluded.activity_feed_sort_date
+                """,
+                (_DEFAULT_USER_ID, sort_date),
             )
             connection.commit()
 
