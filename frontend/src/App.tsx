@@ -42,7 +42,7 @@ import {
   buildJournalEntryInput,
   buildOptimisticJournalEntry,
   isLikelyNetworkError,
-  shouldClearActiveTag,
+  pruneInactiveTags,
   upsertSortedEntry,
 } from "@/lib/journal-page-logic";
 import { formatDateTimeLocalInput } from "@/lib/date-time";
@@ -196,7 +196,7 @@ function JournalPage() {
   const activityFeedSortDate =
     settingsQuery.data?.activityFeedSortDate ?? "created";
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [activeTags, setActiveTags] = useState<string[]>([]);
 
   const {
     activityItems,
@@ -420,11 +420,21 @@ function JournalPage() {
     return "We couldn't load saved entries.";
   }, [entriesQuery.error, entriesQuery.status]);
 
+  const handleTagToggle = useCallback((tag: string) => {
+    setActiveTags((current) =>
+      current.includes(tag)
+        ? current.filter((currentTag) => currentTag !== tag)
+        : [...current, tag],
+    );
+  }, []);
+
+  const handleClearTags = useCallback(() => {
+    setActiveTags([]);
+  }, []);
+
   useEffect(() => {
-    if (shouldClearActiveTag(activeTag, displayItems)) {
-      setActiveTag(null);
-    }
-  }, [activeTag, displayItems]);
+    setActiveTags((current) => pruneInactiveTags(current, displayItems));
+  }, [displayItems]);
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 sm:gap-4">
@@ -436,8 +446,9 @@ function JournalPage() {
           />
           <TagFilterSection
             items={displayItems}
-            activeTag={activeTag}
-            onTagSelect={setActiveTag}
+            activeTags={activeTags}
+            onTagToggle={handleTagToggle}
+            onClearTags={handleClearTags}
           />
         </div>
         <div className="w-full px-4 pb-1 pt-2 sm:max-w-[260px] sm:p-0 md:p-1">
@@ -469,7 +480,7 @@ function JournalPage() {
         onConversationDelete={isDemo ? undefined : handleConversationDelete}
         deletingConversationIds={deletingConversationIds}
         searchQuery={searchQuery}
-        tagFilter={activeTag}
+        tagFilters={activeTags}
       />
     </div>
   );

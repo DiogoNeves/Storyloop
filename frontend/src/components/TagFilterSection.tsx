@@ -12,17 +12,20 @@ import type { ActivityItem } from "@/lib/types/entries";
 
 interface TagFilterSectionProps {
   items: ActivityItem[];
-  activeTag: string | null;
-  onTagSelect: (tag: string | null) => void;
+  activeTags: string[];
+  onTagToggle: (tag: string) => void;
+  onClearTags: () => void;
 }
 
 export function TagFilterSection({
   items,
-  activeTag,
-  onTagSelect,
+  activeTags,
+  onTagToggle,
+  onClearTags,
 }: TagFilterSectionProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isVideoGroupExpanded, setIsVideoGroupExpanded] = useState(false);
+  const selectedTags = useMemo(() => new Set(activeTags), [activeTags]);
   const { journalTagCounts, videoTagCounts, conversationTagCounts } = useMemo(
     () => {
       const journalItems = items.filter((item) => item.category === "journal");
@@ -54,10 +57,10 @@ export function TagFilterSection({
     journalTagCounts.length > 0 ||
     videoTagCounts.length > 0 ||
     conversationTagCounts.length > 0;
-  const selectedVideoTagCount =
-    activeTag !== null && videoTagCounts.some(({ tag }) => tag === activeTag)
-      ? 1
-      : 0;
+  const selectedVideoTagCount = videoTagCounts.filter(({ tag }) =>
+    selectedTags.has(tag),
+  ).length;
+  const hasSelectedTags = activeTags.length > 0;
   const toggleIcon = isOpen ? (
     <ChevronUp className="h-4 w-4" aria-hidden="true" />
   ) : (
@@ -81,7 +84,9 @@ export function TagFilterSection({
         className={cn(
           "gap-1 rounded-full px-2 py-2 font-medium shadow-none sm:gap-2 sm:px-3",
           "hover:bg-transparent hover:text-foreground",
-          isOpen || activeTag ? "text-foreground" : "text-muted-foreground",
+          isOpen || hasSelectedTags
+            ? "text-foreground"
+            : "text-muted-foreground",
         )}
         aria-expanded={isOpen}
         aria-controls="tag-filter-list"
@@ -90,15 +95,17 @@ export function TagFilterSection({
         Tags
         {toggleIcon}
       </Button>
-      {activeTag ? (
+      {hasSelectedTags ? (
         <Button
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() => onTagSelect(null)}
+          onClick={onClearTags}
           className="gap-1 rounded-full px-2 py-2 text-foreground shadow-none hover:bg-primary/10 sm:gap-2 sm:px-3"
         >
-          {formatTagLabel(activeTag)}
+          {activeTags.length === 1
+            ? formatTagLabel(activeTags[0])
+            : `${activeTags.length} ${pluralize("tag", activeTags.length)} selected`}
           <span className="text-xs text-muted-foreground">Clear</span>
         </Button>
       ) : null}
@@ -111,8 +118,8 @@ export function TagFilterSection({
             <TagButton
               label="All tags"
               count={hasTags ? items.length : 0}
-              isSelected={!activeTag}
-              onClick={() => onTagSelect(null)}
+              isSelected={!hasSelectedTags}
+              onClick={onClearTags}
             />
           </div>
           {hasTags ? (
@@ -120,14 +127,14 @@ export function TagFilterSection({
               <TagGroup
                 heading="In Journals"
                 tagCounts={journalTagCounts}
-                activeTag={activeTag}
-                onTagSelect={onTagSelect}
+                selectedTags={selectedTags}
+                onTagToggle={onTagToggle}
               />
               <TagGroup
                 heading="In Videos"
                 tagCounts={videoTagCounts}
-                activeTag={activeTag}
-                onTagSelect={onTagSelect}
+                selectedTags={selectedTags}
+                onTagToggle={onTagToggle}
                 collapsible
                 isExpanded={isVideoGroupExpanded}
                 selectedCount={selectedVideoTagCount}
@@ -138,8 +145,8 @@ export function TagFilterSection({
               <TagGroup
                 heading="In Conversations"
                 tagCounts={conversationTagCounts}
-                activeTag={activeTag}
-                onTagSelect={onTagSelect}
+                selectedTags={selectedTags}
+                onTagToggle={onTagToggle}
               />
             </div>
           ) : (
@@ -188,8 +195,8 @@ function TagButton({
 interface TagGroupProps {
   heading: string;
   tagCounts: TagCount[];
-  activeTag: string | null;
-  onTagSelect: (tag: string | null) => void;
+  selectedTags: ReadonlySet<string>;
+  onTagToggle: (tag: string) => void;
   collapsible?: boolean;
   isExpanded?: boolean;
   selectedCount?: number;
@@ -199,8 +206,8 @@ interface TagGroupProps {
 function TagGroup({
   heading,
   tagCounts,
-  activeTag,
-  onTagSelect,
+  selectedTags,
+  onTagToggle,
   collapsible = false,
   isExpanded = true,
   selectedCount = 0,
@@ -246,8 +253,8 @@ function TagGroup({
                 key={tagCount.tag}
                 label={formatTagLabel(tagCount.tag)}
                 count={tagCount.count}
-                isSelected={activeTag === tagCount.tag}
-                onClick={() => onTagSelect(tagCount.tag)}
+                isSelected={selectedTags.has(tagCount.tag)}
+                onClick={() => onTagToggle(tagCount.tag)}
               />
             ))
           ) : (
