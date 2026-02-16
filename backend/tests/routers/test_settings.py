@@ -27,6 +27,7 @@ async def test_get_settings_returns_default_schedule() -> None:
         == DEFAULT_SMART_UPDATE_INTERVAL_HOURS
     )
     assert payload["showArchived"] is False
+    assert payload["activityFeedSortDate"] == "created"
 
 
 @pytest.mark.asyncio
@@ -49,6 +50,10 @@ async def test_update_settings_persists_schedule() -> None:
                 "/settings/", json={"showArchived": True}
             )
             followup_archive = await client.get("/settings/")
+            sort_toggle = await client.put(
+                "/settings/", json={"activityFeedSortDate": "modified"}
+            )
+            followup_sort = await client.get("/settings/")
 
     assert update_response.status_code == 200
     assert update_response.json()["smartUpdateScheduleHours"] == 6
@@ -60,3 +65,7 @@ async def test_update_settings_persists_schedule() -> None:
     assert archive_toggle.json()["showArchived"] is True
     assert followup_archive.status_code == 200
     assert followup_archive.json()["showArchived"] is True
+    assert sort_toggle.status_code == 200
+    assert sort_toggle.json()["activityFeedSortDate"] == "modified"
+    assert followup_sort.status_code == 200
+    assert followup_sort.json()["activityFeedSortDate"] == "modified"

@@ -132,7 +132,7 @@ export function compareActivityItemsByPinnedDate(
   if (pinnedDelta !== 0) {
     return pinnedDelta;
   }
-  return toTimestamp(b.updatedAt ?? b.date) - toTimestamp(a.updatedAt ?? a.date);
+  return toTimestamp(b.date) - toTimestamp(a.date);
 }
 
 function toTimestamp(value: string): number {
