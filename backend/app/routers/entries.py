@@ -16,6 +16,7 @@ from app.dependencies import get_entry_service, get_smart_entry_manager
 from app.services import EntryRecord, EntryService
 from app.services.smart_entries import SmartEntryUpdateManager
 from app.services.tags import extract_tags_from_values
+from app.services.today_entries import normalize_today_summary
 
 router = APIRouter(prefix="/entries", tags=["entries"])
 
@@ -31,7 +32,7 @@ class EntryCreate(BaseModel):
     prompt_body: str | None = Field(default=None, alias="promptBody")
     prompt_format: str | None = Field(default=None, alias="promptFormat")
     occurred_at: datetime = Field(alias="date")
-    category: Literal["content", "journal"] = "journal"
+    category: Literal["content", "journal", "today"] = "journal"
     link_url: str | None = Field(default=None, alias="linkUrl")
     thumbnail_url: str | None = Field(default=None, alias="thumbnailUrl")
     video_id: str | None = Field(default=None, alias="videoId")
@@ -71,6 +72,12 @@ class EntryCreate(BaseModel):
 
     @model_validator(mode="after")
     def _validate_prompt_fields(self) -> "EntryCreate":
+        if self.category == "today":
+            self.prompt_body = None
+            self.prompt_format = None
+            self.archived = False
+            self.pinned = False
+            return self
         if self.prompt_format and not self.prompt_body:
             raise ValueError("promptBody is required when promptFormat is provided")
         if self.category != "journal":
@@ -94,7 +101,7 @@ class EntryResponse(BaseModel):
     last_smart_update_at: datetime | None = Field(
         default=None, alias="lastSmartUpdateAt"
     )
-    category: Literal["content", "journal"]
+    category: Literal["content", "journal", "today"]
     link_url: str | None = Field(default=None, alias="linkUrl")
     thumbnail_url: str | None = Field(default=None, alias="thumbnailUrl")
     video_id: str | None = Field(default=None, alias="videoId")
@@ -138,7 +145,7 @@ class EntryUpdate(BaseModel):
     prompt_body: str | None = Field(default=None, alias="promptBody")
     prompt_format: str | None = Field(default=None, alias="promptFormat")
     occurred_at: datetime | None = Field(default=None, alias="date")
-    category: Literal["content", "journal"] | None = None
+    category: Literal["content", "journal", "today"] | None = None
     link_url: str | None = Field(default=None, alias="linkUrl")
     thumbnail_url: str | None = Field(default=None, alias="thumbnailUrl")
     video_id: str | None = Field(default=None, alias="videoId")
@@ -197,12 +204,23 @@ def _create_to_record(entry: EntryCreate) -> EntryRecord:
     """
     archived = entry.archived if entry.category == "journal" else False
     archived_at = datetime.now(tz=UTC) if archived else None
+    summary = entry.summary
+    prompt_body = entry.prompt_body
+    prompt_format = entry.prompt_format
+    pinned = entry.pinned
+
+    if entry.category == "today":
+        summary = _normalize_today_summary_or_raise(entry.summary)
+        prompt_body = None
+        prompt_format = None
+        pinned = False
+
     return EntryRecord(
         id=entry.id,
         title=entry.title,
-        summary=entry.summary,
-        prompt_body=entry.prompt_body,
-        prompt_format=entry.prompt_format,
+        summary=summary,
+        prompt_body=prompt_body,
+        prompt_format=prompt_format,
         occurred_at=entry.occurred_at,
         updated_at=datetime.now(tz=UTC),
         category=entry.category,
@@ -210,7 +228,7 @@ def _create_to_record(entry: EntryCreate) -> EntryRecord:
         link_url=entry.link_url,
         thumbnail_url=entry.thumbnail_url,
         video_id=entry.video_id,
-        pinned=entry.pinned,
+        pinned=pinned,
         archived=archived,
         archived_at=archived_at,
     )
@@ -263,13 +281,21 @@ def _update_record(current: EntryRecord, updates: EntryUpdate) -> EntryRecord:
     video_id = _resolve_field(update_dict, "video_id", current.video_id, allow_none=True)
 
     now = datetime.now(tz=UTC)
-    next_archived = archived if category == "journal" else False
-    if category != "journal" or not next_archived:
+    if category == "today":
+        summary = _normalize_today_summary_or_raise(summary)
+        prompt_body = None
+        prompt_format = None
+        pinned = False
+        next_archived = False
         archived_at = None
-    elif current.archived:
-        archived_at = current.archived_at
     else:
-        archived_at = now
+        next_archived = archived if category == "journal" else False
+        if category != "journal" or not next_archived:
+            archived_at = None
+        elif current.archived:
+            archived_at = current.archived_at
+        else:
+            archived_at = now
 
     return EntryRecord(
         id=current.id,
@@ -288,6 +314,13 @@ def _update_record(current: EntryRecord, updates: EntryUpdate) -> EntryRecord:
         archived=next_archived,
         archived_at=archived_at,
     )
+
+
+def _normalize_today_summary_or_raise(summary: str) -> str:
+    try:
+        return normalize_today_summary(summary)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.get("/", response_model=list[EntryResponse])

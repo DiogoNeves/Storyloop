@@ -231,6 +231,77 @@ def test_update_entry_modifies_record(
     assert body["archivedAt"] is not None
 
 
+def test_today_entry_create_and_update_are_normalized(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    app = _create_test_app(memory_connection_factory)
+    client = TestClient(app)
+
+    now = datetime.now(tz=UTC)
+    create_payload = [
+        {
+            "id": "today-2026-02-16",
+            "title": "Today",
+            "summary": "",
+            "date": now.isoformat(),
+            "category": "today",
+            "promptBody": "ignored",
+            "promptFormat": "ignored",
+            "pinned": True,
+            "archived": True,
+        }
+    ]
+
+    create_response = client.post("/entries/", json=create_payload)
+    assert create_response.status_code == 200
+    created = create_response.json()[0]
+    assert created["summary"] == "- [ ]"
+    assert created["pinned"] is False
+    assert created["archived"] is False
+    assert created["promptBody"] is None
+    assert created["promptFormat"] is None
+
+    update_response = client.put(
+        "/entries/today-2026-02-16",
+        json={
+            "summary": "- [ ] Plan hooks\n- [x] Publish",
+            "pinned": True,
+            "archived": True,
+            "promptBody": "ignored",
+            "promptFormat": "ignored",
+        },
+    )
+    assert update_response.status_code == 200
+    updated = update_response.json()
+    assert updated["summary"] == "- [ ] Plan hooks\n- [x] Publish\n- [ ]"
+    assert updated["pinned"] is False
+    assert updated["archived"] is False
+    assert updated["promptBody"] is None
+    assert updated["promptFormat"] is None
+
+
+def test_today_entry_rejects_non_task_markdown(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    app = _create_test_app(memory_connection_factory)
+    client = TestClient(app)
+
+    now = datetime.now(tz=UTC)
+    create_payload = [
+        {
+            "id": "today-2026-02-16",
+            "title": "Today",
+            "summary": "# heading",
+            "date": now.isoformat(),
+            "category": "today",
+        }
+    ]
+
+    create_response = client.post("/entries/", json=create_payload)
+    assert create_response.status_code == 422
+    assert "checklist rows only" in create_response.json()["detail"]
+
+
 def test_archiving_entry_sets_archived_at_and_preserves_it_on_later_edits(
     memory_connection_factory: SqliteConnectionFactory,
 ) -> None:

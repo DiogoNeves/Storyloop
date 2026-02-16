@@ -89,7 +89,20 @@ const sampleEntry: Entry = {
   pinned: false,
 };
 
-function renderPage(ui: ReactElement) {
+const todayEntry: Entry = {
+  id: "today-2026-02-16",
+  title: "Today",
+  summary: "- [ ] Plan intro\n- [ ]",
+  date: "2026-02-16T00:00:00.000Z",
+  updatedAt: "2026-02-16T00:00:00.000Z",
+  lastSmartUpdateAt: null,
+  category: "today",
+  linkUrl: null,
+  thumbnailUrl: null,
+  pinned: false,
+};
+
+function renderPage(ui: ReactElement, initialPath = `/journals/${sampleEntry.id}`) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -103,7 +116,7 @@ function renderPage(ui: ReactElement) {
       <SyncProvider>
         <TooltipProvider>
           <AgentConversationProvider>
-            <MemoryRouter initialEntries={[`/journals/${sampleEntry.id}`]}>
+            <MemoryRouter initialEntries={[initialPath]}>
               <SettingsProvider>
                 <Routes>
                   <Route path="/journals/:journalId" element={ui} />
@@ -353,6 +366,40 @@ describe("JournalDetailPage", () => {
         archived: true,
       });
     });
+  });
+
+  it("renders the Today checklist editor and hides pin/archive controls", async () => {
+    useYouTubeFeedMock.mockReturnValue({
+      youtubeFeed: null,
+      youtubeError: null,
+      isLoading: false,
+      isLinked: false,
+      linkStatus: null,
+      channelId: null,
+    });
+    apiGetMock.mockImplementation((url: string) => {
+      if (url === `/entries/${todayEntry.id}`) {
+        return Promise.resolve({ data: todayEntry });
+      }
+      if (url.startsWith("/entries/")) {
+        return Promise.resolve({ data: todayEntry });
+      }
+      if (url.startsWith("/entries")) {
+        return Promise.resolve({ data: [todayEntry] });
+      }
+      if (url.startsWith("/conversations")) {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.resolve({ data: todayEntry });
+    });
+
+    renderPage(<JournalDetailPage />, `/journals/${todayEntry.id}`);
+
+    expect(await screen.findByText("Today")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Type a task…")).toBeInTheDocument();
+    expect(screen.queryByTestId("journal-editor")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Pin entry")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Archive entry")).not.toBeInTheDocument();
   });
 
   it("shows archived date copy for archived entries", async () => {

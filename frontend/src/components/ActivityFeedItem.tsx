@@ -21,6 +21,7 @@ import {
 export const categoryBadgeClass: Record<ActivityItem["category"], string> = {
   content: "bg-accent text-accent-foreground",
   journal: "bg-primary/10 text-primary",
+  today: "bg-primary/15 text-primary",
   conversation: "bg-primary/10 text-primary",
 };
 

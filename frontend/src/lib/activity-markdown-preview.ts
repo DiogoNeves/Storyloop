@@ -8,7 +8,11 @@ const MARKDOWN_SYNTAX_PATTERN =
 export function isMarkdownPreviewCategory(
   category: ActivityItem["category"],
 ): boolean {
-  return category === "journal" || category === "conversation";
+  return (
+    category === "journal" ||
+    category === "today" ||
+    category === "conversation"
+  );
 }
 
 export function hasLikelyMarkdownSyntax(text: string): boolean {
