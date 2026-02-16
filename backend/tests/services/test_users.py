@@ -114,3 +114,22 @@ def test_show_archived_round_trip(
 
     service.set_show_archived(False)
     assert service.get_show_archived() is False
+
+
+def test_activity_feed_sort_date_round_trip(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    service = UserService(memory_connection_factory)
+    service.ensure_schema()
+
+    assert service.get_activity_feed_sort_date() == "created"
+
+    service.set_activity_feed_sort_date("modified")
+    assert service.get_activity_feed_sort_date() == "modified"
+
+    record = service.get_active_user()
+    assert record is not None
+    assert record.activity_feed_sort_date == "modified"
+
+    service.set_activity_feed_sort_date("created")
+    assert service.get_activity_feed_sort_date() == "created"

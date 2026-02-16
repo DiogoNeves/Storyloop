@@ -28,6 +28,7 @@ describe("buildActivityItems", () => {
       contentTypeFilter: "all",
       publicOnly: false,
       showArchived: false,
+      activityFeedSortDate: "created",
     });
 
     expect(items).toHaveLength(75);
@@ -54,6 +55,7 @@ describe("buildActivityItems", () => {
       contentTypeFilter: "all",
       publicOnly: false,
       showArchived: false,
+      activityFeedSortDate: "created",
     });
     expect(hidden.map((item) => item.id)).toEqual(["entry-active"]);
 
@@ -64,10 +66,77 @@ describe("buildActivityItems", () => {
       contentTypeFilter: "all",
       publicOnly: false,
       showArchived: true,
+      activityFeedSortDate: "created",
     });
     expect(shown.map((item) => item.id)).toEqual([
       "entry-archived",
       "entry-active",
     ]);
+  });
+
+  it("sorts stored entries by created date by default", () => {
+    const entries: Entry[] = [
+      {
+        ...createEntry(1),
+        id: "entry-created-first",
+        date: "2025-01-01T00:00:00.000Z",
+        updatedAt: "2025-01-05T00:00:00.000Z",
+      },
+      {
+        ...createEntry(2),
+        id: "entry-created-second",
+        date: "2025-01-03T00:00:00.000Z",
+        updatedAt: "2025-01-04T00:00:00.000Z",
+      },
+    ];
+
+    const items = buildActivityItems({
+      entries,
+      conversations: [],
+      youtubeFeed: null,
+      contentTypeFilter: "all",
+      publicOnly: false,
+      showArchived: true,
+      activityFeedSortDate: "created",
+    });
+
+    expect(items.map((item) => item.id)).toEqual([
+      "entry-created-second",
+      "entry-created-first",
+    ]);
+    expect(items[0]?.date).toBe("2025-01-03T00:00:00.000Z");
+  });
+
+  it("switches stored entries to modified-date sorting when configured", () => {
+    const entries: Entry[] = [
+      {
+        ...createEntry(1),
+        id: "entry-modified-first",
+        date: "2025-01-01T00:00:00.000Z",
+        updatedAt: "2025-01-05T00:00:00.000Z",
+      },
+      {
+        ...createEntry(2),
+        id: "entry-modified-second",
+        date: "2025-01-03T00:00:00.000Z",
+        updatedAt: "2025-01-04T00:00:00.000Z",
+      },
+    ];
+
+    const items = buildActivityItems({
+      entries,
+      conversations: [],
+      youtubeFeed: null,
+      contentTypeFilter: "all",
+      publicOnly: false,
+      showArchived: true,
+      activityFeedSortDate: "modified",
+    });
+
+    expect(items.map((item) => item.id)).toEqual([
+      "entry-modified-first",
+      "entry-modified-second",
+    ]);
+    expect(items[0]?.date).toBe("2025-01-05T00:00:00.000Z");
   });
 });

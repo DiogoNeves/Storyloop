@@ -13,6 +13,7 @@ import {
   DEFAULT_SMART_UPDATE_SCHEDULE_HOURS,
   settingsQueries,
   updateSettings,
+  type ActivityFeedSortDate,
 } from "@/api/settings";
 import { youtubeApi, youtubeQueries } from "@/api/youtube";
 import { useSettings } from "@/context/useSettings";
@@ -62,6 +63,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     settingsQuery.data?.smartUpdateScheduleHours ??
     DEFAULT_SMART_UPDATE_SCHEDULE_HOURS;
   const showArchived = settingsQuery.data?.showArchived ?? false;
+  const activityFeedSortDate =
+    settingsQuery.data?.activityFeedSortDate ?? "created";
 
   useEffect(() => {
     setScheduleInput(String(scheduleHours));
@@ -268,6 +271,36 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                           <SelectItem value="light">Light</SelectItem>
                           <SelectItem value="dark">Dark</SelectItem>
                           <SelectItem value="system">System</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-3 rounded-lg border bg-muted/50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">Activity feed date sort</p>
+                      <p className="text-sm text-muted-foreground">
+                        Choose whether journal entries sort by creation date or last modified date.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="settings-activity-feed-sort-date" className="sr-only">
+                        Activity feed date sort
+                      </Label>
+                      <Select
+                        value={activityFeedSortDate}
+                        onValueChange={(value) => {
+                          scheduleMutation.mutate({
+                            activityFeedSortDate: value as ActivityFeedSortDate,
+                          });
+                        }}
+                        disabled={settingsQuery.isLoading || scheduleMutation.isPending}
+                      >
+                        <SelectTrigger id="settings-activity-feed-sort-date" className="w-40">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="created">Created date</SelectItem>
+                          <SelectItem value="modified">Modified date</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
