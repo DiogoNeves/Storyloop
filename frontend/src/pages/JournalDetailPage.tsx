@@ -28,6 +28,7 @@ import {
   isEffectivelyEmptyNoteContent,
 } from "@/lib/journal-detail-logic";
 import { formatLongDateTime, parseValidDate } from "@/lib/date-time";
+import { getTodayEntryDisplayTitle } from "@/lib/today-entry";
 import { useAgentConversationContext } from "@/context/AgentConversationContext";
 import { NavBar } from "@/components/NavBar";
 import { VideoLinkCard } from "@/components/VideoLinkCard";
@@ -53,6 +54,7 @@ import {
   type JournalEntryEditorHandle,
   JournalEntryEditor,
 } from "@/components/JournalEntryEditor";
+import { TodayChecklistEditor } from "@/components/TodayChecklistEditor";
 import { NewEntryHeader } from "@/components/NewEntryHeader";
 import { CopyMarkdownButton } from "@/components/CopyMarkdownButton";
 import { VoiceWave } from "@/components/ui/voice-wave";
@@ -87,6 +89,7 @@ export function JournalDetailPage() {
   });
 
   const currentEntry: Entry | null = entryQuery.data ?? null;
+  const isTodayEntry = currentEntry?.category === "today";
   const isSmartEntry = Boolean(currentEntry?.promptBody);
   const {
     isUpdating: isSmartUpdating,
@@ -456,6 +459,13 @@ export function JournalDetailPage() {
   const formattedArchivedDate = formatLongDateTime(archivedDateValue);
   const formattedCreatedDate = formatLongDateTime(journalDate);
   const formattedLastSmartUpdate = formatLongDateTime(lastSmartUpdateDate);
+  const todayDisplayTitle =
+    currentEntry?.category === "today"
+      ? getTodayEntryDisplayTitle(
+          currentEntry.id,
+          currentEntry.date,
+        )
+      : null;
 
   const summarySource: string | null = currentEntry?.summary ?? null;
   const summaryText = typeof summarySource === "string" ? summarySource : "";
@@ -463,7 +473,12 @@ export function JournalDetailPage() {
 
   const focusEditorFromTrailingSpace = useCallback(
     (event: MouseEvent<HTMLDivElement>) => {
-      if (isNewEntryRoute || activeTab !== "content" || isSmartUpdating) {
+      if (
+        isNewEntryRoute ||
+        isTodayEntry ||
+        activeTab !== "content" ||
+        isSmartUpdating
+      ) {
         return;
       }
 
@@ -483,15 +498,18 @@ export function JournalDetailPage() {
 
       editorRef.current?.focusAtEnd();
     },
-    [activeTab, isNewEntryRoute, isSmartUpdating],
+    [activeTab, isNewEntryRoute, isSmartUpdating, isTodayEntry],
   );
 
   const getCopyMarkdown = useCallback(() => {
-    const heading =
-      titleDraft.trim().length > 0 ? titleDraft.trim() : "Untitled entry";
+    const heading = isTodayEntry
+      ? todayDisplayTitle ?? "Today"
+      : titleDraft.trim().length > 0
+        ? titleDraft.trim()
+        : "Untitled entry";
     const body = summaryDraft ?? "";
     return `# ${heading}\n\n${body}`;
-  }, [summaryDraft, titleDraft]);
+  }, [isTodayEntry, summaryDraft, titleDraft, todayDisplayTitle]);
 
   const pendingUpdateForEntry = currentEntry
     ? pendingEntryUpdates.find((update) => update.id === currentEntry.id)
@@ -674,13 +692,14 @@ export function JournalDetailPage() {
     const isNoteEmpty = isEffectivelyEmptyNoteContent(summaryDraft);
     const isNoteDictating = noteDictationStatus === "recording";
     const isNoteDictationTranscribing = noteDictationStatus === "transcribing";
-    const showDictateNoteButton = !isSmartEntry && isNoteEmpty;
+    const showDictateNoteButton = !isSmartEntry && !isTodayEntry && isNoteEmpty;
     const isNoteDictationDisabled =
       !isNoteDictating &&
       (!isOnline ||
         !isNoteDictationSupported ||
         isNoteDictationTranscribing ||
-        isSmartUpdating);
+        isSmartUpdating ||
+        isTodayEntry);
 
     const editDisabledReason = !isOnline
       ? "You are offline"
@@ -741,21 +760,27 @@ export function JournalDetailPage() {
         <div className="space-y-2">
           <div className="flex flex-col-reverse items-start gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
             <div className="flex w-full flex-1 items-start gap-3">
-              <textarea
-                className="line-clamp-2 w-full flex-1 resize-none border-none bg-transparent text-2xl font-semibold leading-tight text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:text-muted-foreground sm:line-clamp-none sm:min-h-[2.5rem]"
-                value={titleDraft}
-                onChange={(event) =>
-                  setTitleDraft(event.target.value.replace(/\r?\n/g, " "))
-                }
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
+              {isTodayEntry ? (
+                <h1 className="w-full text-2xl font-semibold leading-tight text-foreground">
+                  {todayDisplayTitle ?? "Today"}
+                </h1>
+              ) : (
+                <textarea
+                  className="line-clamp-2 w-full flex-1 resize-none border-none bg-transparent text-2xl font-semibold leading-tight text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:text-muted-foreground sm:line-clamp-none sm:min-h-[2.5rem]"
+                  value={titleDraft}
+                  onChange={(event) =>
+                    setTitleDraft(event.target.value.replace(/\r?\n/g, " "))
                   }
-                }}
-                disabled={isSmartUpdating}
-                placeholder="Untitled entry"
-                rows={2}
-              />
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                    }
+                  }}
+                  disabled={isSmartUpdating}
+                  placeholder="Untitled entry"
+                  rows={2}
+                />
+              )}
               {saveIndicator.show ? (
                 <span
                   className={cn("mt-2 inline-flex items-center", saveIndicator.tone)}
@@ -779,55 +804,59 @@ export function JournalDetailPage() {
                 disabled={isSmartUpdating}
                 label="Copy markdown"
               />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                disabled={isPinDisabled}
-                title={
-                  isPinDisabled
-                    ? !isOnline
-                      ? "You are offline"
-                      : "Updating..."
-                    : undefined
-                }
-                onClick={() => {
-                  if (!currentEntry || isPinDisabled) {
-                    return;
+              {!isTodayEntry ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  disabled={isPinDisabled}
+                  title={
+                    isPinDisabled
+                      ? !isOnline
+                        ? "You are offline"
+                        : "Updating..."
+                      : undefined
                   }
-                  void togglePin(currentEntry.id, !isPinned);
-                }}
-                aria-label={pinLabel}
-                className={isPinned ? "text-primary" : "text-muted-foreground"}
-              >
-                <Pin
-                  className="h-4 w-4"
-                  fill={isPinned ? "currentColor" : "none"}
-                />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                disabled={isArchiveDisabled}
-                title={
-                  isArchiveDisabled
-                    ? !isOnline
-                      ? "You are offline"
-                      : "Updating..."
-                    : undefined
-                }
-                onClick={() => {
-                  if (!currentEntry || isArchiveDisabled) {
-                    return;
+                  onClick={() => {
+                    if (!currentEntry || isPinDisabled) {
+                      return;
+                    }
+                    void togglePin(currentEntry.id, !isPinned);
+                  }}
+                  aria-label={pinLabel}
+                  className={isPinned ? "text-primary" : "text-muted-foreground"}
+                >
+                  <Pin
+                    className="h-4 w-4"
+                    fill={isPinned ? "currentColor" : "none"}
+                  />
+                </Button>
+              ) : null}
+              {!isTodayEntry ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  disabled={isArchiveDisabled}
+                  title={
+                    isArchiveDisabled
+                      ? !isOnline
+                        ? "You are offline"
+                        : "Updating..."
+                      : undefined
                   }
-                  void toggleArchive(currentEntry.id, !isArchived);
-                }}
-                aria-label={archiveLabel}
-                className={isArchived ? "text-primary" : "text-muted-foreground"}
-              >
-                <Archive className="h-4 w-4" />
-              </Button>
+                  onClick={() => {
+                    if (!currentEntry || isArchiveDisabled) {
+                      return;
+                    }
+                    void toggleArchive(currentEntry.id, !isArchived);
+                  }}
+                  aria-label={archiveLabel}
+                  className={isArchived ? "text-primary" : "text-muted-foreground"}
+                >
+                  <Archive className="h-4 w-4" />
+                </Button>
+              ) : null}
               <Button
                 type="button"
                 variant="ghost"
@@ -945,7 +974,8 @@ export function JournalDetailPage() {
       !isSmartUpdating &&
       !currentEntry.lastSmartUpdateAt &&
       !hasSavedSummary;
-    const shouldRenderEditor = !isSmartUpdating && (!isSmartEntry || hasSavedSummary);
+    const shouldRenderEditor =
+      isTodayEntry || (!isSmartUpdating && (!isSmartEntry || hasSavedSummary));
 
     const contentTab = (
       <>
@@ -961,6 +991,12 @@ export function JournalDetailPage() {
               Loopie is drafting this update…
             </div>
           )
+        ) : isTodayEntry ? (
+          <TodayChecklistEditor
+            value={summaryDraft}
+            onChange={setSummaryDraft}
+            isEditable={!isSmartUpdating}
+          />
         ) : shouldRenderEditor ? (
           <div ref={editorContainerRef}>
             <JournalEntryEditor

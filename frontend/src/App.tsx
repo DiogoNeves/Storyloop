@@ -5,7 +5,15 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   BrowserRouter,
   Routes,
@@ -46,6 +54,12 @@ import {
   upsertSortedEntry,
 } from "@/lib/journal-page-logic";
 import { formatDateTimeLocalInput } from "@/lib/date-time";
+import {
+  buildTodayChecklistMarkdownFromTasks,
+  extractDayKeyFromTodayEntryId,
+  extractIncompleteTasksFromTodayMarkdown,
+  getTodayEntryIdForDate,
+} from "@/lib/today-entry";
 import { useActivityItems } from "@/hooks/useActivityItems";
 import { Input } from "@/components/ui/input";
 import {
@@ -195,6 +209,9 @@ function JournalPage() {
   const showArchived = settingsQuery.data?.showArchived ?? false;
   const activityFeedSortDate =
     settingsQuery.data?.activityFeedSortDate ?? "created";
+  const todayEntriesEnabled = settingsQuery.data?.todayEntriesEnabled ?? true;
+  const todayIncludePreviousIncomplete =
+    settingsQuery.data?.todayIncludePreviousIncomplete ?? true;
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTags, setActiveTags] = useState<string[]>([]);
 
@@ -269,6 +286,7 @@ function JournalPage() {
   const [deletingConversationIds, setDeletingConversationIds] = useState<
     Set<string>
   >(new Set());
+  const todayEnsureInFlightRef = useRef(false);
 
   const { mutateAsync: saveEntry, isPending: isSavingEntry } = useMutation(
     entriesMutations.create(queryClient, {
@@ -322,6 +340,51 @@ function JournalPage() {
   }, []);
 
   const { isOnline, queueEntry, markServerUnreachable } = useSync();
+  const todayEntryId = useMemo(() => getTodayEntryIdForDate(new Date()), []);
+  const todayEntry = useMemo(
+    () =>
+      (entriesQuery.data ?? []).find(
+        (entry) => entry.id === todayEntryId && entry.category === "today",
+      ) ?? null,
+    [entriesQuery.data, todayEntryId],
+  );
+
+  const computeInitialTodaySummary = useCallback(() => {
+    if (!todayIncludePreviousIncomplete) {
+      return "- [ ]";
+    }
+    const todayDayKey = extractDayKeyFromTodayEntryId(todayEntryId);
+    if (!todayDayKey) {
+      return "- [ ]";
+    }
+
+    const latestPreviousToday = (entriesQuery.data ?? [])
+      .filter((entry) => {
+        if (entry.category !== "today") {
+          return false;
+        }
+        const dayKey = extractDayKeyFromTodayEntryId(entry.id);
+        return Boolean(dayKey && dayKey < todayDayKey);
+      })
+      .sort(
+        (a, b) =>
+          new Date(b.updatedAt ?? b.date).getTime() -
+          new Date(a.updatedAt ?? a.date).getTime(),
+      )[0];
+
+    if (!latestPreviousToday) {
+      return "- [ ]";
+    }
+
+    try {
+      const tasks = extractIncompleteTasksFromTodayMarkdown(
+        latestPreviousToday.summary,
+      );
+      return buildTodayChecklistMarkdownFromTasks(tasks);
+    } catch {
+      return "- [ ]";
+    }
+  }, [entriesQuery.data, todayEntryId, todayIncludePreviousIncomplete]);
 
   const handleSubmitDraft = useCallback(async () => {
     if (!draft) {
@@ -406,6 +469,94 @@ function JournalPage() {
     entriesListQuery.queryKey,
   ]);
 
+  useEffect(() => {
+    if (!todayEntriesEnabled) {
+      return;
+    }
+    if (entriesQuery.status !== "success") {
+      return;
+    }
+    if (todayEntry || todayEnsureInFlightRef.current) {
+      return;
+    }
+
+    todayEnsureInFlightRef.current = true;
+    const todaySummary = computeInitialTodaySummary();
+    const todayDate = new Date().toISOString();
+    const entryInput = {
+      id: todayEntryId,
+      title: "Today",
+      summary: todaySummary,
+      date: todayDate,
+      category: "today" as const,
+      pinned: false,
+      archived: false,
+      promptBody: null,
+      promptFormat: null,
+    };
+    const optimisticUpdatedAt = new Date().toISOString();
+
+    const ensureTodayEntry = async () => {
+      try {
+        if (!isOnline) {
+          await queueEntry(entryInput);
+          const optimisticEntry = buildOptimisticJournalEntry(
+            entryInput,
+            optimisticUpdatedAt,
+          );
+          queryClient.setQueryData<Entry[]>(
+            entriesListQuery.queryKey,
+            (current) => upsertSortedEntry(current, optimisticEntry),
+          );
+          return;
+        }
+
+        const savedEntry = await saveEntry(entryInput);
+        if (!savedEntry) {
+          const optimisticEntry = buildOptimisticJournalEntry(
+            entryInput,
+            optimisticUpdatedAt,
+          );
+          queryClient.setQueryData<Entry[]>(
+            entriesListQuery.queryKey,
+            (current) => upsertSortedEntry(current, optimisticEntry),
+          );
+        }
+      } catch (error) {
+        if (isLikelyNetworkError(error)) {
+          markServerUnreachable();
+          await queueEntry(entryInput);
+          const optimisticEntry = buildOptimisticJournalEntry(
+            entryInput,
+            optimisticUpdatedAt,
+          );
+          queryClient.setQueryData<Entry[]>(
+            entriesListQuery.queryKey,
+            (current) => upsertSortedEntry(current, optimisticEntry),
+          );
+          return;
+        }
+        console.warn("Unable to create today's entry:", error);
+      } finally {
+        todayEnsureInFlightRef.current = false;
+      }
+    };
+
+    void ensureTodayEntry();
+  }, [
+    computeInitialTodaySummary,
+    entriesListQuery.queryKey,
+    entriesQuery.status,
+    isOnline,
+    markServerUnreachable,
+    queryClient,
+    queueEntry,
+    saveEntry,
+    todayEntriesEnabled,
+    todayEntry,
+    todayEntryId,
+  ]);
+
   const handleDraftSubmit = useCallback(() => {
     void handleSubmitDraft();
   }, [handleSubmitDraft]);
@@ -466,6 +617,7 @@ function JournalPage() {
         className="flex-1"
         items={displayItems}
         isLinked={youtubeState.isLinked}
+        todayEntriesEnabled={todayEntriesEnabled}
         youtubeError={youtubeState.youtubeError}
         draft={draft}
         onStartDraft={handleStartDraft}

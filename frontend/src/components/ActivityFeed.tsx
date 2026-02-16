@@ -1,20 +1,29 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+import useLocalStorageState from "use-local-storage-state";
 
 import type { ActivityItem } from "@/lib/types/entries";
+import { useDebouncedAutosave } from "@/hooks/useDebouncedAutosave";
 import { useEntryEditing } from "@/hooks/useEntryEditing";
 import { useSync } from "@/hooks/useSync";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { LinkYouTubeAccountCard } from "@/components/LinkYouTubeAccountCard";
 import { ActivityFeedItem } from "./ActivityFeedItem";
 import { ActivityDraftCard } from "./ActivityDraftCard";
 import { SmartEntryDraftCard } from "./SmartEntryDraftCard";
+import { TodayChecklistEditor } from "@/components/TodayChecklistEditor";
 import { isActivityEditable } from "@/lib/activity-helpers";
 import { filterActivityItems } from "@/lib/activity-search";
 import { channelQueries } from "@/api/channel";
+import {
+  getTodayEntryDisplayTitle,
+  isTodayEntryForCurrentUtcDay,
+  normalizeTodayChecklistMarkdown,
+} from "@/lib/today-entry";
 
 export type { ActivityItem };
 
@@ -32,6 +41,7 @@ export interface ActivityDraft {
 interface ActivityFeedProps {
   items: ActivityItem[];
   isLinked?: boolean;
+  todayEntriesEnabled?: boolean;
   youtubeError?: string | null;
   draft?: ActivityDraft | null;
   onStartDraft?: (mode: EntryDraftMode) => void;
@@ -54,6 +64,7 @@ interface ActivityFeedProps {
 export function ActivityFeed({
   items,
   isLinked = false,
+  todayEntriesEnabled = true,
   youtubeError,
   draft,
   onStartDraft,
@@ -76,6 +87,32 @@ export function ActivityFeed({
   const { pendingEntries } = useSync();
   const channelProfileQuery = useQuery(channelQueries.profile());
   const { togglePin, isPinning } = editingState;
+  const [showTodaySection, setShowTodaySection] = useLocalStorageState<boolean>(
+    "showTodayInActivityFeed",
+    {
+      defaultValue: true,
+    },
+  );
+  const todayEntry = useMemo(
+    () =>
+      items.find(
+        (item) =>
+          item.category === "today" && isTodayEntryForCurrentUtcDay(item.id),
+      ) ?? null,
+    [items],
+  );
+  const [todaySummaryDraft, setTodaySummaryDraft] = useState("- [ ]");
+  const {
+    reset: resetTodayAutosave,
+    status: todayAutosaveStatus,
+    errorMessage: todayAutosaveError,
+  } = useDebouncedAutosave({
+    entryId: todayEntry?.id ?? null,
+    title: todayEntry?.title ?? "Today",
+    summary: todaySummaryDraft,
+    enabled: Boolean(todayEntriesEnabled && todayEntry),
+    debounceMs: 400,
+  });
 
   const shouldShowChannelBanner =
     channelProfileQuery.isSuccess && !channelProfileQuery.data?.profile;
@@ -86,13 +123,34 @@ export function ActivityFeed({
     [pendingEntries],
   );
 
+  useEffect(() => {
+    if (!todayEntry) {
+      return;
+    }
+    let normalizedSummary = "- [ ]";
+    try {
+      normalizedSummary = normalizeTodayChecklistMarkdown(todayEntry.summary);
+    } catch {
+      normalizedSummary = "- [ ]";
+    }
+    setTodaySummaryDraft(normalizedSummary);
+    resetTodayAutosave(todayEntry.title, normalizedSummary);
+  }, [resetTodayAutosave, todayEntry]);
+
+  const itemsForFeed = useMemo(() => {
+    if (!todayEntriesEnabled || !showTodaySection || !todayEntry) {
+      return items;
+    }
+    return items.filter((item) => item.id !== todayEntry.id);
+  }, [items, showTodaySection, todayEntriesEnabled, todayEntry]);
+
   const filteredItems = useMemo(
     () =>
-      filterActivityItems(items, searchQuery, {
+      filterActivityItems(itemsForFeed, searchQuery, {
         tag: tagFilter,
         tags: tagFilters,
       }),
-    [items, searchQuery, tagFilter, tagFilters],
+    [itemsForFeed, searchQuery, tagFilter, tagFilters],
   );
 
   return (
@@ -102,8 +160,20 @@ export function ActivityFeed({
         className,
       )}
     >
-      <CardHeader className="flex w-full flex-row items-center justify-end gap-2 space-y-0 px-4 pb-3 pt-1 sm:p-6">
-        <div className="flex flex-wrap items-center gap-2">
+      <CardHeader className="flex w-full flex-row items-center justify-between gap-2 space-y-0 px-4 pb-3 pt-1 sm:p-6">
+        <div className="flex items-center gap-2">
+          {todayEntriesEnabled ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowTodaySection((current) => !current)}
+            >
+              {showTodaySection ? "Hide Today" : "Show Today"}
+            </Button>
+          ) : null}
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <Button
             type="button"
             variant="outline"
@@ -154,6 +224,49 @@ export function ActivityFeed({
             <Button type="button" variant="secondary" asChild>
               <Link to="/channel">Fill in Channel</Link>
             </Button>
+          </div>
+        ) : null}
+        {todayEntriesEnabled && showTodaySection ? (
+          <div className="space-y-2 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4">
+            <div className="flex items-center justify-between gap-2">
+              <Badge variant="secondary" className="bg-primary/10 text-primary">
+                today
+              </Badge>
+              {todayEntry ? (
+                <span className="text-xs text-muted-foreground">
+                  {getTodayEntryDisplayTitle(
+                    todayEntry.id,
+                    todayEntry.createdAt ?? todayEntry.date,
+                  )}
+                </span>
+              ) : null}
+            </div>
+            {todayEntry ? (
+              <>
+                <TodayChecklistEditor
+                  value={todaySummaryDraft}
+                  onChange={setTodaySummaryDraft}
+                />
+                {todayAutosaveStatus !== "idle" ? (
+                  <p className="text-xs text-muted-foreground">
+                    {todayAutosaveStatus === "saving"
+                      ? "Saving Today…"
+                      : todayAutosaveStatus === "queued"
+                        ? "Saved locally, will sync when online."
+                        : todayAutosaveStatus === "dirty"
+                          ? "Editing…"
+                          : "Couldn’t sync Today yet."}
+                  </p>
+                ) : null}
+                {todayAutosaveError ? (
+                  <p className="text-xs text-destructive">{todayAutosaveError}</p>
+                ) : null}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Today entry will appear shortly.
+              </p>
+            )}
           </div>
         ) : null}
         {draft && onDraftChange ? (

@@ -7,8 +7,9 @@ import {
 } from "@/lib/activity-markdown-preview";
 
 describe("activity-markdown-preview", () => {
-  it("enables markdown preview for journal and conversation categories only", () => {
+  it("enables markdown preview for journal, today, and conversation categories", () => {
     expect(isMarkdownPreviewCategory("journal")).toBe(true);
+    expect(isMarkdownPreviewCategory("today")).toBe(true);
     expect(isMarkdownPreviewCategory("conversation")).toBe(true);
     expect(isMarkdownPreviewCategory("content")).toBe(false);
   });

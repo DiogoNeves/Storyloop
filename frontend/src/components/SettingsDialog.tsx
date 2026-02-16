@@ -7,7 +7,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CircleHelp, NotebookPen, UserRound } from "lucide-react";
+import { CircleHelp, ListTodo, NotebookPen, UserRound } from "lucide-react";
 
 import {
   DEFAULT_SMART_UPDATE_SCHEDULE_HOURS,
@@ -44,7 +44,7 @@ interface SettingsDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type SettingsTab = "account" | "journal" | "help";
+type SettingsTab = "account" | "journal" | "today" | "help";
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const queryClient = useQueryClient();
@@ -65,6 +65,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const showArchived = settingsQuery.data?.showArchived ?? false;
   const activityFeedSortDate =
     settingsQuery.data?.activityFeedSortDate ?? "created";
+  const todayEntriesEnabled = settingsQuery.data?.todayEntriesEnabled ?? true;
+  const todayIncludePreviousIncomplete =
+    settingsQuery.data?.todayIncludePreviousIncomplete ?? true;
 
   useEffect(() => {
     setScheduleInput(String(scheduleHours));
@@ -137,6 +140,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     () => [
       { key: "account", label: "Account", icon: UserRound },
       { key: "journal", label: "Journal", icon: NotebookPen },
+      { key: "today", label: "Today", icon: ListTodo },
       { key: "help", label: "Help", icon: CircleHelp },
     ] satisfies { key: SettingsTab; label: string; icon: typeof UserRound }[],
     [],
@@ -360,6 +364,74 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     </div>
                   </div>
                   <StatusMessage type="error" message={scheduleError} />
+                </div>
+              </div>
+            ) : null}
+
+            {activeTab === "today" ? (
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <h3 className="text-base font-semibold">Today checklist</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Configure daily Today entries and checklist rollover behavior.
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between rounded-lg border bg-muted/50 p-4">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">Enable Today entries</p>
+                      <p className="text-sm text-muted-foreground">
+                        Create one Today checklist entry each UTC day.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="settings-today-enabled" className="sr-only">
+                        Enable Today entries
+                      </Label>
+                      <Switch
+                        id="settings-today-enabled"
+                        checked={todayEntriesEnabled}
+                        disabled={settingsQuery.isLoading || scheduleMutation.isPending}
+                        onCheckedChange={(checked) => {
+                          scheduleMutation.mutate({ todayEntriesEnabled: checked });
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-lg border bg-muted/50 p-4">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">
+                        Include previous incomplete tasks
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Start each new Today entry with unfinished tasks from yesterday.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label
+                        htmlFor="settings-today-include-previous"
+                        className="sr-only"
+                      >
+                        Include previous incomplete tasks
+                      </Label>
+                      <Switch
+                        id="settings-today-include-previous"
+                        checked={todayIncludePreviousIncomplete}
+                        disabled={
+                          settingsQuery.isLoading ||
+                          scheduleMutation.isPending ||
+                          !todayEntriesEnabled
+                        }
+                        onCheckedChange={(checked) => {
+                          scheduleMutation.mutate({
+                            todayIncludePreviousIncomplete: checked,
+                          });
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             ) : null}

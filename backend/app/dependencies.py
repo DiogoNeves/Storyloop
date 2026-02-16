@@ -18,6 +18,7 @@ from app.services import (
 )
 from app.services.assets import AssetService
 from app.services.smart_entries import SmartEntryUpdateManager
+from app.services.today_entries import TodayEntryManager
 from app.services.youtube_analytics import YoutubeAnalyticsService
 from app.services.youtube_demo import (
     DemoUserService,
@@ -37,6 +38,17 @@ def get_smart_entry_manager(request: Request) -> SmartEntryUpdateManager:
         raise HTTPException(
             status_code=503,
             detail="Smart entry updates are not configured",
+        )
+    return manager
+
+
+def get_today_entry_manager(request: Request) -> TodayEntryManager:
+    """Extract TodayEntryManager from application state."""
+    manager = getattr(request.app.state, "today_entry_manager", None)
+    if manager is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Today entries are not configured",
         )
     return manager
 
