@@ -9,8 +9,8 @@ import {
 } from "react";
 import { Plus } from "lucide-react";
 
+import { AutoResizeTextarea } from "@/components/ui/auto-resize-textarea";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   parseTodayChecklistMarkdown,
   type TodayChecklistRow,
@@ -40,7 +40,7 @@ export function TodayChecklistEditor({
   const [rows, setRows] = useState<TodayChecklistRow[]>(rowsFromValue);
   const [isInteracting, setIsInteracting] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const inputRefs = useRef<(HTMLTextAreaElement | null)[]>([]);
   const pendingFocusIndexRef = useRef<number | null>(null);
   const pendingSerializedRef = useRef<string | null>(null);
   const onChangeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -108,7 +108,7 @@ export function TodayChecklistEditor({
   );
 
   const handleTextChange = useCallback(
-    (index: number, event: ChangeEvent<HTMLInputElement>) => {
+    (index: number, event: ChangeEvent<HTMLTextAreaElement>) => {
       const nextRows = rows.map((row, rowIndex) =>
         rowIndex === index
           ? {
@@ -154,7 +154,7 @@ export function TodayChecklistEditor({
   }, [insertRowAfter, rows.length]);
 
   const handleKeyDown = useCallback(
-    (index: number, event: KeyboardEvent<HTMLInputElement>) => {
+    (index: number, event: KeyboardEvent<HTMLTextAreaElement>) => {
       if (event.key === "Enter") {
         event.preventDefault();
         insertRowAfter(index);
@@ -211,13 +211,13 @@ export function TodayChecklistEditor({
       {rows.map((row, index) => (
         <div
           key={`today-row-${index}`}
-          className="flex items-center gap-2 rounded-md border border-border/50 bg-background/60 px-3 py-2"
+          className="flex items-start gap-2 rounded-md border border-border/50 bg-background/60 px-3 py-2"
         >
           <input
             type="checkbox"
             checked={row.checked}
             disabled={!isEditable}
-            className="h-4 w-4 accent-primary"
+            className="mt-1 h-4 w-4 accent-primary"
             onChange={(event) => {
               handleCheckedChange(index, event.target.checked);
             }}
@@ -225,7 +225,7 @@ export function TodayChecklistEditor({
             onBlur={handleFieldBlur}
             aria-label={`Toggle task ${index + 1}`}
           />
-          <Input
+          <AutoResizeTextarea
             ref={(element) => {
               inputRefs.current[index] = element;
             }}
@@ -240,7 +240,8 @@ export function TodayChecklistEditor({
             onBlur={handleFieldBlur}
             readOnly={!isEditable}
             placeholder={index === rows.length - 1 ? "Type a task…" : ""}
-            className="h-8 border-0 bg-transparent px-1 py-0 text-sm shadow-none focus-visible:ring-0"
+            minRows={1}
+            className="min-h-0 resize-none overflow-hidden border-0 bg-transparent px-1 py-0 text-sm leading-6 shadow-none focus-visible:ring-0"
           />
         </div>
       ))}
@@ -266,10 +267,13 @@ function normalizeRowsForCommit(rows: TodayChecklistRow[]): TodayChecklistRow[] 
     return [{ text: "", checked: false }];
   }
 
-  return rows.map((row) => ({
-    text: row.text,
-    checked: row.checked && row.text.trim().length > 0,
-  }));
+  return rows.map((row) => {
+    const normalizedText = normalizeTaskRowText(row.text);
+    return {
+      text: normalizedText,
+      checked: row.checked && normalizedText.trim().length > 0,
+    };
+  });
 }
 
 function normalizeRowsFromValue(rows: TodayChecklistRow[]): TodayChecklistRow[] {
@@ -304,4 +308,8 @@ function serializeRowsForStorage(rows: TodayChecklistRow[]): string {
       return `- [${row.checked ? "x" : " "}] ${normalizedText}`;
     })
     .join("\n");
+}
+
+function normalizeTaskRowText(text: string): string {
+  return text.replace(/\s*[\r\n]+\s*/g, " ");
 }
