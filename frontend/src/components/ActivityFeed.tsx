@@ -88,6 +88,20 @@ export function ActivityFeed({
   const { pendingEntries } = useSync();
   const channelProfileQuery = useQuery(channelQueries.profile());
   const { togglePin, isPinning } = editingState;
+  const {
+    editingEntryId,
+    editingDraft,
+    handleEditDraftChange,
+    cancelEdit,
+    submitEdit,
+    isUpdating,
+    editingError,
+    deleteEntry,
+    isDeleting,
+    startEdit,
+    toggleArchive,
+    isArchiving,
+  } = editingState;
   const [showTodaySection, setShowTodaySection] = useLocalStorageState<boolean>(
     "showTodayInActivityFeed",
     {
@@ -114,7 +128,7 @@ export function ActivityFeed({
     title: todayEntry?.title ?? "Today",
     summary: todaySummaryDraft,
     enabled: Boolean(todayEntriesEnabled && todayEntry),
-    debounceMs: 400,
+    debounceMs: 1000,
   });
 
   const shouldShowChannelBanner =
@@ -202,6 +216,121 @@ export function ActivityFeed({
       ),
     [todayAutosaveError, todayAutosaveStatus, todayHasPendingUpdate],
   );
+  const renderedFeedItems = useMemo(
+    () =>
+      filteredItems.map((item) => {
+        const isEditing = editingEntryId === item.id && editingDraft;
+        const isEditable = isActivityEditable(item);
+        const isConversation = item.category === "conversation";
+        const isConversationDeleting = Boolean(
+          isConversation && deletingConversationIds?.has(item.id),
+        );
+
+        if (isEditing && editingDraft) {
+          return (
+            <ActivityDraftCard
+              key={item.id}
+              draft={editingDraft}
+              onChange={handleEditDraftChange}
+              onCancel={cancelEdit}
+              onSubmit={() => {
+                void submitEdit();
+              }}
+              isSubmitting={isUpdating}
+              errorMessage={editingError}
+              submitLabel="Save changes"
+              category={item.category}
+              idPrefix={`edit-entry-${item.id}`}
+              onDelete={
+                isEditable
+                  ? () => {
+                      void deleteEntry(item.id);
+                    }
+                  : undefined
+              }
+              isDeleting={isDeleting(item.id)}
+            />
+          );
+        }
+
+        return (
+          <ActivityFeedItem
+            key={item.id}
+            item={item}
+            isPendingSync={pendingEntryIds.has(item.id)}
+            onConversationClick={onConversationClick}
+            onConversationDelete={
+              isConversation && onConversationDelete
+                ? () => {
+                    void onConversationDelete(item.id);
+                  }
+                : undefined
+            }
+            isConversationDeleting={isConversationDeleting}
+            onEdit={
+              isEditable
+                ? () => {
+                    startEdit(item);
+                  }
+                : undefined
+            }
+            onDelete={
+              isEditable
+                ? () => {
+                    void deleteEntry(item.id);
+                  }
+                : undefined
+            }
+            isDeleting={isDeleting(item.id)}
+            onPinToggle={
+              isEditable && item.category === "journal"
+                ? () => {
+                    void togglePin(item.id, !item.pinned);
+                  }
+                : undefined
+            }
+            isPinning={
+              isEditable && item.category === "journal"
+                ? isPinning(item.id)
+                : false
+            }
+            onArchiveToggle={
+              isEditable && item.category === "journal"
+                ? () => {
+                    void toggleArchive(item.id, !item.archived);
+                  }
+                : undefined
+            }
+            isArchiving={
+              isEditable && item.category === "journal"
+                ? isArchiving(item.id)
+                : false
+            }
+          />
+        );
+      }),
+    [
+      filteredItems,
+      editingEntryId,
+      editingDraft,
+      deletingConversationIds,
+      handleEditDraftChange,
+      cancelEdit,
+      submitEdit,
+      isUpdating,
+      editingError,
+      deleteEntry,
+      isDeleting,
+      onConversationClick,
+      onConversationDelete,
+      startEdit,
+      pendingEntryIds,
+      togglePin,
+      isPinning,
+      toggleArchive,
+      isArchiving,
+    ],
+  );
 
   return (
     <Card
@@ -285,7 +414,7 @@ export function ActivityFeed({
               {todaySaveIndicator.show ? (
                 <span
                   className={cn(
-                    "inline-flex items-center rounded-md border border-current/25 p-1",
+                    "inline-flex h-5 w-5 items-center justify-center rounded-md border border-current/25",
                     todaySaveIndicator.tone,
                   )}
                   title={todaySaveIndicator.message}
@@ -293,7 +422,7 @@ export function ActivityFeed({
                 >
                   <SaveOff
                     className={cn(
-                      "h-3.5 w-3.5",
+                      "h-3 w-3",
                       todaySaveIndicator.isSaving && "animate-bounce",
                     )}
                   />
@@ -348,99 +477,7 @@ export function ActivityFeed({
             No activity matches “{searchQuery}”.
           </p>
         ) : null}
-        {filteredItems.map((item) => {
-          const isEditing =
-            editingState.editingEntryId === item.id &&
-            editingState.editingDraft;
-          const isEditable = isActivityEditable(item);
-          const isConversation = item.category === "conversation";
-          const isConversationDeleting = Boolean(
-            isConversation && deletingConversationIds?.has(item.id),
-          );
-
-          if (isEditing && editingState.editingDraft) {
-            return (
-              <ActivityDraftCard
-                key={item.id}
-                draft={editingState.editingDraft}
-                onChange={editingState.handleEditDraftChange}
-                onCancel={editingState.cancelEdit}
-                onSubmit={() => {
-                  void editingState.submitEdit();
-                }}
-                isSubmitting={editingState.isUpdating}
-                errorMessage={editingState.editingError}
-                submitLabel="Save changes"
-                category={item.category}
-                idPrefix={`edit-entry-${item.id}`}
-                onDelete={
-                  isEditable
-                    ? () => {
-                        void editingState.deleteEntry(item.id);
-                      }
-                    : undefined
-                }
-                isDeleting={editingState.isDeleting(item.id)}
-              />
-            );
-          }
-
-          return (
-            <ActivityFeedItem
-              key={item.id}
-              item={item}
-              isPendingSync={pendingEntryIds.has(item.id)}
-              onConversationClick={onConversationClick}
-              onConversationDelete={
-                isConversation && onConversationDelete
-                  ? () => {
-                      void onConversationDelete(item.id);
-                    }
-                  : undefined
-              }
-              isConversationDeleting={isConversationDeleting}
-              onEdit={
-                isEditable
-                  ? () => {
-                      editingState.startEdit(item);
-                    }
-                  : undefined
-              }
-              onDelete={
-                isEditable
-                  ? () => {
-                      void editingState.deleteEntry(item.id);
-                    }
-                  : undefined
-              }
-              isDeleting={editingState.isDeleting(item.id)}
-              onPinToggle={
-                isEditable && item.category === "journal"
-                  ? () => {
-                      void togglePin(item.id, !item.pinned);
-                    }
-                  : undefined
-              }
-              isPinning={
-                isEditable && item.category === "journal"
-                  ? isPinning(item.id)
-                  : false
-              }
-              onArchiveToggle={
-                isEditable && item.category === "journal"
-                  ? () => {
-                      void editingState.toggleArchive(item.id, !item.archived);
-                    }
-                  : undefined
-              }
-              isArchiving={
-                isEditable && item.category === "journal"
-                  ? editingState.isArchiving(item.id)
-                  : false
-              }
-            />
-          );
-        })}
+        {renderedFeedItems}
       </CardContent>
     </Card>
   );
