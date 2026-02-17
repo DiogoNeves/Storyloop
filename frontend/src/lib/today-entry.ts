@@ -1,6 +1,12 @@
 const TODAY_ENTRY_ID_PREFIX = "today-";
 const DAY_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const TASK_LINE_PATTERN = /^- \[(?<checked>[ xX])\](?: (?<text>.*))?$/;
+const TODAY_DATE_LABEL_OPTIONS: Intl.DateTimeFormatOptions = {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  timeZone: "UTC",
+};
 
 export interface TodayChecklistRow {
   text: string;
@@ -121,18 +127,10 @@ export function getTodayEntryDisplayTitle(
     if (Number.isNaN(occurredAt.getTime())) {
       return dayKey;
     }
-    return occurredAt.toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
+    return occurredAt.toLocaleDateString(undefined, TODAY_DATE_LABEL_OPTIONS);
   }
 
-  return dayDate.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  return dayDate.toLocaleDateString(undefined, TODAY_DATE_LABEL_OPTIONS);
 }
 
 function normalizeLineBreaks(value: string): string {
