@@ -42,6 +42,8 @@ export function TodayChecklistEditor({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const pendingFocusIndexRef = useRef<number | null>(null);
+  const pendingSerializedRef = useRef<string | null>(null);
+  const onChangeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const pendingFocusIndex = pendingFocusIndexRef.current;
@@ -65,13 +67,44 @@ export function TodayChecklistEditor({
     }
   }, [isInteracting, rows, rowsFromValue]);
 
+  const flushPendingChange = useCallback(() => {
+    const pendingSerialized = pendingSerializedRef.current;
+    if (pendingSerialized === null) {
+      return;
+    }
+    pendingSerializedRef.current = null;
+    onChange(pendingSerialized);
+  }, [onChange]);
+
+  const scheduleChange = useCallback(
+    (nextSerialized: string, immediate = false) => {
+      pendingSerializedRef.current = nextSerialized;
+
+      if (onChangeDebounceRef.current) {
+        clearTimeout(onChangeDebounceRef.current);
+        onChangeDebounceRef.current = null;
+      }
+
+      if (immediate) {
+        flushPendingChange();
+        return;
+      }
+
+      onChangeDebounceRef.current = setTimeout(() => {
+        onChangeDebounceRef.current = null;
+        flushPendingChange();
+      }, 120);
+    },
+    [flushPendingChange],
+  );
+
   const commitRows = useCallback(
-    (nextRows: TodayChecklistRow[]) => {
+    (nextRows: TodayChecklistRow[], immediate = false) => {
       const normalized = normalizeRowsForCommit(nextRows);
       setRows(normalized);
-      onChange(serializeRowsForStorage(normalized));
+      scheduleChange(serializeRowsForStorage(normalized), immediate);
     },
-    [onChange],
+    [scheduleChange],
   );
 
   const handleTextChange = useCallback(
@@ -99,7 +132,7 @@ export function TodayChecklistEditor({
             }
           : row,
       );
-      commitRows(nextRows);
+      commitRows(nextRows, true);
     },
     [commitRows, rows],
   );
@@ -110,7 +143,7 @@ export function TodayChecklistEditor({
       const insertIndex = Math.max(0, Math.min(index + 1, nextRows.length));
       nextRows.splice(insertIndex, 0, { text: "", checked: false });
       pendingFocusIndexRef.current = insertIndex;
-      commitRows(nextRows);
+      commitRows(nextRows, true);
     },
     [commitRows, rows],
   );
@@ -136,7 +169,7 @@ export function TodayChecklistEditor({
         event.preventDefault();
         const nextRows = rows.filter((_, rowIndex) => rowIndex !== index);
         const nextFocusIndex = Math.max(0, index - 1);
-        commitRows(nextRows);
+        commitRows(nextRows, true);
         requestAnimationFrame(() => {
           inputRefs.current[nextFocusIndex]?.focus();
         });
@@ -157,10 +190,21 @@ export function TodayChecklistEditor({
         return;
       }
       if (!containerRef.current.contains(activeElement)) {
+        flushPendingChange();
         setIsInteracting(false);
       }
     });
-  }, []);
+  }, [flushPendingChange]);
+
+  useEffect(
+    () => () => {
+      if (onChangeDebounceRef.current) {
+        clearTimeout(onChangeDebounceRef.current);
+      }
+      flushPendingChange();
+    },
+    [flushPendingChange],
+  );
 
   return (
     <div ref={containerRef} className={cn("space-y-2", className)}>
