@@ -115,6 +115,56 @@ def test_today_entry_manager_rolls_over_latest_previous_incomplete_tasks(
     assert created.summary == "- [ ] keep this\n- [ ]"
 
 
+def test_today_entry_manager_rolls_over_from_latest_prior_day_key(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    entry_service = EntryService(memory_connection_factory)
+    entry_service.ensure_schema()
+    user_service = UserService(memory_connection_factory)
+    user_service.ensure_schema()
+    manager = TodayEntryManager(entry_service, user_service)
+    now = datetime(2026, 2, 16, 1, 0, tzinfo=UTC)
+
+    older_day = now - timedelta(days=3)
+    latest_previous_day = now - timedelta(days=1)
+    records = [
+        EntryRecord(
+            id=build_today_entry_id(utc_day_key(older_day)),
+            title="Today",
+            summary="- [ ] stale task\n- [ ]",
+            prompt_body=None,
+            prompt_format=None,
+            occurred_at=older_day,
+            # Deliberately newer updated_at than yesterday to ensure day-key order wins.
+            updated_at=now + timedelta(hours=1),
+            last_smart_update_at=None,
+            category="today",
+            pinned=False,
+            archived=False,
+        ),
+        EntryRecord(
+            id=build_today_entry_id(utc_day_key(latest_previous_day)),
+            title="Today",
+            summary="- [ ] yesterday task",
+            prompt_body=None,
+            prompt_format=None,
+            occurred_at=latest_previous_day,
+            updated_at=latest_previous_day,
+            last_smart_update_at=None,
+            category="today",
+            pinned=False,
+            archived=False,
+        ),
+    ]
+    entry_service.save_new_entries(records)
+
+    created = manager.ensure_today_entry(now)
+
+    assert created is not None
+    assert created.id == build_today_entry_id(utc_day_key(now))
+    assert created.summary == "- [ ] yesterday task\n- [ ]"
+
+
 def test_today_entry_manager_is_idempotent(
     memory_connection_factory: SqliteConnectionFactory,
 ) -> None:

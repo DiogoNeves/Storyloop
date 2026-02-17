@@ -61,4 +61,18 @@ describe("today-entry helpers", () => {
       getTodayEntryDisplayTitle("today-2026-02-15", now.toISOString(), now),
     ).toMatch(/2026|Feb/i);
   });
+
+  it("formats past Today labels using UTC day boundaries", () => {
+    const now = new Date("2026-02-16T10:00:00.000Z");
+    const expected = new Intl.DateTimeFormat(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(new Date("2026-02-15T00:00:00.000Z"));
+
+    expect(
+      getTodayEntryDisplayTitle("today-2026-02-15", now.toISOString(), now),
+    ).toBe(expected);
+  });
 });

@@ -171,19 +171,22 @@ class TodayEntryManager:
         return build_today_summary_from_tasks(tasks)
 
     def _find_latest_previous_today_entry(self, day_key: str) -> EntryRecord | None:
-        previous = []
+        previous: list[tuple[str, EntryRecord]] = []
         for record in self._entry_service.list_entries(include_archived=True):
             if record.category != "today":
                 continue
             record_day_key = extract_day_key_from_today_entry_id(record.id)
             if record_day_key is None or record_day_key >= day_key:
                 continue
-            previous.append(record)
+            previous.append((record_day_key, record))
 
         if not previous:
             return None
-        previous.sort(key=lambda record: record.updated_at, reverse=True)
-        return previous[0]
+        previous.sort(
+            key=lambda entry: (entry[0], entry[1].updated_at),
+            reverse=True,
+        )
+        return previous[0][1]
 
 
 def _serialize_today_row(row: TodayChecklistRow) -> str:

@@ -209,6 +209,7 @@ function JournalPage() {
   const showArchived = settingsQuery.data?.showArchived ?? false;
   const activityFeedSortDate =
     settingsQuery.data?.activityFeedSortDate ?? "created";
+  const isTodaySettingsLoaded = settingsQuery.status === "success";
   const todayEntriesEnabled = settingsQuery.data?.todayEntriesEnabled ?? true;
   const todayIncludePreviousIncomplete =
     settingsQuery.data?.todayIncludePreviousIncomplete ?? true;
@@ -470,6 +471,9 @@ function JournalPage() {
   ]);
 
   useEffect(() => {
+    if (!isTodaySettingsLoaded) {
+      return;
+    }
     if (!todayEntriesEnabled) {
       return;
     }
@@ -548,6 +552,7 @@ function JournalPage() {
     entriesListQuery.queryKey,
     entriesQuery.status,
     isOnline,
+    isTodaySettingsLoaded,
     markServerUnreachable,
     queryClient,
     queueEntry,

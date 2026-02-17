@@ -12,6 +12,7 @@ import { AgentConversationProvider } from "@/context/AgentConversationContext";
 import { SettingsProvider } from "@/context/SettingsProvider";
 import { SyncProvider } from "@/context/SyncProvider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { getTodayEntryDisplayTitle } from "@/lib/today-entry";
 
 const useYouTubeFeedMock =
   vi.fn<
@@ -395,7 +396,11 @@ describe("JournalDetailPage", () => {
 
     renderPage(<JournalDetailPage />, `/journals/${todayEntry.id}`);
 
-    expect(await screen.findByText("Today")).toBeInTheDocument();
+    const expectedTodayTitle = getTodayEntryDisplayTitle(
+      todayEntry.id,
+      todayEntry.date,
+    );
+    expect(await screen.findByRole("heading", { name: expectedTodayTitle })).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Type a task…")).toBeInTheDocument();
     expect(screen.queryByTestId("journal-editor")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Pin entry")).not.toBeInTheDocument();
