@@ -57,16 +57,6 @@ export function TodayChecklistEditor({
   }, [rows]);
 
   useEffect(() => {
-    inputRefs.current.forEach((input) => {
-      if (!input) {
-        return;
-      }
-      input.style.height = "0px";
-      input.style.height = `${input.scrollHeight}px`;
-    });
-  }, [rows]);
-
-  useEffect(() => {
     if (isInteracting) {
       return;
     }
@@ -251,7 +241,7 @@ export function TodayChecklistEditor({
             readOnly={!isEditable}
             placeholder={index === rows.length - 1 ? "Type a task…" : ""}
             rows={1}
-            className="min-h-0 resize-none overflow-hidden border-0 bg-transparent px-1 py-0 text-sm shadow-none focus-visible:ring-0"
+            className="[field-sizing:content] min-h-0 max-h-40 resize-none overflow-y-auto border-0 bg-transparent px-1 py-0 text-sm shadow-none focus-visible:ring-0"
           />
         </div>
       ))}
