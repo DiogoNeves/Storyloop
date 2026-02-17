@@ -25,6 +25,11 @@ interface AutosaveState {
   errorMessage: string | null;
 }
 
+interface AutosavePayloadSnapshot {
+  title: string;
+  summary: string;
+}
+
 export function useDebouncedAutosave({
   entryId,
   title,
@@ -34,13 +39,19 @@ export function useDebouncedAutosave({
   debounceMs = 1000,
 }: UseDebouncedAutosaveOptions) {
   const queryClient = useQueryClient();
-  const { isOnline, queueEntryUpdate, removePendingEntryUpdate } = useSync();
+  const {
+    isOnline,
+    queueEntryUpdate,
+    removePendingEntryUpdate,
+    markServerUnreachable,
+  } = useSync();
   const [state, setState] = useState<AutosaveState>({
     status: "idle",
     errorMessage: null,
   });
 
   const baselineRef = useRef({ title, summary });
+  const failedPayloadRef = useRef<AutosavePayloadSnapshot | null>(null);
   const saveVersionRef = useRef(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -50,40 +61,65 @@ export function useDebouncedAutosave({
 
   const reset = useCallback((nextTitle: string, nextSummary: string) => {
     baselineRef.current = { title: nextTitle, summary: nextSummary };
+    failedPayloadRef.current = null;
     setState({ status: "idle", errorMessage: null });
   }, []);
 
   const saveNow = useCallback(
     async (trimmedTitle: string, nextSummary: string) => {
-    if (!entryId || trimmedTitle.length === 0) {
-      setState({
-        status: "error",
-        errorMessage: "Add a title before saving.",
-      });
-      return;
-    }
-
-    const version = saveVersionRef.current + 1;
-    saveVersionRef.current = version;
-    setState({ status: "saving", errorMessage: null });
-
-    const payload: UpdateEntryInput = {
-      id: entryId,
-      title: trimmedTitle,
-      summary: nextSummary,
-    };
-
-    try {
-      await queueEntryUpdate(payload);
-      baselineRef.current = { title: trimmedTitle, summary: nextSummary };
-
-      if (!isOnline) {
-        setState({ status: "queued", errorMessage: null });
+      if (!entryId || trimmedTitle.length === 0) {
+        setState({
+          status: "error",
+          errorMessage: "Add a title before saving.",
+        });
         return;
       }
 
-      const savedEntry = await updateEntryAsync(payload);
-      if (version === saveVersionRef.current) {
+      const version = saveVersionRef.current + 1;
+      saveVersionRef.current = version;
+      setState({ status: "saving", errorMessage: null });
+
+      const payload: UpdateEntryInput = {
+        id: entryId,
+        title: trimmedTitle,
+        summary: nextSummary,
+      };
+      const payloadSnapshot = { title: trimmedTitle, summary: nextSummary };
+      const previousBaseline = baselineRef.current;
+
+      const queueForLater = async () => {
+        await queueEntryUpdate(payload);
+        if (version !== saveVersionRef.current) {
+          return;
+        }
+        baselineRef.current = { title: trimmedTitle, summary: nextSummary };
+        failedPayloadRef.current = null;
+        setState({ status: "queued", errorMessage: null });
+      };
+
+      if (!isOnline) {
+        try {
+          await queueForLater();
+        } catch (error) {
+          if (version !== saveVersionRef.current) {
+            return;
+          }
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Saved locally, couldn’t sync yet.";
+          failedPayloadRef.current = payloadSnapshot;
+          setState({ status: "error", errorMessage: message });
+        }
+        return;
+      }
+
+      try {
+        baselineRef.current = { title: trimmedTitle, summary: nextSummary };
+        const savedEntry = await updateEntryAsync(payload);
+        if (version !== saveVersionRef.current) {
+          return;
+        }
         await removePendingEntryUpdate(entryId);
         const listQuery = entriesQueries.all();
         queryClient.setQueryData<Entry[] | undefined>(
@@ -100,27 +136,47 @@ export function useDebouncedAutosave({
         );
         const byIdQuery = entriesQueries.byId(savedEntry.id);
         queryClient.setQueryData<Entry>(byIdQuery.queryKey, savedEntry);
+        failedPayloadRef.current = null;
         setState({ status: "idle", errorMessage: null });
+      } catch (error) {
+        if (version !== saveVersionRef.current) {
+          return;
+        }
+
+        if (isLikelyNetworkError(error)) {
+          markServerUnreachable();
+          try {
+            await queueForLater();
+            return;
+          } catch {
+            baselineRef.current = previousBaseline;
+            failedPayloadRef.current = payloadSnapshot;
+            setState({
+              status: "error",
+              errorMessage: "Saved locally, couldn’t sync yet.",
+            });
+            return;
+          }
+        }
+
+        baselineRef.current = previousBaseline;
+        failedPayloadRef.current = payloadSnapshot;
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Saved locally, couldn’t sync yet.";
+        setState({ status: "error", errorMessage: message });
       }
-    } catch (error) {
-      if (version !== saveVersionRef.current) {
-        return;
-      }
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Saved locally, couldn’t sync yet.";
-      setState({ status: "error", errorMessage: message });
-    }
-  },
-  [
-    entryId,
-    isOnline,
-    queryClient,
-    queueEntryUpdate,
-    removePendingEntryUpdate,
-    updateEntryAsync,
-  ],
+    },
+    [
+      entryId,
+      isOnline,
+      markServerUnreachable,
+      queryClient,
+      queueEntryUpdate,
+      removePendingEntryUpdate,
+      updateEntryAsync,
+    ],
   );
 
   useEffect(() => {
@@ -134,9 +190,19 @@ export function useDebouncedAutosave({
       trimmedTitle !== baseline.title || summary !== baseline.summary;
 
     if (!isDirty) {
+      failedPayloadRef.current = null;
       if (state.status !== "idle") {
         setState({ status: "idle", errorMessage: null });
       }
+      return;
+    }
+
+    const failedPayload = failedPayloadRef.current;
+    if (
+      state.status === "error" &&
+      failedPayload?.title === trimmedTitle &&
+      failedPayload?.summary === summary
+    ) {
       return;
     }
 
@@ -180,4 +246,13 @@ export function useDebouncedAutosave({
     reset,
     isSaving: isMutationPending,
   };
+}
+
+function isLikelyNetworkError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error.message === "Network Error" ||
+      error.message.includes("Failed to fetch") ||
+      error.message.includes("NetworkError"))
+  );
 }
