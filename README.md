@@ -58,6 +58,7 @@ Storyloop includes a conversational AI agent powered by PydanticAI and OpenAI. T
 - ✅ SSE streaming conversations with real-time token-by-token responses
 - ✅ Conversation persistence in SQLite
 - ✅ Basic system prompt for YouTube creator assistance
+- ✅ Agent tools for journal context and Today checklist achievement tracking
 - ✅ Extensible architecture ready for future enhancements
 
 **Future Enhancements:**
