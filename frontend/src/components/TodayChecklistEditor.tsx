@@ -32,9 +32,9 @@ export function TodayChecklistEditor({
 }: TodayChecklistEditorProps) {
   const rowsFromValue = useMemo(() => {
     try {
-      return normalizeRowsForEditor(parseTodayChecklistMarkdown(value));
+      return normalizeRowsFromValue(parseTodayChecklistMarkdown(value));
     } catch {
-      return normalizeRowsForEditor([]);
+      return normalizeRowsFromValue([]);
     }
   }, [value]);
   const [rows, setRows] = useState<TodayChecklistRow[]>(rowsFromValue);
@@ -67,7 +67,7 @@ export function TodayChecklistEditor({
 
   const commitRows = useCallback(
     (nextRows: TodayChecklistRow[]) => {
-      const normalized = normalizeRowsForEditor(nextRows);
+      const normalized = normalizeRowsForCommit(nextRows);
       setRows(normalized);
       onChange(serializeRowsForStorage(normalized));
     },
@@ -217,7 +217,7 @@ export function TodayChecklistEditor({
   );
 }
 
-function normalizeRowsForEditor(rows: TodayChecklistRow[]): TodayChecklistRow[] {
+function normalizeRowsForCommit(rows: TodayChecklistRow[]): TodayChecklistRow[] {
   if (rows.length === 0) {
     return [{ text: "", checked: false }];
   }
@@ -226,6 +226,24 @@ function normalizeRowsForEditor(rows: TodayChecklistRow[]): TodayChecklistRow[] 
     text: row.text,
     checked: row.checked && row.text.trim().length > 0,
   }));
+}
+
+function normalizeRowsFromValue(rows: TodayChecklistRow[]): TodayChecklistRow[] {
+  const normalizedRows = normalizeRowsForCommit(rows);
+
+  let lastNonEmptyIndex = normalizedRows.length - 1;
+  while (
+    lastNonEmptyIndex >= 0 &&
+    normalizedRows[lastNonEmptyIndex].text.trim().length === 0
+  ) {
+    lastNonEmptyIndex -= 1;
+  }
+
+  if (lastNonEmptyIndex < 0) {
+    return [{ text: "", checked: false }];
+  }
+
+  return normalizedRows.slice(0, lastNonEmptyIndex + 1);
 }
 
 function serializeRowsForStorage(rows: TodayChecklistRow[]): string {

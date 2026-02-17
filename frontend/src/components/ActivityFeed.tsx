@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { SaveOff } from "lucide-react";
 import { Link } from "react-router-dom";
 import useLocalStorageState from "use-local-storage-state";
 
@@ -18,6 +19,7 @@ import { SmartEntryDraftCard } from "./SmartEntryDraftCard";
 import { TodayChecklistEditor } from "@/components/TodayChecklistEditor";
 import { isActivityEditable } from "@/lib/activity-helpers";
 import { filterActivityItems } from "@/lib/activity-search";
+import { deriveSaveIndicator } from "@/lib/journal-detail-logic";
 import { channelQueries } from "@/api/channel";
 import {
   isTodayEntryForCurrentUtcDay,
@@ -102,6 +104,7 @@ export function ActivityFeed({
   );
   const [todaySummaryDraft, setTodaySummaryDraft] = useState("- [ ]");
   const lastSyncedTodayEntryIdRef = useRef<string | null>(null);
+  const lastSyncedTodaySummaryRef = useRef<string>("- [ ]");
   const {
     reset: resetTodayAutosave,
     status: todayAutosaveStatus,
@@ -126,6 +129,7 @@ export function ActivityFeed({
   useEffect(() => {
     if (!todayEntry) {
       lastSyncedTodayEntryIdRef.current = null;
+      lastSyncedTodaySummaryRef.current = "- [ ]";
       return;
     }
     let normalizedSummary = "- [ ]";
@@ -138,12 +142,25 @@ export function ActivityFeed({
     const isDifferentEntry = lastSyncedTodayEntryIdRef.current !== todayEntry.id;
     if (isDifferentEntry) {
       lastSyncedTodayEntryIdRef.current = todayEntry.id;
+      lastSyncedTodaySummaryRef.current = normalizedSummary;
       setTodaySummaryDraft(normalizedSummary);
       resetTodayAutosave(todayEntry.title, normalizedSummary);
       return;
     }
 
-    if (todayAutosaveStatus === "dirty" || todayAutosaveStatus === "saving") {
+    const isServerSummaryChanged =
+      normalizedSummary !== lastSyncedTodaySummaryRef.current;
+    if (!isServerSummaryChanged) {
+      return;
+    }
+
+    lastSyncedTodaySummaryRef.current = normalizedSummary;
+
+    if (
+      todayAutosaveStatus === "dirty" ||
+      todayAutosaveStatus === "saving" ||
+      todayAutosaveStatus === "queued"
+    ) {
       return;
     }
 
@@ -172,6 +189,18 @@ export function ActivityFeed({
         tags: tagFilters,
       }),
     [itemsForFeed, searchQuery, tagFilter, tagFilters],
+  );
+  const todayHasPendingUpdate = Boolean(
+    todayEntry && pendingEntryIds.has(todayEntry.id),
+  );
+  const todaySaveIndicator = useMemo(
+    () =>
+      deriveSaveIndicator(
+        todayAutosaveStatus,
+        todayAutosaveError,
+        todayHasPendingUpdate,
+      ),
+    [todayAutosaveError, todayAutosaveStatus, todayHasPendingUpdate],
   );
 
   return (
@@ -253,6 +282,23 @@ export function ActivityFeed({
               <Badge variant="secondary" className="bg-primary/10 text-primary">
                 today
               </Badge>
+              {todaySaveIndicator.show ? (
+                <span
+                  className={cn(
+                    "inline-flex items-center rounded-md border border-current/25 p-1",
+                    todaySaveIndicator.tone,
+                  )}
+                  title={todaySaveIndicator.message}
+                  aria-label={todaySaveIndicator.message}
+                >
+                  <SaveOff
+                    className={cn(
+                      "h-3.5 w-3.5",
+                      todaySaveIndicator.isSaving && "animate-bounce",
+                    )}
+                  />
+                </span>
+              ) : null}
             </div>
             {todayEntry ? (
               <>
@@ -260,17 +306,6 @@ export function ActivityFeed({
                   value={todaySummaryDraft}
                   onChange={setTodaySummaryDraft}
                 />
-                {todayAutosaveStatus !== "idle" ? (
-                  <p className="text-xs text-muted-foreground">
-                    {todayAutosaveStatus === "saving"
-                      ? "Saving Today…"
-                      : todayAutosaveStatus === "queued"
-                        ? "Saved locally, will sync when online."
-                        : todayAutosaveStatus === "dirty"
-                          ? "Editing…"
-                          : "Couldn’t sync Today yet."}
-                  </p>
-                ) : null}
                 {todayAutosaveError ? (
                   <p className="text-xs text-destructive">{todayAutosaveError}</p>
                 ) : null}
