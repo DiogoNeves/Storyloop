@@ -109,6 +109,7 @@ The agent references this capsule explicitly (“You’re looking at ‘Advanced
 - `JournalRepository` and `YouTubeRepository` reuse the same services as FastAPI routes so the tools and HTTP endpoints stay in sync.
 - Registered tools:
   - `load_journal_entries` (recent journal tone/context)
+  - `load_today_entries` (recent Today checklist entries for achievement/progress tracking)
   - `grep_journal_entries` (grep journal entries by keyword)
   - `read_journal_entry` (full journal text + content hash for edits)
   - `edit_journal_entry` (requires the latest content hash)
@@ -117,7 +118,7 @@ The agent references this capsule explicitly (“You’re looking at ‘Advanced
   - `get_video_details` (single video metadata)
   - `get_video_metrics` (structured placeholder until metrics sync ships)
 - The agent builds `LoopieDeps` (user id + repositories) per request via `build_loopie_deps(app)` and passes them through `run_stream`.
-- System prompt reminds Loopie to infer tone from chat + journals, favor tools over guesses, and note that persistent memory is coming later.
+- System prompt reminds Loopie to infer tone from chat + journals, use Today tools for completed/pending achievement checks, favor tools over guesses, and note that persistent memory is coming later.
 
 ### Frontend Touchpoints
 
