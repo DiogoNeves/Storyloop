@@ -219,6 +219,9 @@ def build_agent(
         Use this when the user asks what they completed, shipped, or achieved.
         This is less common than ``load_journal_entries`` and should be used
         mainly for progress-tracking conversations.
+        When comparing multiple days, treat an older pending task that appears
+        completed in a later day as completed work. If an older pending task
+        does not appear in later days, treat it as potentially forgotten.
 
         Args:
             limit: number of entries, newest first
