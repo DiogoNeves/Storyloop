@@ -177,6 +177,15 @@ function isTaskCheckboxToggleClick(
   return event.clientX <= itemRect.left + TASK_LIST_CHECKBOX_TOGGLE_ZONE_PX;
 }
 
+function findClosestLinkElement(node: Node | null): HTMLAnchorElement | null {
+  if (!node) {
+    return null;
+  }
+  const element = node instanceof Element ? node : node.parentElement;
+  const linkElement = element?.closest("a");
+  return linkElement instanceof HTMLAnchorElement ? linkElement : null;
+}
+
 function toggleTaskListItemFromDOM(
   view: EditorView,
   taskListElement: Element,
@@ -659,8 +668,7 @@ const JournalEntryEditorInner = forwardRef<
       const container = containerRef.current;
       
       const handleMiddleMouseOrModifierClick = (event: MouseEvent) => {
-        const target = event.target as HTMLElement;
-        const linkElement = target.closest("a");
+        const linkElement = findClosestLinkElement(event.target as Node | null);
         
         if (linkElement?.href && container) {
           // Handle cmd/ctrl+click or middle mouse button to open immediately
@@ -675,15 +683,13 @@ const JournalEntryEditorInner = forwardRef<
       };
       
       const handleClick = (event: MouseEvent) => {
-        const targetNode = event.target;
-        if (!(targetNode instanceof Element)) {
-          return;
-        }
-        const target = targetNode as HTMLElement;
-        const linkElement = target.closest("a");
+        const targetNode = event.target as Node | null;
+        const targetElement =
+          targetNode instanceof Element ? targetNode : targetNode?.parentElement;
+        const linkElement = findClosestLinkElement(targetNode);
 
         if (!linkElement?.href && isEditable) {
-          const taskListElement = target.closest(TASK_LIST_ITEM_SELECTOR);
+          const taskListElement = targetElement?.closest(TASK_LIST_ITEM_SELECTOR);
           if (
             taskListElement &&
             isTaskCheckboxToggleClick(event, taskListElement)
@@ -717,56 +723,85 @@ const JournalEntryEditorInner = forwardRef<
               return;
             }
             
-            // Find the link mark at this position
-            const $pos = state.doc.resolve(posAtDOM);
-            const linkMark = $pos.marks().find((mark: Mark) => mark.type.name === "link");
-            
-            if (linkMark?.attrs.href) {
-              // Find mark boundaries by searching for the extent of the link mark
-              let linkFrom = posAtDOM;
-              let linkTo = posAtDOM;
-              
-              // Search backwards to find the start of the link
-              let pos = posAtDOM;
-              while (pos > 0) {
-                const $pos = state.doc.resolve(pos - 1);
-                const mark = $pos.marks().find((m: Mark) => m.type.name === "link" && m.attrs.href === linkMark.attrs.href);
-                if (!mark) break;
-                linkFrom = pos - 1;
-                pos--;
+            const candidatePositions = [
+              posAtDOM,
+              Math.max(0, posAtDOM - 1),
+              Math.min(posAtDOM + 1, state.doc.content.size),
+            ];
+            let markAnchorPos: number | null = null;
+            let linkMark: Mark | null = null;
+
+            for (const candidatePos of candidatePositions) {
+              const marksAtPos = state.doc.resolve(candidatePos).marks();
+              const foundMark =
+                marksAtPos.find((mark: Mark) => mark.type.name === "link") ?? null;
+              if (foundMark?.attrs.href) {
+                markAnchorPos = candidatePos;
+                linkMark = foundMark;
+                break;
               }
-              
-              // Search forwards to find the end of the link
-              pos = posAtDOM;
-              while (pos < state.doc.content.size) {
-                const $pos = state.doc.resolve(Math.min(pos + 1, state.doc.content.size));
-                const mark = $pos.marks().find((m: Mark) => m.type.name === "link" && m.attrs.href === linkMark.attrs.href);
-                if (!mark) break;
-                linkTo = Math.min(pos + 1, state.doc.content.size);
-                pos++;
-              }
-              
-              // Ensure we have valid positions
-              if (linkFrom < 0) linkFrom = posAtDOM;
-              if (linkTo <= linkFrom) linkTo = linkFrom + 1;
-              
-              // Get text content
-              const text = state.doc.textBetween(linkFrom, linkTo);
-              
-              const rect = linkElement.getBoundingClientRect();
-              
-              setLinkTooltip({
-                href: linkMark.attrs.href as string,
-                text: text || (linkMark.attrs.href as string),
-                position: {
-                  top: rect.bottom + 8,
-                  left: rect.left + rect.width / 2,
-                },
-                from: linkFrom,
-                to: linkTo,
-              });
-              setSelectionPosition(null);
             }
+
+            if (!linkMark?.attrs.href || markAnchorPos === null) {
+              return;
+            }
+
+            // Find mark boundaries by searching for the extent of the link mark.
+            let linkFrom = markAnchorPos;
+            let linkTo = markAnchorPos;
+
+            // Search backwards to find the start of the link
+            let pos = markAnchorPos;
+            while (pos > 0) {
+              const $pos = state.doc.resolve(pos - 1);
+              const mark = $pos
+                .marks()
+                .find(
+                  (m: Mark) =>
+                    m.type.name === "link" && m.attrs.href === linkMark.attrs.href,
+                );
+              if (!mark) break;
+              linkFrom = pos - 1;
+              pos--;
+            }
+
+            // Search forwards to find the end of the link
+            pos = markAnchorPos;
+            while (pos < state.doc.content.size) {
+              const $pos = state.doc.resolve(
+                Math.min(pos + 1, state.doc.content.size),
+              );
+              const mark = $pos
+                .marks()
+                .find(
+                  (m: Mark) =>
+                    m.type.name === "link" && m.attrs.href === linkMark.attrs.href,
+                );
+              if (!mark) break;
+              linkTo = Math.min(pos + 1, state.doc.content.size);
+              pos++;
+            }
+
+            // Ensure we have valid positions
+            if (linkFrom < 0) linkFrom = markAnchorPos;
+            if (linkTo <= linkFrom) linkTo = linkFrom + 1;
+
+            // Get text content
+            const text = state.doc.textBetween(linkFrom, linkTo);
+
+            const rect = linkElement.getBoundingClientRect();
+
+            setLinkTooltip({
+              href: linkMark.attrs.href as string,
+              text: text || (linkMark.attrs.href as string),
+              position: {
+                top: rect.bottom + 8,
+                left: rect.left + rect.width / 2,
+              },
+              from: linkFrom,
+              to: linkTo,
+            });
+            setSelectionPosition(null);
           });
         }
       };
@@ -816,8 +851,7 @@ const JournalEntryEditorInner = forwardRef<
       
       // Clear link tooltip when clicking elsewhere
       if (linkTooltip && selection?.anchorNode) {
-        const target = selection.anchorNode;
-        const linkElement = target instanceof HTMLElement ? target.closest("a") : null;
+        const linkElement = findClosestLinkElement(selection.anchorNode);
         if (!linkElement) {
           setLinkTooltip(null);
         }
@@ -841,9 +875,7 @@ const JournalEntryEditorInner = forwardRef<
       }
 
       // Don't show formatting toolbar if clicking on a link
-      const linkElement = anchorNode instanceof HTMLElement 
-        ? anchorNode.closest("a")
-        : anchorNode.parentElement?.closest("a");
+      const linkElement = findClosestLinkElement(anchorNode);
       if (linkElement || selection.isCollapsed) {
         setSelectionPosition(null);
       } else {
