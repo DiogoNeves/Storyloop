@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
@@ -34,5 +34,20 @@ describe("TodayChecklistEditor", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add task row" }));
 
     expect(screen.getAllByRole("textbox")).toHaveLength(3);
+  });
+
+  it("sanitizes pasted line breaks while keeping a single wrapped row", async () => {
+    render(<TodayChecklistEditorHarness />);
+
+    const user = userEvent.setup();
+    const input = screen.getByPlaceholderText("Type a task…");
+    await user.click(input);
+    fireEvent.change(input, {
+      target: { value: "Plan intro\nShip video" },
+    });
+    await user.tab();
+
+    expect(screen.getAllByRole("textbox")).toHaveLength(1);
+    expect(screen.getByRole("textbox")).toHaveValue("Plan intro Ship video");
   });
 });
