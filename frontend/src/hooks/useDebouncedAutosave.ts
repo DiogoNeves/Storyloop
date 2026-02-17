@@ -25,6 +25,11 @@ interface AutosaveState {
   errorMessage: string | null;
 }
 
+interface AutosavePayloadSnapshot {
+  title: string;
+  summary: string;
+}
+
 export function useDebouncedAutosave({
   entryId,
   title,
@@ -46,6 +51,7 @@ export function useDebouncedAutosave({
   });
 
   const baselineRef = useRef({ title, summary });
+  const failedPayloadRef = useRef<AutosavePayloadSnapshot | null>(null);
   const saveVersionRef = useRef(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -55,6 +61,7 @@ export function useDebouncedAutosave({
 
   const reset = useCallback((nextTitle: string, nextSummary: string) => {
     baselineRef.current = { title: nextTitle, summary: nextSummary };
+    failedPayloadRef.current = null;
     setState({ status: "idle", errorMessage: null });
   }, []);
 
@@ -77,6 +84,8 @@ export function useDebouncedAutosave({
         title: trimmedTitle,
         summary: nextSummary,
       };
+      const payloadSnapshot = { title: trimmedTitle, summary: nextSummary };
+      const previousBaseline = baselineRef.current;
 
       const queueForLater = async () => {
         await queueEntryUpdate(payload);
@@ -84,20 +93,33 @@ export function useDebouncedAutosave({
           return;
         }
         baselineRef.current = { title: trimmedTitle, summary: nextSummary };
+        failedPayloadRef.current = null;
         setState({ status: "queued", errorMessage: null });
       };
 
       if (!isOnline) {
-        await queueForLater();
+        try {
+          await queueForLater();
+        } catch (error) {
+          if (version !== saveVersionRef.current) {
+            return;
+          }
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Saved locally, couldn’t sync yet.";
+          failedPayloadRef.current = payloadSnapshot;
+          setState({ status: "error", errorMessage: message });
+        }
         return;
       }
 
       try {
+        baselineRef.current = { title: trimmedTitle, summary: nextSummary };
         const savedEntry = await updateEntryAsync(payload);
         if (version !== saveVersionRef.current) {
           return;
         }
-        baselineRef.current = { title: trimmedTitle, summary: nextSummary };
         await removePendingEntryUpdate(entryId);
         const listQuery = entriesQueries.all();
         queryClient.setQueryData<Entry[] | undefined>(
@@ -114,6 +136,7 @@ export function useDebouncedAutosave({
         );
         const byIdQuery = entriesQueries.byId(savedEntry.id);
         queryClient.setQueryData<Entry>(byIdQuery.queryKey, savedEntry);
+        failedPayloadRef.current = null;
         setState({ status: "idle", errorMessage: null });
       } catch (error) {
         if (version !== saveVersionRef.current) {
@@ -126,6 +149,8 @@ export function useDebouncedAutosave({
             await queueForLater();
             return;
           } catch {
+            baselineRef.current = previousBaseline;
+            failedPayloadRef.current = payloadSnapshot;
             setState({
               status: "error",
               errorMessage: "Saved locally, couldn’t sync yet.",
@@ -134,6 +159,8 @@ export function useDebouncedAutosave({
           }
         }
 
+        baselineRef.current = previousBaseline;
+        failedPayloadRef.current = payloadSnapshot;
         const message =
           error instanceof Error
             ? error.message
@@ -163,9 +190,19 @@ export function useDebouncedAutosave({
       trimmedTitle !== baseline.title || summary !== baseline.summary;
 
     if (!isDirty) {
+      failedPayloadRef.current = null;
       if (state.status !== "idle") {
         setState({ status: "idle", errorMessage: null });
       }
+      return;
+    }
+
+    const failedPayload = failedPayloadRef.current;
+    if (
+      state.status === "error" &&
+      failedPayload?.title === trimmedTitle &&
+      failedPayload?.summary === summary
+    ) {
       return;
     }
 

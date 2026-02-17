@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { useDebouncedAutosave } from "@/hooks/useDebouncedAutosave";
@@ -76,9 +76,26 @@ function buildSavedEntry(id: string, summary: string): Entry {
   };
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+async function sleep(ms: number) {
+  await new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
 describe("useDebouncedAutosave", () => {
   afterEach(() => {
     syncState.isOnline = true;
+    vi.useRealTimers();
     vi.clearAllMocks();
   });
 
@@ -169,5 +186,77 @@ describe("useDebouncedAutosave", () => {
 
     expect(syncState.markServerUnreachable).toHaveBeenCalledTimes(1);
     expect(syncState.removePendingEntryUpdate).not.toHaveBeenCalled();
+  });
+
+  it("does not issue duplicate saves while the first save is in-flight", async () => {
+    const deferredSave = createDeferred<Entry>();
+    updateEntryMock.mockReturnValue(deferredSave.promise);
+
+    const { rerender } = renderHook(
+      ({ summary }) =>
+        useDebouncedAutosave({
+          entryId: "today-1",
+          title: "Today",
+          summary,
+          enabled: true,
+          debounceMs: 10,
+        }),
+      {
+        initialProps: { summary: "- [ ] Original" },
+        wrapper: createWrapper(),
+      },
+    );
+
+    rerender({ summary: "- [ ] Updated" });
+    await act(async () => {
+      await sleep(40);
+    });
+    expect(updateEntryMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await sleep(180);
+    });
+    expect(updateEntryMock).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      deferredSave.resolve(buildSavedEntry("today-1", "- [ ] Updated"));
+    });
+    await waitFor(() => {
+      expect(syncState.removePendingEntryUpdate).toHaveBeenCalledWith("today-1");
+    });
+  });
+
+  it("surfaces an autosave error when offline queueing fails", async () => {
+    syncState.isOnline = false;
+    syncState.queueEntryUpdate.mockRejectedValueOnce(
+      new Error("IndexedDB unavailable"),
+    );
+
+    const { result, rerender } = renderHook(
+      ({ summary }) =>
+        useDebouncedAutosave({
+          entryId: "today-1",
+          title: "Today",
+          summary,
+          enabled: true,
+          debounceMs: 1,
+        }),
+      {
+        initialProps: { summary: "- [ ] Original" },
+        wrapper: createWrapper(),
+      },
+    );
+
+    rerender({ summary: "- [ ] Updated" });
+
+    await waitFor(() => {
+      expect(syncState.queueEntryUpdate).toHaveBeenCalledTimes(1);
+    });
+    await waitFor(() => {
+      expect(result.current.status).toBe("error");
+    });
+
+    expect(result.current.errorMessage).toBe("IndexedDB unavailable");
+    expect(updateEntryMock).not.toHaveBeenCalled();
   });
 });
