@@ -1,6 +1,5 @@
 import {
   useCallback,
-  useMemo,
   useEffect,
   useRef,
   useState,
@@ -24,18 +23,15 @@ import { cn } from "@/lib/utils";
 import {
   buildPromptMarkdown,
   deriveSaveIndicator,
-  findAdjacentVideos,
   isEffectivelyEmptyNoteContent,
 } from "@/lib/journal-detail-logic";
 import { formatLongDateTime, parseValidDate } from "@/lib/date-time";
 import { getTodayEntryDisplayTitle } from "@/lib/today-entry";
 import { useAgentConversationContext } from "@/context/AgentConversationContext";
 import { NavBar } from "@/components/NavBar";
-import { VideoLinkCard } from "@/components/VideoLinkCard";
 import { type ActivityDraft } from "@/components/ActivityFeed";
 import { SmartEntryDraftCard } from "@/components/SmartEntryDraftCard";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -44,7 +40,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { YoutubeVideoResponse } from "@/api/youtube";
 import type { ContentTypeFilter } from "@/components/ContentTypeTabs";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { MarkdownMessage } from "@/components/chat/MarkdownMessage";
@@ -532,73 +527,12 @@ export function JournalDetailPage() {
   const activityFeedSortDate =
     settingsQuery.data?.activityFeedSortDate ?? "created";
 
-  const { activityItems, youtubeState } = useActivityItems({
+  const { activityItems } = useActivityItems({
     contentTypeFilter,
     publicOnly,
     showArchived,
     activityFeedSortDate,
   });
-
-  const adjacentVideos = useMemo(() => {
-    return findAdjacentVideos(youtubeState.youtubeFeed?.videos, {
-      journalDate,
-      contentTypeFilter,
-      publicOnly,
-    });
-  }, [
-    journalDate,
-    youtubeState.youtubeFeed?.videos,
-    contentTypeFilter,
-    publicOnly,
-  ]);
-
-  const renderVideoCard = (
-    label: string,
-    video: YoutubeVideoResponse | null,
-    emptyMessage: string,
-  ) => {
-    if (!youtubeState.isLinked) {
-      return (
-        <Card>
-          <CardContent className="p-4 text-sm text-muted-foreground">
-            Link your YouTube account to see videos near this journal entry.
-          </CardContent>
-        </Card>
-      );
-    }
-
-    if (youtubeState.youtubeError) {
-      return (
-        <Card>
-          <CardContent className="p-4 text-sm text-destructive">
-            {youtubeState.youtubeError}
-          </CardContent>
-        </Card>
-      );
-    }
-
-    if (youtubeState.isLoading) {
-      return (
-        <Card>
-          <CardContent className="p-4 text-sm text-muted-foreground">
-            Loading videos…
-          </CardContent>
-        </Card>
-      );
-    }
-
-    if (!video) {
-      return (
-        <Card>
-          <CardContent className="p-4 text-sm text-muted-foreground">
-            {emptyMessage}
-          </CardContent>
-        </Card>
-      );
-    }
-
-    return <VideoLinkCard video={video} contextLabel={label} />;
-  };
 
   const backLink = (
     <Link
@@ -1140,30 +1074,15 @@ export function JournalDetailPage() {
       </div>
     );
 
-    const footer = (
-      <>
-        <div className="h-px w-full bg-border" aria-hidden="true" />
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
-          {renderVideoCard(
-            "Published before this journal",
-            adjacentVideos.previous,
-            "No earlier video yet—this journal leads the way!",
-          )}
-          {renderVideoCard(
-            "Published after this journal",
-            adjacentVideos.next,
-            "Looking forward to your next video!",
-          )}
-        </div>
-      </>
-    );
+    const mobileStickyTitle = isTodayEntry
+      ? todayDisplayTitle ?? "Today"
+      : titleDraft || "Untitled entry";
 
     return (
       <StickyHeaderScrollableCard
         header={header}
         stickyHeaderAt="lg"
-        footerStickToBottomWhenShort={true}
-        footer={footer}
+        mobileStickyTitle={mobileStickyTitle}
         onBodyClick={focusEditorFromTrailingSpace}
       >
         {body}
