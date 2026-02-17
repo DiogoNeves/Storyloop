@@ -7,7 +7,7 @@ import {
   type MouseEvent,
 } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Archive, Bot, Mic, Pin, SaveOff, Trash2 } from "lucide-react";
+import { Archive, Bot, Mic, Pin, RefreshCw, SaveOff, Trash2 } from "lucide-react";
 import { Link, useLocation, useParams, useNavigate } from "react-router-dom";
 import useLocalStorageState from "use-local-storage-state";
 
@@ -710,6 +710,36 @@ export function JournalDetailPage() {
           : null;
     const isEditButtonDisabled =
       Boolean(editDisabledReason) || isPromptEditing;
+    const regenerateDisabledReason = !isOnline
+      ? "You are offline"
+      : isSmartUpdating
+        ? "Loopie is updating this entry"
+        : isPromptUpdating
+          ? "Updating..."
+          : isPromptEditing
+            ? "Finish editing the prompt first"
+            : null;
+    const isRegenerateButtonDisabled = Boolean(regenerateDisabledReason);
+
+    const regenerateButton = isSmartEntry ? (
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        disabled={isRegenerateButtonDisabled}
+        title={regenerateDisabledReason ?? undefined}
+        onClick={() => {
+          if (isRegenerateButtonDisabled) {
+            return;
+          }
+          void startSmartUpdate();
+        }}
+        aria-label="Regenerate smart entry"
+        className="text-muted-foreground"
+      >
+        <RefreshCw className="h-4 w-4" />
+      </Button>
+    ) : null;
 
     const editPromptButton = isSmartEntry ? (
       <Button
@@ -798,6 +828,7 @@ export function JournalDetailPage() {
             </div>
             <div className="flex w-full items-center justify-end gap-2 sm:w-auto sm:justify-start">
               {showStopSmartUpdates ? stopSmartUpdatesButton : null}
+              {regenerateButton}
               {editPromptButton}
               <CopyMarkdownButton
                 getContent={getCopyMarkdown}

@@ -369,6 +369,70 @@ describe("JournalDetailPage", () => {
     });
   });
 
+  it("shows regenerate before edit prompt on smart entries and streams on click", async () => {
+    const smartEntry: Entry = {
+      ...sampleEntry,
+      promptBody: "Keep this concise.",
+      promptFormat: "Bulleted list",
+      lastSmartUpdateAt: "2026-02-16T22:51:00Z",
+    };
+
+    apiGetMock.mockImplementation((url: string) => {
+      if (url.startsWith("/entries/")) {
+        return Promise.resolve({ data: smartEntry });
+      }
+      if (url.startsWith("/entries")) {
+        return Promise.resolve({ data: [smartEntry] });
+      }
+      if (url.startsWith("/conversations")) {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.resolve({ data: smartEntry });
+    });
+
+    useYouTubeFeedMock.mockReturnValue({
+      youtubeFeed: null,
+      youtubeError: null,
+      isLoading: false,
+      isLinked: false,
+      linkStatus: null,
+      channelId: null,
+    });
+
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response("failed", { status: 500 }));
+
+    try {
+      renderPage(<JournalDetailPage />);
+      const user = userEvent.setup();
+
+      const regenerateButton = await screen.findByRole("button", {
+        name: /Regenerate smart entry/i,
+      });
+      const editPromptButton = screen.getByRole("button", {
+        name: /Edit prompt/i,
+      });
+      expect(
+        regenerateButton.compareDocumentPosition(editPromptButton) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+
+      await user.click(regenerateButton);
+
+      await waitFor(() => {
+        expect(fetchMock).toHaveBeenCalledWith(
+          `http://localhost:8000/entries/${smartEntry.id}/smart/stream`,
+          expect.objectContaining({
+            method: "POST",
+          }),
+        );
+      });
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
   it("renders the Today checklist editor and hides pin/archive controls", async () => {
     useYouTubeFeedMock.mockReturnValue({
       youtubeFeed: null,
