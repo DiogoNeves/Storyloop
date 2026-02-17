@@ -47,6 +47,7 @@ import {
 import { getActivityDetailPath } from "@/lib/activity-helpers";
 import { findMentionCandidate } from "@/lib/mention-search";
 import { shouldSkipInitialMarkdownUpdate } from "@/lib/editor-markdown-update";
+import { findClosestLinkElement } from "@/lib/editor-link-utils";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -175,15 +176,6 @@ function isTaskCheckboxToggleClick(
 ): boolean {
   const itemRect = taskListElement.getBoundingClientRect();
   return event.clientX <= itemRect.left + TASK_LIST_CHECKBOX_TOGGLE_ZONE_PX;
-}
-
-function findClosestLinkElement(node: Node | null): HTMLAnchorElement | null {
-  if (!node) {
-    return null;
-  }
-  const element = node instanceof Element ? node : node.parentElement;
-  const linkElement = element?.closest("a");
-  return linkElement instanceof HTMLAnchorElement ? linkElement : null;
 }
 
 function toggleTaskListItemFromDOM(
