@@ -16,6 +16,28 @@ class JournalEntry(BaseModel):
     attachments: list["JournalEntryAttachment"] = Field(default_factory=list)
 
 
+class TodayChecklistItem(BaseModel):
+    """Single checklist row from a Today entry."""
+
+    text: str
+    checked: bool = False
+
+
+class TodayEntry(BaseModel):
+    """Today entry content focused on completed vs pending tasks."""
+
+    id: str
+    title: str
+    created_at: str
+    updated_at: str
+    summary_markdown: str
+    checklist: list[TodayChecklistItem] = Field(default_factory=list)
+    completed_tasks: list[str] = Field(default_factory=list)
+    pending_tasks: list[str] = Field(default_factory=list)
+    pinned: bool = False
+    tags: list[str] = Field(default_factory=list)
+
+
 class JournalEntryDetails(BaseModel):
     """Full journal entry details for edit flows."""
 

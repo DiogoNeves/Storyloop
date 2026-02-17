@@ -3,6 +3,7 @@ from app.services.agent_tools.repositories import (
     EmptyChannelProfileRepository,
     EntryRepository,
     JournalRepository,
+    TodayRepository,
     YouTubeRepository,
 )
 
@@ -34,6 +35,7 @@ def test_loopie_deps_accepts_repository_instances():
         user_id="user-123",
         entry_repo=EntryRepository(_EntryService()),
         journal_repo=JournalRepository(_EntryService()),
+        today_repo=TodayRepository(_EntryService()),
         youtube_repo=YouTubeRepository(
             _YoutubeService(),
             _UserService(),
@@ -44,4 +46,5 @@ def test_loopie_deps_accepts_repository_instances():
 
     assert deps.user_id == "user-123"
     assert isinstance(deps.journal_repo, JournalRepository)
+    assert isinstance(deps.today_repo, TodayRepository)
     assert isinstance(deps.youtube_repo, YouTubeRepository)
