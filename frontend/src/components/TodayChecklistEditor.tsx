@@ -10,7 +10,7 @@ import {
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   parseTodayChecklistMarkdown,
   type TodayChecklistRow,
@@ -40,7 +40,7 @@ export function TodayChecklistEditor({
   const [rows, setRows] = useState<TodayChecklistRow[]>(rowsFromValue);
   const [isInteracting, setIsInteracting] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const inputRefs = useRef<(HTMLTextAreaElement | null)[]>([]);
   const pendingFocusIndexRef = useRef<number | null>(null);
   const pendingSerializedRef = useRef<string | null>(null);
   const onChangeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -53,6 +53,16 @@ export function TodayChecklistEditor({
     pendingFocusIndexRef.current = null;
     requestAnimationFrame(() => {
       inputRefs.current[pendingFocusIndex]?.focus();
+    });
+  }, [rows]);
+
+  useEffect(() => {
+    inputRefs.current.forEach((input) => {
+      if (!input) {
+        return;
+      }
+      input.style.height = "0px";
+      input.style.height = `${input.scrollHeight}px`;
     });
   }, [rows]);
 
@@ -108,7 +118,7 @@ export function TodayChecklistEditor({
   );
 
   const handleTextChange = useCallback(
-    (index: number, event: ChangeEvent<HTMLInputElement>) => {
+    (index: number, event: ChangeEvent<HTMLTextAreaElement>) => {
       const nextRows = rows.map((row, rowIndex) =>
         rowIndex === index
           ? {
@@ -154,7 +164,7 @@ export function TodayChecklistEditor({
   }, [insertRowAfter, rows.length]);
 
   const handleKeyDown = useCallback(
-    (index: number, event: KeyboardEvent<HTMLInputElement>) => {
+    (index: number, event: KeyboardEvent<HTMLTextAreaElement>) => {
       if (event.key === "Enter") {
         event.preventDefault();
         insertRowAfter(index);
@@ -211,7 +221,7 @@ export function TodayChecklistEditor({
       {rows.map((row, index) => (
         <div
           key={`today-row-${index}`}
-          className="flex items-center gap-2 rounded-md border border-border/50 bg-background/60 px-3 py-2"
+          className="flex items-start gap-2 rounded-md border border-border/50 bg-background/60 px-3 py-2"
         >
           <input
             type="checkbox"
@@ -225,7 +235,7 @@ export function TodayChecklistEditor({
             onBlur={handleFieldBlur}
             aria-label={`Toggle task ${index + 1}`}
           />
-          <Input
+          <Textarea
             ref={(element) => {
               inputRefs.current[index] = element;
             }}
@@ -240,7 +250,8 @@ export function TodayChecklistEditor({
             onBlur={handleFieldBlur}
             readOnly={!isEditable}
             placeholder={index === rows.length - 1 ? "Type a task…" : ""}
-            className="h-8 border-0 bg-transparent px-1 py-0 text-sm shadow-none focus-visible:ring-0"
+            rows={1}
+            className="min-h-0 resize-none overflow-hidden border-0 bg-transparent px-1 py-0 text-sm shadow-none focus-visible:ring-0"
           />
         </div>
       ))}
