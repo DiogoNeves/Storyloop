@@ -10,7 +10,7 @@ import {
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   parseTodayChecklistMarkdown,
   type TodayChecklistRow,
@@ -40,10 +40,18 @@ export function TodayChecklistEditor({
   const [rows, setRows] = useState<TodayChecklistRow[]>(rowsFromValue);
   const [isInteracting, setIsInteracting] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const inputRefs = useRef<(HTMLTextAreaElement | null)[]>([]);
   const pendingFocusIndexRef = useRef<number | null>(null);
   const pendingSerializedRef = useRef<string | null>(null);
   const onChangeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const resizeTaskField = useCallback((element: HTMLTextAreaElement | null) => {
+    if (!element) {
+      return;
+    }
+    element.style.height = "0px";
+    element.style.height = `${element.scrollHeight}px`;
+  }, []);
 
   useEffect(() => {
     const pendingFocusIndex = pendingFocusIndexRef.current;
@@ -52,9 +60,17 @@ export function TodayChecklistEditor({
     }
     pendingFocusIndexRef.current = null;
     requestAnimationFrame(() => {
-      inputRefs.current[pendingFocusIndex]?.focus();
+      const pendingField = inputRefs.current[pendingFocusIndex];
+      resizeTaskField(pendingField);
+      pendingField?.focus();
     });
-  }, [rows]);
+  }, [resizeTaskField, rows]);
+
+  useEffect(() => {
+    inputRefs.current.forEach((field) => {
+      resizeTaskField(field);
+    });
+  }, [resizeTaskField, rows]);
 
   useEffect(() => {
     if (isInteracting) {
@@ -108,7 +124,8 @@ export function TodayChecklistEditor({
   );
 
   const handleTextChange = useCallback(
-    (index: number, event: ChangeEvent<HTMLInputElement>) => {
+    (index: number, event: ChangeEvent<HTMLTextAreaElement>) => {
+      resizeTaskField(event.currentTarget);
       const nextRows = rows.map((row, rowIndex) =>
         rowIndex === index
           ? {
@@ -119,7 +136,7 @@ export function TodayChecklistEditor({
       );
       commitRows(nextRows);
     },
-    [commitRows, rows],
+    [commitRows, resizeTaskField, rows],
   );
 
   const handleCheckedChange = useCallback(
@@ -154,7 +171,7 @@ export function TodayChecklistEditor({
   }, [insertRowAfter, rows.length]);
 
   const handleKeyDown = useCallback(
-    (index: number, event: KeyboardEvent<HTMLInputElement>) => {
+    (index: number, event: KeyboardEvent<HTMLTextAreaElement>) => {
       if (event.key === "Enter") {
         event.preventDefault();
         insertRowAfter(index);
@@ -211,13 +228,13 @@ export function TodayChecklistEditor({
       {rows.map((row, index) => (
         <div
           key={`today-row-${index}`}
-          className="flex items-center gap-2 rounded-md border border-border/50 bg-background/60 px-3 py-2"
+          className="flex items-start gap-2 rounded-md border border-border/50 bg-background/60 px-3 py-2"
         >
           <input
             type="checkbox"
             checked={row.checked}
             disabled={!isEditable}
-            className="h-4 w-4 accent-primary"
+            className="mt-1 h-4 w-4 accent-primary"
             onChange={(event) => {
               handleCheckedChange(index, event.target.checked);
             }}
@@ -225,9 +242,10 @@ export function TodayChecklistEditor({
             onBlur={handleFieldBlur}
             aria-label={`Toggle task ${index + 1}`}
           />
-          <Input
+          <Textarea
             ref={(element) => {
               inputRefs.current[index] = element;
+              resizeTaskField(element);
             }}
             value={row.text}
             onChange={(event) => {
@@ -239,8 +257,9 @@ export function TodayChecklistEditor({
             onFocus={handleFieldFocus}
             onBlur={handleFieldBlur}
             readOnly={!isEditable}
+            rows={1}
             placeholder={index === rows.length - 1 ? "Type a task…" : ""}
-            className="h-8 border-0 bg-transparent px-1 py-0 text-sm shadow-none focus-visible:ring-0"
+            className="min-h-0 resize-none overflow-hidden border-0 bg-transparent px-1 py-0 text-sm leading-6 shadow-none focus-visible:ring-0"
           />
         </div>
       ))}
