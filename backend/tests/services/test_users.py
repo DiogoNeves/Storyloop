@@ -133,3 +133,41 @@ def test_activity_feed_sort_date_round_trip(
 
     service.set_activity_feed_sort_date("created")
     assert service.get_activity_feed_sort_date() == "created"
+
+
+def test_today_entries_enabled_round_trip(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    service = UserService(memory_connection_factory)
+    service.ensure_schema()
+
+    assert service.get_today_entries_enabled() is True
+
+    service.set_today_entries_enabled(False)
+    assert service.get_today_entries_enabled() is False
+
+    record = service.get_active_user()
+    assert record is not None
+    assert record.today_entries_enabled is False
+
+    service.set_today_entries_enabled(True)
+    assert service.get_today_entries_enabled() is True
+
+
+def test_today_include_previous_incomplete_round_trip(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    service = UserService(memory_connection_factory)
+    service.ensure_schema()
+
+    assert service.get_today_include_previous_incomplete() is True
+
+    service.set_today_include_previous_incomplete(False)
+    assert service.get_today_include_previous_incomplete() is False
+
+    record = service.get_active_user()
+    assert record is not None
+    assert record.today_include_previous_incomplete is False
+
+    service.set_today_include_previous_incomplete(True)
+    assert service.get_today_include_previous_incomplete() is True

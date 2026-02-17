@@ -20,7 +20,7 @@ export interface Entry {
   lastSmartUpdateAt?: string | null;
   promptBody?: string | null;
   promptFormat?: string | null;
-  category: "content" | "journal";
+  category: "content" | "journal" | "today";
   linkUrl?: string | null;
   thumbnailUrl?: string | null;
   videoId?: string | null;
@@ -40,7 +40,7 @@ const entrySchema = z.object({
   lastSmartUpdateAt: z.string().nullable().optional(),
   promptBody: z.string().nullable().optional(),
   promptFormat: z.string().nullable().optional(),
-  category: z.enum(["content", "journal"]),
+  category: z.enum(["content", "journal", "today"]),
   linkUrl: z.string().nullable().optional(),
   thumbnailUrl: z.string().nullable().optional(),
   videoId: z.string().nullable().optional(),
@@ -75,7 +75,7 @@ export interface ActivityItem {
   promptBody?: string;
   promptFormat?: string;
   tags?: string[];
-  category: "content" | "journal" | "conversation";
+  category: "content" | "journal" | "today" | "conversation";
   linkUrl?: string;
   thumbnailUrl?: string;
   videoId?: string;

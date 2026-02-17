@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager, closing
 from datetime import UTC, datetime
 from typing import AsyncContextManager, AsyncIterator, Callable, Literal
 
+import anyio
 import logfire
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
@@ -28,6 +29,7 @@ from app.services import (
 )
 from app.services.assets import AssetService
 from app.services.smart_entries import SmartEntryUpdateManager
+from app.services.today_entries import TodayEntryManager
 from app.services.youtube import YoutubeConfigurationError
 from app.services.youtube_analytics import YoutubeAnalyticsService
 
@@ -136,6 +138,11 @@ def build_lifespan(
             app, entry_service, user_service
         )
         app.state.smart_entry_manager = smart_entry_manager
+        today_entry_manager = TodayEntryManager(entry_service, user_service)
+        app.state.today_entry_manager = today_entry_manager
+
+        await anyio.to_thread.run_sync(today_entry_manager.ensure_today_entry)
+
         smart_entry_scheduler: AsyncIOScheduler | None = None
         if active_settings.smart_entries_scheduler_enabled:
             smart_entry_scheduler = AsyncIOScheduler()
@@ -148,6 +155,17 @@ def build_lifespan(
                 max_instances=1,
                 coalesce=True,
                 next_run_time=datetime.now(tz=UTC),
+            )
+            smart_entry_scheduler.add_job(
+                today_entry_manager.ensure_today_entry,
+                trigger="cron",
+                hour=0,
+                minute=0,
+                timezone=UTC,
+                id="today-entry-create",
+                replace_existing=True,
+                max_instances=1,
+                coalesce=True,
             )
             smart_entry_scheduler.start()
         app.state.smart_entry_scheduler = smart_entry_scheduler

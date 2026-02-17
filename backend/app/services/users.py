@@ -15,6 +15,8 @@ _DEFAULT_USER_ID = "active"
 DEFAULT_SMART_UPDATE_INTERVAL_HOURS = 24
 DEFAULT_ACTIVITY_FEED_SORT_DATE: Literal["created", "modified"] = "created"
 ALLOWED_ACTIVITY_FEED_SORT_DATES = {"created", "modified"}
+DEFAULT_TODAY_ENTRIES_ENABLED = True
+DEFAULT_TODAY_INCLUDE_PREVIOUS_INCOMPLETE = True
 
 
 @dataclass(slots=True)
@@ -41,6 +43,8 @@ class UserRecord:
     smart_update_interval_hours: int | None = None
     show_archived: bool | None = None
     activity_feed_sort_date: Literal["created", "modified"] | None = None
+    today_entries_enabled: bool | None = None
+    today_include_previous_incomplete: bool | None = None
 
 
 def _row_to_record(row: Row) -> UserRecord:
@@ -76,6 +80,14 @@ def _row_to_record(row: Row) -> UserRecord:
             if row["activity_feed_sort_date"] in ALLOWED_ACTIVITY_FEED_SORT_DATES
             else None
         ),
+        today_entries_enabled=bool(row["today_entries_enabled"])
+        if row["today_entries_enabled"] is not None
+        else None,
+        today_include_previous_incomplete=bool(
+            row["today_include_previous_incomplete"]
+        )
+        if row["today_include_previous_incomplete"] is not None
+        else None,
     )
 
 
@@ -104,7 +116,9 @@ class UserService(DatabaseService):
                     oauth_state_created_at TEXT,
                     smart_update_interval_hours INTEGER,
                     show_archived INTEGER,
-                    activity_feed_sort_date TEXT
+                    activity_feed_sort_date TEXT,
+                    today_entries_enabled INTEGER,
+                    today_include_previous_incomplete INTEGER
                 )
                 """
             )
@@ -127,6 +141,15 @@ class UserService(DatabaseService):
             if "activity_feed_sort_date" not in existing_columns:
                 connection.execute(
                     "ALTER TABLE users ADD COLUMN activity_feed_sort_date TEXT"
+                )
+            if "today_entries_enabled" not in existing_columns:
+                connection.execute(
+                    "ALTER TABLE users ADD COLUMN today_entries_enabled INTEGER"
+                )
+            if "today_include_previous_incomplete" not in existing_columns:
+                connection.execute(
+                    "ALTER TABLE users ADD COLUMN "
+                    "today_include_previous_incomplete INTEGER"
                 )
             if "channel_profile_json" not in existing_columns:
                 connection.execute(
@@ -248,6 +271,61 @@ class UserService(DatabaseService):
                     activity_feed_sort_date=excluded.activity_feed_sort_date
                 """,
                 (_DEFAULT_USER_ID, sort_date),
+            )
+            connection.commit()
+
+    def get_today_entries_enabled(self) -> bool:
+        """Return whether the Today feature is enabled."""
+        with closing(self._connection_factory()) as connection:
+            row = connection.execute(
+                "SELECT today_entries_enabled FROM users WHERE id = ?",
+                (_DEFAULT_USER_ID,),
+            ).fetchone()
+        if row is None or row["today_entries_enabled"] is None:
+            return DEFAULT_TODAY_ENTRIES_ENABLED
+        return bool(row["today_entries_enabled"])
+
+    def set_today_entries_enabled(self, enabled: bool) -> None:
+        """Persist whether the Today feature is enabled."""
+        with closing(self._connection_factory()) as connection:
+            connection.execute(
+                """
+                INSERT INTO users (id, today_entries_enabled)
+                VALUES (?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    today_entries_enabled=excluded.today_entries_enabled
+                """,
+                (_DEFAULT_USER_ID, int(enabled)),
+            )
+            connection.commit()
+
+    def get_today_include_previous_incomplete(self) -> bool:
+        """Return whether Today should include incomplete tasks from yesterday."""
+        with closing(self._connection_factory()) as connection:
+            row = connection.execute(
+                """
+                SELECT today_include_previous_incomplete
+                FROM users
+                WHERE id = ?
+                """,
+                (_DEFAULT_USER_ID,),
+            ).fetchone()
+        if row is None or row["today_include_previous_incomplete"] is None:
+            return DEFAULT_TODAY_INCLUDE_PREVIOUS_INCOMPLETE
+        return bool(row["today_include_previous_incomplete"])
+
+    def set_today_include_previous_incomplete(self, enabled: bool) -> None:
+        """Persist whether incomplete tasks roll over into the next Today entry."""
+        with closing(self._connection_factory()) as connection:
+            connection.execute(
+                """
+                INSERT INTO users (id, today_include_previous_incomplete)
+                VALUES (?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    today_include_previous_incomplete=
+                        excluded.today_include_previous_incomplete
+                """,
+                (_DEFAULT_USER_ID, int(enabled)),
             )
             connection.commit()
 
