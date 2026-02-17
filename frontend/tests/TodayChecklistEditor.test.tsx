@@ -35,4 +35,15 @@ describe("TodayChecklistEditor", () => {
 
     expect(screen.getAllByRole("textbox")).toHaveLength(3);
   });
+
+  it("normalizes pasted newlines into a single checklist row", async () => {
+    render(<TodayChecklistEditorHarness />);
+
+    const input = screen.getByPlaceholderText("Type a task…");
+    await userEvent.click(input);
+    await userEvent.paste("Draft hook\nCTA options");
+
+    expect(input).toHaveValue("Draft hook CTA options");
+    expect(screen.getAllByRole("textbox")).toHaveLength(1);
+  });
 });

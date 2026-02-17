@@ -267,10 +267,13 @@ function normalizeRowsForCommit(rows: TodayChecklistRow[]): TodayChecklistRow[] 
     return [{ text: "", checked: false }];
   }
 
-  return rows.map((row) => ({
-    text: row.text,
-    checked: row.checked && row.text.trim().length > 0,
-  }));
+  return rows.map((row) => {
+    const normalizedText = normalizeTaskRowText(row.text);
+    return {
+      text: normalizedText,
+      checked: row.checked && normalizedText.trim().length > 0,
+    };
+  });
 }
 
 function normalizeRowsFromValue(rows: TodayChecklistRow[]): TodayChecklistRow[] {
@@ -305,4 +308,8 @@ function serializeRowsForStorage(rows: TodayChecklistRow[]): string {
       return `- [${row.checked ? "x" : " "}] ${normalizedText}`;
     })
     .join("\n");
+}
+
+function normalizeTaskRowText(text: string): string {
+  return text.replace(/\s*[\r\n]+\s*/g, " ");
 }
