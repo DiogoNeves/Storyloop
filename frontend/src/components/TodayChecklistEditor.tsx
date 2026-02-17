@@ -9,8 +9,8 @@ import {
 } from "react";
 import { Plus } from "lucide-react";
 
+import { AutoResizeTextarea } from "@/components/ui/auto-resize-textarea";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import {
   parseTodayChecklistMarkdown,
   type TodayChecklistRow,
@@ -45,14 +45,6 @@ export function TodayChecklistEditor({
   const pendingSerializedRef = useRef<string | null>(null);
   const onChangeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const resizeTaskField = useCallback((element: HTMLTextAreaElement | null) => {
-    if (!element) {
-      return;
-    }
-    element.style.height = "0px";
-    element.style.height = `${element.scrollHeight}px`;
-  }, []);
-
   useEffect(() => {
     const pendingFocusIndex = pendingFocusIndexRef.current;
     if (pendingFocusIndex === null) {
@@ -60,17 +52,9 @@ export function TodayChecklistEditor({
     }
     pendingFocusIndexRef.current = null;
     requestAnimationFrame(() => {
-      const pendingField = inputRefs.current[pendingFocusIndex];
-      resizeTaskField(pendingField);
-      pendingField?.focus();
+      inputRefs.current[pendingFocusIndex]?.focus();
     });
-  }, [resizeTaskField, rows]);
-
-  useEffect(() => {
-    inputRefs.current.forEach((field) => {
-      resizeTaskField(field);
-    });
-  }, [resizeTaskField, rows]);
+  }, [rows]);
 
   useEffect(() => {
     if (isInteracting) {
@@ -125,7 +109,6 @@ export function TodayChecklistEditor({
 
   const handleTextChange = useCallback(
     (index: number, event: ChangeEvent<HTMLTextAreaElement>) => {
-      resizeTaskField(event.currentTarget);
       const nextRows = rows.map((row, rowIndex) =>
         rowIndex === index
           ? {
@@ -136,7 +119,7 @@ export function TodayChecklistEditor({
       );
       commitRows(nextRows);
     },
-    [commitRows, resizeTaskField, rows],
+    [commitRows, rows],
   );
 
   const handleCheckedChange = useCallback(
@@ -242,10 +225,9 @@ export function TodayChecklistEditor({
             onBlur={handleFieldBlur}
             aria-label={`Toggle task ${index + 1}`}
           />
-          <Textarea
+          <AutoResizeTextarea
             ref={(element) => {
               inputRefs.current[index] = element;
-              resizeTaskField(element);
             }}
             value={row.text}
             onChange={(event) => {
@@ -257,8 +239,8 @@ export function TodayChecklistEditor({
             onFocus={handleFieldFocus}
             onBlur={handleFieldBlur}
             readOnly={!isEditable}
-            rows={1}
             placeholder={index === rows.length - 1 ? "Type a task…" : ""}
+            minRows={1}
             className="min-h-0 resize-none overflow-hidden border-0 bg-transparent px-1 py-0 text-sm leading-6 shadow-none focus-visible:ring-0"
           />
         </div>
