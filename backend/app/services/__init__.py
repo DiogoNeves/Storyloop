@@ -7,6 +7,7 @@ from app.services.speech_to_text import (
     SpeechToTextService,
     build_speech_to_text_service,
 )
+from app.services.today_entries import TodayEntryManager
 from app.services.youtube import YoutubeService
 from app.services.youtube_analytics import YoutubeAnalyticsService
 from app.services.youtube_demo import (
@@ -27,6 +28,7 @@ __all__ = [
     "EntryService",
     "SpeechToTextService",
     "build_speech_to_text_service",
+    "TodayEntryManager",
     "UserRecord",
     "UserService",
     "DemoYoutubeService",

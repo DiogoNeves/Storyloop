@@ -10,12 +10,16 @@ export interface SettingsResponse {
   smartUpdateScheduleHours: number;
   showArchived: boolean;
   activityFeedSortDate: ActivityFeedSortDate;
+  todayEntriesEnabled: boolean;
+  todayIncludePreviousIncomplete: boolean;
 }
 
 export interface UpdateSettingsInput {
   smartUpdateScheduleHours?: number;
   showArchived?: boolean;
   activityFeedSortDate?: ActivityFeedSortDate;
+  todayEntriesEnabled?: boolean;
+  todayIncludePreviousIncomplete?: boolean;
 }
 
 export const settingsQueries = createQueryKeys("settings", {

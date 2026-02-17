@@ -4,6 +4,7 @@ import {
   getActivityDetailPath,
 } from "@/lib/activity-helpers";
 import { formatTagLabel } from "@/lib/activity-tags";
+import { getTodayEntryDisplayTitle } from "@/lib/today-entry";
 
 interface BuildActivityFeedItemViewParams {
   item: ActivityItem;
@@ -63,7 +64,10 @@ export function buildActivityFeedItemViewModel({
       })
     : null;
 
-  const titleText = item.title.trim();
+  const titleText =
+    item.category === "today"
+      ? getTodayEntryDisplayTitle(item.id, item.createdAt ?? item.date)
+      : item.title.trim();
   const isSmartJournal = item.category === "journal" && Boolean(item.promptBody);
   const summary = item.summary.trim();
   const isSmartSummaryPlaceholder = isSmartJournal && summary.length === 0;
@@ -81,7 +85,7 @@ export function buildActivityFeedItemViewModel({
     ? "Archived. Unarchive unavailable."
     : "Not archived. Archive unavailable.";
   const tagLabels =
-    item.category === "journal"
+    item.category === "journal" || item.category === "today"
       ? (item.tags ?? []).map((tag) => formatTagLabel(tag))
       : [];
 

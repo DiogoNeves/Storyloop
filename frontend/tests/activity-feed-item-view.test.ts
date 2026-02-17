@@ -39,4 +39,19 @@ describe("activity-feed-item-view", () => {
     expect(view.isSmartSummaryPlaceholder).toBe(true);
     expect(view.summaryText).toContain("Loopie is preparing");
   });
+
+  it("formats today entry titles based on entry day", () => {
+    const view = buildActivityFeedItemViewModel({
+      item: {
+        id: "today-2026-02-15",
+        title: "Today",
+        summary: "- [ ] Plan",
+        date: "2026-02-15T00:00:00.000Z",
+        category: "today",
+      },
+      isOnline: true,
+    });
+
+    expect(view.titleText).toMatch(/2026|Feb/i);
+  });
 });

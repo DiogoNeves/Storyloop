@@ -28,7 +28,9 @@ export function TagFilterSection({
   const selectedTags = useMemo(() => new Set(activeTags), [activeTags]);
   const { journalTagCounts, videoTagCounts, conversationTagCounts } = useMemo(
     () => {
-      const journalItems = items.filter((item) => item.category === "journal");
+      const journalItems = items.filter(
+        (item) => item.category === "journal" || item.category === "today",
+      );
       const videoItems = items.filter((item) => item.category === "content");
       const conversationItems = items.filter(
         (item) => item.category === "conversation",

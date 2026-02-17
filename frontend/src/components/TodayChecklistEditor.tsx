@@ -1,0 +1,263 @@
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type KeyboardEvent,
+} from "react";
+import { Plus } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  parseTodayChecklistMarkdown,
+  type TodayChecklistRow,
+} from "@/lib/today-entry";
+import { cn } from "@/lib/utils";
+
+interface TodayChecklistEditorProps {
+  value: string;
+  onChange: (nextValue: string) => void;
+  isEditable?: boolean;
+  className?: string;
+}
+
+export function TodayChecklistEditor({
+  value,
+  onChange,
+  isEditable = true,
+  className,
+}: TodayChecklistEditorProps) {
+  const rowsFromValue = useMemo(() => {
+    try {
+      return normalizeRowsFromValue(parseTodayChecklistMarkdown(value));
+    } catch {
+      return normalizeRowsFromValue([]);
+    }
+  }, [value]);
+  const [rows, setRows] = useState<TodayChecklistRow[]>(rowsFromValue);
+  const [isInteracting, setIsInteracting] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const pendingFocusIndexRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const pendingFocusIndex = pendingFocusIndexRef.current;
+    if (pendingFocusIndex === null) {
+      return;
+    }
+    pendingFocusIndexRef.current = null;
+    requestAnimationFrame(() => {
+      inputRefs.current[pendingFocusIndex]?.focus();
+    });
+  }, [rows]);
+
+  useEffect(() => {
+    if (isInteracting) {
+      return;
+    }
+    const nextSerialized = serializeRowsForStorage(rowsFromValue);
+    const currentSerialized = serializeRowsForStorage(rows);
+    if (nextSerialized !== currentSerialized) {
+      setRows(rowsFromValue);
+    }
+  }, [isInteracting, rows, rowsFromValue]);
+
+  const commitRows = useCallback(
+    (nextRows: TodayChecklistRow[]) => {
+      const normalized = normalizeRowsForCommit(nextRows);
+      setRows(normalized);
+      onChange(serializeRowsForStorage(normalized));
+    },
+    [onChange],
+  );
+
+  const handleTextChange = useCallback(
+    (index: number, event: ChangeEvent<HTMLInputElement>) => {
+      const nextRows = rows.map((row, rowIndex) =>
+        rowIndex === index
+          ? {
+              ...row,
+              text: event.target.value,
+            }
+          : row,
+      );
+      commitRows(nextRows);
+    },
+    [commitRows, rows],
+  );
+
+  const handleCheckedChange = useCallback(
+    (index: number, checked: boolean) => {
+      const nextRows = rows.map((row, rowIndex) =>
+        rowIndex === index
+          ? {
+              ...row,
+              checked,
+            }
+          : row,
+      );
+      commitRows(nextRows);
+    },
+    [commitRows, rows],
+  );
+
+  const insertRowAfter = useCallback(
+    (index: number) => {
+      const nextRows = [...rows];
+      const insertIndex = Math.max(0, Math.min(index + 1, nextRows.length));
+      nextRows.splice(insertIndex, 0, { text: "", checked: false });
+      pendingFocusIndexRef.current = insertIndex;
+      commitRows(nextRows);
+    },
+    [commitRows, rows],
+  );
+
+  const addTaskRow = useCallback(() => {
+    const index = rows.length === 0 ? 0 : rows.length - 1;
+    insertRowAfter(index);
+  }, [insertRowAfter, rows.length]);
+
+  const handleKeyDown = useCallback(
+    (index: number, event: KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        insertRowAfter(index);
+        return;
+      }
+
+      if (
+        event.key === "Backspace" &&
+        rows[index]?.text.trim().length === 0 &&
+        rows.length > 1
+      ) {
+        event.preventDefault();
+        const nextRows = rows.filter((_, rowIndex) => rowIndex !== index);
+        const nextFocusIndex = Math.max(0, index - 1);
+        commitRows(nextRows);
+        requestAnimationFrame(() => {
+          inputRefs.current[nextFocusIndex]?.focus();
+        });
+      }
+    },
+    [commitRows, insertRowAfter, rows],
+  );
+
+  const handleFieldFocus = useCallback(() => {
+    setIsInteracting(true);
+  }, []);
+
+  const handleFieldBlur = useCallback(() => {
+    requestAnimationFrame(() => {
+      const activeElement = document.activeElement;
+      if (!containerRef.current || !activeElement) {
+        setIsInteracting(false);
+        return;
+      }
+      if (!containerRef.current.contains(activeElement)) {
+        setIsInteracting(false);
+      }
+    });
+  }, []);
+
+  return (
+    <div ref={containerRef} className={cn("space-y-2", className)}>
+      {rows.map((row, index) => (
+        <div
+          key={`today-row-${index}`}
+          className="flex items-center gap-2 rounded-md border border-border/50 bg-background/60 px-3 py-2"
+        >
+          <input
+            type="checkbox"
+            checked={row.checked}
+            disabled={!isEditable}
+            className="h-4 w-4 accent-primary"
+            onChange={(event) => {
+              handleCheckedChange(index, event.target.checked);
+            }}
+            onFocus={handleFieldFocus}
+            onBlur={handleFieldBlur}
+            aria-label={`Toggle task ${index + 1}`}
+          />
+          <Input
+            ref={(element) => {
+              inputRefs.current[index] = element;
+            }}
+            value={row.text}
+            onChange={(event) => {
+              handleTextChange(index, event);
+            }}
+            onKeyDown={(event) => {
+              handleKeyDown(index, event);
+            }}
+            onFocus={handleFieldFocus}
+            onBlur={handleFieldBlur}
+            readOnly={!isEditable}
+            placeholder={index === rows.length - 1 ? "Type a task…" : ""}
+            className="h-8 border-0 bg-transparent px-1 py-0 text-sm shadow-none focus-visible:ring-0"
+          />
+        </div>
+      ))}
+      {isEditable ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={addTaskRow}
+          className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+          aria-label="Add task row"
+        >
+          <Plus className="mr-1 h-3.5 w-3.5" />
+          Add task
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+function normalizeRowsForCommit(rows: TodayChecklistRow[]): TodayChecklistRow[] {
+  if (rows.length === 0) {
+    return [{ text: "", checked: false }];
+  }
+
+  return rows.map((row) => ({
+    text: row.text,
+    checked: row.checked && row.text.trim().length > 0,
+  }));
+}
+
+function normalizeRowsFromValue(rows: TodayChecklistRow[]): TodayChecklistRow[] {
+  const normalizedRows = normalizeRowsForCommit(rows);
+
+  let lastNonEmptyIndex = normalizedRows.length - 1;
+  while (
+    lastNonEmptyIndex >= 0 &&
+    normalizedRows[lastNonEmptyIndex].text.trim().length === 0
+  ) {
+    lastNonEmptyIndex -= 1;
+  }
+
+  if (lastNonEmptyIndex < 0) {
+    return [{ text: "", checked: false }];
+  }
+
+  return normalizedRows.slice(0, lastNonEmptyIndex + 1);
+}
+
+function serializeRowsForStorage(rows: TodayChecklistRow[]): string {
+  if (rows.length === 0) {
+    return "- [ ]";
+  }
+
+  return rows
+    .map((row) => {
+      const normalizedText = row.text.trim();
+      if (normalizedText.length === 0) {
+        return "- [ ]";
+      }
+      return `- [${row.checked ? "x" : " "}] ${normalizedText}`;
+    })
+    .join("\n");
+}
