@@ -18,18 +18,22 @@ from app.services.agent_tools import (
     BaseChannelProfileRepository,
     BaseEntryRepository,
     BaseJournalRepository,
+    BaseTodayRepository,
     BaseYouTubeRepository,
     ChannelMetrics,
     ChannelProfileRepository,
     EmptyEntryRepository,
     EmptyJournalRepository,
     EmptyChannelProfileRepository,
+    EmptyTodayRepository,
     EmptyYouTubeRepository,
     EntryRepository,
     JournalEntry,
     JournalEntryDetails,
     JournalEntryInput,
     JournalRepository,
+    TodayEntry,
+    TodayRepository,
     VideoCountResult,
     VideoDetails,
     VideoMetrics,
@@ -75,6 +79,7 @@ class LoopieDeps(BaseModel):
     user_id: str
     entry_repo: BaseEntryRepository
     journal_repo: BaseJournalRepository
+    today_repo: BaseTodayRepository
     youtube_repo: BaseYouTubeRepository
     channel_profile_repo: BaseChannelProfileRepository
     tool_call_notifier: Callable[[str], Awaitable[None]] | None = None
@@ -114,6 +119,12 @@ async def build_loopie_deps(
     else:
         journal_repo = JournalRepository(entry_service, asset_service)
 
+    today_repo: BaseTodayRepository
+    if entry_service is None:
+        today_repo = EmptyTodayRepository()
+    else:
+        today_repo = TodayRepository(entry_service)
+
     youtube_repo: BaseYouTubeRepository
     if youtube_service is None or user_service is None:
         youtube_repo = EmptyYouTubeRepository()
@@ -132,6 +143,7 @@ async def build_loopie_deps(
         user_id=user_id,
         entry_repo=entry_repo,
         journal_repo=journal_repo,
+        today_repo=today_repo,
         youtube_repo=youtube_repo,
         channel_profile_repo=channel_profile_repo,
         tool_call_notifier=tool_call_notifier,
@@ -193,6 +205,32 @@ def build_agent(
             await ctx.deps.tool_call_notifier("👀 your latest journal entries")
 
         return await ctx.deps.journal_repo.load_entries(
+            user_id=ctx.deps.user_id, limit=limit, before=before_iso
+        )
+
+    @assistant_agent.tool
+    async def load_today_entries(
+        ctx: RunContext[LoopieDeps],
+        limit: int = 5,
+        before_iso: str | None = None,
+    ) -> list[TodayEntry]:
+        """Load recent Today checklist entries for achievement tracking.
+
+        Use this when the user asks what they completed, shipped, or achieved.
+        This is less common than ``load_journal_entries`` and should be used
+        mainly for progress-tracking conversations.
+
+        Args:
+            limit: number of entries, newest first
+            before_iso: only return entries strictly before this updated_at timestamp
+        """
+
+        if ctx.deps.tool_call_notifier:
+            await ctx.deps.tool_call_notifier(
+                "✅ your recent Today checklists"
+            )
+
+        return await ctx.deps.today_repo.load_entries(
             user_id=ctx.deps.user_id, limit=limit, before=before_iso
         )
 

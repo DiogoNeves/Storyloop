@@ -9,9 +9,6 @@ import anyio
 from pydantic import ValidationError
 
 from app.services.assets import AssetService, extract_asset_ids
-from app.services.entries import EntryRecord, EntryService
-from app.services.tags import extract_tags_from_values
-from app.services.users import UserService
 from app.services.channel_profile import (
     ChannelProfile,
     ChannelProfilePatch,
@@ -19,7 +16,7 @@ from app.services.channel_profile import (
     apply_channel_profile_patch,
     calculate_channel_profile_hash,
 )
-from app.services.youtube import YoutubeService
+from app.services.entries import EntryRecord, EntryService
 from app.services.agent_tools.models import (
     ChannelMetrics,
     EntryDetails,
@@ -27,11 +24,17 @@ from app.services.agent_tools.models import (
     JournalEntryAttachment,
     JournalEntryDetails,
     JournalEntryInput,
+    TodayChecklistItem,
+    TodayEntry,
     VideoCountResult,
     VideoAnalyticsMetrics,
     VideoDetails,
     VideoMetrics,
 )
+from app.services.tags import extract_tags_from_values
+from app.services.today_entries import parse_today_summary
+from app.services.users import UserService
+from app.services.youtube import YoutubeService
 from app.services.youtube_analytics import YoutubeAnalyticsService
 from app.services.youtube_oauth import YoutubeOAuthService
 
@@ -79,6 +82,44 @@ def _to_journal_entry(
             record.title, record.summary, record.prompt_body
         ),
         attachments=_collect_attachments(asset_service, record.summary),
+    )
+
+
+def _parse_today_tasks(
+    summary_markdown: str,
+) -> tuple[list[TodayChecklistItem], list[str], list[str]]:
+    try:
+        rows = parse_today_summary(summary_markdown)
+    except ValueError:
+        return [], [], []
+
+    checklist = [
+        TodayChecklistItem(text=row.text, checked=row.checked)
+        for row in rows
+        if row.text
+    ]
+    completed_tasks = [item.text for item in checklist if item.checked]
+    pending_tasks = [item.text for item in checklist if not item.checked]
+    return checklist, completed_tasks, pending_tasks
+
+
+def _to_today_entry(record: EntryRecord) -> TodayEntry:
+    checklist, completed_tasks, pending_tasks = _parse_today_tasks(
+        record.summary
+    )
+    return TodayEntry(
+        id=record.id,
+        title=record.title,
+        created_at=record.occurred_at.isoformat(),
+        updated_at=record.updated_at.isoformat(),
+        summary_markdown=record.summary,
+        checklist=checklist,
+        completed_tasks=completed_tasks,
+        pending_tasks=pending_tasks,
+        pinned=record.pinned,
+        tags=extract_tags_from_values(
+            record.title, record.summary, record.prompt_body
+        ),
     )
 
 
@@ -310,6 +351,55 @@ class EmptyJournalRepository:
         occurred_at: datetime | None = None,
     ) -> JournalEntryDetails:
         raise RuntimeError("Entry service not configured")
+
+
+class TodayRepository:
+    """Readonly accessors for Today checklist entries."""
+
+    def __init__(self, entry_service: EntryService) -> None:
+        self._entry_service = entry_service
+
+    async def load_entries(
+        self, *, user_id: str, limit: int, before: str | None
+    ) -> list[TodayEntry]:
+        """Return Today entries ordered by recency."""
+
+        def _fetch() -> list[TodayEntry]:
+            records = self._entry_service.list_entries(include_archived=False)
+            filtered = [
+                record for record in records if record.category == "today"
+            ]
+            if before:
+                cutoff = _parse_iso_datetime(before)
+                if cutoff is not None:
+                    filtered = [
+                        record
+                        for record in filtered
+                        if record.updated_at < cutoff
+                    ]
+            filtered.sort(key=lambda record: record.updated_at, reverse=True)
+            return [_to_today_entry(record) for record in filtered[:limit]]
+
+        return await anyio.to_thread.run_sync(_fetch)
+
+
+@runtime_checkable
+class BaseTodayRepository(Protocol):
+    """Interface for Today repositories consumed by the agent."""
+
+    async def load_entries(
+        self, *, user_id: str, limit: int, before: str | None
+    ) -> list[TodayEntry]:
+        """Return Today entries ordered by recency."""
+
+
+class EmptyTodayRepository:
+    """Fallback repository returning no Today entries."""
+
+    async def load_entries(
+        self, *, user_id: str, limit: int, before: str | None
+    ) -> list[TodayEntry]:
+        return []
 
 
 class EntryRepository:
