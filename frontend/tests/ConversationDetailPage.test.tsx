@@ -4,6 +4,7 @@ import {
   QueryClientProvider,
 } from "@tanstack/react-query";
 import {
+  fireEvent,
   render,
   screen,
   waitFor,
@@ -72,6 +73,18 @@ function renderPage(ui: ReactElement, initialPath: string) {
   );
 }
 
+function getCardScrollBody(collapsedHeader: HTMLElement): HTMLDivElement {
+  const card = collapsedHeader.closest("section");
+  if (!card) {
+    throw new Error("Expected collapsed header to be rendered in a card.");
+  }
+  const scrollBody = card.querySelector<HTMLDivElement>(".overflow-y-auto");
+  if (!scrollBody) {
+    throw new Error("Expected card to include a scroll body.");
+  }
+  return scrollBody;
+}
+
 describe("ConversationDetailPage", () => {
   beforeEach(() => {
     mockDeleteConversation.mockReset();
@@ -110,11 +123,54 @@ describe("ConversationDetailPage", () => {
 
     renderPage(<ConversationDetailPage />, "/conversations/abc");
 
+    const backLinks = await screen.findAllByRole("link", {
+      name: /Back to activity feed/i,
+    });
     expect(
-      await screen.findByRole("link", { name: /Back to activity feed/i }),
-    ).toBeInTheDocument();
+      backLinks.some((link) => link.className.includes("h-8 w-8")),
+    ).toBe(true);
     expect(await screen.findByText("Hello Loopie")).toBeInTheDocument();
     expect(await screen.findByText("Hi creator!")).toBeInTheDocument();
+  });
+
+  it("collapses to the mobile back-and-title header after scrolling", async () => {
+    mockUseAgentConversationContext.mockReturnValue({
+      state: {
+        conversationId: "abc",
+        messages: [
+          {
+            id: "turn-1",
+            role: "user",
+            content: "Hello Loopie",
+            createdAt: "2024-01-01T00:00:00Z",
+          },
+        ],
+        composer: { status: "idle", error: null },
+      },
+      adapter: {
+        sendMessage: vi.fn(),
+        resetConversation: vi.fn(),
+      },
+      setActiveConversation: mockSetActiveConversation,
+      isDemo: false,
+      isInitializing: false,
+    });
+
+    renderPage(<ConversationDetailPage />, "/conversations/abc");
+
+    const collapsedHeader = await screen.findByTestId("mobile-collapsed-header");
+    expect(collapsedHeader).toHaveAttribute("aria-hidden", "true");
+    expect(within(collapsedHeader).getByText(/Loopie conversation/i)).toBeInTheDocument();
+
+    const scrollBody = getCardScrollBody(collapsedHeader);
+    Object.defineProperty(scrollBody, "scrollTop", {
+      value: 72,
+      writable: true,
+      configurable: true,
+    });
+    fireEvent.scroll(scrollBody);
+
+    expect(collapsedHeader).toHaveAttribute("aria-hidden", "false");
   });
 
   it("deletes the conversation and navigates home", async () => {
@@ -144,9 +200,7 @@ describe("ConversationDetailPage", () => {
     renderPage(<ConversationDetailPage />, "/conversations/xyz");
 
     const user = userEvent.setup();
-    const deleteButton = await screen.findByRole("button", {
-      name: /Delete conversation/i,
-    });
+    const deleteButton = await screen.findByRole("button", { name: /^Delete$/i });
     await user.click(deleteButton);
 
     const dialog = await screen.findByRole("dialog");

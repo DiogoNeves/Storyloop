@@ -7,7 +7,8 @@ interface StickyHeaderScrollableCardProps {
   children: ReactNode;
   footer?: ReactNode;
   stickyHeaderAt?: "lg" | "none";
-  mobileStickyTitle?: ReactNode;
+  mobileCollapsedHeader?: ReactNode;
+  mobileCollapseThreshold?: number;
   footerStickToBottomWhenShort?: boolean;
   className?: string;
   bodyClassName?: string;
@@ -19,21 +20,24 @@ export function StickyHeaderScrollableCard({
   children,
   footer,
   stickyHeaderAt = "none",
-  mobileStickyTitle,
+  mobileCollapsedHeader,
+  mobileCollapseThreshold = 56,
   footerStickToBottomWhenShort = false,
   className,
   bodyClassName,
   onBodyClick,
 }: StickyHeaderScrollableCardProps) {
-  const [showMobileStickyTitle, setShowMobileStickyTitle] = useState(false);
+  const [showMobileCollapsedHeader, setShowMobileCollapsedHeader] =
+    useState(false);
 
   const handleBodyScroll = (event: UIEvent<HTMLDivElement>) => {
-    if (!mobileStickyTitle) {
+    if (!mobileCollapsedHeader) {
       return;
     }
-    const nextShowSticky = event.currentTarget.scrollTop > 72;
-    if (nextShowSticky !== showMobileStickyTitle) {
-      setShowMobileStickyTitle(nextShowSticky);
+    const nextShowCollapsed =
+      event.currentTarget.scrollTop > mobileCollapseThreshold;
+    if (nextShowCollapsed !== showMobileCollapsedHeader) {
+      setShowMobileCollapsedHeader(nextShowCollapsed);
     }
   };
 
@@ -47,11 +51,26 @@ export function StickyHeaderScrollableCard({
           className,
         )}
       >
+        {mobileCollapsedHeader ? (
+          <div
+            data-testid="mobile-collapsed-header"
+            className={cn(
+              "flex-shrink-0 overflow-hidden border-border/80 bg-background/95 px-4 backdrop-blur transition-[max-height,opacity,padding,border-width] duration-200 lg:hidden",
+              showMobileCollapsedHeader
+                ? "max-h-16 border-b py-2 opacity-100"
+                : "pointer-events-none max-h-0 border-b-0 py-0 opacity-0",
+            )}
+            aria-hidden={!showMobileCollapsedHeader}
+          >
+            {mobileCollapsedHeader}
+          </div>
+        ) : null}
+
         <header
           className={cn(
             "flex flex-shrink-0 flex-col gap-4 p-6 pb-4 transition-[max-height,opacity,padding] duration-200",
-            showMobileStickyTitle &&
-              mobileStickyTitle &&
+            showMobileCollapsedHeader &&
+              mobileCollapsedHeader &&
               "max-h-0 overflow-hidden py-0 opacity-0 lg:max-h-[20rem] lg:p-6 lg:pb-4 lg:opacity-100",
           )}
         >
@@ -61,7 +80,7 @@ export function StickyHeaderScrollableCard({
         <div
           className={cn(
             "h-px w-full bg-border",
-            showMobileStickyTitle && mobileStickyTitle && "hidden lg:block",
+            showMobileCollapsedHeader && mobileCollapsedHeader && "hidden lg:block",
           )}
           aria-hidden="true"
         />
@@ -74,18 +93,6 @@ export function StickyHeaderScrollableCard({
           onScroll={handleBodyScroll}
           onClick={onBodyClick}
         >
-          {mobileStickyTitle ? (
-            <div
-              className={cn(
-                "pointer-events-none sticky top-0 z-10 -mx-6 mb-4 border-b border-border/80 bg-background/95 px-6 py-2 text-sm font-medium text-foreground backdrop-blur transition-opacity duration-200 lg:hidden",
-                showMobileStickyTitle ? "opacity-100" : "opacity-0",
-              )}
-              aria-hidden={!showMobileStickyTitle}
-            >
-              <p className="truncate">{mobileStickyTitle}</p>
-            </div>
-          ) : null}
-
           {children}
 
           {footer ? (
@@ -138,4 +145,3 @@ export function StickyHeaderScrollableCard({
     </section>
   );
 }
-

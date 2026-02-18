@@ -1,12 +1,18 @@
 import type { ReactElement } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { type Entry } from "@/api/entries";
-import type { useYouTubeFeed as useYouTubeFeedHook } from "@/hooks/useYouTubeFeed";
 import { JournalDetailPage } from "@/pages/JournalDetailPage";
 import { AgentConversationProvider } from "@/context/AgentConversationContext";
 import { SettingsProvider } from "@/context/SettingsProvider";
@@ -14,12 +20,6 @@ import { SyncProvider } from "@/context/SyncProvider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { getTodayEntryDisplayTitle } from "@/lib/today-entry";
 
-const useYouTubeFeedMock =
-  vi.fn<
-    (
-      videoType?: "short" | "video" | "live" | null,
-    ) => ReturnType<typeof useYouTubeFeedHook>
-  >();
 const apiGetMock = vi.hoisted(() => vi.fn());
 const apiPutMock = vi.hoisted(() => vi.fn());
 const useAudioDictationMock = vi.hoisted(() => vi.fn());
@@ -66,11 +66,6 @@ vi.mock("@/api/client", () => ({
     put: apiPutMock,
   },
   API_BASE_URL: "http://localhost:8000",
-}));
-
-vi.mock("@/hooks/useYouTubeFeed", () => ({
-  useYouTubeFeed: (videoType?: "short" | "video" | "live" | null) =>
-    useYouTubeFeedMock(videoType),
 }));
 
 vi.mock("@/hooks/useAudioDictation", () => ({
@@ -131,6 +126,18 @@ function renderPage(ui: ReactElement, initialPath = `/journals/${sampleEntry.id}
   );
 }
 
+function getCardScrollBody(collapsedHeader: HTMLElement): HTMLDivElement {
+  const card = collapsedHeader.closest("section");
+  if (!card) {
+    throw new Error("Expected collapsed header to be inside a card section.");
+  }
+  const scrollBody = card.querySelector<HTMLDivElement>(".overflow-y-auto");
+  if (!scrollBody) {
+    throw new Error("Expected card to include a scroll body.");
+  }
+  return scrollBody;
+}
+
 describe("JournalDetailPage", () => {
   beforeEach(() => {
     journalEditorOnChangeRef.current = null;
@@ -163,7 +170,6 @@ describe("JournalDetailPage", () => {
         return Promise.resolve({ data: sampleEntry });
       },
     );
-    useYouTubeFeedMock.mockReset();
     useAudioDictationMock.mockReset();
     useAudioDictationMock.mockReturnValue({
       status: "idle",
@@ -180,15 +186,6 @@ describe("JournalDetailPage", () => {
   });
 
   it("removes adjacent video cards from the detail footer", async () => {
-    useYouTubeFeedMock.mockReturnValue({
-      youtubeFeed: null,
-      youtubeError: null,
-      isLoading: false,
-      isLinked: false,
-      linkStatus: null,
-      channelId: null,
-    });
-
     renderPage(<JournalDetailPage />);
 
     expect(
@@ -203,16 +200,43 @@ describe("JournalDetailPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("normalizes new lines in the journal title input", async () => {
-    useYouTubeFeedMock.mockReturnValue({
-      youtubeFeed: null,
-      youtubeError: null,
-      isLoading: false,
-      isLinked: false,
-      linkStatus: null,
-      channelId: null,
-    });
+  it("shows the collapsed mobile header after scrolling the detail card", async () => {
+    renderPage(<JournalDetailPage />);
 
+    expect(
+      await screen.findByDisplayValue(sampleEntry.title),
+    ).toBeInTheDocument();
+
+    const collapsedHeader = screen.getByTestId("mobile-collapsed-header");
+    expect(collapsedHeader).toHaveAttribute("aria-hidden", "true");
+
+    const scrollBody = getCardScrollBody(collapsedHeader);
+    Object.defineProperty(scrollBody, "scrollTop", {
+      value: 72,
+      writable: true,
+      configurable: true,
+    });
+    fireEvent.scroll(scrollBody);
+
+    expect(collapsedHeader).toHaveAttribute("aria-hidden", "false");
+    expect(within(collapsedHeader).getByText(sampleEntry.title)).toBeInTheDocument();
+  });
+
+  it("keeps /journals/new title editable and mirrors it in the mobile header", async () => {
+    renderPage(<JournalDetailPage />, "/journals/new");
+
+    const titleInput = await screen.findByPlaceholderText("Untitled entry");
+    const collapsedHeader = screen.getByTestId("mobile-collapsed-header");
+
+    expect(within(collapsedHeader).getByText("New entry")).toBeInTheDocument();
+
+    fireEvent.change(titleInput, { target: { value: "Launch plan" } });
+
+    expect(titleInput).toHaveValue("Launch plan");
+    expect(within(collapsedHeader).getByText("Launch plan")).toBeInTheDocument();
+  });
+
+  it("normalizes new lines in the journal title input", async () => {
     renderPage(<JournalDetailPage />);
 
     const titleInput = await screen.findByDisplayValue(sampleEntry.title);
@@ -224,15 +248,6 @@ describe("JournalDetailPage", () => {
   });
 
   it("focuses the editor at the end when clicking the empty trailing area", async () => {
-    useYouTubeFeedMock.mockReturnValue({
-      youtubeFeed: null,
-      youtubeError: null,
-      isLoading: false,
-      isLinked: false,
-      linkStatus: null,
-      channelId: null,
-    });
-
     renderPage(<JournalDetailPage />);
 
     expect(
@@ -252,15 +267,6 @@ describe("JournalDetailPage", () => {
   });
 
   it("archives an entry from the detail header", async () => {
-    useYouTubeFeedMock.mockReturnValue({
-      youtubeFeed: null,
-      youtubeError: null,
-      isLoading: false,
-      isLinked: false,
-      linkStatus: null,
-      channelId: null,
-    });
-
     renderPage(<JournalDetailPage />);
     const user = userEvent.setup();
 
@@ -296,16 +302,6 @@ describe("JournalDetailPage", () => {
       }
       return Promise.resolve({ data: smartEntry });
     });
-
-    useYouTubeFeedMock.mockReturnValue({
-      youtubeFeed: null,
-      youtubeError: null,
-      isLoading: false,
-      isLinked: false,
-      linkStatus: null,
-      channelId: null,
-    });
-
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(new Response("failed", { status: 500 }));
@@ -341,14 +337,6 @@ describe("JournalDetailPage", () => {
   });
 
   it("renders the Today checklist editor and hides pin/archive controls", async () => {
-    useYouTubeFeedMock.mockReturnValue({
-      youtubeFeed: null,
-      youtubeError: null,
-      isLoading: false,
-      isLinked: false,
-      linkStatus: null,
-      channelId: null,
-    });
     apiGetMock.mockImplementation((url: string) => {
       if (url === `/entries/${todayEntry.id}`) {
         return Promise.resolve({ data: todayEntry });
@@ -398,16 +386,6 @@ describe("JournalDetailPage", () => {
       }
       return Promise.resolve({ data: archivedEntry });
     });
-
-    useYouTubeFeedMock.mockReturnValue({
-      youtubeFeed: null,
-      youtubeError: null,
-      isLoading: false,
-      isLinked: false,
-      linkStatus: null,
-      channelId: null,
-    });
-
     renderPage(<JournalDetailPage />);
 
     expect(await screen.findByText(/Archived /i)).toBeInTheDocument();
@@ -447,16 +425,6 @@ describe("JournalDetailPage", () => {
         return Promise.resolve({ data: archivedEntry });
       },
     );
-
-    useYouTubeFeedMock.mockReturnValue({
-      youtubeFeed: null,
-      youtubeError: null,
-      isLoading: false,
-      isLinked: false,
-      linkStatus: null,
-      channelId: null,
-    });
-
     renderPage(<JournalDetailPage />);
     const user = userEvent.setup();
 
@@ -490,16 +458,6 @@ describe("JournalDetailPage", () => {
       }
       return Promise.resolve({ data: emptyEntry });
     });
-
-    useYouTubeFeedMock.mockReturnValue({
-      youtubeFeed: null,
-      youtubeError: null,
-      isLoading: false,
-      isLinked: false,
-      linkStatus: null,
-      channelId: null,
-    });
-
     renderPage(<JournalDetailPage />);
 
     expect(
@@ -525,16 +483,6 @@ describe("JournalDetailPage", () => {
       }
       return Promise.resolve({ data: emptyPlaceholderEntry });
     });
-
-    useYouTubeFeedMock.mockReturnValue({
-      youtubeFeed: null,
-      youtubeError: null,
-      isLoading: false,
-      isLinked: false,
-      linkStatus: null,
-      channelId: null,
-    });
-
     renderPage(<JournalDetailPage />);
 
     expect(
@@ -577,16 +525,6 @@ describe("JournalDetailPage", () => {
         }),
       }),
     );
-
-    useYouTubeFeedMock.mockReturnValue({
-      youtubeFeed: null,
-      youtubeError: null,
-      isLoading: false,
-      isLinked: false,
-      linkStatus: null,
-      channelId: null,
-    });
-
     renderPage(<JournalDetailPage />);
     const user = userEvent.setup();
 
@@ -609,15 +547,6 @@ describe("JournalDetailPage", () => {
   });
 
   it("saves an empty summary when delete-all emits placeholder markdown", async () => {
-    useYouTubeFeedMock.mockReturnValue({
-      youtubeFeed: null,
-      youtubeError: null,
-      isLoading: false,
-      isLinked: false,
-      linkStatus: null,
-      channelId: null,
-    });
-
     renderPage(<JournalDetailPage />);
 
     expect(

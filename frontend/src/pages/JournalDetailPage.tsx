@@ -53,6 +53,7 @@ import { TodayChecklistEditor } from "@/components/TodayChecklistEditor";
 import { NewEntryHeader } from "@/components/NewEntryHeader";
 import { CopyMarkdownButton } from "@/components/CopyMarkdownButton";
 import { VoiceWave } from "@/components/ui/voice-wave";
+import { MobileBackTitleBar } from "@/components/detail/MobileBackTitleBar";
 
 export function JournalDetailPage() {
   const { journalId } = useParams<{ journalId: string }>();
@@ -537,7 +538,7 @@ export function JournalDetailPage() {
   const backLink = (
     <Link
       to="/"
-      className="text-sm font-medium text-primary underline-offset-2 hover:underline"
+      className="hidden text-sm font-medium text-primary underline-offset-2 hover:underline lg:inline-flex"
     >
       ← Back to activity feed
     </Link>
@@ -555,24 +556,39 @@ export function JournalDetailPage() {
     }
 
     if (isNewEntryRoute) {
+      const mobileEntryTitle =
+        titleDraft.trim().length > 0 ? titleDraft.trim() : "New entry";
       const header = (
-        <NewEntryHeader
-          ref={titleInputRef}
-          title={titleDraft}
-          onTitleChange={setTitleDraft}
-          createError={createError}
-          onClearError={() => setCreateError(null)}
-          isOnline={isOnline}
-          isCreating={createEntryMutation.isPending}
-          onCreate={() => {
-            void handleCreateEntry();
-          }}
-        />
+        <>
+          <MobileBackTitleBar
+            backTo="/"
+            title={mobileEntryTitle}
+            className="lg:hidden"
+          />
+          <NewEntryHeader
+            ref={titleInputRef}
+            title={titleDraft}
+            onTitleChange={setTitleDraft}
+            createError={createError}
+            onClearError={() => setCreateError(null)}
+            isOnline={isOnline}
+            isCreating={createEntryMutation.isPending}
+            onCreate={() => {
+              void handleCreateEntry();
+            }}
+          />
+        </>
       );
 
       return (
-        <StickyHeaderScrollableCard header={header} stickyHeaderAt="lg">
-          <div className="space-y-4 pt-4">
+        <StickyHeaderScrollableCard
+          header={header}
+          stickyHeaderAt="lg"
+          mobileCollapsedHeader={
+            <MobileBackTitleBar backTo="/" title={mobileEntryTitle} />
+          }
+        >
+          <div className="space-y-4">
             <JournalEntryEditor
               ref={editorRef}
               initialValue={editorInitialSummary}
@@ -718,10 +734,20 @@ export function JournalDetailPage() {
       autosaveError,
       hasPendingUpdate,
     );
+    const mobileEntryTitle = isTodayEntry
+      ? todayDisplayTitle ?? "Today"
+      : titleDraft.trim().length > 0
+        ? titleDraft.trim()
+        : "Untitled entry";
 
     const header = (
       <>
-        <div className="space-y-2">
+        <MobileBackTitleBar
+          backTo="/"
+          title={mobileEntryTitle}
+          className="lg:hidden"
+        />
+        <div className="space-y-1.5">
           <div className="flex flex-col-reverse items-start gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
             <div className="flex w-full flex-1 items-start gap-3">
               {isTodayEntry ? (
@@ -842,8 +868,8 @@ export function JournalDetailPage() {
             </div>
           </div>
         </div>
-        <div className="flex flex-col gap-2 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
-          <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1 text-xs leading-tight text-muted-foreground md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-0.5">
             {isArchived ? (
               formattedArchivedDate ? (
                 <span>{`Archived ${formattedArchivedDate}`}</span>
@@ -1068,21 +1094,19 @@ export function JournalDetailPage() {
     ) : null;
 
     const body = (
-      <div className="space-y-6 pt-4">
+      <div className="space-y-6">
         {tabs}
         {isSmartEntry && activeTab === "prompt" ? promptTab : contentTab}
       </div>
     );
 
-    const mobileStickyTitle = isTodayEntry
-      ? todayDisplayTitle ?? "Today"
-      : titleDraft || "Untitled entry";
-
     return (
       <StickyHeaderScrollableCard
         header={header}
         stickyHeaderAt="lg"
-        mobileStickyTitle={mobileStickyTitle}
+        mobileCollapsedHeader={
+          <MobileBackTitleBar backTo="/" title={mobileEntryTitle} />
+        }
         onBodyClick={focusEditorFromTrailingSpace}
       >
         {body}
@@ -1093,8 +1117,10 @@ export function JournalDetailPage() {
   return (
     <>
       <div className="to-muted/12 relative min-h-screen bg-gradient-to-br from-background text-foreground">
-        <NavBar onOpenSettings={() => setIsSettingsOpen(true)} />
-        <main className="relative flex min-h-[calc(100vh-4rem)] flex-1 overflow-y-auto pt-16 lg:h-[100dvh] lg:min-h-0 lg:overflow-hidden">
+        <div className="hidden lg:block">
+          <NavBar onOpenSettings={() => setIsSettingsOpen(true)} />
+        </div>
+        <main className="relative flex min-h-[100dvh] flex-1 overflow-y-auto pt-4 lg:h-[100dvh] lg:min-h-0 lg:overflow-hidden lg:pt-16">
           <div className="from-primary/8 pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b via-transparent to-transparent" />
           <TwoColumnDetailLayout
             leftTop={backLink}
