@@ -545,6 +545,8 @@ export function JournalDetailPage() {
   );
   const mobilePageCardClassName =
     "rounded-none border-x-0 border-y-0 shadow-none lg:rounded-lg lg:border lg:shadow-sm";
+  const mobilePageHeaderClassName = "p-0 lg:p-6 lg:pb-4";
+  const mobilePageBodyClassName = "p-0 pt-0 lg:p-6 lg:pt-4";
 
   const renderCardContent = () => {
     if (!journalId && !isNewEntryRoute) {
@@ -585,13 +587,15 @@ export function JournalDetailPage() {
       return (
         <StickyHeaderScrollableCard
           className={mobilePageCardClassName}
+          headerClassName={mobilePageHeaderClassName}
+          bodyClassName={mobilePageBodyClassName}
           header={header}
           stickyHeaderAt="lg"
           mobileCollapsedHeader={
             <MobileBackTitleBar backTo="/" title={mobileEntryTitle} />
           }
         >
-          <div className="space-y-4">
+          <div className="space-y-4 px-4 pb-6 pt-4 sm:px-6 lg:px-0 lg:pb-0 lg:pt-0">
             <JournalEntryEditor
               ref={editorRef}
               initialValue={editorInitialSummary}
@@ -1097,7 +1101,7 @@ export function JournalDetailPage() {
     ) : null;
 
     const body = (
-      <div className="space-y-6">
+      <div className="space-y-6 px-4 pb-6 pt-4 sm:px-6 lg:px-0 lg:pb-0 lg:pt-0">
         {tabs}
         {isSmartEntry && activeTab === "prompt" ? promptTab : contentTab}
       </div>
@@ -1106,6 +1110,8 @@ export function JournalDetailPage() {
     return (
       <StickyHeaderScrollableCard
         className={mobilePageCardClassName}
+        headerClassName={mobilePageHeaderClassName}
+        bodyClassName={mobilePageBodyClassName}
         header={header}
         stickyHeaderAt="lg"
         mobileCollapsedHeader={
