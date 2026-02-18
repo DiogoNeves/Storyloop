@@ -9,6 +9,7 @@ interface StickyHeaderScrollableCardProps {
   stickyHeaderAt?: "lg" | "none";
   mobileCollapsedHeader?: ReactNode;
   mobileCollapseThreshold?: number;
+  mobileCollapseHysteresis?: number;
   footerStickToBottomWhenShort?: boolean;
   className?: string;
   headerClassName?: string;
@@ -23,6 +24,7 @@ export function StickyHeaderScrollableCard({
   stickyHeaderAt = "none",
   mobileCollapsedHeader,
   mobileCollapseThreshold = 56,
+  mobileCollapseHysteresis = 24,
   footerStickToBottomWhenShort = false,
   className,
   headerClassName,
@@ -31,15 +33,26 @@ export function StickyHeaderScrollableCard({
 }: StickyHeaderScrollableCardProps) {
   const [showMobileCollapsedHeader, setShowMobileCollapsedHeader] =
     useState(false);
+  const collapseThreshold = Math.max(0, mobileCollapseThreshold);
+  const collapseHysteresis = Math.max(0, mobileCollapseHysteresis);
+  const expandThreshold = Math.max(0, collapseThreshold - collapseHysteresis);
 
   const handleBodyScroll = (event: UIEvent<HTMLDivElement>) => {
     if (!mobileCollapsedHeader) {
       return;
     }
-    const nextShowCollapsed =
-      event.currentTarget.scrollTop > mobileCollapseThreshold;
-    if (nextShowCollapsed !== showMobileCollapsedHeader) {
-      setShowMobileCollapsedHeader(nextShowCollapsed);
+
+    const scrollTop = event.currentTarget.scrollTop;
+
+    if (showMobileCollapsedHeader) {
+      if (scrollTop <= expandThreshold) {
+        setShowMobileCollapsedHeader(false);
+      }
+      return;
+    }
+
+    if (scrollTop >= collapseThreshold) {
+      setShowMobileCollapsedHeader(true);
     }
   };
 
