@@ -11,6 +11,7 @@ interface StickyHeaderScrollableCardProps {
   mobileCollapseThreshold?: number;
   footerStickToBottomWhenShort?: boolean;
   className?: string;
+  headerClassName?: string;
   bodyClassName?: string;
   onBodyClick?: MouseEventHandler<HTMLDivElement>;
 }
@@ -24,6 +25,7 @@ export function StickyHeaderScrollableCard({
   mobileCollapseThreshold = 56,
   footerStickToBottomWhenShort = false,
   className,
+  headerClassName,
   bodyClassName,
   onBodyClick,
 }: StickyHeaderScrollableCardProps) {
@@ -72,6 +74,7 @@ export function StickyHeaderScrollableCard({
             showMobileCollapsedHeader &&
               mobileCollapsedHeader &&
               "max-h-0 overflow-hidden py-0 opacity-0 lg:max-h-[20rem] lg:p-6 lg:pb-4 lg:opacity-100",
+            headerClassName,
           )}
         >
           {header}
@@ -124,7 +127,12 @@ export function StickyHeaderScrollableCard({
       >
         {header ? (
           <>
-            <div className="flex flex-shrink-0 flex-col gap-4 pb-4">
+            <div
+              className={cn(
+                "flex flex-shrink-0 flex-col gap-4 pb-4",
+                headerClassName,
+              )}
+            >
               {header}
             </div>
             <div className="h-px w-full bg-border" aria-hidden="true" />
