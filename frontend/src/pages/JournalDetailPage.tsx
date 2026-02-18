@@ -543,11 +543,13 @@ export function JournalDetailPage() {
       ← Back to activity feed
     </Link>
   );
+  const mobilePageCardClassName =
+    "rounded-none border-x-0 border-y-0 shadow-none lg:rounded-lg lg:border lg:shadow-sm";
 
   const renderCardContent = () => {
     if (!journalId && !isNewEntryRoute) {
       return (
-        <StickyHeaderScrollableCard>
+        <StickyHeaderScrollableCard className={mobilePageCardClassName}>
           <p className="text-sm text-muted-foreground">
             We couldn’t determine which journal entry to display.
           </p>
@@ -582,6 +584,7 @@ export function JournalDetailPage() {
 
       return (
         <StickyHeaderScrollableCard
+          className={mobilePageCardClassName}
           header={header}
           stickyHeaderAt="lg"
           mobileCollapsedHeader={
@@ -607,7 +610,7 @@ export function JournalDetailPage() {
 
     if (entryQuery.isLoading) {
       return (
-        <StickyHeaderScrollableCard>
+        <StickyHeaderScrollableCard className={mobilePageCardClassName}>
           <p className="text-sm text-muted-foreground">
             Loading journal entry…
           </p>
@@ -617,7 +620,7 @@ export function JournalDetailPage() {
 
     if (entryQuery.isError) {
       return (
-        <StickyHeaderScrollableCard>
+        <StickyHeaderScrollableCard className={mobilePageCardClassName}>
           <p className="text-sm text-destructive">
             {entryQuery.error instanceof Error
               ? entryQuery.error.message
@@ -629,7 +632,7 @@ export function JournalDetailPage() {
 
     if (!currentEntry) {
       return (
-        <StickyHeaderScrollableCard>
+        <StickyHeaderScrollableCard className={mobilePageCardClassName}>
           <p className="text-sm text-muted-foreground">
             We couldn't find this journal entry.
           </p>
@@ -747,7 +750,7 @@ export function JournalDetailPage() {
           title={mobileEntryTitle}
           className="lg:hidden"
         />
-        <div className="space-y-1.5">
+        <div className="space-y-0.5">
           <div className="flex flex-col-reverse items-start gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
             <div className="flex w-full flex-1 items-start gap-3">
               {isTodayEntry ? (
@@ -867,31 +870,31 @@ export function JournalDetailPage() {
               </Button>
             </div>
           </div>
-        </div>
-        <div className="flex flex-col gap-1 text-xs leading-tight text-muted-foreground md:flex-row md:items-center md:justify-between">
-          <div className="flex flex-col gap-0.5">
-            {isArchived ? (
-              formattedArchivedDate ? (
-                <span>{`Archived ${formattedArchivedDate}`}</span>
+          <div className="flex flex-col gap-1 text-xs leading-tight text-muted-foreground md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-0.5">
+              {isArchived ? (
+                formattedArchivedDate ? (
+                  <span>{`Archived ${formattedArchivedDate}`}</span>
+                ) : (
+                  <span>Archived date unavailable</span>
+                )
+              ) : formattedUpdatedDate ? (
+                <span>{`Updated ${formattedUpdatedDate}`}</span>
               ) : (
-                <span>Archived date unavailable</span>
-              )
-            ) : formattedUpdatedDate ? (
-              <span>{`Updated ${formattedUpdatedDate}`}</span>
-            ) : (
-              <span>Entry date unavailable</span>
-            )}
-            {formattedCreatedDate ? (
-              <span>Created {formattedCreatedDate}</span>
+                <span>Entry date unavailable</span>
+              )}
+              {formattedCreatedDate ? (
+                <span>Created {formattedCreatedDate}</span>
+              ) : null}
+            </div>
+            {isSmartEntry ? (
+              <span className="text-xs text-muted-foreground">
+                {formattedLastSmartUpdate
+                  ? `Loopie updated ${formattedLastSmartUpdate}`
+                  : "Loopie hasn't updated yet"}
+              </span>
             ) : null}
           </div>
-          {isSmartEntry ? (
-            <span className="text-xs text-muted-foreground">
-              {formattedLastSmartUpdate
-                ? `Loopie updated ${formattedLastSmartUpdate}`
-                : "Loopie hasn't updated yet"}
-            </span>
-          ) : null}
         </div>
       </>
     );
@@ -1102,6 +1105,7 @@ export function JournalDetailPage() {
 
     return (
       <StickyHeaderScrollableCard
+        className={mobilePageCardClassName}
         header={header}
         stickyHeaderAt="lg"
         mobileCollapsedHeader={
@@ -1120,9 +1124,10 @@ export function JournalDetailPage() {
         <div className="hidden lg:block">
           <NavBar onOpenSettings={() => setIsSettingsOpen(true)} />
         </div>
-        <main className="relative flex min-h-[100dvh] flex-1 overflow-y-auto pt-4 lg:h-[100dvh] lg:min-h-0 lg:overflow-hidden lg:pt-16">
+        <main className="relative flex min-h-[100dvh] flex-1 overflow-y-auto pt-0 lg:h-[100dvh] lg:min-h-0 lg:overflow-hidden lg:pt-16">
           <div className="from-primary/8 pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b via-transparent to-transparent" />
           <TwoColumnDetailLayout
+            className="gap-0 px-0 py-0 sm:gap-0 sm:px-0 sm:py-0 lg:gap-6 lg:px-10 lg:py-10 xl:px-16"
             leftTop={backLink}
             left={renderCardContent()}
           />
