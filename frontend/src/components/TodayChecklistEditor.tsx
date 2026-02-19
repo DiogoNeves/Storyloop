@@ -214,7 +214,7 @@ export function TodayChecklistEditor({
   );
 
   return (
-    <div ref={containerRef} className={cn("space-y-2", className)}>
+    <div ref={containerRef} className={cn("space-y-1.5", className)}>
       {rows.map((row, index) => (
         <div
           key={`today-row-${index}`}
