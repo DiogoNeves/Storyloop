@@ -12,6 +12,7 @@ export interface SettingsResponse {
   activityFeedSortDate: ActivityFeedSortDate;
   todayEntriesEnabled: boolean;
   todayIncludePreviousIncomplete: boolean;
+  todayMoveCompletedToEnd: boolean;
 }
 
 export interface UpdateSettingsInput {
@@ -20,6 +21,7 @@ export interface UpdateSettingsInput {
   activityFeedSortDate?: ActivityFeedSortDate;
   todayEntriesEnabled?: boolean;
   todayIncludePreviousIncomplete?: boolean;
+  todayMoveCompletedToEnd?: boolean;
 }
 
 export const settingsQueries = createQueryKeys("settings", {
