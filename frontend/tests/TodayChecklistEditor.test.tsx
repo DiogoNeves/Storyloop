@@ -93,4 +93,18 @@ describe("TodayChecklistEditor", () => {
     expect(inputs[2]).toHaveValue("Publish");
     expect(screen.getAllByRole("checkbox")[0]).toBeChecked();
   });
+
+  it("renders task hashtags as tag bubbles", () => {
+    render(
+      <TodayChecklistEditorHarness
+        initialValue="- [ ] Draft hook #Focus #archived"
+      />,
+    );
+
+    const focusTag = screen.getByText("#focus");
+    const archivedTag = screen.getByText("#archived");
+
+    expect(focusTag).toHaveClass("rounded-full");
+    expect(archivedTag).toHaveClass("rounded-full", "bg-red-100", "text-red-700");
+  });
 });

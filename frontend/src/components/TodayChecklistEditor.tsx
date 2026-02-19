@@ -11,6 +11,7 @@ import { Plus } from "lucide-react";
 
 import { AutoResizeTextarea } from "@/components/ui/auto-resize-textarea";
 import { Button } from "@/components/ui/button";
+import { extractTagsFromText, formatTagLabel } from "@/lib/activity-tags";
 import {
   parseTodayChecklistMarkdown,
   type TodayChecklistRow,
@@ -216,41 +217,21 @@ export function TodayChecklistEditor({
   return (
     <div ref={containerRef} className={cn("space-y-1.5", className)}>
       {rows.map((row, index) => (
-        <div
+        <TodayChecklistRowEditor
           key={`today-row-${index}`}
-          className="flex items-start gap-2 rounded-md border border-border/50 bg-background/60 px-3 py-2"
-        >
-          <input
-            type="checkbox"
-            checked={row.checked}
-            disabled={!isEditable}
-            className="mt-1 h-4 w-4 accent-primary"
-            onChange={(event) => {
-              handleCheckedChange(index, event.target.checked);
-            }}
-            onFocus={handleFieldFocus}
-            onBlur={handleFieldBlur}
-            aria-label={`Toggle task ${index + 1}`}
-          />
-          <AutoResizeTextarea
-            ref={(element) => {
-              inputRefs.current[index] = element;
-            }}
-            value={row.text}
-            onChange={(event) => {
-              handleTextChange(index, event);
-            }}
-            onKeyDown={(event) => {
-              handleKeyDown(index, event);
-            }}
-            onFocus={handleFieldFocus}
-            onBlur={handleFieldBlur}
-            readOnly={!isEditable}
-            placeholder={index === rows.length - 1 ? "Type a task…" : ""}
-            minRows={1}
-            className="min-h-0 resize-none overflow-hidden border-0 bg-transparent px-1 py-0 text-sm leading-6 shadow-none focus-visible:ring-0"
-          />
-        </div>
+          row={row}
+          index={index}
+          totalRows={rows.length}
+          isEditable={isEditable}
+          onCheckedChange={handleCheckedChange}
+          onTextChange={handleTextChange}
+          onKeyDown={handleKeyDown}
+          onFieldFocus={handleFieldFocus}
+          onFieldBlur={handleFieldBlur}
+          setInputRef={(element) => {
+            inputRefs.current[index] = element;
+          }}
+        />
       ))}
       {isEditable ? (
         <Button
@@ -265,6 +246,84 @@ export function TodayChecklistEditor({
           Add task
         </Button>
       ) : null}
+    </div>
+  );
+}
+
+interface TodayChecklistRowEditorProps {
+  row: TodayChecklistRow;
+  index: number;
+  totalRows: number;
+  isEditable: boolean;
+  onCheckedChange: (index: number, checked: boolean) => void;
+  onTextChange: (index: number, event: ChangeEvent<HTMLTextAreaElement>) => void;
+  onKeyDown: (index: number, event: KeyboardEvent<HTMLTextAreaElement>) => void;
+  onFieldFocus: () => void;
+  onFieldBlur: () => void;
+  setInputRef: (element: HTMLTextAreaElement | null) => void;
+}
+
+function TodayChecklistRowEditor({
+  row,
+  index,
+  totalRows,
+  isEditable,
+  onCheckedChange,
+  onTextChange,
+  onKeyDown,
+  onFieldFocus,
+  onFieldBlur,
+  setInputRef,
+}: TodayChecklistRowEditorProps) {
+  const tags = extractTagsFromText(row.text);
+
+  return (
+    <div className="flex items-start gap-2 rounded-md border border-border/50 bg-background/60 px-3 py-2">
+      <input
+        type="checkbox"
+        checked={row.checked}
+        disabled={!isEditable}
+        className="mt-1 h-4 w-4 accent-primary"
+        onChange={(event) => {
+          onCheckedChange(index, event.target.checked);
+        }}
+        onFocus={onFieldFocus}
+        onBlur={onFieldBlur}
+        aria-label={`Toggle task ${index + 1}`}
+      />
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <AutoResizeTextarea
+          ref={setInputRef}
+          value={row.text}
+          onChange={(event) => {
+            onTextChange(index, event);
+          }}
+          onKeyDown={(event) => {
+            onKeyDown(index, event);
+          }}
+          onFocus={onFieldFocus}
+          onBlur={onFieldBlur}
+          readOnly={!isEditable}
+          placeholder={index === totalRows - 1 ? "Type a task…" : ""}
+          minRows={1}
+          className="min-h-0 resize-none overflow-hidden border-0 bg-transparent px-1 py-0 text-sm leading-6 shadow-none focus-visible:ring-0"
+        />
+        {tags.length > 0 ? (
+          <div className="flex flex-wrap gap-1 px-1 pb-0.5">
+            {tags.map((tag) => (
+              <span
+                key={`${index}-${tag}`}
+                className={cn(
+                  "inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground",
+                  tag === "archived" && "bg-red-100 text-red-700",
+                )}
+              >
+                {formatTagLabel(tag)}
+              </span>
+            ))}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
