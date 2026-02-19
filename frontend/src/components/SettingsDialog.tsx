@@ -68,6 +68,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const todayEntriesEnabled = settingsQuery.data?.todayEntriesEnabled ?? true;
   const todayIncludePreviousIncomplete =
     settingsQuery.data?.todayIncludePreviousIncomplete ?? true;
+  const todayMoveCompletedToEnd =
+    settingsQuery.data?.todayMoveCompletedToEnd ?? true;
 
   useEffect(() => {
     setScheduleInput(String(scheduleHours));
@@ -427,6 +429,39 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                         onCheckedChange={(checked) => {
                           scheduleMutation.mutate({
                             todayIncludePreviousIncomplete: checked,
+                          });
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-lg border bg-muted/50 p-4">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">
+                        Move completed tasks to end
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Reorder checked tasks to the bottom as you complete them.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label
+                        htmlFor="settings-today-move-completed-to-end"
+                        className="sr-only"
+                      >
+                        Move completed tasks to end
+                      </Label>
+                      <Switch
+                        id="settings-today-move-completed-to-end"
+                        checked={todayMoveCompletedToEnd}
+                        disabled={
+                          settingsQuery.isLoading ||
+                          scheduleMutation.isPending ||
+                          !todayEntriesEnabled
+                        }
+                        onCheckedChange={(checked) => {
+                          scheduleMutation.mutate({
+                            todayMoveCompletedToEnd: checked,
                           });
                         }}
                       />

@@ -527,6 +527,8 @@ export function JournalDetailPage() {
   const showArchived = settingsQuery.data?.showArchived ?? false;
   const activityFeedSortDate =
     settingsQuery.data?.activityFeedSortDate ?? "created";
+  const todayMoveCompletedToEnd =
+    settingsQuery.data?.todayMoveCompletedToEnd ?? true;
 
   const { activityItems } = useActivityItems({
     contentTypeFilter,
@@ -994,6 +996,7 @@ export function JournalDetailPage() {
             value={summaryDraft}
             onChange={setSummaryDraft}
             isEditable={!isSmartUpdating}
+            moveCompletedTasksToEnd={todayMoveCompletedToEnd}
           />
         ) : shouldRenderEditor ? (
           <div ref={editorContainerRef}>

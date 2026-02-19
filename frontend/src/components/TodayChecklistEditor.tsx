@@ -21,6 +21,7 @@ interface TodayChecklistEditorProps {
   value: string;
   onChange: (nextValue: string) => void;
   isEditable?: boolean;
+  moveCompletedTasksToEnd?: boolean;
   className?: string;
 }
 
@@ -28,6 +29,7 @@ export function TodayChecklistEditor({
   value,
   onChange,
   isEditable = true,
+  moveCompletedTasksToEnd = true,
   className,
 }: TodayChecklistEditorProps) {
   const rowsFromValue = useMemo(() => {
@@ -124,7 +126,7 @@ export function TodayChecklistEditor({
 
   const handleCheckedChange = useCallback(
     (index: number, checked: boolean) => {
-      const nextRows = rows.map((row, rowIndex) =>
+      const toggledRows = rows.map((row, rowIndex) =>
         rowIndex === index
           ? {
               ...row,
@@ -132,9 +134,14 @@ export function TodayChecklistEditor({
             }
           : row,
       );
+      const shouldMoveCompletedTask =
+        moveCompletedTasksToEnd && checked && !rows[index]?.checked;
+      const nextRows = shouldMoveCompletedTask
+        ? moveRowToEndBeforeTrailingEmptyRows(toggledRows, index)
+        : toggledRows;
       commitRows(nextRows, true);
     },
-    [commitRows, rows],
+    [commitRows, moveCompletedTasksToEnd, rows],
   );
 
   const insertRowAfter = useCallback(
@@ -274,6 +281,40 @@ function normalizeRowsForCommit(rows: TodayChecklistRow[]): TodayChecklistRow[] 
       checked: row.checked && normalizedText.trim().length > 0,
     };
   });
+}
+
+function moveRowToEndBeforeTrailingEmptyRows(
+  rows: TodayChecklistRow[],
+  index: number,
+): TodayChecklistRow[] {
+  if (index < 0 || index >= rows.length) {
+    return rows;
+  }
+
+  const rowToMove = rows[index];
+  if (rowToMove.text.trim().length === 0) {
+    return rows;
+  }
+
+  const rowsWithoutMovedRow = rows.filter((_, rowIndex) => rowIndex !== index);
+  const insertIndex =
+    findIndexBeforeTrailingEmptyRows(rowsWithoutMovedRow);
+
+  return [
+    ...rowsWithoutMovedRow.slice(0, insertIndex),
+    rowToMove,
+    ...rowsWithoutMovedRow.slice(insertIndex),
+  ];
+}
+
+function findIndexBeforeTrailingEmptyRows(rows: TodayChecklistRow[]): number {
+  let insertIndex = rows.length;
+
+  while (insertIndex > 0 && rows[insertIndex - 1].text.trim().length === 0) {
+    insertIndex -= 1;
+  }
+
+  return insertIndex;
 }
 
 function normalizeRowsFromValue(rows: TodayChecklistRow[]): TodayChecklistRow[] {

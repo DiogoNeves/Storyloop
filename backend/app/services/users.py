@@ -17,6 +17,7 @@ DEFAULT_ACTIVITY_FEED_SORT_DATE: Literal["created", "modified"] = "created"
 ALLOWED_ACTIVITY_FEED_SORT_DATES = {"created", "modified"}
 DEFAULT_TODAY_ENTRIES_ENABLED = True
 DEFAULT_TODAY_INCLUDE_PREVIOUS_INCOMPLETE = True
+DEFAULT_TODAY_MOVE_COMPLETED_TO_END = True
 
 
 @dataclass(slots=True)
@@ -45,6 +46,7 @@ class UserRecord:
     activity_feed_sort_date: Literal["created", "modified"] | None = None
     today_entries_enabled: bool | None = None
     today_include_previous_incomplete: bool | None = None
+    today_move_completed_to_end: bool | None = None
 
 
 def _row_to_record(row: Row) -> UserRecord:
@@ -88,6 +90,9 @@ def _row_to_record(row: Row) -> UserRecord:
         )
         if row["today_include_previous_incomplete"] is not None
         else None,
+        today_move_completed_to_end=bool(row["today_move_completed_to_end"])
+        if row["today_move_completed_to_end"] is not None
+        else None,
     )
 
 
@@ -118,7 +123,8 @@ class UserService(DatabaseService):
                     show_archived INTEGER,
                     activity_feed_sort_date TEXT,
                     today_entries_enabled INTEGER,
-                    today_include_previous_incomplete INTEGER
+                    today_include_previous_incomplete INTEGER,
+                    today_move_completed_to_end INTEGER
                 )
                 """
             )
@@ -150,6 +156,10 @@ class UserService(DatabaseService):
                 connection.execute(
                     "ALTER TABLE users ADD COLUMN "
                     "today_include_previous_incomplete INTEGER"
+                )
+            if "today_move_completed_to_end" not in existing_columns:
+                connection.execute(
+                    "ALTER TABLE users ADD COLUMN today_move_completed_to_end INTEGER"
                 )
             if "channel_profile_json" not in existing_columns:
                 connection.execute(
@@ -324,6 +334,35 @@ class UserService(DatabaseService):
                 ON CONFLICT(id) DO UPDATE SET
                     today_include_previous_incomplete=
                         excluded.today_include_previous_incomplete
+                """,
+                (_DEFAULT_USER_ID, int(enabled)),
+            )
+            connection.commit()
+
+    def get_today_move_completed_to_end(self) -> bool:
+        """Return whether newly completed tasks move to the end of Today."""
+        with closing(self._connection_factory()) as connection:
+            row = connection.execute(
+                """
+                SELECT today_move_completed_to_end
+                FROM users
+                WHERE id = ?
+                """,
+                (_DEFAULT_USER_ID,),
+            ).fetchone()
+        if row is None or row["today_move_completed_to_end"] is None:
+            return DEFAULT_TODAY_MOVE_COMPLETED_TO_END
+        return bool(row["today_move_completed_to_end"])
+
+    def set_today_move_completed_to_end(self, enabled: bool) -> None:
+        """Persist whether completed Today tasks are reordered to the end."""
+        with closing(self._connection_factory()) as connection:
+            connection.execute(
+                """
+                INSERT INTO users (id, today_move_completed_to_end)
+                VALUES (?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    today_move_completed_to_end=excluded.today_move_completed_to_end
                 """,
                 (_DEFAULT_USER_ID, int(enabled)),
             )

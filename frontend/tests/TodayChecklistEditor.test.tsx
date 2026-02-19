@@ -5,10 +5,24 @@ import { describe, expect, it } from "vitest";
 
 import { TodayChecklistEditor } from "@/components/TodayChecklistEditor";
 
-function TodayChecklistEditorHarness() {
-  const [value, setValue] = useState("- [ ]");
+interface TodayChecklistEditorHarnessProps {
+  initialValue?: string;
+  moveCompletedTasksToEnd?: boolean;
+}
 
-  return <TodayChecklistEditor value={value} onChange={setValue} />;
+function TodayChecklistEditorHarness({
+  initialValue = "- [ ]",
+  moveCompletedTasksToEnd = true,
+}: TodayChecklistEditorHarnessProps) {
+  const [value, setValue] = useState(initialValue);
+
+  return (
+    <TodayChecklistEditor
+      value={value}
+      onChange={setValue}
+      moveCompletedTasksToEnd={moveCompletedTasksToEnd}
+    />
+  );
 }
 
 describe("TodayChecklistEditor", () => {
@@ -45,5 +59,38 @@ describe("TodayChecklistEditor", () => {
 
     expect(input).toHaveValue("Draft hook CTA options");
     expect(screen.getAllByRole("textbox")).toHaveLength(1);
+  });
+
+  it("moves a newly completed task to the end by default", async () => {
+    render(
+      <TodayChecklistEditorHarness
+        initialValue={"- [ ] Plan intro\n- [ ] Write script\n- [ ] Publish"}
+      />,
+    );
+
+    await userEvent.click(screen.getAllByRole("checkbox")[0]);
+
+    const inputs = screen.getAllByRole("textbox");
+    expect(inputs[0]).toHaveValue("Write script");
+    expect(inputs[1]).toHaveValue("Publish");
+    expect(inputs[2]).toHaveValue("Plan intro");
+    expect(screen.getAllByRole("checkbox")[2]).toBeChecked();
+  });
+
+  it("keeps checklist order when moveCompletedTasksToEnd is disabled", async () => {
+    render(
+      <TodayChecklistEditorHarness
+        initialValue={"- [ ] Plan intro\n- [ ] Write script\n- [ ] Publish"}
+        moveCompletedTasksToEnd={false}
+      />,
+    );
+
+    await userEvent.click(screen.getAllByRole("checkbox")[0]);
+
+    const inputs = screen.getAllByRole("textbox");
+    expect(inputs[0]).toHaveValue("Plan intro");
+    expect(inputs[1]).toHaveValue("Write script");
+    expect(inputs[2]).toHaveValue("Publish");
+    expect(screen.getAllByRole("checkbox")[0]).toBeChecked();
   });
 });

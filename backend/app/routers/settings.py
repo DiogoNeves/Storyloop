@@ -45,6 +45,10 @@ class SettingsResponse(BaseModel):
         validation_alias="todayIncludePreviousIncomplete",
         serialization_alias="todayIncludePreviousIncomplete",
     )
+    today_move_completed_to_end: bool = Field(
+        validation_alias="todayMoveCompletedToEnd",
+        serialization_alias="todayMoveCompletedToEnd",
+    )
 
 
 class SettingsUpdate(BaseModel):
@@ -78,6 +82,11 @@ class SettingsUpdate(BaseModel):
         validation_alias="todayIncludePreviousIncomplete",
         serialization_alias="todayIncludePreviousIncomplete",
     )
+    today_move_completed_to_end: bool | None = Field(
+        default=None,
+        validation_alias="todayMoveCompletedToEnd",
+        serialization_alias="todayMoveCompletedToEnd",
+    )
 
     @model_validator(mode="after")
     def _validate_non_empty(self) -> "SettingsUpdate":
@@ -87,6 +96,7 @@ class SettingsUpdate(BaseModel):
             and self.activity_feed_sort_date is None
             and self.today_entries_enabled is None
             and self.today_include_previous_incomplete is None
+            and self.today_move_completed_to_end is None
         ):
             raise ValueError("At least one setting must be provided.")
         return self
@@ -105,6 +115,7 @@ def get_settings(
         today_include_previous_incomplete=(
             user_service.get_today_include_previous_incomplete()
         ),
+        today_move_completed_to_end=user_service.get_today_move_completed_to_end(),
     )
 
 
@@ -122,6 +133,9 @@ async def update_settings(
     current_today_enabled = user_service.get_today_entries_enabled()
     current_today_include_previous = (
         user_service.get_today_include_previous_incomplete()
+    )
+    current_today_move_completed_to_end = (
+        user_service.get_today_move_completed_to_end()
     )
 
     next_hours = (
@@ -149,12 +163,18 @@ async def update_settings(
         if payload.today_include_previous_incomplete is not None
         else current_today_include_previous
     )
+    next_today_move_completed_to_end = (
+        payload.today_move_completed_to_end
+        if payload.today_move_completed_to_end is not None
+        else current_today_move_completed_to_end
+    )
 
     user_service.set_smart_update_interval_hours(next_hours)
     user_service.set_show_archived(next_show_archived)
     user_service.set_activity_feed_sort_date(next_sort_date)
     user_service.set_today_entries_enabled(next_today_enabled)
     user_service.set_today_include_previous_incomplete(next_today_include_previous)
+    user_service.set_today_move_completed_to_end(next_today_move_completed_to_end)
 
     if current_hours != next_hours:
         await smart_entry_manager.run_due_updates()
@@ -167,4 +187,5 @@ async def update_settings(
         activity_feed_sort_date=next_sort_date,
         today_entries_enabled=next_today_enabled,
         today_include_previous_incomplete=next_today_include_previous,
+        today_move_completed_to_end=next_today_move_completed_to_end,
     )
