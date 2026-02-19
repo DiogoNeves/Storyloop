@@ -1,4 +1,4 @@
-import type { MouseEventHandler, ReactNode } from "react";
+import { useState, type MouseEventHandler, type ReactNode, type UIEvent } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -7,8 +7,12 @@ interface StickyHeaderScrollableCardProps {
   children: ReactNode;
   footer?: ReactNode;
   stickyHeaderAt?: "lg" | "none";
+  mobileCollapsedHeader?: ReactNode;
+  mobileCollapseThreshold?: number;
+  mobileCollapseHysteresis?: number;
   footerStickToBottomWhenShort?: boolean;
   className?: string;
+  headerClassName?: string;
   bodyClassName?: string;
   onBodyClick?: MouseEventHandler<HTMLDivElement>;
 }
@@ -18,11 +22,40 @@ export function StickyHeaderScrollableCard({
   children,
   footer,
   stickyHeaderAt = "none",
+  mobileCollapsedHeader,
+  mobileCollapseThreshold = 56,
+  mobileCollapseHysteresis = 24,
   footerStickToBottomWhenShort = false,
   className,
+  headerClassName,
   bodyClassName,
   onBodyClick,
 }: StickyHeaderScrollableCardProps) {
+  const [showMobileCollapsedHeader, setShowMobileCollapsedHeader] =
+    useState(false);
+  const collapseThreshold = Math.max(0, mobileCollapseThreshold);
+  const collapseHysteresis = Math.max(0, mobileCollapseHysteresis);
+  const expandThreshold = Math.max(0, collapseThreshold - collapseHysteresis);
+
+  const handleBodyScroll = (event: UIEvent<HTMLDivElement>) => {
+    if (!mobileCollapsedHeader) {
+      return;
+    }
+
+    const scrollTop = event.currentTarget.scrollTop;
+
+    if (showMobileCollapsedHeader) {
+      if (scrollTop <= expandThreshold) {
+        setShowMobileCollapsedHeader(false);
+      }
+      return;
+    }
+
+    if (scrollTop >= collapseThreshold) {
+      setShowMobileCollapsedHeader(true);
+    }
+  };
+
   // For lg screens with sticky header, we need a different structure:
   // header is outside scroll container and fixed, separator is between header and scroll area
   if (stickyHeaderAt === "lg" && header) {
@@ -33,17 +66,47 @@ export function StickyHeaderScrollableCard({
           className,
         )}
       >
-        <header className="flex flex-shrink-0 flex-col gap-4 p-6 pb-4">
+        {mobileCollapsedHeader ? (
+          <div
+            data-testid="mobile-collapsed-header"
+            className={cn(
+              "flex-shrink-0 overflow-hidden border-border/80 bg-background/95 px-0 backdrop-blur transition-[max-height,opacity,padding,border-width] duration-200 lg:hidden",
+              showMobileCollapsedHeader
+                ? "max-h-16 border-b py-2 opacity-100"
+                : "pointer-events-none max-h-0 border-b-0 py-0 opacity-0",
+            )}
+            aria-hidden={!showMobileCollapsedHeader}
+          >
+            {mobileCollapsedHeader}
+          </div>
+        ) : null}
+
+        <header
+          className={cn(
+            "flex flex-shrink-0 flex-col gap-4 p-6 pb-4 transition-[max-height,opacity,padding] duration-200",
+            showMobileCollapsedHeader &&
+              mobileCollapsedHeader &&
+              "max-h-0 overflow-hidden py-0 opacity-0 lg:max-h-[20rem] lg:p-6 lg:pb-4 lg:opacity-100",
+            headerClassName,
+          )}
+        >
           {header}
         </header>
 
-        <div className="h-px w-full bg-border" aria-hidden="true" />
+        <div
+          className={cn(
+            "h-px w-full bg-border",
+            showMobileCollapsedHeader && mobileCollapsedHeader && "hidden lg:block",
+          )}
+          aria-hidden="true"
+        />
 
         <div
           className={cn(
             "scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto p-6 pt-4",
             bodyClassName,
           )}
+          onScroll={handleBodyScroll}
           onClick={onBodyClick}
         >
           {children}
@@ -77,7 +140,12 @@ export function StickyHeaderScrollableCard({
       >
         {header ? (
           <>
-            <div className="flex flex-shrink-0 flex-col gap-4 pb-4">
+            <div
+              className={cn(
+                "flex flex-shrink-0 flex-col gap-4 pb-4",
+                headerClassName,
+              )}
+            >
               {header}
             </div>
             <div className="h-px w-full bg-border" aria-hidden="true" />
@@ -98,6 +166,3 @@ export function StickyHeaderScrollableCard({
     </section>
   );
 }
-
-
-

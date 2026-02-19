@@ -1,12 +1,18 @@
 import type { ReactElement } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { type Entry } from "@/api/entries";
-import type { useYouTubeFeed as useYouTubeFeedHook } from "@/hooks/useYouTubeFeed";
 import { JournalDetailPage } from "@/pages/JournalDetailPage";
 import { AgentConversationProvider } from "@/context/AgentConversationContext";
 import { SettingsProvider } from "@/context/SettingsProvider";
@@ -14,12 +20,6 @@ import { SyncProvider } from "@/context/SyncProvider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { getTodayEntryDisplayTitle } from "@/lib/today-entry";
 
-const useYouTubeFeedMock =
-  vi.fn<
-    (
-      videoType?: "short" | "video" | "live" | null,
-    ) => ReturnType<typeof useYouTubeFeedHook>
-  >();
 const apiGetMock = vi.hoisted(() => vi.fn());
 const apiPutMock = vi.hoisted(() => vi.fn());
 const useAudioDictationMock = vi.hoisted(() => vi.fn());
@@ -66,11 +66,6 @@ vi.mock("@/api/client", () => ({
     put: apiPutMock,
   },
   API_BASE_URL: "http://localhost:8000",
-}));
-
-vi.mock("@/hooks/useYouTubeFeed", () => ({
-  useYouTubeFeed: (videoType?: "short" | "video" | "live" | null) =>
-    useYouTubeFeedMock(videoType),
 }));
 
 vi.mock("@/hooks/useAudioDictation", () => ({
@@ -131,6 +126,18 @@ function renderPage(ui: ReactElement, initialPath = `/journals/${sampleEntry.id}
   );
 }
 
+function getCardScrollBody(collapsedHeader: HTMLElement): HTMLDivElement {
+  const card = collapsedHeader.closest("section");
+  if (!card) {
+    throw new Error("Expected collapsed header to be inside a card section.");
+  }
+  const scrollBody = card.querySelector<HTMLDivElement>(".overflow-y-auto");
+  if (!scrollBody) {
+    throw new Error("Expected card to include a scroll body.");
+  }
+  return scrollBody;
+}
+
 describe("JournalDetailPage", () => {
   beforeEach(() => {
     journalEditorOnChangeRef.current = null;
@@ -163,7 +170,6 @@ describe("JournalDetailPage", () => {
         return Promise.resolve({ data: sampleEntry });
       },
     );
-    useYouTubeFeedMock.mockReset();
     useAudioDictationMock.mockReset();
     useAudioDictationMock.mockReturnValue({
       status: "idle",
@@ -179,133 +185,58 @@ describe("JournalDetailPage", () => {
     localStorage.clear();
   });
 
-  it("shows the YouTube link prompt when no account is linked", async () => {
-    useYouTubeFeedMock.mockReturnValue({
-      youtubeFeed: null,
-      youtubeError: null,
-      isLoading: false,
-      isLinked: false,
-      linkStatus: null,
-      channelId: null,
-    });
-
+  it("removes adjacent video cards from the detail footer", async () => {
     renderPage(<JournalDetailPage />);
 
     expect(
       await screen.findByDisplayValue(sampleEntry.title),
     ).toBeInTheDocument();
 
-    const prompts = screen.getAllByText(
-      /Link your YouTube account to see videos near this journal entry/i,
-    );
-    expect(prompts).toHaveLength(2);
+    expect(
+      screen.queryByText(/Published before this journal/i),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Published after this journal/i),
+    ).not.toBeInTheDocument();
   });
 
-  it("renders adjacent video cards with contextual labels", async () => {
-    const earlierVideo = {
-      id: "video-early",
-      title: "Earlier Upload",
-      description: "",
-      publishedAt: "2024-04-30T12:00:00Z",
-      url: "https://youtube.com/watch?v=video-early",
-      thumbnailUrl: null,
-      videoType: "video" as const,
-      privacyStatus: "public" as const,
-    };
-    const laterVideo = {
-      id: "video-later",
-      title: "Later Upload",
-      description: "",
-      publishedAt: "2024-05-02T12:00:00Z",
-      url: "https://youtube.com/watch?v=video-later",
-      thumbnailUrl: null,
-      videoType: "video" as const,
-      privacyStatus: "public" as const,
-    };
-
-    useYouTubeFeedMock.mockReturnValue({
-      youtubeFeed: {
-        channelId: "channel-1",
-        channelTitle: "Storyloop",
-        channelDescription: null,
-        channelUrl: "https://youtube.com/@storyloop",
-        channelThumbnailUrl: null,
-        videos: [
-          {
-            id: "video-unlisted",
-            title: "Hidden Upload",
-            description: "",
-            publishedAt: "2024-04-29T12:00:00Z",
-            url: "https://youtube.com/watch?v=video-unlisted",
-            thumbnailUrl: null,
-            videoType: "video",
-            privacyStatus: "unlisted",
-          },
-          earlierVideo,
-          laterVideo,
-        ],
-      },
-      youtubeError: null,
-      isLoading: false,
-      isLinked: true,
-      linkStatus: {
-        linked: true,
-        refreshNeeded: false,
-        channel: null,
-        statusMessage: null,
-      },
-      channelId: "channel-1",
-    });
-
+  it("shows the collapsed mobile header after scrolling the detail card", async () => {
     renderPage(<JournalDetailPage />);
 
     expect(
       await screen.findByDisplayValue(sampleEntry.title),
     ).toBeInTheDocument();
 
-    const beforeLabel = screen.getByText(/Published before this journal/i);
-    const beforeCard = beforeLabel.closest("a") ?? beforeLabel;
-    expect(
-      within(beforeCard).getByText(earlierVideo.title),
-    ).toBeInTheDocument();
+    const collapsedHeader = screen.getByTestId("mobile-collapsed-header");
+    expect(collapsedHeader).toHaveAttribute("aria-hidden", "true");
 
-    const afterLabel = screen.getByText(/Published after this journal/i);
-    const afterCard = afterLabel.closest("a") ?? afterLabel;
-    expect(within(afterCard).getByText(laterVideo.title)).toBeInTheDocument();
+    const scrollBody = getCardScrollBody(collapsedHeader);
+    Object.defineProperty(scrollBody, "scrollTop", {
+      value: 72,
+      writable: true,
+      configurable: true,
+    });
+    fireEvent.scroll(scrollBody);
+
+    expect(collapsedHeader).toHaveAttribute("aria-hidden", "false");
+    expect(within(collapsedHeader).getByText(sampleEntry.title)).toBeInTheDocument();
   });
 
-  it("surfaces YouTube fetch errors", async () => {
-    useYouTubeFeedMock.mockReturnValue({
-      youtubeFeed: null,
-      youtubeError: "We couldn't load channel information.",
-      isLoading: false,
-      isLinked: true,
-      linkStatus: null,
-      channelId: "channel-1",
-    });
+  it("keeps /journals/new title editable and mirrors it in the mobile header", async () => {
+    renderPage(<JournalDetailPage />, "/journals/new");
 
-    renderPage(<JournalDetailPage />);
+    const titleInput = await screen.findByPlaceholderText("Untitled entry");
+    const collapsedHeader = screen.getByTestId("mobile-collapsed-header");
 
-    expect(
-      await screen.findByDisplayValue(sampleEntry.title),
-    ).toBeInTheDocument();
+    expect(within(collapsedHeader).getByText("New entry")).toBeInTheDocument();
 
-    const errors = screen.getAllByText(
-      /We couldn't load channel information./i,
-    );
-    expect(errors).toHaveLength(2);
+    fireEvent.change(titleInput, { target: { value: "Launch plan" } });
+
+    expect(titleInput).toHaveValue("Launch plan");
+    expect(within(collapsedHeader).getByText("Launch plan")).toBeInTheDocument();
   });
 
   it("normalizes new lines in the journal title input", async () => {
-    useYouTubeFeedMock.mockReturnValue({
-      youtubeFeed: null,
-      youtubeError: null,
-      isLoading: false,
-      isLinked: false,
-      linkStatus: null,
-      channelId: null,
-    });
-
     renderPage(<JournalDetailPage />);
 
     const titleInput = await screen.findByDisplayValue(sampleEntry.title);
@@ -317,15 +248,6 @@ describe("JournalDetailPage", () => {
   });
 
   it("focuses the editor at the end when clicking the empty trailing area", async () => {
-    useYouTubeFeedMock.mockReturnValue({
-      youtubeFeed: null,
-      youtubeError: null,
-      isLoading: false,
-      isLinked: false,
-      linkStatus: null,
-      channelId: null,
-    });
-
     renderPage(<JournalDetailPage />);
 
     expect(
@@ -345,15 +267,6 @@ describe("JournalDetailPage", () => {
   });
 
   it("archives an entry from the detail header", async () => {
-    useYouTubeFeedMock.mockReturnValue({
-      youtubeFeed: null,
-      youtubeError: null,
-      isLoading: false,
-      isLinked: false,
-      linkStatus: null,
-      channelId: null,
-    });
-
     renderPage(<JournalDetailPage />);
     const user = userEvent.setup();
 
@@ -389,16 +302,6 @@ describe("JournalDetailPage", () => {
       }
       return Promise.resolve({ data: smartEntry });
     });
-
-    useYouTubeFeedMock.mockReturnValue({
-      youtubeFeed: null,
-      youtubeError: null,
-      isLoading: false,
-      isLinked: false,
-      linkStatus: null,
-      channelId: null,
-    });
-
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(new Response("failed", { status: 500 }));
@@ -434,14 +337,6 @@ describe("JournalDetailPage", () => {
   });
 
   it("renders the Today checklist editor and hides pin/archive controls", async () => {
-    useYouTubeFeedMock.mockReturnValue({
-      youtubeFeed: null,
-      youtubeError: null,
-      isLoading: false,
-      isLinked: false,
-      linkStatus: null,
-      channelId: null,
-    });
     apiGetMock.mockImplementation((url: string) => {
       if (url === `/entries/${todayEntry.id}`) {
         return Promise.resolve({ data: todayEntry });
@@ -491,16 +386,6 @@ describe("JournalDetailPage", () => {
       }
       return Promise.resolve({ data: archivedEntry });
     });
-
-    useYouTubeFeedMock.mockReturnValue({
-      youtubeFeed: null,
-      youtubeError: null,
-      isLoading: false,
-      isLinked: false,
-      linkStatus: null,
-      channelId: null,
-    });
-
     renderPage(<JournalDetailPage />);
 
     expect(await screen.findByText(/Archived /i)).toBeInTheDocument();
@@ -540,16 +425,6 @@ describe("JournalDetailPage", () => {
         return Promise.resolve({ data: archivedEntry });
       },
     );
-
-    useYouTubeFeedMock.mockReturnValue({
-      youtubeFeed: null,
-      youtubeError: null,
-      isLoading: false,
-      isLinked: false,
-      linkStatus: null,
-      channelId: null,
-    });
-
     renderPage(<JournalDetailPage />);
     const user = userEvent.setup();
 
@@ -583,16 +458,6 @@ describe("JournalDetailPage", () => {
       }
       return Promise.resolve({ data: emptyEntry });
     });
-
-    useYouTubeFeedMock.mockReturnValue({
-      youtubeFeed: null,
-      youtubeError: null,
-      isLoading: false,
-      isLinked: false,
-      linkStatus: null,
-      channelId: null,
-    });
-
     renderPage(<JournalDetailPage />);
 
     expect(
@@ -618,16 +483,6 @@ describe("JournalDetailPage", () => {
       }
       return Promise.resolve({ data: emptyPlaceholderEntry });
     });
-
-    useYouTubeFeedMock.mockReturnValue({
-      youtubeFeed: null,
-      youtubeError: null,
-      isLoading: false,
-      isLinked: false,
-      linkStatus: null,
-      channelId: null,
-    });
-
     renderPage(<JournalDetailPage />);
 
     expect(
@@ -670,16 +525,6 @@ describe("JournalDetailPage", () => {
         }),
       }),
     );
-
-    useYouTubeFeedMock.mockReturnValue({
-      youtubeFeed: null,
-      youtubeError: null,
-      isLoading: false,
-      isLinked: false,
-      linkStatus: null,
-      channelId: null,
-    });
-
     renderPage(<JournalDetailPage />);
     const user = userEvent.setup();
 
@@ -702,15 +547,6 @@ describe("JournalDetailPage", () => {
   });
 
   it("saves an empty summary when delete-all emits placeholder markdown", async () => {
-    useYouTubeFeedMock.mockReturnValue({
-      youtubeFeed: null,
-      youtubeError: null,
-      isLoading: false,
-      isLinked: false,
-      linkStatus: null,
-      channelId: null,
-    });
-
     renderPage(<JournalDetailPage />);
 
     expect(
