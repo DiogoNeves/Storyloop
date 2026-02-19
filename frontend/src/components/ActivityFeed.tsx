@@ -43,6 +43,7 @@ interface ActivityFeedProps {
   items: ActivityItem[];
   isLinked?: boolean;
   todayEntriesEnabled?: boolean;
+  todayMoveCompletedToEnd?: boolean;
   youtubeError?: string | null;
   draft?: ActivityDraft | null;
   onStartDraft?: (mode: EntryDraftMode) => void;
@@ -66,6 +67,7 @@ export function ActivityFeed({
   items,
   isLinked = false,
   todayEntriesEnabled = true,
+  todayMoveCompletedToEnd = true,
   youtubeError,
   draft,
   onStartDraft,
@@ -434,6 +436,7 @@ export function ActivityFeed({
                 <TodayChecklistEditor
                   value={todaySummaryDraft}
                   onChange={setTodaySummaryDraft}
+                  moveCompletedTasksToEnd={todayMoveCompletedToEnd}
                 />
                 {todayAutosaveError ? (
                   <p className="text-xs text-destructive">{todayAutosaveError}</p>
