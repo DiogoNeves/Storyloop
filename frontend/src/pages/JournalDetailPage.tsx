@@ -1,6 +1,5 @@
 import {
   useCallback,
-  useMemo,
   useEffect,
   useRef,
   useState,
@@ -24,18 +23,15 @@ import { cn } from "@/lib/utils";
 import {
   buildPromptMarkdown,
   deriveSaveIndicator,
-  findAdjacentVideos,
   isEffectivelyEmptyNoteContent,
 } from "@/lib/journal-detail-logic";
 import { formatLongDateTime, parseValidDate } from "@/lib/date-time";
 import { getTodayEntryDisplayTitle } from "@/lib/today-entry";
 import { useAgentConversationContext } from "@/context/AgentConversationContext";
 import { NavBar } from "@/components/NavBar";
-import { VideoLinkCard } from "@/components/VideoLinkCard";
 import { type ActivityDraft } from "@/components/ActivityFeed";
 import { SmartEntryDraftCard } from "@/components/SmartEntryDraftCard";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -44,7 +40,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { YoutubeVideoResponse } from "@/api/youtube";
 import type { ContentTypeFilter } from "@/components/ContentTypeTabs";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { MarkdownMessage } from "@/components/chat/MarkdownMessage";
@@ -58,6 +53,7 @@ import { TodayChecklistEditor } from "@/components/TodayChecklistEditor";
 import { NewEntryHeader } from "@/components/NewEntryHeader";
 import { CopyMarkdownButton } from "@/components/CopyMarkdownButton";
 import { VoiceWave } from "@/components/ui/voice-wave";
+import { MobileBackTitleBar } from "@/components/detail/MobileBackTitleBar";
 
 export function JournalDetailPage() {
   const { journalId } = useParams<{ journalId: string }>();
@@ -532,87 +528,30 @@ export function JournalDetailPage() {
   const activityFeedSortDate =
     settingsQuery.data?.activityFeedSortDate ?? "created";
 
-  const { activityItems, youtubeState } = useActivityItems({
+  const { activityItems } = useActivityItems({
     contentTypeFilter,
     publicOnly,
     showArchived,
     activityFeedSortDate,
   });
 
-  const adjacentVideos = useMemo(() => {
-    return findAdjacentVideos(youtubeState.youtubeFeed?.videos, {
-      journalDate,
-      contentTypeFilter,
-      publicOnly,
-    });
-  }, [
-    journalDate,
-    youtubeState.youtubeFeed?.videos,
-    contentTypeFilter,
-    publicOnly,
-  ]);
-
-  const renderVideoCard = (
-    label: string,
-    video: YoutubeVideoResponse | null,
-    emptyMessage: string,
-  ) => {
-    if (!youtubeState.isLinked) {
-      return (
-        <Card>
-          <CardContent className="p-4 text-sm text-muted-foreground">
-            Link your YouTube account to see videos near this journal entry.
-          </CardContent>
-        </Card>
-      );
-    }
-
-    if (youtubeState.youtubeError) {
-      return (
-        <Card>
-          <CardContent className="p-4 text-sm text-destructive">
-            {youtubeState.youtubeError}
-          </CardContent>
-        </Card>
-      );
-    }
-
-    if (youtubeState.isLoading) {
-      return (
-        <Card>
-          <CardContent className="p-4 text-sm text-muted-foreground">
-            Loading videos…
-          </CardContent>
-        </Card>
-      );
-    }
-
-    if (!video) {
-      return (
-        <Card>
-          <CardContent className="p-4 text-sm text-muted-foreground">
-            {emptyMessage}
-          </CardContent>
-        </Card>
-      );
-    }
-
-    return <VideoLinkCard video={video} contextLabel={label} />;
-  };
-
   const backLink = (
     <Link
       to="/"
-      className="text-sm font-medium text-primary underline-offset-2 hover:underline"
+      className="hidden text-sm font-medium text-primary underline-offset-2 hover:underline lg:inline-flex"
     >
       ← Back to activity feed
     </Link>
   );
+  const mobilePageCardClassName =
+    "rounded-none border-x-0 border-y-0 shadow-none lg:rounded-lg lg:border lg:shadow-sm";
+  const mobilePageHeaderClassName = "p-0 lg:p-6 lg:pb-4";
+  const mobilePageBodyClassName = "p-0 pt-0 lg:p-6 lg:pt-4";
 
   const renderCardContent = () => {
     if (!journalId && !isNewEntryRoute) {
       return (
-        <StickyHeaderScrollableCard>
+        <StickyHeaderScrollableCard className={mobilePageCardClassName}>
           <p className="text-sm text-muted-foreground">
             We couldn’t determine which journal entry to display.
           </p>
@@ -621,24 +560,42 @@ export function JournalDetailPage() {
     }
 
     if (isNewEntryRoute) {
+      const mobileEntryTitle =
+        titleDraft.trim().length > 0 ? titleDraft.trim() : "New entry";
       const header = (
-        <NewEntryHeader
-          ref={titleInputRef}
-          title={titleDraft}
-          onTitleChange={setTitleDraft}
-          createError={createError}
-          onClearError={() => setCreateError(null)}
-          isOnline={isOnline}
-          isCreating={createEntryMutation.isPending}
-          onCreate={() => {
-            void handleCreateEntry();
-          }}
-        />
+        <>
+          <MobileBackTitleBar
+            backTo="/"
+            title={mobileEntryTitle}
+            className="lg:hidden"
+          />
+          <NewEntryHeader
+            ref={titleInputRef}
+            title={titleDraft}
+            onTitleChange={setTitleDraft}
+            createError={createError}
+            onClearError={() => setCreateError(null)}
+            isOnline={isOnline}
+            isCreating={createEntryMutation.isPending}
+            onCreate={() => {
+              void handleCreateEntry();
+            }}
+          />
+        </>
       );
 
       return (
-        <StickyHeaderScrollableCard header={header} stickyHeaderAt="lg">
-          <div className="space-y-4 pt-4">
+        <StickyHeaderScrollableCard
+          className={mobilePageCardClassName}
+          headerClassName={mobilePageHeaderClassName}
+          bodyClassName={mobilePageBodyClassName}
+          header={header}
+          stickyHeaderAt="lg"
+          mobileCollapsedHeader={
+            <MobileBackTitleBar backTo="/" title={mobileEntryTitle} />
+          }
+        >
+          <div className="space-y-4 px-4 pb-6 pt-4 sm:px-6 lg:px-0 lg:pb-0 lg:pt-0">
             <JournalEntryEditor
               ref={editorRef}
               initialValue={editorInitialSummary}
@@ -657,7 +614,7 @@ export function JournalDetailPage() {
 
     if (entryQuery.isLoading) {
       return (
-        <StickyHeaderScrollableCard>
+        <StickyHeaderScrollableCard className={mobilePageCardClassName}>
           <p className="text-sm text-muted-foreground">
             Loading journal entry…
           </p>
@@ -667,7 +624,7 @@ export function JournalDetailPage() {
 
     if (entryQuery.isError) {
       return (
-        <StickyHeaderScrollableCard>
+        <StickyHeaderScrollableCard className={mobilePageCardClassName}>
           <p className="text-sm text-destructive">
             {entryQuery.error instanceof Error
               ? entryQuery.error.message
@@ -679,7 +636,7 @@ export function JournalDetailPage() {
 
     if (!currentEntry) {
       return (
-        <StickyHeaderScrollableCard>
+        <StickyHeaderScrollableCard className={mobilePageCardClassName}>
           <p className="text-sm text-muted-foreground">
             We couldn't find this journal entry.
           </p>
@@ -784,10 +741,20 @@ export function JournalDetailPage() {
       autosaveError,
       hasPendingUpdate,
     );
+    const mobileEntryTitle = isTodayEntry
+      ? todayDisplayTitle ?? "Today"
+      : titleDraft.trim().length > 0
+        ? titleDraft.trim()
+        : "Untitled entry";
 
     const header = (
       <>
-        <div className="space-y-2">
+        <MobileBackTitleBar
+          backTo="/"
+          title={mobileEntryTitle}
+          className="lg:hidden"
+        />
+        <div className="space-y-0.5">
           <div className="flex flex-col-reverse items-start gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
             <div className="flex w-full flex-1 items-start gap-3">
               {isTodayEntry ? (
@@ -907,31 +874,31 @@ export function JournalDetailPage() {
               </Button>
             </div>
           </div>
-        </div>
-        <div className="flex flex-col gap-2 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
-          <div className="flex flex-col gap-1">
-            {isArchived ? (
-              formattedArchivedDate ? (
-                <span>{`Archived ${formattedArchivedDate}`}</span>
+          <div className="flex flex-col gap-1 text-xs leading-tight text-muted-foreground md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-0.5">
+              {isArchived ? (
+                formattedArchivedDate ? (
+                  <span>{`Archived ${formattedArchivedDate}`}</span>
+                ) : (
+                  <span>Archived date unavailable</span>
+                )
+              ) : formattedUpdatedDate ? (
+                <span>{`Updated ${formattedUpdatedDate}`}</span>
               ) : (
-                <span>Archived date unavailable</span>
-              )
-            ) : formattedUpdatedDate ? (
-              <span>{`Updated ${formattedUpdatedDate}`}</span>
-            ) : (
-              <span>Entry date unavailable</span>
-            )}
-            {formattedCreatedDate ? (
-              <span>Created {formattedCreatedDate}</span>
+                <span>Entry date unavailable</span>
+              )}
+              {formattedCreatedDate ? (
+                <span>Created {formattedCreatedDate}</span>
+              ) : null}
+            </div>
+            {isSmartEntry ? (
+              <span className="text-xs text-muted-foreground">
+                {formattedLastSmartUpdate
+                  ? `Loopie updated ${formattedLastSmartUpdate}`
+                  : "Loopie hasn't updated yet"}
+              </span>
             ) : null}
           </div>
-          {isSmartEntry ? (
-            <span className="text-xs text-muted-foreground">
-              {formattedLastSmartUpdate
-                ? `Loopie updated ${formattedLastSmartUpdate}`
-                : "Loopie hasn't updated yet"}
-            </span>
-          ) : null}
         </div>
       </>
     );
@@ -1134,36 +1101,22 @@ export function JournalDetailPage() {
     ) : null;
 
     const body = (
-      <div className="space-y-6 pt-4">
+      <div className="space-y-6 px-4 pb-6 pt-4 sm:px-6 lg:px-0 lg:pb-0 lg:pt-0">
         {tabs}
         {isSmartEntry && activeTab === "prompt" ? promptTab : contentTab}
       </div>
     );
 
-    const footer = (
-      <>
-        <div className="h-px w-full bg-border" aria-hidden="true" />
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
-          {renderVideoCard(
-            "Published before this journal",
-            adjacentVideos.previous,
-            "No earlier video yet—this journal leads the way!",
-          )}
-          {renderVideoCard(
-            "Published after this journal",
-            adjacentVideos.next,
-            "Looking forward to your next video!",
-          )}
-        </div>
-      </>
-    );
-
     return (
       <StickyHeaderScrollableCard
+        className={mobilePageCardClassName}
+        headerClassName={mobilePageHeaderClassName}
+        bodyClassName={mobilePageBodyClassName}
         header={header}
         stickyHeaderAt="lg"
-        footerStickToBottomWhenShort={true}
-        footer={footer}
+        mobileCollapsedHeader={
+          <MobileBackTitleBar backTo="/" title={mobileEntryTitle} />
+        }
         onBodyClick={focusEditorFromTrailingSpace}
       >
         {body}
@@ -1174,10 +1127,13 @@ export function JournalDetailPage() {
   return (
     <>
       <div className="to-muted/12 relative min-h-screen bg-gradient-to-br from-background text-foreground">
-        <NavBar onOpenSettings={() => setIsSettingsOpen(true)} />
-        <main className="relative flex min-h-[calc(100vh-4rem)] flex-1 overflow-y-auto pt-16 lg:h-[100dvh] lg:min-h-0 lg:overflow-hidden">
+        <div className="hidden lg:block">
+          <NavBar onOpenSettings={() => setIsSettingsOpen(true)} />
+        </div>
+        <main className="relative flex min-h-[100dvh] flex-1 overflow-y-auto pt-0 lg:h-[100dvh] lg:min-h-0 lg:overflow-hidden lg:pt-16">
           <div className="from-primary/8 pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b via-transparent to-transparent" />
           <TwoColumnDetailLayout
+            className="gap-0 px-0 py-0 sm:gap-0 sm:px-0 sm:py-0 lg:gap-6 lg:px-10 lg:py-10 xl:px-16"
             leftTop={backLink}
             left={renderCardContent()}
           />
