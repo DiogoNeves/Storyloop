@@ -33,6 +33,7 @@ async def test_get_settings_returns_default_schedule() -> None:
     assert payload["activityFeedSortDate"] == "created"
     assert payload["todayEntriesEnabled"] is True
     assert payload["todayIncludePreviousIncomplete"] is True
+    assert payload["todayMoveCompletedToEnd"] is True
 
 
 @pytest.mark.asyncio
@@ -64,6 +65,7 @@ async def test_update_settings_persists_schedule() -> None:
                 json={
                     "todayEntriesEnabled": False,
                     "todayIncludePreviousIncomplete": False,
+                    "todayMoveCompletedToEnd": False,
                 },
             )
             followup_today = await client.get("/settings/")
@@ -85,9 +87,11 @@ async def test_update_settings_persists_schedule() -> None:
     assert today_toggle.status_code == 200
     assert today_toggle.json()["todayEntriesEnabled"] is False
     assert today_toggle.json()["todayIncludePreviousIncomplete"] is False
+    assert today_toggle.json()["todayMoveCompletedToEnd"] is False
     assert followup_today.status_code == 200
     assert followup_today.json()["todayEntriesEnabled"] is False
     assert followup_today.json()["todayIncludePreviousIncomplete"] is False
+    assert followup_today.json()["todayMoveCompletedToEnd"] is False
 
 
 @pytest.mark.asyncio

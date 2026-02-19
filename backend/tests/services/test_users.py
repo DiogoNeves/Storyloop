@@ -171,3 +171,22 @@ def test_today_include_previous_incomplete_round_trip(
 
     service.set_today_include_previous_incomplete(True)
     assert service.get_today_include_previous_incomplete() is True
+
+
+def test_today_move_completed_to_end_round_trip(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    service = UserService(memory_connection_factory)
+    service.ensure_schema()
+
+    assert service.get_today_move_completed_to_end() is True
+
+    service.set_today_move_completed_to_end(False)
+    assert service.get_today_move_completed_to_end() is False
+
+    record = service.get_active_user()
+    assert record is not None
+    assert record.today_move_completed_to_end is False
+
+    service.set_today_move_completed_to_end(True)
+    assert service.get_today_move_completed_to_end() is True

@@ -213,6 +213,8 @@ function JournalPage() {
   const todayEntriesEnabled = settingsQuery.data?.todayEntriesEnabled ?? true;
   const todayIncludePreviousIncomplete =
     settingsQuery.data?.todayIncludePreviousIncomplete ?? true;
+  const todayMoveCompletedToEnd =
+    settingsQuery.data?.todayMoveCompletedToEnd ?? true;
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTags, setActiveTags] = useState<string[]>([]);
 
@@ -623,6 +625,7 @@ function JournalPage() {
         items={displayItems}
         isLinked={youtubeState.isLinked}
         todayEntriesEnabled={todayEntriesEnabled}
+        todayMoveCompletedToEnd={todayMoveCompletedToEnd}
         youtubeError={youtubeState.youtubeError}
         draft={draft}
         onStartDraft={handleStartDraft}
