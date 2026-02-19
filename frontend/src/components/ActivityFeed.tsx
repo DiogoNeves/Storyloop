@@ -408,7 +408,7 @@ export function ActivityFeed({
           </div>
         ) : null}
         {todayEntriesEnabled && showTodaySection ? (
-          <div className="space-y-2 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4">
+          <div className="space-y-2 rounded-lg border bg-card p-4">
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="bg-primary/10 text-primary">
                 today
