@@ -11,6 +11,7 @@ import { SettingsDialog } from "@/components/SettingsDialog";
 import { VideoStatCards } from "@/components/VideoStatCards";
 import { TwoColumnDetailLayout } from "@/components/TwoColumnDetailLayout";
 import { StickyHeaderScrollableCard } from "@/components/StickyHeaderScrollableCard";
+import { MobileBackTitleBar } from "@/components/detail/MobileBackTitleBar";
 import { useAgentConversationContext } from "@/context/AgentConversationContext";
 
 export function VideoDetailPage() {
@@ -93,7 +94,7 @@ export function VideoDetailPage() {
   const backLink = (
     <Link
       to="/"
-      className="text-sm font-medium text-primary underline-offset-2 hover:underline"
+      className="hidden text-sm font-medium text-primary underline-offset-2 hover:underline lg:inline-flex"
     >
       ← Back to activity feed
     </Link>
@@ -142,11 +143,15 @@ export function VideoDetailPage() {
       );
     }
 
+    const mobileVideoTitle = String(video.title);
     const header = (
       <>
-        <h1 className="text-2xl font-semibold text-foreground">
-          {String(video.title)}
-        </h1>
+        <MobileBackTitleBar
+          backTo="/"
+          title={mobileVideoTitle}
+          className="lg:hidden"
+        />
+        <h1 className="text-2xl font-semibold text-foreground">{mobileVideoTitle}</h1>
         <div className="flex flex-col gap-2 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
           <span>{publishedDate ?? "Publish date unavailable"}</span>
           <a
@@ -244,6 +249,9 @@ export function VideoDetailPage() {
       <StickyHeaderScrollableCard
         header={header}
         stickyHeaderAt="lg"
+        mobileCollapsedHeader={
+          <MobileBackTitleBar backTo="/" title={mobileVideoTitle} />
+        }
         bodyClassName="space-y-6"
       >
         {body}
@@ -254,8 +262,10 @@ export function VideoDetailPage() {
   return (
     <>
       <div className="to-muted/12 relative min-h-screen bg-gradient-to-br from-background text-foreground">
-        <NavBar onOpenSettings={() => setIsSettingsOpen(true)} />
-        <main className="relative flex min-h-[calc(100vh-4rem)] flex-1 overflow-y-auto pt-16 lg:h-[100dvh] lg:min-h-0 lg:overflow-hidden">
+        <div className="hidden lg:block">
+          <NavBar onOpenSettings={() => setIsSettingsOpen(true)} />
+        </div>
+        <main className="relative flex min-h-[100dvh] flex-1 overflow-y-auto pt-4 lg:h-[100dvh] lg:min-h-0 lg:overflow-hidden lg:pt-16">
           <div className="from-primary/8 pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b via-transparent to-transparent" />
           <TwoColumnDetailLayout
             leftTop={backLink}
