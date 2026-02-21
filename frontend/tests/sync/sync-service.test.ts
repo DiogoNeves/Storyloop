@@ -7,12 +7,13 @@ import type { SyncStore, PendingEntry } from "@/lib/sync/types";
 // Mock the entries API
 vi.mock("@/api/entries", () => ({
   createEntry: vi.fn(),
+  updateEntry: vi.fn(),
   entriesQueries: {
     all: () => ({ queryKey: ["entries"] }),
   },
 }));
 
-import { createEntry } from "@/api/entries";
+import { createEntry, updateEntry } from "@/api/entries";
 
 describe("SyncService", () => {
   let mockStore: SyncStore;
@@ -187,6 +188,31 @@ describe("SyncService", () => {
 
       expect(result).toEqual({ success: 1, failed: 0, skippedMaxRetries: 0, abortedOffline: 0 });
       expect(mockStore.removePending).toHaveBeenCalledWith("test-1");
+    });
+
+    it("syncs queued updates after their queued create succeeds", async () => {
+      const entry = createPendingEntry("test-1");
+      const queuedUpdate = {
+        id: "test-1",
+        data: {
+          id: "test-1",
+          summary: "Updated summary",
+        },
+        queuedAt: Date.now(),
+        attempts: 0,
+        status: "pending" as const,
+      };
+      (mockStore.getAllPending as Mock).mockResolvedValue([entry]);
+      (mockStore.getAllPendingUpdates as Mock).mockResolvedValue([queuedUpdate]);
+      (createEntry as Mock).mockResolvedValue({ id: "test-1" });
+      (updateEntry as Mock).mockResolvedValue({ id: "test-1" });
+
+      const result = await syncService.syncAll();
+
+      expect(result).toEqual({ success: 2, failed: 0, skippedMaxRetries: 0, abortedOffline: 0 });
+      expect(mockStore.removePending).toHaveBeenCalledWith("test-1");
+      expect(updateEntry).toHaveBeenCalledTimes(1);
+      expect(mockStore.removePendingUpdate).toHaveBeenCalledWith("test-1");
     });
   });
 

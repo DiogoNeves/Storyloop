@@ -30,13 +30,16 @@ jobs:
           version: 10
 
       - name: Install backend dependencies
-        run: uv sync --project backend --frozen
+        run: uv sync --project backend --frozen --group ci
 
       - name: Install frontend dependencies
         run: pnpm --dir frontend install --frozen-lockfile
 
-      - name: Run lint
-        run: make lint
+      - name: Run backend Ruff
+        run: uv run --project backend ruff check backend
+
+      - name: Run frontend lint
+        run: cd frontend && pnpm run lint
 
       - name: Run tests
         run: make test

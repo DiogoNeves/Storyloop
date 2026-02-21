@@ -87,7 +87,7 @@ export function ActivityFeed({
   className,
 }: ActivityFeedProps) {
   const editingState = useEntryEditing();
-  const { pendingEntries } = useSync();
+  const { pendingEntries, pendingEntryUpdates } = useSync();
   const channelProfileQuery = useQuery(channelQueries.profile());
   const { togglePin, isPinning } = editingState;
   const {
@@ -138,8 +138,12 @@ export function ActivityFeed({
 
   // Create a set of pending entry IDs for O(1) lookup
   const pendingEntryIds = useMemo(
-    () => new Set(pendingEntries.map((e) => e.id)),
-    [pendingEntries],
+    () =>
+      new Set([
+        ...pendingEntries.map((entry) => entry.id),
+        ...pendingEntryUpdates.map((update) => update.id),
+      ]),
+    [pendingEntries, pendingEntryUpdates],
   );
 
   useEffect(() => {
