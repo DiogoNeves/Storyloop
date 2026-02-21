@@ -2632,6 +2632,12 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
+ci = [
+    { name = "coverage" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "ruff" },
+]
 dev = [
     { name = "coverage" },
     { name = "mypy" },
@@ -2662,6 +2668,12 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
+ci = [
+    { name = "coverage", specifier = ">=7.11.0" },
+    { name = "pytest", specifier = ">=8.4.2" },
+    { name = "pytest-asyncio", specifier = ">=1.2.0" },
+    { name = "ruff", specifier = ">=0.14.2" },
+]
 dev = [
     { name = "coverage", specifier = ">=7.11.0" },
     { name = "mypy", specifier = ">=1.18.2" },
