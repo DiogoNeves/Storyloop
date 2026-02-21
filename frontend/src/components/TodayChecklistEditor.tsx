@@ -7,7 +7,7 @@ import {
   type ChangeEvent,
   type KeyboardEvent,
 } from "react";
-import { Plus } from "lucide-react";
+import { Check, Plus, X } from "lucide-react";
 
 import { AutoResizeTextarea } from "@/components/ui/auto-resize-textarea";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,8 @@ export function TodayChecklistEditor({
   }, [value]);
   const [rows, setRows] = useState<TodayChecklistRow[]>(rowsFromValue);
   const [isInteracting, setIsInteracting] = useState(false);
+  const [activeRowIndex, setActiveRowIndex] = useState<number | null>(null);
+  const [pendingDeleteIndex, setPendingDeleteIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const inputRefs = useRef<(HTMLTextAreaElement | null)[]>([]);
   const pendingFocusIndexRef = useRef<number | null>(null);
@@ -190,6 +192,30 @@ export function TodayChecklistEditor({
     setIsInteracting(true);
   }, []);
 
+  const handleRowFocus = useCallback((index: number) => {
+    setActiveRowIndex(index);
+  }, []);
+
+  const handleRowBlur = useCallback((index: number) => {
+    setActiveRowIndex((current) => (current === index ? null : current));
+    setPendingDeleteIndex((current) => (current === index ? null : current));
+  }, []);
+
+  const handleDeleteClick = useCallback(
+    (index: number) => {
+      if (pendingDeleteIndex !== index) {
+        setPendingDeleteIndex(index);
+        return;
+      }
+
+      const nextRows = rows.filter((_, rowIndex) => rowIndex !== index);
+      commitRows(nextRows, true);
+      setPendingDeleteIndex(null);
+      setActiveRowIndex(null);
+    },
+    [commitRows, pendingDeleteIndex, rows],
+  );
+
   const handleFieldBlur = useCallback(() => {
     requestAnimationFrame(() => {
       const activeElement = document.activeElement;
@@ -228,6 +254,11 @@ export function TodayChecklistEditor({
           onKeyDown={handleKeyDown}
           onFieldFocus={handleFieldFocus}
           onFieldBlur={handleFieldBlur}
+          isFocused={activeRowIndex === index}
+          isPendingDelete={pendingDeleteIndex === index}
+          onRowFocus={handleRowFocus}
+          onRowBlur={handleRowBlur}
+          onDeleteClick={handleDeleteClick}
           setInputRef={(element) => {
             inputRefs.current[index] = element;
           }}
@@ -260,6 +291,11 @@ interface TodayChecklistRowEditorProps {
   onKeyDown: (index: number, event: KeyboardEvent<HTMLTextAreaElement>) => void;
   onFieldFocus: () => void;
   onFieldBlur: () => void;
+  isFocused: boolean;
+  isPendingDelete: boolean;
+  onRowFocus: (index: number) => void;
+  onRowBlur: (index: number) => void;
+  onDeleteClick: (index: number) => void;
   setInputRef: (element: HTMLTextAreaElement | null) => void;
 }
 
@@ -273,12 +309,38 @@ function TodayChecklistRowEditor({
   onKeyDown,
   onFieldFocus,
   onFieldBlur,
+  isFocused,
+  isPendingDelete,
+  onRowFocus,
+  onRowBlur,
+  onDeleteClick,
   setInputRef,
 }: TodayChecklistRowEditorProps) {
   const tags = extractTagsFromText(row.text);
+  const rowRef = useRef<HTMLDivElement | null>(null);
+
+  const handleRowBlurCapture = useCallback(() => {
+    requestAnimationFrame(() => {
+      const activeElement = document.activeElement;
+      if (!rowRef.current || !activeElement) {
+        onRowBlur(index);
+        return;
+      }
+      if (!rowRef.current.contains(activeElement)) {
+        onRowBlur(index);
+      }
+    });
+  }, [index, onRowBlur]);
 
   return (
-    <div className="flex items-start gap-2 rounded-md border border-border/50 bg-background/60 px-3 py-2">
+    <div
+      ref={rowRef}
+      className="flex items-start gap-2 rounded-md border border-border/50 bg-background/60 px-3 py-2"
+      onFocusCapture={() => {
+        onRowFocus(index);
+      }}
+      onBlurCapture={handleRowBlurCapture}
+    >
       <input
         type="checkbox"
         checked={row.checked}
@@ -324,6 +386,29 @@ function TodayChecklistRowEditor({
           </div>
         ) : null}
       </div>
+      {isEditable && isFocused ? (
+        <button
+          type="button"
+          onClick={() => {
+            onDeleteClick(index);
+          }}
+          className={cn(
+            "mt-1 inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted",
+            isPendingDelete && "text-red-600 hover:bg-red-50",
+          )}
+          aria-label={
+            isPendingDelete
+              ? `Confirm delete task ${index + 1}`
+              : `Delete task ${index + 1}`
+          }
+        >
+          {isPendingDelete ? (
+            <Check className="h-3.5 w-3.5" />
+          ) : (
+            <X className="h-3.5 w-3.5" />
+          )}
+        </button>
+      ) : null}
     </div>
   );
 }

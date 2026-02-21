@@ -107,4 +107,44 @@ describe("TodayChecklistEditor", () => {
     expect(focusTag).toHaveClass("rounded-full");
     expect(archivedTag).toHaveClass("rounded-full", "bg-red-100", "text-red-700");
   });
+
+  it("shows delete controls while focused and hides confirmation when focus leaves", async () => {
+    render(
+      <TodayChecklistEditorHarness
+        initialValue={"- [ ] Plan intro\n- [ ] Write script"}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Delete task 1" })).toBeNull();
+
+    const firstTaskInput = screen.getAllByRole("textbox")[0];
+    await userEvent.click(firstTaskInput);
+
+    await userEvent.click(screen.getByRole("button", { name: "Delete task 1" }));
+    expect(screen.getByRole("button", { name: "Confirm delete task 1" })).toBeInTheDocument();
+
+    const secondTaskInput = screen.getAllByRole("textbox")[1];
+    await userEvent.click(secondTaskInput);
+
+    expect(screen.queryByRole("button", { name: "Confirm delete task 1" })).toBeNull();
+  });
+
+  it("deletes a task after confirmation", async () => {
+    render(
+      <TodayChecklistEditorHarness
+        initialValue={"- [ ] Plan intro\n- [ ] Write script\n- [ ] Publish"}
+      />,
+    );
+
+    const firstTaskInput = screen.getAllByRole("textbox")[0];
+    await userEvent.click(firstTaskInput);
+
+    await userEvent.click(screen.getByRole("button", { name: "Delete task 1" }));
+    await userEvent.click(screen.getByRole("button", { name: "Confirm delete task 1" }));
+
+    const inputs = screen.getAllByRole("textbox");
+    expect(inputs).toHaveLength(2);
+    expect(inputs[0]).toHaveValue("Write script");
+    expect(inputs[1]).toHaveValue("Publish");
+  });
 });
