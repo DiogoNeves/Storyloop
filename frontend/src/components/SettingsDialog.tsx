@@ -7,7 +7,13 @@ import {
   type KeyboardEvent,
 } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CircleHelp, ListTodo, NotebookPen, UserRound } from "lucide-react";
+import {
+  CircleHelp,
+  ListTodo,
+  NotebookPen,
+  SlidersHorizontal,
+  UserRound,
+} from "lucide-react";
 
 import {
   DEFAULT_SMART_UPDATE_SCHEDULE_HOURS,
@@ -44,7 +50,7 @@ interface SettingsDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type SettingsTab = "account" | "journal" | "today" | "help";
+type SettingsTab = "account" | "general" | "journal" | "today" | "help";
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const queryClient = useQueryClient();
@@ -141,6 +147,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const tabs = useMemo(
     () => [
       { key: "account", label: "Account", icon: UserRound },
+      { key: "general", label: "General", icon: SlidersHorizontal },
       { key: "journal", label: "Journal", icon: NotebookPen },
       { key: "today", label: "Today", icon: ListTodo },
       { key: "help", label: "Help", icon: CircleHelp },
@@ -159,7 +166,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             <DialogHeader className="px-6 py-4">
               <DialogTitle className="text-lg font-semibold">Settings</DialogTitle>
               <DialogDescription className="text-sm text-muted-foreground">
-                Manage your account, journal preferences, and help guides.
+                Manage account, general, journal, and help preferences.
               </DialogDescription>
             </DialogHeader>
             <div className="flex flex-col gap-1 px-2 py-3">
@@ -253,34 +260,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                       />
                     </div>
                   </div>
-                  <div className="flex items-center justify-between rounded-lg border bg-muted/50 p-4">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">Theme</p>
-                      <p className="text-sm text-muted-foreground">
-                        Choose your preferred color scheme for the interface.
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="settings-theme" className="sr-only">
-                        Theme preference
-                      </Label>
-                      <Select
-                        value={themePreference}
-                        onValueChange={(value) =>
-                          setThemePreference(value as "light" | "dark" | "system")
-                        }
-                      >
-                        <SelectTrigger id="settings-theme" className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="light">Light</SelectItem>
-                          <SelectItem value="dark">Dark</SelectItem>
-                          <SelectItem value="system">System</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
                   <div className="flex flex-col gap-3 rounded-lg border bg-muted/50 p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="space-y-1">
                       <p className="text-sm font-medium">Activity feed date sort</p>
@@ -366,6 +345,46 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     </div>
                   </div>
                   <StatusMessage type="error" message={scheduleError} />
+                </div>
+              </div>
+            ) : null}
+
+            {activeTab === "general" ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <h3 className="text-base font-semibold">General settings</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Configure app-wide display and interface preferences.
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between rounded-lg border bg-muted/50 p-4">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Theme</p>
+                    <p className="text-sm text-muted-foreground">
+                      Choose your preferred color scheme for the interface.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="settings-theme" className="sr-only">
+                      Theme preference
+                    </Label>
+                    <Select
+                      value={themePreference}
+                      onValueChange={(value) =>
+                        setThemePreference(value as "light" | "dark" | "system")
+                      }
+                    >
+                      <SelectTrigger id="settings-theme" className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="light">Light</SelectItem>
+                        <SelectItem value="dark">Dark</SelectItem>
+                        <SelectItem value="system">System</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             ) : null}
