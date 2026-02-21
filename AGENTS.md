@@ -1,136 +1,160 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for coding agents working in this repository.
+Last verified against repo config: 2026-02-21.
 
-## Tech Stack
+## Scope and Priority
 
-- Backend: Python 3.11, FastAPI, SQLite, PydanticAI
-- Frontend: React 19, Vite, TypeScript, Tailwind CSS, shadcn/ui, TanStack Query
-- Package managers: uv (Python), pnpm (Node)
-- Icons: Lucide React
+- This file applies to the whole repository.
+- If instructions conflict, follow direct user instructions first, then this file.
+- Also follow `good-code-rubric.md` for design and code quality direction.
+- Cursor rule file exists at `.cursor/rules/test-build-planning.mdc` and is always-on.
 
-## Architecture
+## Stack and Layout
 
-Creator analytics journal with FastAPI backend + React frontend. Data flows: user actions → frontend → API → services → SQLite.
+- Backend: Python 3.11, FastAPI, SQLite, Pydantic, PydanticAI.
+- Frontend: React 19, TypeScript, Vite, Tailwind, shadcn/ui, TanStack Query.
+- Package managers: `uv` (Python) and `pnpm` (Node).
+- Root structure:
+  - `backend/app/routers/` HTTP endpoints
+  - `backend/app/services/` DB/network side effects and orchestration
+  - `backend/app/db_helpers/` persistence helpers
+  - `frontend/src/api/` API client and query/mutation helpers
+  - `frontend/src/components/` React UI components
+  - `frontend/tests/` frontend tests
+  - `scripts/dev.py` dev/prod process launcher
 
-Key services: `YoutubeService` (API integration), PydanticAI agent (SSE streaming conversations). See `thinking/` for detailed architecture docs.
+## Build, Lint, and Test Commands
 
-## Project Structure
-
-- Python project root lives in `backend/` (run `uv` commands there or use `uv --project backend`)
-- `backend/app/` - FastAPI app: `main.py` (entry), `routers/` (endpoints), `services/` (business logic), `db_helpers/` (persistence)
-- `frontend/src/` - React app: `api/` (TanStack Query + Axios), `components/` (UI), `App.tsx` (dashboard)
-- `scripts/` - automation (`dev.py` launcher, `seed_demo_data.py`)
-- `thinking/` - architecture docs (architecture.md, backend-structure.md, frontend-structure.md, data-flow.md)
-
-## Development Commands
+Run from repo root unless noted.
 
 ```bash
-# Start both servers in dev mode (FastAPI :8000, Vite :5173)
+# Start local dev stack (backend + frontend, hot reload)
 make dev
 
-# Start both servers in prod mode (FastAPI :8000, preview :4173, offline PWA support)
-make prod
-
-# Backend only
+# Backend only (uvicorn on 127.0.0.1:8001)
 make backend
 
-# Run all tests (non-interactive, CI-friendly)
-make test-backend              # pytest
-make test-frontend             # Vitest once with --run flag
+# Production-like local run (build frontend + preview + prod backend)
+make prod
 
-# Run single test (IMPORTANT: use --run to avoid watch mode)
-cd backend && uv run pytest tests/test_health.py::test_health_returns_healthy -v
-cd frontend && pnpm vitest run tests/setup.test.ts   # --run prevents watch mode
+# Frontend production build
+make build
 
-# Watch mode (interactive development)
-cd frontend && pnpm test       # Starts vitest in watch mode (will hang in CI/scripts)
+# Lint/type checks
+make lint
+make lint-backend      # ruff + mypy
+make lint-frontend     # eslint
 
-# Type checking and linting
-make lint                       # Runs backend + frontend checks
-make lint-backend               # Backend ruff + mypy
-make lint-frontend              # Frontend lint
-uv run ruff check backend && uv run mypy backend
-cd frontend && pnpm run lint
-npx tsc --noEmit                # Frontend type check
-
-# Seed demo data
-make seed
+# Full tests
+make test
+make test-backend
+make test-frontend
 ```
 
-## Mobile Testing
+## Single Test Commands (Important)
 
-Tailscale is configured with HTTPS for testing PWA on phone. Access via Tailscale hostname.
+Use these to avoid watch mode and keep CI-like behavior.
 
-## Master Plan
+```bash
+# Backend: single test file
+cd backend && uv run pytest tests/routers/test_entries.py -v
 
-- Break problems into falsifiable steps and validate early
-- Keep the end goal and current TODOs visible
-- Work in short horizons, backtrack quickly on dead ends
-- Confirm each step before expanding scope
-- **Always include steps to run tests and build the project in planning:**
-  - Add `make test` (or `make test-backend` / `make test-frontend` for specific suites) as a validation step
-  - Add `make build` to verify the frontend builds successfully
-  - Include these steps in todo lists for features that modify code
+# Backend: single test function (node id)
+cd backend && uv run pytest tests/routers/test_health.py::test_health_check -v
 
-## Code Style
+# Backend: filter by expression
+cd backend && uv run pytest -k "today_entries" -v
 
-### Python
+# Frontend: single test file (non-watch)
+cd frontend && pnpm vitest run tests/TodayChecklistEditor.test.tsx
 
-- Target Python 3.11, 4-space indentation
-- Keep modules typed, run `uv run ruff check backend` and `uv run mypy backend` before review
-- Group business logic in `services/`
-- Prototype substantial features in standalone scripts first (minimal deps, no Logfire)
-- Reference `.env` via `backend/config.py`, never hard-code
+# Frontend: single test case by name
+cd frontend && pnpm vitest run tests/TodayChecklistEditor.test.tsx -t "applies external updates after leaving the delete button"
 
-### TypeScript/React
+# Frontend: equivalent via npm script (still non-watch)
+cd frontend && pnpm run test -- --run tests/TodayChecklistEditor.test.tsx
+```
 
-- Follow ESLint + Prettier defaults
-- Components: PascalCase; hooks/utils: camelCase
-- Prefer function components
-- Use shadcn components from `frontend/src/components/ui/`
-- Install new primitives: `pnpm dlx shadcn@latest add <component>`
-- Icons: import from `lucide-react`, reference Lucide Figma library for mockups
-- Shared tokens: `src/index.css`
+## Code Style: Cross-Cutting
 
-### Code Organization
+- Prefer small, cohesive modules; aim under ~400 lines when practical.
+- Keep functional core vs side effects clear:
+  - pure transforms in helper functions
+  - I/O in services/API adapters
+- Validate data at boundaries (Pydantic on backend, parser/schema on frontend).
+- Keep naming explicit about side effects (`fetch_`, `load_`, `save_`, `compute_`).
+- Avoid vague names like `utils`, `helpers`, `manager`, `common` for new modules.
+- Do not hard-code secrets or environment-specific credentials.
 
-- Export components/functions before private helpers
-- Place private helpers after public code that uses them (keep helpers close to last usage)
-- Maintainable code = obvious interface, type-safe, allows only correct values
-- Tests cover ambiguous cases
-- When planning work, research what needs changing thoroughly first
-- After big code changes, refactor to simplify
+## Python Backend Conventions
 
-## Testing
+- Target Python 3.11 syntax and typing.
+- Use `from __future__ import annotations` in new modules.
+- Import order: stdlib, third-party, then local `app.*` imports.
+- Use explicit types on public function signatures.
+- Prefer `@dataclass(slots=True)` for internal records and DTO-like structures.
+- Use Pydantic models for request/response and boundary validation.
+- Keep router modules thin; push persistence and orchestration into services.
+- Use pure conversion helpers for model mapping where possible.
+- Error handling:
+  - raise typed/domain exceptions in services when possible
+  - map to HTTP errors in routers (see `backend/app/routers/errors.py`)
+  - avoid broad `except Exception` unless re-raising with context
+  - never silently swallow failures
 
-- Backend: `test_*.py` files, assert public API, use `asyncio_mode=auto`
-- Frontend: colocate tests or use `frontend/tests/`, Testing Library matchers from `@testing-library/jest-dom`
-- Cover new endpoints, hooks, stateful components
-- Create tests when developing new features
-- Always run tests after implementing new features
-- Document test gaps in PR description
+## TypeScript/React Frontend Conventions
 
-## Repository Workflow
+- TypeScript is strict (`strict: true`); avoid `any`.
+- Prefer `unknown` + parsing/guards over unchecked casts.
+- Use named exports for components and utilities.
+- Naming:
+  - Components: PascalCase
+  - Hooks/util functions: camelCase
+  - Hooks start with `use`
+  - Types/interfaces: PascalCase
+- Imports:
+  - external packages first
+  - internal imports via `@/` alias
+  - keep type-only imports explicit (`import type { ... }`)
+- Follow React Hooks rules and exhaustive deps warnings.
+- Keep network and cache logic in `frontend/src/api/` and hooks, not in presentational UI.
+- Reuse shared UI primitives from `frontend/src/components/ui/`.
+- Add new shadcn components via CLI, not by manual copy:
+  - `cd frontend && pnpm dlx shadcn@latest add <component>`
+- Use `lucide-react` for icons.
 
-- Commits: short, present-tense subjects (`add health endpoint`, `fix dashboard layout`)
-- Reference issues in body, summarize env/schema changes
-- PRs: outline problem, solution, screenshots (UI), local commands run
-- Request review after checks pass, leave TODOs for follow-up
-- Use `gh` command for GitHub operations
+## Formatting and Linting
 
-## Good code rubric
+- Respect existing formatter/linter output; avoid manual style churn.
+- Frontend formatting uses Prettier with `prettier-plugin-tailwindcss`.
+- Frontend linting uses `eslint` with type-aware `typescript-eslint` rules.
+- Backend quality checks are `ruff` plus `mypy` via `make lint-backend`.
 
-- This repository did not begin with the Good Code rubric in place. For all new work, we should move toward it incrementally and improve what we can from now on.
-- `good-code-rubric.md` is required reading before introducing or modifying code.
-- Follow the rubric for coding decisions and reviews, while honoring current repo conventions.
-- Stack-specific exceptions and notes are documented in `good-code-rubric.md` (especially section: `Repository adaptation notes`).
+## Testing Conventions
 
-## Do Not
+- Backend:
+  - test framework: `pytest`
+  - async mode: `asyncio_mode = auto`
+  - tests live under `backend/tests/`
+- Frontend:
+  - test framework: `vitest`
+  - UI tests use Testing Library + `user-event`
+  - tests mainly live in `frontend/tests/`
+- Prefer behavior-focused tests over implementation-detail tests.
+- Cover edge cases around parsing, sync, state transitions, and error paths.
 
-- Do not hard-code environment variables
-- Do not use `make prod` to debug/test new functionality unless explicitly asked, use `make dev` instead
-- Do not skip type checking (`ruff`, `mypy`) before backend PRs (activate `backend/.venv` first)
-- Do not add shadcn components manually (use `pnpm dlx shadcn` command)
-- Do not commit partial work without flagging TODOs
-- Do not use destructive git commands (force push, hard reset) without explicit user request
+## Cursor and Copilot Rules
+
+- Cursor rules found:
+  - `.cursor/rules/test-build-planning.mdc` (always apply)
+  - Requires test and build validation steps in plans/todo lists for code changes.
+- No `.cursorrules` file found.
+- No `.github/copilot-instructions.md` file found.
+
+## Git and Change Safety
+
+- Do not use destructive git commands unless explicitly requested.
+- Do not force-push without explicit user approval.
+- Keep commits focused and descriptive.
+- If the tree is dirty, do not revert unrelated user changes.
