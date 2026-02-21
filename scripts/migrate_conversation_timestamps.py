@@ -129,7 +129,11 @@ def _copy_conversations(connection: sqlite3.Connection) -> None:
 def _copy_turns(connection: sqlite3.Connection) -> None:
     columns = _table_columns(connection, "turns")
     has_created_at_utc = "created_at_utc" in columns
-    select_columns = "id, conversation_id, role, text, attachments, created_at"
+    has_attachments = "attachments" in columns
+    attachments_column = "attachments" if has_attachments else "NULL AS attachments"
+    select_columns = (
+        f"id, conversation_id, role, text, {attachments_column}, created_at"
+    )
     if has_created_at_utc:
         select_columns += ", created_at_utc"
 
