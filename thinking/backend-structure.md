@@ -311,5 +311,7 @@ make test-backend
 
 # Run linting
 uv run ruff check backend
-uv run mypy backend
+
+# Run local type-checking + linting (same behavior as `make lint-backend`)
+make lint-backend
 ```

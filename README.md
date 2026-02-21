@@ -154,6 +154,7 @@ This embeds the full backend URL into the frontend bundle.
 - `make build` – build the frontend for production.
 - `make test-backend` – run the FastAPI pytest suite.
 - `make test-frontend` – execute Vitest in run-once mode.
+- `make lint` – run backend + frontend linting checks.
 - `make lint-frontend` – lint the React project with ESLint flat config.
 - `make seed` – populate the local SQLite database with demo YouTube metrics.
 
@@ -167,7 +168,7 @@ This embeds the full backend URL into the frontend bundle.
 
 - Backend tests live under `backend/tests/` and rely on `uv run pytest` for isolation.
 - Frontend tests use Vitest + Testing Library; see `frontend/tests/` for examples.
-- Ruff, mypy, and additional tooling can be enabled later via `uv add --dev` as the surface area grows.
+- Backend CI runs Ruff in the GitHub workflow; run `make lint-backend` for local ruff + mypy checks.
 
 ## Next steps
 
