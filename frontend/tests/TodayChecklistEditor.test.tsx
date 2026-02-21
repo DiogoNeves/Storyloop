@@ -129,6 +129,29 @@ describe("TodayChecklistEditor", () => {
     expect(screen.queryByRole("button", { name: "Confirm delete task 1" })).toBeNull();
   });
 
+
+  it("deletes the originally selected task after rows reorder", async () => {
+    render(
+      <TodayChecklistEditorHarness
+        initialValue={"- [ ] Plan intro\n- [ ] Write script\n- [ ] Publish"}
+      />,
+    );
+
+    await userEvent.click(screen.getAllByRole("textbox")[0]);
+    await userEvent.click(screen.getByRole("button", { name: "Delete task 1" }));
+
+    await userEvent.click(screen.getAllByRole("checkbox")[0]);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Confirm delete task 3" }),
+    );
+
+    const inputs = screen.getAllByRole("textbox");
+    expect(inputs).toHaveLength(2);
+    expect(inputs[0]).toHaveValue("Write script");
+    expect(inputs[1]).toHaveValue("Publish");
+  });
+
   it("deletes a task after confirmation", async () => {
     render(
       <TodayChecklistEditorHarness
