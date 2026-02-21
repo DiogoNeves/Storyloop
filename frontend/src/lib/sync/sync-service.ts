@@ -146,6 +146,7 @@ export class SyncService {
             // Log but count as success - entry is on server
             console.warn("Failed to remove synced entry from queue:", storageError);
           }
+          pendingEntryIds.delete(entry.id);
           successCount++;
         } catch (error) {
           // Failed - restore to pending status (not "failed") for retry

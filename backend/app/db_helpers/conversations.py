@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TypedDict
 from uuid import uuid4
 
@@ -43,7 +43,7 @@ def init_conversation_tables(connection: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS conversations (
             id TEXT PRIMARY KEY,
             title TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT NOT NULL
         )
         """
     )
@@ -55,16 +55,13 @@ def init_conversation_tables(connection: sqlite3.Connection) -> None:
             role TEXT NOT NULL,
             text TEXT NOT NULL,
             attachments TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_at TEXT NOT NULL,
             FOREIGN KEY(conversation_id) REFERENCES conversations(id)
         )
         """
     )
-    columns = {
-        row["name"]
-        for row in connection.execute("PRAGMA table_info(turns)").fetchall()
-    }
-    if "attachments" not in columns:
+    turn_columns = _table_columns(connection, "turns")
+    if "attachments" not in turn_columns:
         connection.execute("ALTER TABLE turns ADD COLUMN attachments TEXT")
     connection.commit()
 
@@ -73,9 +70,12 @@ def insert_conversation(
     connection: sqlite3.Connection, id: str, title: str | None
 ) -> ConversationRow:
     """Insert a conversation and return its data."""
-    created_at = datetime.utcnow().isoformat()
+    created_at = _now_utc_isoformat()
     connection.execute(
-        "INSERT INTO conversations (id, title, created_at) VALUES (?, ?, ?)",
+        """
+        INSERT INTO conversations (id, title, created_at)
+        VALUES (?, ?, ?)
+        """,
         (id, title, created_at),
     )
     connection.commit()
@@ -141,8 +141,8 @@ def list_conversation_summaries(
         {
             "id": row[0],
             "title": row[1],
-            "created_at": row[2],
-            "last_turn_at": row[3],
+            "created_at": _normalize_utc_isoformat(row[2]) or "",
+            "last_turn_at": _normalize_utc_isoformat(row[3]),
             "last_turn_text": row[4],
             "first_turn_text": row[5],
             "turn_count": row[6],
@@ -160,14 +160,28 @@ def insert_turn(
 ) -> str:
     """Insert a turn and return its generated UUID."""
     turn_id = str(uuid4())
-    created_at = datetime.utcnow().isoformat()
+    created_at = _now_utc_isoformat()
     attachments_payload = json.dumps(attachments or [])
     connection.execute(
         """
-        INSERT INTO turns (id, conversation_id, role, text, attachments, created_at)
+        INSERT INTO turns (
+            id,
+            conversation_id,
+            role,
+            text,
+            attachments,
+            created_at
+        )
         VALUES (?, ?, ?, ?, ?, ?)
         """,
-        (turn_id, conversation_id, role, text, attachments_payload, created_at),
+        (
+            turn_id,
+            conversation_id,
+            role,
+            text,
+            attachments_payload,
+            created_at,
+        ),
     )
     connection.commit()
     return turn_id
@@ -193,7 +207,7 @@ def list_turns(
             "role": row[1],
             "text": row[2],
             "attachments": json.loads(row[3]) if row[3] else [],
-            "created_at": row[4],
+            "created_at": _normalize_utc_isoformat(row[4]) or "",
         }
         for row in rows
     ]
@@ -216,3 +230,32 @@ def delete_conversation(
     )
     connection.commit()
     return True
+
+
+def _table_columns(connection: sqlite3.Connection, table_name: str) -> set[str]:
+    return {
+        row["name"]
+        for row in connection.execute(f"PRAGMA table_info({table_name})").fetchall()
+    }
+
+def _normalize_utc_isoformat(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip()
+    if not normalized:
+        return None
+    if normalized.endswith("Z"):
+        normalized = normalized[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    else:
+        parsed = parsed.astimezone(UTC)
+    return parsed.isoformat()
+
+
+def _now_utc_isoformat() -> str:
+    return datetime.now(tz=UTC).isoformat()
