@@ -30,7 +30,7 @@ jobs:
           version: 10
 
       - name: Install backend dependencies
-        run: uv sync --project backend --frozen --group dev
+        run: uv sync --project backend --frozen --group ci
 
       - name: Install frontend dependencies
         run: pnpm --dir frontend install --frozen-lockfile
