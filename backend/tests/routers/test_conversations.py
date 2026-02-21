@@ -16,6 +16,8 @@ from app.db import SqliteConnectionFactory
 from app.db_helpers.conversations import (
     init_conversation_tables,
     insert_turn,
+    list_conversation_summaries,
+    list_turns,
 )
 from app.routers.conversations import router as conversations_router
 from app.services.assets import AssetService
@@ -102,6 +104,7 @@ def test_create_conversation(
     assert "id" in body
     assert body["title"] == "Test Chat"
     assert "created_at" in body
+    assert body["created_at"].endswith("+00:00")
 
 
 def test_create_conversation_without_title(
@@ -118,6 +121,7 @@ def test_create_conversation_without_title(
     assert "id" in body
     assert body["title"] is None
     assert "created_at" in body
+    assert body["created_at"].endswith("+00:00")
 
 
 def test_list_conversations_empty(
@@ -181,6 +185,67 @@ def test_list_conversations_includes_recent_turn(
     assert summary["last_turn_at"] is not None
     assert summary["turn_count"] == 2
     assert summary["tags"] == ["hooks", "retention"]
+
+
+def test_list_helpers_normalize_legacy_naive_timestamps(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    """Legacy naive timestamps are normalized to UTC in API helper output."""
+    with memory_connection_factory() as connection:
+        connection.execute("DROP TABLE IF EXISTS turns")
+        connection.execute("DROP TABLE IF EXISTS conversations")
+        connection.execute(
+            """
+            CREATE TABLE conversations (
+                id TEXT PRIMARY KEY,
+                title TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE turns (
+                id TEXT PRIMARY KEY,
+                conversation_id TEXT NOT NULL,
+                role TEXT NOT NULL,
+                text TEXT NOT NULL,
+                attachments TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(conversation_id) REFERENCES conversations(id)
+            )
+            """
+        )
+        legacy_timestamp = "2026-02-16T10:00:00"
+        connection.execute(
+            "INSERT INTO conversations (id, title, created_at) VALUES (?, ?, ?)",
+            ("legacy", "Legacy conversation", legacy_timestamp),
+        )
+        connection.execute(
+            """
+            INSERT INTO turns (id, conversation_id, role, text, attachments, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "legacy-turn",
+                "legacy",
+                "user",
+                "Hello",
+                "[]",
+                legacy_timestamp,
+            ),
+        )
+        connection.commit()
+
+        init_conversation_tables(connection)
+
+        summaries = list_conversation_summaries(connection)
+        assert summaries[0]["created_at"].endswith("+00:00")
+        assert summaries[0]["last_turn_at"] is not None
+        assert summaries[0]["last_turn_at"].endswith("+00:00")
+
+        turns = list_turns(connection, "legacy")
+        assert turns[0]["created_at"].endswith("+00:00")
 
 
 def test_get_turns_for_nonexistent_conversation(

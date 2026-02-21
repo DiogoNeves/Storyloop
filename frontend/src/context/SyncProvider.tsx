@@ -8,6 +8,7 @@ import {
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
+import { API_BASE_URL } from "@/api/client";
 import type { CreateEntryInput, UpdateEntryInput } from "@/api/entries";
 import {
   IdbSyncStore,
@@ -20,7 +21,7 @@ import {
 import { SyncContext, type SyncContextValue } from "./SyncContext";
 
 const HEALTH_CHECK_INTERVAL = 10_000; // 10 seconds
-const HEALTH_CHECK_URL = "/health";
+const HEALTH_CHECK_URL = `${API_BASE_URL}/health`;
 
 export function SyncProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
@@ -182,7 +183,11 @@ export function SyncProvider({ children }: { children: ReactNode }) {
           cache: "no-store",
           signal: controller.signal,
         });
-        if (response.ok) {
+        if (!response.ok) {
+          return;
+        }
+        const payload = (await response.json()) as { status?: unknown };
+        if (typeof payload.status === "string" && payload.status.length > 0) {
           setIsServerReachable(true);
           // Sync pending entries now that server is back
           void serviceRef.current?.syncAll();

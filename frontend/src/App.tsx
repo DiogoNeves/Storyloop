@@ -343,7 +343,7 @@ function JournalPage() {
   }, []);
 
   const { isOnline, queueEntry, markServerUnreachable } = useSync();
-  const todayEntryId = useMemo(() => getTodayEntryIdForDate(new Date()), []);
+  const todayEntryId = useCurrentTodayEntryId();
   const todayEntry = useMemo(
     () =>
       (entriesQuery.data ?? []).find(
@@ -369,11 +369,17 @@ function JournalPage() {
         const dayKey = extractDayKeyFromTodayEntryId(entry.id);
         return Boolean(dayKey && dayKey < todayDayKey);
       })
-      .sort(
-        (a, b) =>
+      .sort((a, b) => {
+        const aDayKey = extractDayKeyFromTodayEntryId(a.id) ?? "";
+        const bDayKey = extractDayKeyFromTodayEntryId(b.id) ?? "";
+        if (aDayKey !== bDayKey) {
+          return bDayKey.localeCompare(aDayKey);
+        }
+        return (
           new Date(b.updatedAt ?? b.date).getTime() -
-          new Date(a.updatedAt ?? a.date).getTime(),
-      )[0];
+          new Date(a.updatedAt ?? a.date).getTime()
+        );
+      })[0];
 
     if (!latestPreviousToday) {
       return "- [ ]";
@@ -694,6 +700,47 @@ export function App() {
       </QueryClientProvider>
     </BrowserRouter>
   );
+}
+
+function useCurrentTodayEntryId(): string {
+  const [todayEntryId, setTodayEntryId] = useState(() =>
+    getTodayEntryIdForDate(new Date()),
+  );
+
+  useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const scheduleNextTick = () => {
+      const now = new Date();
+      const delayMs = millisecondsUntilNextUtcDay(now);
+      timeoutId = setTimeout(() => {
+        setTodayEntryId(getTodayEntryIdForDate(new Date()));
+        scheduleNextTick();
+      }, delayMs);
+    };
+
+    scheduleNextTick();
+
+    return () => {
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, []);
+
+  return todayEntryId;
+}
+
+function millisecondsUntilNextUtcDay(now: Date): number {
+  const nextUtcMidnight = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate() + 1,
+    0,
+    0,
+    1,
+  );
+  return Math.max(1000, nextUtcMidnight - now.getTime());
 }
 
 export default App;
