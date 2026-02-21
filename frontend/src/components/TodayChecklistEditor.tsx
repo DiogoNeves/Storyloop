@@ -26,6 +26,10 @@ interface TodayChecklistEditorProps {
   className?: string;
 }
 
+interface TodayChecklistEditorRow extends TodayChecklistRow {
+  id: number;
+}
+
 export function TodayChecklistEditor({
   value,
   onChange,
@@ -40,10 +44,13 @@ export function TodayChecklistEditor({
       return normalizeRowsFromValue([]);
     }
   }, [value]);
-  const [rows, setRows] = useState<TodayChecklistRow[]>(rowsFromValue);
+  const nextRowIdRef = useRef(0);
+  const [rows, setRows] = useState<TodayChecklistEditorRow[]>(() =>
+    attachRowIds(rowsFromValue, nextRowIdRef),
+  );
   const [isInteracting, setIsInteracting] = useState(false);
-  const [activeRowIndex, setActiveRowIndex] = useState<number | null>(null);
-  const [pendingDeleteIndex, setPendingDeleteIndex] = useState<number | null>(null);
+  const [activeRowId, setActiveRowId] = useState<number | null>(null);
+  const [pendingDeleteRowId, setPendingDeleteRowId] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const inputRefs = useRef<(HTMLTextAreaElement | null)[]>([]);
   const pendingFocusIndexRef = useRef<number | null>(null);
@@ -66,9 +73,9 @@ export function TodayChecklistEditor({
       return;
     }
     const nextSerialized = serializeRowsForStorage(rowsFromValue);
-    const currentSerialized = serializeRowsForStorage(rows);
+    const currentSerialized = serializeRowsForStorage(stripEditorRows(rows));
     if (nextSerialized !== currentSerialized) {
-      setRows(rowsFromValue);
+      setRows(attachRowIds(rowsFromValue, nextRowIdRef));
     }
   }, [isInteracting, rows, rowsFromValue]);
 
@@ -104,10 +111,10 @@ export function TodayChecklistEditor({
   );
 
   const commitRows = useCallback(
-    (nextRows: TodayChecklistRow[], immediate = false) => {
-      const normalized = normalizeRowsForCommit(nextRows);
+    (nextRows: TodayChecklistEditorRow[], immediate = false) => {
+      const normalized = normalizeEditorRowsForCommit(nextRows, nextRowIdRef);
       setRows(normalized);
-      scheduleChange(serializeRowsForStorage(normalized), immediate);
+      scheduleChange(serializeRowsForStorage(stripEditorRows(normalized)), immediate);
     },
     [scheduleChange],
   );
@@ -151,7 +158,7 @@ export function TodayChecklistEditor({
     (index: number) => {
       const nextRows = [...rows];
       const insertIndex = Math.max(0, Math.min(index + 1, nextRows.length));
-      nextRows.splice(insertIndex, 0, { text: "", checked: false });
+      nextRows.splice(insertIndex, 0, createEditorRow(nextRowIdRef));
       pendingFocusIndexRef.current = insertIndex;
       commitRows(nextRows, true);
     },
@@ -192,28 +199,28 @@ export function TodayChecklistEditor({
     setIsInteracting(true);
   }, []);
 
-  const handleRowFocus = useCallback((index: number) => {
-    setActiveRowIndex(index);
+  const handleRowFocus = useCallback((rowId: number) => {
+    setActiveRowId(rowId);
   }, []);
 
-  const handleRowBlur = useCallback((index: number) => {
-    setActiveRowIndex((current) => (current === index ? null : current));
-    setPendingDeleteIndex((current) => (current === index ? null : current));
+  const handleRowBlur = useCallback((rowId: number) => {
+    setActiveRowId((current) => (current === rowId ? null : current));
+    setPendingDeleteRowId((current) => (current === rowId ? null : current));
   }, []);
 
   const handleDeleteClick = useCallback(
-    (index: number) => {
-      if (pendingDeleteIndex !== index) {
-        setPendingDeleteIndex(index);
+    (rowId: number) => {
+      if (pendingDeleteRowId !== rowId) {
+        setPendingDeleteRowId(rowId);
         return;
       }
 
-      const nextRows = rows.filter((_, rowIndex) => rowIndex !== index);
+      const nextRows = rows.filter((row) => row.id !== rowId);
       commitRows(nextRows, true);
-      setPendingDeleteIndex(null);
-      setActiveRowIndex(null);
+      setPendingDeleteRowId(null);
+      setActiveRowId(null);
     },
-    [commitRows, pendingDeleteIndex, rows],
+    [commitRows, pendingDeleteRowId, rows],
   );
 
   const handleFieldBlur = useCallback(() => {
@@ -244,8 +251,9 @@ export function TodayChecklistEditor({
     <div ref={containerRef} className={cn("space-y-1.5", className)}>
       {rows.map((row, index) => (
         <TodayChecklistRowEditor
-          key={`today-row-${index}`}
+          key={row.id}
           row={row}
+          rowId={row.id}
           index={index}
           totalRows={rows.length}
           isEditable={isEditable}
@@ -254,8 +262,8 @@ export function TodayChecklistEditor({
           onKeyDown={handleKeyDown}
           onFieldFocus={handleFieldFocus}
           onFieldBlur={handleFieldBlur}
-          isFocused={activeRowIndex === index}
-          isPendingDelete={pendingDeleteIndex === index}
+          isFocused={activeRowId === row.id}
+          isPendingDelete={pendingDeleteRowId === row.id}
           onRowFocus={handleRowFocus}
           onRowBlur={handleRowBlur}
           onDeleteClick={handleDeleteClick}
@@ -282,7 +290,8 @@ export function TodayChecklistEditor({
 }
 
 interface TodayChecklistRowEditorProps {
-  row: TodayChecklistRow;
+  row: TodayChecklistEditorRow;
+  rowId: number;
   index: number;
   totalRows: number;
   isEditable: boolean;
@@ -293,14 +302,15 @@ interface TodayChecklistRowEditorProps {
   onFieldBlur: () => void;
   isFocused: boolean;
   isPendingDelete: boolean;
-  onRowFocus: (index: number) => void;
-  onRowBlur: (index: number) => void;
-  onDeleteClick: (index: number) => void;
+  onRowFocus: (rowId: number) => void;
+  onRowBlur: (rowId: number) => void;
+  onDeleteClick: (rowId: number) => void;
   setInputRef: (element: HTMLTextAreaElement | null) => void;
 }
 
 function TodayChecklistRowEditor({
   row,
+  rowId,
   index,
   totalRows,
   isEditable,
@@ -323,21 +333,21 @@ function TodayChecklistRowEditor({
     requestAnimationFrame(() => {
       const activeElement = document.activeElement;
       if (!rowRef.current || !activeElement) {
-        onRowBlur(index);
+        onRowBlur(rowId);
         return;
       }
       if (!rowRef.current.contains(activeElement)) {
-        onRowBlur(index);
+        onRowBlur(rowId);
       }
     });
-  }, [index, onRowBlur]);
+  }, [onRowBlur, rowId]);
 
   return (
     <div
       ref={rowRef}
       className="flex items-start gap-2 rounded-md border border-border/50 bg-background/60 px-3 py-2"
       onFocusCapture={() => {
-        onRowFocus(index);
+        onRowFocus(rowId);
       }}
       onBlurCapture={handleRowBlurCapture}
     >
@@ -390,7 +400,7 @@ function TodayChecklistRowEditor({
         <button
           type="button"
           onClick={() => {
-            onDeleteClick(index);
+            onDeleteClick(rowId);
           }}
           className={cn(
             "mt-1 inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted",
@@ -413,7 +423,46 @@ function TodayChecklistRowEditor({
   );
 }
 
-function normalizeRowsForCommit(rows: TodayChecklistRow[]): TodayChecklistRow[] {
+function createEditorRow(idRef: { current: number }): TodayChecklistEditorRow {
+  const rowId = idRef.current;
+  idRef.current += 1;
+  return { id: rowId, text: "", checked: false };
+}
+
+function attachRowIds(
+  rows: TodayChecklistRow[],
+  idRef: { current: number },
+): TodayChecklistEditorRow[] {
+  return rows.map((row) => ({
+    id: idRef.current++,
+    text: row.text,
+    checked: row.checked,
+  }));
+}
+
+function stripEditorRows(rows: TodayChecklistEditorRow[]): TodayChecklistRow[] {
+  return rows.map(({ text, checked }) => ({ text, checked }));
+}
+
+function normalizeEditorRowsForCommit(
+  rows: TodayChecklistEditorRow[],
+  idRef: { current: number },
+): TodayChecklistEditorRow[] {
+  if (rows.length === 0) {
+    return [createEditorRow(idRef)];
+  }
+
+  return rows.map((row) => {
+    const normalizedText = normalizeTaskRowText(row.text);
+    return {
+      id: row.id,
+      text: normalizedText,
+      checked: row.checked && normalizedText.trim().length > 0,
+    };
+  });
+}
+
+function normalizeTodayRowsForCommit(rows: TodayChecklistRow[]): TodayChecklistRow[] {
   if (rows.length === 0) {
     return [{ text: "", checked: false }];
   }
@@ -427,10 +476,10 @@ function normalizeRowsForCommit(rows: TodayChecklistRow[]): TodayChecklistRow[] 
   });
 }
 
-function moveRowToEndBeforeTrailingEmptyRows(
-  rows: TodayChecklistRow[],
+function moveRowToEndBeforeTrailingEmptyRows<TRow extends TodayChecklistRow>(
+  rows: TRow[],
   index: number,
-): TodayChecklistRow[] {
+): TRow[] {
   if (index < 0 || index >= rows.length) {
     return rows;
   }
@@ -451,7 +500,7 @@ function moveRowToEndBeforeTrailingEmptyRows(
   ];
 }
 
-function findIndexBeforeTrailingEmptyRows(rows: TodayChecklistRow[]): number {
+function findIndexBeforeTrailingEmptyRows<TRow extends TodayChecklistRow>(rows: TRow[]): number {
   let insertIndex = rows.length;
 
   while (insertIndex > 0 && rows[insertIndex - 1].text.trim().length === 0) {
@@ -462,7 +511,7 @@ function findIndexBeforeTrailingEmptyRows(rows: TodayChecklistRow[]): number {
 }
 
 function normalizeRowsFromValue(rows: TodayChecklistRow[]): TodayChecklistRow[] {
-  const normalizedRows = normalizeRowsForCommit(rows);
+  const normalizedRows = normalizeTodayRowsForCommit(rows);
 
   let lastNonEmptyIndex = normalizedRows.length - 1;
   while (
