@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
@@ -22,6 +22,24 @@ function TodayChecklistEditorHarness({
       onChange={setValue}
       moveCompletedTasksToEnd={moveCompletedTasksToEnd}
     />
+  );
+}
+
+function TodayChecklistExternalUpdateHarness() {
+  const [value, setValue] = useState("- [ ] Plan intro\n- [ ] Write script");
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => {
+          setValue("- [ ] External update task");
+        }}
+      >
+        Apply external update
+      </button>
+      <TodayChecklistEditor value={value} onChange={setValue} />
+    </div>
   );
 }
 
@@ -169,5 +187,19 @@ describe("TodayChecklistEditor", () => {
     expect(inputs).toHaveLength(2);
     expect(inputs[0]).toHaveValue("Write script");
     expect(inputs[1]).toHaveValue("Publish");
+  });
+
+  it("applies external updates after leaving the delete button", async () => {
+    render(<TodayChecklistExternalUpdateHarness />);
+
+    await userEvent.click(screen.getAllByRole("textbox")[0]);
+    await userEvent.click(screen.getByRole("button", { name: "Delete task 1" }));
+    await userEvent.click(screen.getByRole("button", { name: "Apply external update" }));
+
+    await waitFor(() => {
+      const inputs = screen.getAllByRole("textbox");
+      expect(inputs).toHaveLength(1);
+      expect(inputs[0]).toHaveValue("External update task");
+    });
   });
 });

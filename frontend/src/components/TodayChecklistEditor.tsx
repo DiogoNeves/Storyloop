@@ -278,6 +278,8 @@ export function TodayChecklistEditor({
           variant="ghost"
           size="sm"
           onClick={addTaskRow}
+          onFocus={handleFieldFocus}
+          onBlur={handleFieldBlur}
           className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
           aria-label="Add task row"
         >
@@ -402,6 +404,8 @@ function TodayChecklistRowEditor({
           onClick={() => {
             onDeleteClick(rowId);
           }}
+          onFocus={onFieldFocus}
+          onBlur={onFieldBlur}
           className={cn(
             "mt-1 inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted",
             isPendingDelete && "text-red-600 hover:bg-red-50",
