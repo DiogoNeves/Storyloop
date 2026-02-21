@@ -211,6 +211,7 @@ export function TodayChecklistEditor({
   const handleDeleteClick = useCallback(
     (rowId: number) => {
       if (pendingDeleteRowId !== rowId) {
+        setActiveRowId(rowId);
         setPendingDeleteRowId(rowId);
         return;
       }
@@ -401,14 +402,17 @@ function TodayChecklistRowEditor({
       {isEditable && isFocused ? (
         <button
           type="button"
+          onPointerDown={(event) => {
+            event.preventDefault();
+          }}
           onClick={() => {
             onDeleteClick(rowId);
           }}
           onFocus={onFieldFocus}
           onBlur={onFieldBlur}
           className={cn(
-            "mt-1 inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted",
-            isPendingDelete && "text-red-600 hover:bg-red-50",
+            "mt-1 inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground dark:text-foreground/80 dark:hover:text-foreground",
+            isPendingDelete && "text-red-600 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/40",
           )}
           aria-label={
             isPendingDelete
