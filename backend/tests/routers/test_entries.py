@@ -89,6 +89,7 @@ def test_save_entry_without_summary_defaults_to_blank(
     body = response.json()
     assert len(body) == 1
     assert body[0]["summary"] == ""
+    assert body[0]["lastOpenedAt"] is None
 
 
 def test_list_entries_returns_persisted_records(
@@ -127,6 +128,7 @@ def test_list_entries_returns_persisted_records(
     assert body[0]["pinned"] is True
     assert body[0]["archived"] is False
     assert body[0]["archivedAt"] is None
+    assert body[0]["lastOpenedAt"] is None
     assert body[0]["tags"] == []
 
 
@@ -158,7 +160,70 @@ def test_get_entry_returns_single_record(
     assert body["videoId"] == "linked-video"
     assert body["archived"] is False
     assert body["archivedAt"] is None
+    assert body["lastOpenedAt"] is None
     assert body["tags"] == ["retention"]
+
+
+def test_mark_entry_opened_sets_last_opened_without_changing_updated_at(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    app = _create_test_app(memory_connection_factory)
+    client = TestClient(app)
+
+    now = datetime.now(tz=UTC)
+    create_payload = [
+        {
+            "id": "entry-smart-open",
+            "title": "Smart entry",
+            "summary": "Stored for opened timestamp.",
+            "date": now.isoformat(),
+            "category": "journal",
+            "promptBody": "Summarize latest progress.",
+        }
+    ]
+
+    create_response = client.post("/entries/", json=create_payload)
+    assert create_response.status_code == 200
+    created = create_response.json()[0]
+    initial_updated_at = created["updatedAt"]
+    assert created["lastOpenedAt"] is None
+
+    opened_response = client.post("/entries/entry-smart-open/opened")
+    assert opened_response.status_code == 200
+    opened_body = opened_response.json()
+    assert opened_body["lastOpenedAt"] is not None
+    assert opened_body["updatedAt"] == initial_updated_at
+
+    get_response = client.get("/entries/entry-smart-open")
+    assert get_response.status_code == 200
+    fetched = get_response.json()
+    assert fetched["lastOpenedAt"] == opened_body["lastOpenedAt"]
+    assert fetched["updatedAt"] == initial_updated_at
+
+
+def test_mark_entry_opened_rejects_non_smart_journal_entries(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    app = _create_test_app(memory_connection_factory)
+    client = TestClient(app)
+
+    now = datetime.now(tz=UTC)
+    create_payload = [
+        {
+            "id": "entry-journal-basic",
+            "title": "Basic journal",
+            "summary": "No prompt body.",
+            "date": now.isoformat(),
+            "category": "journal",
+        }
+    ]
+
+    create_response = client.post("/entries/", json=create_payload)
+    assert create_response.status_code == 200
+
+    opened_response = client.post("/entries/entry-journal-basic/opened")
+    assert opened_response.status_code == 422
+    assert "Only smart journal entries" in opened_response.json()["detail"]
 
 
 def test_update_entry_allows_blank_summary(

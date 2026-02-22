@@ -101,6 +101,7 @@ class EntryResponse(BaseModel):
     last_smart_update_at: datetime | None = Field(
         default=None, alias="lastSmartUpdateAt"
     )
+    last_opened_at: datetime | None = Field(default=None, alias="lastOpenedAt")
     category: Literal["content", "journal", "today"]
     link_url: str | None = Field(default=None, alias="linkUrl")
     thumbnail_url: str | None = Field(default=None, alias="thumbnailUrl")
@@ -122,6 +123,7 @@ class EntryResponse(BaseModel):
                 "updated_at": record.updated_at,
                 "archived_at": record.archived_at,
                 "last_smart_update_at": record.last_smart_update_at,
+                "last_opened_at": record.last_opened_at,
                 "category": record.category,
                 "link_url": record.link_url,
                 "thumbnail_url": record.thumbnail_url,
@@ -225,6 +227,7 @@ def _create_to_record(entry: EntryCreate) -> EntryRecord:
         updated_at=datetime.now(tz=UTC),
         category=entry.category,
         last_smart_update_at=None,
+        last_opened_at=None,
         link_url=entry.link_url,
         thumbnail_url=entry.thumbnail_url,
         video_id=entry.video_id,
@@ -306,6 +309,7 @@ def _update_record(current: EntryRecord, updates: EntryUpdate) -> EntryRecord:
         occurred_at=occurred_at,
         updated_at=now,
         last_smart_update_at=current.last_smart_update_at,
+        last_opened_at=current.last_opened_at,
         category=category,
         link_url=link_url,
         thumbnail_url=thumbnail_url,
@@ -361,6 +365,38 @@ def get_entry(
         entity_name="Entry",
     )
     return EntryResponse.from_record(record)
+
+
+@router.post("/{entry_id}/opened", response_model=EntryResponse)
+async def mark_entry_opened(
+    entry_id: str,
+    entry_service: EntryService = Depends(get_entry_service),
+) -> EntryResponse:
+    """Record the latest time a smart journal entry was opened."""
+    record = ensure_exists(
+        await anyio.to_thread.run_sync(entry_service.get_entry, entry_id),
+        entity_name="Entry",
+    )
+    if record.category != "journal" or not record.prompt_body:
+        raise HTTPException(
+            status_code=422,
+            detail="Only smart journal entries can be marked as opened.",
+        )
+
+    opened_at = datetime.now(tz=UTC)
+    updated = await anyio.to_thread.run_sync(
+        entry_service.update_last_opened_at,
+        entry_id,
+        opened_at,
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="Entry not found")
+
+    refreshed = ensure_exists(
+        await anyio.to_thread.run_sync(entry_service.get_entry, entry_id),
+        entity_name="Entry",
+    )
+    return EntryResponse.from_record(refreshed)
 
 
 @router.put("/{entry_id}", response_model=EntryResponse)
