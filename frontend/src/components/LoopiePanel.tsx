@@ -16,7 +16,6 @@ import {
   type AgentFocus,
   type AgentMessageAttachment,
 } from "@/lib/types/agent";
-import { getActivityCategoryLabel } from "@/lib/activity-helpers";
 import { cn } from "@/lib/utils";
 import { useAssetUpload } from "@/hooks/useAssetUpload";
 import { useAudioDictation } from "@/hooks/useAudioDictation";
@@ -193,9 +192,9 @@ export function LoopieConversationContent({
       ? (respondingHelperText ?? "Loopie is synthesizing a tailored suggestion")
       : (idleHelperText ?? composerLabel);
 
-  const focusLabel = focus ? getActivityCategoryLabel(focus.category) : null;
+  const focusLabel = focus ? focus.category : null;
   const focusTooltip = focus
-    ? `${getActivityCategoryLabel(focus.category)} · ${focus.title ? String(focus.title) : focus.id}`
+    ? `${focus.category} · ${focus.title ? String(focus.title) : focus.id}`
     : null;
 
   return (
