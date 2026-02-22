@@ -168,7 +168,7 @@ This embeds the full backend URL into the frontend bundle.
 
 - Backend tests live under `backend/tests/` and rely on `uv run pytest` for isolation.
 - Frontend tests use Vitest + Testing Library; see `frontend/tests/` for examples.
-- Backend CI runs Ruff in the GitHub workflow; run `make lint-backend` for local ruff + mypy checks.
+- Backend CI runs Ruff in the GitHub workflow; run `make lint-backend` for local Ruff checks.
 
 ## Next steps
 

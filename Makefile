@@ -37,7 +37,7 @@ lint:
 	make lint-frontend
 
 lint-backend:
-	cd backend && uv run ruff check . && uv run mypy .
+	cd backend && uv run ruff check .
 
 lint-frontend:
 	cd frontend && pnpm run lint

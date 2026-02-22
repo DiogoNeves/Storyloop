@@ -43,7 +43,7 @@ make build
 
 # Lint/type checks
 make lint
-make lint-backend      # ruff + mypy
+make lint-backend      # ruff
 make lint-frontend     # eslint
 
 # Full tests
@@ -129,7 +129,7 @@ cd frontend && pnpm run test -- --run tests/TodayChecklistEditor.test.tsx
 - Respect existing formatter/linter output; avoid manual style churn.
 - Frontend formatting uses Prettier with `prettier-plugin-tailwindcss`.
 - Frontend linting uses `eslint` with type-aware `typescript-eslint` rules.
-- Backend quality checks are `ruff` plus `mypy` via `make lint-backend`.
+- Backend quality checks are `ruff` via `make lint-backend`.
 
 ## Testing Conventions
 

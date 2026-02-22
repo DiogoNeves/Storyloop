@@ -77,4 +77,68 @@ describe("useAudioInputDevices", () => {
 
     expect(result.current.selectedAudioInputDeviceId).toBe("mic-1");
   });
+
+  it("removes trailing hardware code suffixes from microphone labels", async () => {
+    enumerateDevicesMock.mockResolvedValue([
+      {
+        deviceId: "default",
+        kind: "audioinput",
+        label: "Default - Blue Snowball (0d8c:0005)",
+        groupId: "group-1",
+        toJSON: () => ({}),
+      } as MediaDeviceInfo,
+      {
+        deviceId: "cam-mic",
+        kind: "audioinput",
+        label: "Logitech StreamCam (046d:0893)",
+        groupId: "group-2",
+        toJSON: () => ({}),
+      } as MediaDeviceInfo,
+      {
+        deviceId: "built-in",
+        kind: "audioinput",
+        label: "MacBook Pro Microphone (Built-in)",
+        groupId: "group-3",
+        toJSON: () => ({}),
+      } as MediaDeviceInfo,
+    ]);
+
+    const { result } = renderHook(() => useAudioInputDevices());
+
+    await waitFor(() => {
+      expect(result.current.audioInputDevices).toEqual([
+        { deviceId: "default", label: "Default - Blue Snowball" },
+        { deviceId: "cam-mic", label: "Logitech StreamCam" },
+        { deviceId: "built-in", label: "MacBook Pro Microphone (Built-in)" },
+      ]);
+    });
+  });
+
+  it("uses non-default fallback labels when sanitized labels become empty", async () => {
+    enumerateDevicesMock.mockResolvedValue([
+      {
+        deviceId: "default",
+        kind: "audioinput",
+        label: "(0d8c:0005)",
+        groupId: "group-1",
+        toJSON: () => ({}),
+      } as MediaDeviceInfo,
+      {
+        deviceId: "usb-only-code",
+        kind: "audioinput",
+        label: "(046d:0893)",
+        groupId: "group-2",
+        toJSON: () => ({}),
+      } as MediaDeviceInfo,
+    ]);
+
+    const { result } = renderHook(() => useAudioInputDevices());
+
+    await waitFor(() => {
+      expect(result.current.audioInputDevices).toEqual([
+        { deviceId: "default", label: "System default microphone" },
+        { deviceId: "usb-only-code", label: "Microphone 2" },
+      ]);
+    });
+  });
 });

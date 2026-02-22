@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 const DEFAULT_AUDIO_INPUT_DEVICE_ID = "default";
 const DEFAULT_AUDIO_INPUT_DEVICE_LABEL = "System default microphone";
 const AUDIO_INPUT_DEVICE_STORAGE_KEY = "storyloop.audioInputDeviceId";
+const TRAILING_HARDWARE_CODE_PATTERN = /\s*\([0-9a-f]{4}:[0-9a-f]{4}\)\s*$/i;
 
 export interface AudioInputDeviceOption {
   deviceId: string;
@@ -49,18 +50,25 @@ export function useAudioInputDevices(): UseAudioInputDevicesResult {
 
     const discovered = devices
       .filter((device) => device.kind === "audioinput")
-      .map((device, index) => ({
-        deviceId:
+      .map((device, index) => {
+        const resolvedDeviceId =
           device.deviceId && device.deviceId.length > 0
             ? device.deviceId
-            : DEFAULT_AUDIO_INPUT_DEVICE_ID,
-        label:
+            : DEFAULT_AUDIO_INPUT_DEVICE_ID;
+        const fallbackLabel =
+          resolvedDeviceId === DEFAULT_AUDIO_INPUT_DEVICE_ID
+            ? DEFAULT_AUDIO_INPUT_DEVICE_LABEL
+            : `Microphone ${index + 1}`;
+        const normalizedLabel =
           device.label && device.label.trim().length > 0
-            ? device.label
-              : index === 0
-              ? DEFAULT_AUDIO_INPUT_DEVICE_LABEL
-              : `Microphone ${index + 1}`,
-      }));
+            ? normalizeAudioInputDeviceLabel(device.label)
+            : "";
+
+        return {
+          deviceId: resolvedDeviceId,
+          label: normalizedLabel.length > 0 ? normalizedLabel : fallbackLabel,
+        };
+      });
 
     const hasDefault = discovered.some(
       (device) => device.deviceId === DEFAULT_AUDIO_INPUT_DEVICE_ID,
@@ -184,4 +192,8 @@ function createDefaultAudioInputDeviceOption(): AudioInputDeviceOption {
     deviceId: DEFAULT_AUDIO_INPUT_DEVICE_ID,
     label: DEFAULT_AUDIO_INPUT_DEVICE_LABEL,
   };
+}
+
+function normalizeAudioInputDeviceLabel(label: string): string {
+  return label.trim().replace(TRAILING_HARDWARE_CODE_PATTERN, "").trim();
 }
