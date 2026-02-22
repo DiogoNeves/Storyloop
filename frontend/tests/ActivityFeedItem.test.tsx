@@ -139,7 +139,13 @@ describe("ActivityFeedItem smart unread indicator", () => {
       lastOpenedAt: "2026-02-20T09:00:00.000Z",
     });
 
-    expect(screen.getByLabelText("Updated since last open")).toBeInTheDocument();
+    const dot = screen.getByLabelText("Updated since last open");
+    expect(dot).toBeInTheDocument();
+    const badge = screen.getByText("journal").closest("span");
+    expect(badge).not.toBeNull();
+    if (badge) {
+      expect(within(badge).queryByLabelText("Updated since last open")).toBeNull();
+    }
   });
 
   it("hides the red dot when smart entry was opened after latest update", () => {

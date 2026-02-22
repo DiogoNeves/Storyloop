@@ -100,18 +100,18 @@ export function ActivityFeedItem({
                 <>
                   <Bot className="h-4 w-4" aria-hidden="true" />
                   <span>journal</span>
-                  {view.showSmartUpdatedSinceLastOpen ? (
-                    <span
-                      className="h-2 w-2 rounded-full bg-red-500"
-                      aria-label="Updated since last open"
-                      title="Updated since last open"
-                    />
-                  ) : null}
                 </>
               ) : (
                 view.categoryLabel
               )}
             </Badge>
+            {view.showSmartUpdatedSinceLastOpen ? (
+              <span
+                className="ml-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-red-500"
+                aria-label="Updated since last open"
+                title="Updated since last open"
+              />
+            ) : null}
             {item.videoType ? (
               <span className="text-xs text-muted-foreground">
                 ({item.videoType})
