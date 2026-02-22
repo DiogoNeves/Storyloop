@@ -140,7 +140,7 @@ const createMarkdownComponents = (tone: ChatTone) => {
         return (
           <Link
             to={`/journals/${entryId}`}
-            className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
+            className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs font-medium leading-4 text-primary no-underline transition-colors hover:bg-primary/15"
             style={{ textDecoration: "none" }}
             {...props}
           >

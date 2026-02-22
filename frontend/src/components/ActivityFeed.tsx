@@ -18,6 +18,7 @@ import { TodayChecklistEditor } from "@/components/TodayChecklistEditor";
 import { isActivityEditable } from "@/lib/activity-helpers";
 import { filterActivityItems } from "@/lib/activity-search";
 import { deriveSaveIndicator } from "@/lib/journal-detail-logic";
+import { buildEntryReferenceTitleMap } from "@/lib/entry-references";
 import {
   isTodayEntryForCurrentUtcDay,
   normalizeTodayChecklistMarkdown,
@@ -203,6 +204,15 @@ export function ActivityFeed({
       }),
     [itemsForFeed, searchQuery, tagFilter, tagFilters],
   );
+  const entryReferenceTitles = useMemo(
+    () =>
+      buildEntryReferenceTitleMap(
+        items
+          .filter((item) => item.category === "journal")
+          .map((item) => ({ id: item.id, title: item.title })),
+      ),
+    [items],
+  );
   const todayHasPendingUpdate = Boolean(
     todayEntry && pendingEntryIds.has(todayEntry.id),
   );
@@ -256,6 +266,7 @@ export function ActivityFeed({
           <ActivityFeedItem
             key={item.id}
             item={item}
+            entryReferenceTitles={entryReferenceTitles}
             isPendingSync={pendingEntryIds.has(item.id)}
             onConversationClick={onConversationClick}
             onConversationDelete={

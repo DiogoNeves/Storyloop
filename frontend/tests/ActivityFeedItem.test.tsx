@@ -128,6 +128,25 @@ describe("ActivityFeedItem summary preview", () => {
     const preview = screen.getByTestId("activity-preview-body");
     expect(preview.querySelector(".animate-ping")).not.toBeNull();
   });
+
+  it("renders @entry references as chips in title and summary", () => {
+    renderActivityFeedItem(
+      {
+        category: "conversation",
+        title: "Testing @entry:journal-2 works",
+        summary: "Open @entry:journal-2 now.",
+      },
+      {
+        "journal-2": "New video ideas",
+      },
+    );
+
+    expect(screen.queryByText("@entry:journal-2")).toBeNull();
+    expect(screen.getByRole("link", { name: /Testing New video ideas works/i })).toBeInTheDocument();
+
+    const preview = screen.getByTestId("activity-preview-body");
+    expect(within(preview).getByText("New video ideas")).toBeInTheDocument();
+  });
 });
 
 describe("ActivityFeedItem smart unread indicator", () => {
@@ -162,7 +181,10 @@ describe("ActivityFeedItem smart unread indicator", () => {
   });
 });
 
-function renderActivityFeedItem(overrides: Partial<ActivityItem>) {
+function renderActivityFeedItem(
+  overrides: Partial<ActivityItem>,
+  entryReferenceTitles?: Record<string, string>,
+) {
   const item: ActivityItem = {
     id: "journal-1",
     title: "Weekly reflection",
@@ -178,7 +200,11 @@ function renderActivityFeedItem(overrides: Partial<ActivityItem>) {
   return render(
     <TooltipProvider>
       <MemoryRouter>
-        <ActivityFeedItem item={item} onArchiveToggle={vi.fn()} />
+        <ActivityFeedItem
+          item={item}
+          entryReferenceTitles={entryReferenceTitles}
+          onArchiveToggle={vi.fn()}
+        />
       </MemoryRouter>
     </TooltipProvider>,
   );

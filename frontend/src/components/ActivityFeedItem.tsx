@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Archive, Bot, Pin } from "lucide-react";
 
@@ -10,6 +10,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { PendingSyncBadge } from "@/components/ui/pending-sync-badge";
 import { DeleteConversationDialog } from "@/components/DeleteConversationDialog";
 import { ActivityMarkdownPreview } from "@/components/ActivityMarkdownPreview";
+import {
+  extractEntryReferenceTokens,
+  resolveEntryReferenceLabel,
+} from "@/lib/entry-references";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -27,6 +31,7 @@ export const categoryBadgeClass: Record<ActivityItem["category"], string> = {
 
 interface ActivityFeedItemProps {
   item: ActivityItem;
+  entryReferenceTitles?: Record<string, string>;
   onEdit?: () => void;
   onDelete?: () => void;
   isDeleting?: boolean;
@@ -43,6 +48,7 @@ interface ActivityFeedItemProps {
 
 export function ActivityFeedItem({
   item,
+  entryReferenceTitles,
   onEdit,
   onDelete,
   isDeleting,
@@ -65,6 +71,19 @@ export function ActivityFeedItem({
     isPinning,
     isArchiving,
   });
+  const titleSegments = useMemo(
+    () => splitTitleWithEntryReferences(view.titleText, entryReferenceTitles ?? {}),
+    [entryReferenceTitles, view.titleText],
+  );
+  const titleTooltipText = useMemo(
+    () =>
+      titleSegments
+        .map((segment) =>
+          segment.type === "text" ? segment.value : segment.label,
+        )
+        .join(""),
+    [titleSegments],
+  );
   const pinIcon = (
     <Pin className="h-4 w-4" fill={view.isPinned ? "currentColor" : "none"} />
   );
@@ -152,9 +171,20 @@ export function ActivityFeedItem({
                   to={view.detailPath}
                   className="block overflow-hidden truncate text-primary underline-offset-2 hover:underline"
                   onClick={handleDetailClick}
-                  title={view.titleText}
+                  title={titleTooltipText}
                 >
-                  {view.titleText}
+                  {titleSegments.map((segment, index) =>
+                    segment.type === "text" ? (
+                      <span key={`title-text-${index}`}>{segment.value}</span>
+                    ) : (
+                      <span
+                        key={segment.key}
+                        className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-medium leading-4 text-primary align-[0.08em] no-underline"
+                      >
+                        {segment.label}
+                      </span>
+                    ),
+                  )}
                 </Link>
               ) : item.linkUrl ? (
                 <a
@@ -162,16 +192,38 @@ export function ActivityFeedItem({
                   target="_blank"
                   rel="noopener noreferrer"
                   className="block overflow-hidden truncate text-primary underline-offset-2 hover:underline"
-                  title={view.titleText}
+                  title={titleTooltipText}
                 >
-                  {view.titleText}
+                  {titleSegments.map((segment, index) =>
+                    segment.type === "text" ? (
+                      <span key={`title-text-${index}`}>{segment.value}</span>
+                    ) : (
+                      <span
+                        key={segment.key}
+                        className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-medium leading-4 text-primary align-[0.08em] no-underline"
+                      >
+                        {segment.label}
+                      </span>
+                    ),
+                  )}
                 </a>
               ) : (
                 <span
                   className="block overflow-hidden truncate"
-                  title={view.titleText}
+                  title={titleTooltipText}
                 >
-                  {view.titleText}
+                  {titleSegments.map((segment, index) =>
+                    segment.type === "text" ? (
+                      <span key={`title-text-${index}`}>{segment.value}</span>
+                    ) : (
+                      <span
+                        key={segment.key}
+                        className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-medium leading-4 text-primary align-[0.08em] no-underline"
+                      >
+                        {segment.label}
+                      </span>
+                    ),
+                  )}
                 </span>
               )}
             </h3>
@@ -179,6 +231,7 @@ export function ActivityFeedItem({
               <ActivityMarkdownPreview
                 text={view.summaryText}
                 category={item.category}
+                entryReferenceTitles={entryReferenceTitles}
                 showPlaceholderPulse={view.isSmartSummaryPlaceholder}
               />
             ) : null}
@@ -406,4 +459,54 @@ export function ActivityFeedItem({
       </CardContent>
     </Card>
   );
+}
+
+interface TitleTextSegment {
+  type: "text";
+  value: string;
+}
+
+interface TitleReferenceSegment {
+  type: "reference";
+  label: string;
+  key: string;
+}
+
+type TitleSegment = TitleTextSegment | TitleReferenceSegment;
+
+function splitTitleWithEntryReferences(
+  title: string,
+  entryReferenceTitles: Record<string, string>,
+): TitleSegment[] {
+  const tokens = extractEntryReferenceTokens(title);
+  if (tokens.length === 0) {
+    return [{ type: "text", value: title }];
+  }
+
+  const segments: TitleSegment[] = [];
+  let cursor = 0;
+
+  tokens.forEach((token, index) => {
+    if (token.start > cursor) {
+      segments.push({
+        type: "text",
+        value: title.slice(cursor, token.start),
+      });
+    }
+    segments.push({
+      type: "reference",
+      label: resolveEntryReferenceLabel(token.entryId, entryReferenceTitles),
+      key: `${token.entryId}-${token.start}-${index}`,
+    });
+    cursor = token.end;
+  });
+
+  if (cursor < title.length) {
+    segments.push({
+      type: "text",
+      value: title.slice(cursor),
+    });
+  }
+
+  return segments;
 }
