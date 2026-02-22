@@ -335,8 +335,16 @@ export function LoopieConversationContent({
 
   const normalizeCanonicalTokensToMarkers = useCallback(
     (value: string, cursorPosition: number | null) => {
-      const references = extractEntryReferenceTokens(value);
-      if (references.length === 0) {
+      const referencesToNormalize = extractEntryReferenceTokens(value).filter(
+        (reference) =>
+          !(
+            cursorPosition !== null &&
+            cursorPosition === value.length &&
+            reference.end === value.length
+          ),
+      );
+
+      if (referencesToNormalize.length === 0) {
         pruneReferenceMarkers(value);
         return { value, cursorPosition };
       }
@@ -345,7 +353,7 @@ export function LoopieConversationContent({
       let previousEnd = 0;
       let nextCursor = cursorPosition;
 
-      references.forEach((reference) => {
+      referencesToNormalize.forEach((reference) => {
         nextValue += value.slice(previousEnd, reference.start);
         const marker = createReferenceMarker(reference.entryId);
         const label = resolveEntryReferenceLabel(
@@ -722,14 +730,15 @@ export function LoopieConversationContent({
                     normalized.cursorPosition !== null &&
                     normalized.cursorPosition !== event.target.selectionStart
                   ) {
+                    const nextCursorPosition = normalized.cursorPosition;
                     requestAnimationFrame(() => {
                       const textarea = textareaRef.current;
                       if (!textarea) {
                         return;
                       }
                       textarea.setSelectionRange(
-                        normalized.cursorPosition!,
-                        normalized.cursorPosition!,
+                        nextCursorPosition,
+                        nextCursorPosition,
                       );
                     });
                   }

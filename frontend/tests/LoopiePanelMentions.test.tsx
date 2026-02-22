@@ -150,9 +150,7 @@ describe("LoopieConversationContent mentions", () => {
     await screen.findByRole("button", { name: "Sprint recap" });
     await user.click(screen.getByRole("button", { name: "Sprint recap" }));
 
-    expect(String((composer as HTMLTextAreaElement).value)).not.toContain(
-      "@entry:journal-1",
-    );
+    expect(readTextareaValue(composer).includes("@entry:journal-1")).toBe(false);
     expect(await screen.findByText("Sprint recap")).toBeInTheDocument();
   });
 
@@ -178,9 +176,7 @@ describe("LoopieConversationContent mentions", () => {
     await user.keyboard("{Enter}");
 
     expect(sendMessage).not.toHaveBeenCalled();
-    expect(String((composer as HTMLTextAreaElement).value)).not.toContain(
-      "@entry:journal-1",
-    );
+    expect(readTextareaValue(composer).includes("@entry:journal-1")).toBe(false);
 
     await user.keyboard("{Enter}");
     expect(sendMessage).toHaveBeenCalledWith("@entry:journal-1", []);
@@ -229,7 +225,7 @@ describe("LoopieConversationContent mentions", () => {
 
     const composer = screen.getByPlaceholderText(
       /Ask about your content, growth, or next video idea/i,
-    ) as HTMLTextAreaElement;
+    );
 
     await user.type(composer, "@spr");
     await user.keyboard("{Enter}");
@@ -244,4 +240,36 @@ describe("LoopieConversationContent mentions", () => {
 
     expect(overlay).toHaveStyle({ transform: "translate(-7px, -42px)" });
   });
+
+  it("does not normalize a trailing canonical token while still typing", async () => {
+    useAudioDictationMock.mockReturnValue({
+      status: "idle",
+      inputLevel: 0,
+      elapsedSeconds: 0,
+      isSupported: true,
+      errorMessage: null,
+      stopDictation: vi.fn(),
+      toggleDictation: vi.fn(() => Promise.resolve()),
+      clearError: vi.fn(),
+    });
+
+    const user = userEvent.setup();
+    const { sendMessage } = renderComposer();
+    const composer = screen.getByPlaceholderText(
+      /Ask about your content, growth, or next video idea/i,
+    );
+
+    await user.type(composer, "@entry:journal-1o");
+    expect(composer).toHaveValue("@entry:journal-1o");
+
+    await user.keyboard("{Enter}");
+    expect(sendMessage).toHaveBeenCalledWith("@entry:journal-1o", []);
+  });
 });
+
+function readTextareaValue(element: HTMLElement): string {
+  if (!(element instanceof HTMLTextAreaElement)) {
+    throw new Error("Expected textarea element");
+  }
+  return element.value;
+}
