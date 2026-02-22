@@ -142,10 +142,15 @@ describe("ActivityFeedItem summary preview", () => {
     );
 
     expect(screen.queryByText("@entry:journal-2")).toBeNull();
-    expect(screen.getByRole("link", { name: /Testing New video ideas works/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", {
+        name: /Testing.*New video ideas.*works/i,
+      }),
+    ).toBeInTheDocument();
 
     const preview = screen.getByTestId("activity-preview-body");
     expect(within(preview).getByText("New video ideas")).toBeInTheDocument();
+    expect(preview.querySelector(".bg-primary\\/10")).not.toBeNull();
   });
 });
 

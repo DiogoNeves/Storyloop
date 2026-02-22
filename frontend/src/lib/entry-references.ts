@@ -10,7 +10,7 @@ export interface EntryReferenceRecord {
   title: string;
 }
 
-export const ENTRY_REFERENCE_LINK_PREFIX = "entryref:";
+export const ENTRY_REFERENCE_LINK_PREFIX = "/entryref/";
 
 const ENTRY_REFERENCE_TOKEN_PATTERN = /@entry:([A-Za-z0-9][A-Za-z0-9_-]*)/g;
 const ENTRY_REFERENCE_BOUNDARY_PATTERN = /[^A-Za-z0-9_-]/;
