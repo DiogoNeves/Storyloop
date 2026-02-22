@@ -58,7 +58,7 @@ describe("entry-references", () => {
       "entry-1": "My Journal Entry",
     });
     expect(markdown).toBe(
-      "Revisit [My Journal Entry](entryref:entry-1) and maybe [Entry missing](entryref:missing).",
+      "Revisit [My Journal Entry](/entryref/entry-1) and maybe [Entry missing](/entryref/missing).",
     );
   });
 });
