@@ -1,8 +1,5 @@
 import type { ActivityItem } from "@/lib/types/entries";
-import {
-  getActivityCategoryLabel,
-  getActivityDetailPath,
-} from "@/lib/activity-helpers";
+import { getActivityDetailPath } from "@/lib/activity-helpers";
 import { formatTagLabel } from "@/lib/activity-tags";
 import { getTodayEntryDisplayTitle } from "@/lib/today-entry";
 
@@ -79,7 +76,7 @@ export function buildActivityFeedItemViewModel({
 
   const showThumbnail = item.category === "content" && Boolean(item.thumbnailUrl);
   const detailPath = getActivityDetailPath(item);
-  const categoryLabel = getActivityCategoryLabel(item.category);
+  const categoryLabel = item.category;
   const pinLabel = isPinned ? "Unpin" : "Pin";
   const archiveLabel = isArchived ? "Unarchive" : "Archive";
   const archiveDisabledReason = !isOnline ? "You are offline" : "Updating...";
