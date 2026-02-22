@@ -50,18 +50,25 @@ export function useAudioInputDevices(): UseAudioInputDevicesResult {
 
     const discovered = devices
       .filter((device) => device.kind === "audioinput")
-      .map((device, index) => ({
-        deviceId:
+      .map((device, index) => {
+        const resolvedDeviceId =
           device.deviceId && device.deviceId.length > 0
             ? device.deviceId
-            : DEFAULT_AUDIO_INPUT_DEVICE_ID,
-        label:
+            : DEFAULT_AUDIO_INPUT_DEVICE_ID;
+        const fallbackLabel =
+          resolvedDeviceId === DEFAULT_AUDIO_INPUT_DEVICE_ID
+            ? DEFAULT_AUDIO_INPUT_DEVICE_LABEL
+            : `Microphone ${index + 1}`;
+        const normalizedLabel =
           device.label && device.label.trim().length > 0
             ? normalizeAudioInputDeviceLabel(device.label)
-              : index === 0
-              ? DEFAULT_AUDIO_INPUT_DEVICE_LABEL
-              : `Microphone ${index + 1}`,
-      }));
+            : "";
+
+        return {
+          deviceId: resolvedDeviceId,
+          label: normalizedLabel.length > 0 ? normalizedLabel : fallbackLabel,
+        };
+      });
 
     const hasDefault = discovered.some(
       (device) => device.deviceId === DEFAULT_AUDIO_INPUT_DEVICE_ID,
@@ -188,11 +195,5 @@ function createDefaultAudioInputDeviceOption(): AudioInputDeviceOption {
 }
 
 function normalizeAudioInputDeviceLabel(label: string): string {
-  const trimmedLabel = label.trim();
-  if (trimmedLabel.length === 0) {
-    return DEFAULT_AUDIO_INPUT_DEVICE_LABEL;
-  }
-
-  const normalizedLabel = trimmedLabel.replace(TRAILING_HARDWARE_CODE_PATTERN, "").trim();
-  return normalizedLabel.length > 0 ? normalizedLabel : DEFAULT_AUDIO_INPUT_DEVICE_LABEL;
+  return label.trim().replace(TRAILING_HARDWARE_CODE_PATTERN, "").trim();
 }
