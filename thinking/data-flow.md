@@ -246,61 +246,6 @@ Cleanup Complete
     │ Server exits
 ```
 
-## Channel Selection Flow
-
-### First-Time Login
-
-```
-User opens app
-    │
-    ▼
-Check for saved channel
-    │
-    │ No channel found
-    │
-    ▼
-Show channel selection dialog
-    │
-    │ User selects channel
-    │
-    ▼
-POST /settings/channel
-    │
-    │ { channel_id: "..." }
-    │
-    ▼
-Backend saves channel preference
-    │
-    │ Store in settings table
-    │
-    ▼
-Load dashboard with channel context
-    │
-    │ Score chart + Timeline
-```
-
-### Subsequent Logins
-
-```
-User opens app
-    │
-    ▼
-Check for saved channel
-    │
-    │ Channel found
-    │
-    ▼
-GET /settings/channel
-    │
-    │ Return saved channel_id
-    │
-    ▼
-Load dashboard with channel context
-    │
-    │ Score chart + Timeline
-    │ (No prompt needed)
-```
-
 ## State Synchronization
 
 ### Frontend State Hierarchy
@@ -326,7 +271,7 @@ FastAPI App State
 ├── get_db (Database factory)
 ├── entry_service (Entry persistence)
 ├── asset_service (Asset storage + metadata)
-├── user_service (Active user/channel state)
+├── user_service (Active user + YouTube link state)
 ├── youtube_service (YouTube integration)
 ├── youtube_analytics_service (YouTube Analytics)
 └── assistant_agent (PydanticAI agent or None)
@@ -344,7 +289,7 @@ FastAPI App State
   title: string
   summary: string
   date: string (ISO timestamp)
-  category: "content" | "journal" | "conversation"
+  category: "content" | "journal" | "today" | "conversation"
   linkUrl?: string
   thumbnailUrl?: string
   videoId?: string
@@ -356,6 +301,7 @@ FastAPI App State
 
 - **Content** (`content`): Synced from YouTube
 - **Journal Entries** (`journal`): User-created entries
+- **Today Entries** (`today`): Daily checklist entries
 - **Conversations** (`conversation`): Loopie conversation summaries
 
 **HealthResponse (Backend):**
@@ -374,7 +320,7 @@ class Entry:
     title: str
     summary: str  # markdown, may include /assets/{id}
     date: datetime
-    category: Literal["content", "journal"]
+    category: Literal["content", "journal", "today"]
     link_url: Optional[str]
     thumbnail_url: Optional[str]
     video_id: Optional[str]
@@ -406,17 +352,6 @@ class Turn:
 ```
 
 ### Future Models
-
-**Channel Preference (Backend):**
-
-```python
-class ChannelPreference:
-    id: UUID
-    channel_id: str  # YouTube channel ID
-    channel_name: str
-    created_at: datetime
-    updated_at: datetime
-```
 
 **YouTube Metrics:**
 
