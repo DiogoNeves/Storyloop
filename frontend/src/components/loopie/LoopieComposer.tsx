@@ -15,7 +15,15 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { VoiceWave } from "@/components/ui/voice-wave";
+import type { AudioInputDeviceOption } from "@/hooks/useAudioInputDevices";
 import { cn } from "@/lib/utils";
 import type {
   AgentConversationState,
@@ -45,6 +53,9 @@ interface LoopieComposerProps {
   dictationInputLevel: number;
   dictationElapsedSeconds: number;
   isDictationSupported: boolean;
+  isAudioInputSelectionSupported: boolean;
+  audioInputDevices: AudioInputDeviceOption[];
+  selectedAudioInputDeviceId: string;
   isUploading: boolean;
   isTextareaDisabled: boolean;
   isDictating: boolean;
@@ -76,6 +87,7 @@ interface LoopieComposerProps {
   stopDictation: () => void;
   clearDictationError: () => void;
   toggleDictation: () => Promise<void>;
+  onSelectAudioInputDevice: (deviceId: string) => void;
 }
 
 export function LoopieComposer({
@@ -94,6 +106,9 @@ export function LoopieComposer({
   dictationInputLevel,
   dictationElapsedSeconds,
   isDictationSupported,
+  isAudioInputSelectionSupported,
+  audioInputDevices,
+  selectedAudioInputDeviceId,
   isUploading,
   isTextareaDisabled,
   isDictating,
@@ -125,6 +140,7 @@ export function LoopieComposer({
   stopDictation,
   clearDictationError,
   toggleDictation,
+  onSelectAudioInputDevice,
 }: LoopieComposerProps) {
   const focusLabel = focus ? focus.category : null;
   const focusTooltip = focus
@@ -193,6 +209,28 @@ export function LoopieComposer({
             Add an Image or a File
           </Button>
           <div className="flex items-center gap-2">
+            {isAudioInputSelectionSupported && audioInputDevices.length > 0 ? (
+              <Select
+                value={selectedAudioInputDeviceId}
+                onValueChange={onSelectAudioInputDevice}
+                disabled={dictationStatus !== "idle"}
+              >
+                <SelectTrigger
+                  id="loopie-audio-input-device"
+                  className="h-8 w-48 text-xs text-foreground"
+                  aria-label="Select microphone"
+                >
+                  <SelectValue placeholder="Microphone" />
+                </SelectTrigger>
+                <SelectContent>
+                  {audioInputDevices.map((device) => (
+                    <SelectItem key={device.deviceId} value={device.deviceId}>
+                      {device.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : null}
             {isUploading ? <span>Uploading…</span> : null}
             {focusLabel ? (
               <Tooltip>

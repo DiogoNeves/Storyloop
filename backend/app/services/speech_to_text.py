@@ -3,16 +3,23 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 from typing import Literal, Protocol, TypedDict, cast
 
+from openai import APIConnectionError
+from openai import APIStatusError
+from openai import APITimeoutError
+from openai import BadRequestError
 from openai import OpenAI
 from openai import OpenAIError
+from openai import RateLimitError
 
 from app.config import Settings
 
 SpeechDictationMode = Literal["loopie", "journal_note"]
 AudioPayload = bytes | bytearray
 _TRANSCRIPTION_MODEL = "gpt-4o-mini-transcribe"
+logger = logging.getLogger(__name__)
 
 _LOOPIE_TRANSCRIPTION_PROMPT = """Transcribe the audio directly.
 
@@ -43,6 +50,18 @@ _PROMPT_BY_MODE: dict[SpeechDictationMode, str] = {
     "loopie": _LOOPIE_TRANSCRIPTION_PROMPT,
     "journal_note": _JOURNAL_NOTE_TRANSCRIPTION_PROMPT,
 }
+_TRANSCRIPTION_TIMEOUT_SECONDS = 30.0
+_TRANSCRIPTION_MAX_RETRIES = 2
+_TRANSCRIPTION_TIMEOUT_MESSAGE = "Transcription timed out. Please try again."
+_TRANSCRIPTION_CONNECTION_MESSAGE = (
+    "Could not reach transcription provider. Please try again."
+)
+_TRANSCRIPTION_RATE_LIMIT_MESSAGE = (
+    "Transcription is temporarily rate-limited. Please try again."
+)
+_TRANSCRIPTION_PROVIDER_ERROR_MESSAGE = (
+    "Transcription provider returned an unexpected error. Please try again."
+)
 
 
 @dataclass(frozen=True)
@@ -119,16 +138,85 @@ class SpeechToTextService:
         if not audio_bytes:
             raise ValueError("Audio file is empty.")
 
+        normalized_audio_bytes = bytes(audio_bytes)
         normalized_type = (content_type or "application/octet-stream").strip()
 
         try:
             response = self._client.audio.transcriptions.create(
-                file=(filename, audio_bytes, normalized_type),
+                file=(filename, normalized_audio_bytes, normalized_type),
                 model=_TRANSCRIPTION_MODEL,
                 prompt=_PROMPT_BY_MODE[mode],
                 response_format="json",
             )
+        except APITimeoutError as exc:
+            logger.warning(
+                "speech_to_text.provider_timeout",
+                extra={
+                    "audio_filename": filename,
+                    "audio_content_type": normalized_type,
+                    "dictation_mode": mode,
+                },
+                exc_info=exc,
+            )
+            raise SpeechToTextProviderError(_TRANSCRIPTION_TIMEOUT_MESSAGE) from exc
+        except APIConnectionError as exc:
+            logger.warning(
+                "speech_to_text.provider_connection_error",
+                extra={
+                    "audio_filename": filename,
+                    "audio_content_type": normalized_type,
+                    "dictation_mode": mode,
+                },
+                exc_info=exc,
+            )
+            raise SpeechToTextProviderError(_TRANSCRIPTION_CONNECTION_MESSAGE) from exc
+        except RateLimitError as exc:
+            logger.warning(
+                "speech_to_text.provider_rate_limited",
+                extra={
+                    "audio_filename": filename,
+                    "audio_content_type": normalized_type,
+                    "dictation_mode": mode,
+                    "status_code": getattr(exc, "status_code", None),
+                },
+                exc_info=exc,
+            )
+            raise SpeechToTextProviderError(_TRANSCRIPTION_RATE_LIMIT_MESSAGE) from exc
+        except BadRequestError as exc:
+            provider_message = _extract_provider_error_message(exc)
+            logger.warning(
+                "speech_to_text.provider_bad_request",
+                extra={
+                    "audio_filename": filename,
+                    "audio_content_type": normalized_type,
+                    "dictation_mode": mode,
+                    "status_code": getattr(exc, "status_code", None),
+                    "provider_message": provider_message,
+                },
+                exc_info=exc,
+            )
+            raise SpeechToTextProviderError(provider_message) from exc
+        except APIStatusError as exc:
+            logger.warning(
+                "speech_to_text.provider_status_error",
+                extra={
+                    "audio_filename": filename,
+                    "audio_content_type": normalized_type,
+                    "dictation_mode": mode,
+                    "status_code": getattr(exc, "status_code", None),
+                },
+                exc_info=exc,
+            )
+            raise SpeechToTextProviderError(_TRANSCRIPTION_PROVIDER_ERROR_MESSAGE) from exc
         except OpenAIError as exc:
+            logger.exception(
+                "speech_to_text.provider_error",
+                extra={
+                    "audio_filename": filename,
+                    "audio_content_type": normalized_type,
+                    "dictation_mode": mode,
+                },
+            )
             raise SpeechToTextProviderError("Could not transcribe audio.") from exc
 
         transcript = _extract_response_text(response)
@@ -154,6 +242,19 @@ def _extract_response_text(response: object) -> str:
     return ""
 
 
+def _extract_provider_error_message(error: BadRequestError) -> str:
+    body = getattr(error, "body", None)
+    if isinstance(body, dict):
+        raw_error = body.get("error")
+        if isinstance(raw_error, dict):
+            raw_message = raw_error.get("message")
+            if isinstance(raw_message, str):
+                normalized_message = raw_message.strip()
+                if normalized_message:
+                    return normalized_message
+    return "Could not transcribe audio."
+
+
 def build_speech_to_text_service(
     active_settings: Settings,
 ) -> SpeechToTextService | None:
@@ -163,5 +264,12 @@ def build_speech_to_text_service(
         return None
 
     return SpeechToTextService(
-        cast(_SpeechClient, OpenAI(api_key=active_settings.openai_api_key))
+        cast(
+            _SpeechClient,
+            OpenAI(
+                api_key=active_settings.openai_api_key,
+                timeout=_TRANSCRIPTION_TIMEOUT_SECONDS,
+                max_retries=_TRANSCRIPTION_MAX_RETRIES,
+            ),
+        )
     )
