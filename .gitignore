@@ -21,6 +21,8 @@ frontend/.vite/
 .env.*.local
 coverage/
 .pytest_cache/
+.mypy_cache/
+backend/.mypy_cache/
 .vscode/
 .cursor/debug*
 .DS_Store
