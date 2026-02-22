@@ -246,7 +246,7 @@ export function JournalDetailPage() {
       },
     }),
   );
-  const openedEntryIdsRef = useRef<Set<string>>(new Set());
+  const openingEntryKeysRef = useRef<Set<string>>(new Set());
   const markOpenedMutation = useMutation({
     mutationFn: markSmartEntryOpened,
     onSuccess: (openedEntry) => {
@@ -298,12 +298,29 @@ export function JournalDetailPage() {
     if (!isOnline) {
       return;
     }
-    if (openedEntryIdsRef.current.has(currentEntry.id)) {
+    const updatedAt = currentEntry.updatedAt ?? currentEntry.date;
+    const updatedAtTime = new Date(updatedAt).getTime();
+    if (Number.isNaN(updatedAtTime)) {
       return;
     }
 
-    openedEntryIdsRef.current.add(currentEntry.id);
+    const lastOpenedAtTime = currentEntry.lastOpenedAt
+      ? new Date(currentEntry.lastOpenedAt).getTime()
+      : Number.NaN;
+    const needsMarkOpened =
+      Number.isNaN(lastOpenedAtTime) || updatedAtTime > lastOpenedAtTime;
+    if (!needsMarkOpened) {
+      return;
+    }
+
+    const requestKey = `${currentEntry.id}:${updatedAt}`;
+    if (openingEntryKeysRef.current.has(requestKey)) {
+      return;
+    }
+
+    openingEntryKeysRef.current.add(requestKey);
     void markOpenedMutation.mutateAsync(currentEntry.id).catch(() => {
+      openingEntryKeysRef.current.delete(requestKey);
       return undefined;
     });
   }, [
