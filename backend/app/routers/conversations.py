@@ -125,7 +125,7 @@ class TurnFocus(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    category: Literal["content", "journal", "today", "channel"]
+    category: Literal["content", "journal", "today"]
     id: str
     title: str | None = None
     route: str | None = None

@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { SaveOff } from "lucide-react";
-import { Link } from "react-router-dom";
 import useLocalStorageState from "use-local-storage-state";
 
 import type { ActivityItem } from "@/lib/types/entries";
@@ -20,7 +18,6 @@ import { TodayChecklistEditor } from "@/components/TodayChecklistEditor";
 import { isActivityEditable } from "@/lib/activity-helpers";
 import { filterActivityItems } from "@/lib/activity-search";
 import { deriveSaveIndicator } from "@/lib/journal-detail-logic";
-import { channelQueries } from "@/api/channel";
 import {
   isTodayEntryForCurrentUtcDay,
   normalizeTodayChecklistMarkdown,
@@ -88,7 +85,6 @@ export function ActivityFeed({
 }: ActivityFeedProps) {
   const editingState = useEntryEditing();
   const { pendingEntries, pendingEntryUpdates } = useSync();
-  const channelProfileQuery = useQuery(channelQueries.profile());
   const { togglePin, isPinning } = editingState;
   const {
     editingEntryId,
@@ -132,9 +128,6 @@ export function ActivityFeed({
     enabled: Boolean(todayEntriesEnabled && todayEntry),
     debounceMs: 1000,
   });
-
-  const shouldShowChannelBanner =
-    channelProfileQuery.isSuccess && !channelProfileQuery.data?.profile;
 
   // Create a set of pending entry IDs for O(1) lookup
   const pendingEntryIds = useMemo(
@@ -394,22 +387,6 @@ export function ActivityFeed({
           <p className="text-sm text-destructive" role="status">
             {youtubeError}
           </p>
-        ) : null}
-        {shouldShowChannelBanner ? (
-          <div className="flex flex-col gap-3 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-1">
-              <p className="text-sm font-semibold">
-                Define your channel identity
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Complete the Channel profile so Loopie can evaluate ideas
-                against your target audiences.
-              </p>
-            </div>
-            <Button type="button" variant="secondary" asChild>
-              <Link to="/channel">Fill in Channel</Link>
-            </Button>
-          </div>
         ) : null}
         {todayEntriesEnabled && showTodaySection ? (
           <div className="space-y-2 rounded-lg border bg-card p-4">

@@ -104,17 +104,6 @@ export function NavBar({ onOpenSettings }: NavBarProps) {
           >
             Journal
           </NavLink>
-          <NavLink
-            to="/channel"
-            className={({ isActive }) =>
-              cn(
-                "rounded-md px-3 py-1.5 transition hover:text-foreground",
-                isActive ? "bg-muted text-foreground" : undefined,
-              )
-            }
-          >
-            Channel
-          </NavLink>
           {onOpenSettings ? (
             <button
               type="button"
