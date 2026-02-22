@@ -61,4 +61,14 @@ describe("entry-references", () => {
       "Revisit [My Journal Entry](/entryref/entry-1) and maybe [Entry missing](/entryref/missing).",
     );
   });
+
+  it("escapes square brackets in entry labels", () => {
+    const markdown = replaceEntryReferenceTokensWithMarkdownLinks(
+      "Read @entry:entry-1",
+      {
+        "entry-1": "Roadmap [Draft]",
+      },
+    );
+    expect(markdown).toBe("Read [Roadmap \\[Draft\\]](/entryref/entry-1)");
+  });
 });

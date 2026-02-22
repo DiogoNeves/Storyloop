@@ -23,7 +23,10 @@ function isBoundaryCharacter(character: string | undefined): boolean {
 }
 
 function escapeMarkdownLabel(label: string): string {
-  return label.replace(/\\/g, "\\\\").replace(/\]/g, "\\]");
+  return label
+    .replace(/\\/g, "\\\\")
+    .replace(/\[/g, "\\[")
+    .replace(/\]/g, "\\]");
 }
 
 export function extractEntryReferenceTokens(text: string): EntryReferenceToken[] {

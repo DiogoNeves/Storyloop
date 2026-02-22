@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -210,5 +210,38 @@ describe("LoopieConversationContent mentions", () => {
     expect(screen.getByRole("button", { name: "Video about Simile" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Launch notes" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Older note" })).toBeNull();
+  });
+
+  it("syncs reference overlay offset with textarea scroll", async () => {
+    useAudioDictationMock.mockReturnValue({
+      status: "idle",
+      inputLevel: 0,
+      elapsedSeconds: 0,
+      isSupported: true,
+      errorMessage: null,
+      stopDictation: vi.fn(),
+      toggleDictation: vi.fn(() => Promise.resolve()),
+      clearError: vi.fn(),
+    });
+
+    const user = userEvent.setup();
+    renderComposer();
+
+    const composer = screen.getByPlaceholderText(
+      /Ask about your content, growth, or next video idea/i,
+    ) as HTMLTextAreaElement;
+
+    await user.type(composer, "@spr");
+    await user.keyboard("{Enter}");
+
+    const overlay = screen.getByTestId("loopie-composer-overlay-content");
+    Object.defineProperty(composer, "scrollTop", { value: 42, configurable: true });
+    Object.defineProperty(composer, "scrollLeft", {
+      value: 7,
+      configurable: true,
+    });
+    fireEvent.scroll(composer);
+
+    expect(overlay).toHaveStyle({ transform: "translate(-7px, -42px)" });
   });
 });
