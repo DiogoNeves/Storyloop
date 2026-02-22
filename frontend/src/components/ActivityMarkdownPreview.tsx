@@ -15,12 +15,18 @@ import {
   hasLikelyMarkdownSyntax,
   isMarkdownPreviewCategory,
 } from "@/lib/activity-markdown-preview";
+import {
+  ENTRY_REFERENCE_LINK_PREFIX,
+  extractEntryReferenceTokens,
+  replaceEntryReferenceTokensWithMarkdownLinks,
+} from "@/lib/entry-references";
 import type { ActivityItem } from "@/lib/types/entries";
 import { cn } from "@/lib/utils";
 
 interface ActivityMarkdownPreviewProps {
   text: string;
   category: ActivityItem["category"];
+  entryReferenceTitles?: Record<string, string>;
   showPlaceholderPulse?: boolean;
 }
 
@@ -86,11 +92,16 @@ const MARKDOWN_PREVIEW_COMPONENTS: Components = {
     return <span>&bull; {children} </span>;
   },
   blockquote: ({ children }) => <span>{children} </span>,
-  a: ({ children }) => (
-    <span className="underline decoration-primary/60 underline-offset-2">
-      {children}
-    </span>
-  ),
+  a: ({ children, href }) =>
+    href?.startsWith(ENTRY_REFERENCE_LINK_PREFIX) ? (
+      <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs font-medium leading-4 text-primary">
+        {children}
+      </span>
+    ) : (
+      <span className="underline decoration-primary/60 underline-offset-2">
+        {children}
+      </span>
+    ),
   code: ({ inline, children, ...props }: MarkdownCodeProps) => {
     const codeText = Children.toArray(children)
       .map((child) =>
@@ -131,14 +142,27 @@ const previewBodyClassName = "line-clamp-3 text-sm leading-6 text-muted-foregrou
 function ActivityMarkdownPreviewComponent({
   text,
   category,
+  entryReferenceTitles,
   showPlaceholderPulse = false,
 }: ActivityMarkdownPreviewProps) {
   const previewSource = useMemo(() => buildPreviewMarkdownSource(text), [text]);
+  const hasEntryReferences = useMemo(
+    () => extractEntryReferenceTokens(previewSource).length > 0,
+    [previewSource],
+  );
+  const transformedPreviewSource = useMemo(
+    () =>
+      replaceEntryReferenceTokensWithMarkdownLinks(
+        previewSource,
+        entryReferenceTitles ?? {},
+      ),
+    [entryReferenceTitles, previewSource],
+  );
   const shouldRenderMarkdown = useMemo(
     () =>
       isMarkdownPreviewCategory(category) &&
-      hasLikelyMarkdownSyntax(previewSource),
-    [category, previewSource],
+      (hasLikelyMarkdownSyntax(previewSource) || hasEntryReferences),
+    [category, hasEntryReferences, previewSource],
   );
 
   if (previewSource.length === 0) {
@@ -163,7 +187,7 @@ function ActivityMarkdownPreviewComponent({
             components={MARKDOWN_PREVIEW_COMPONENTS}
             skipHtml
           >
-            {previewSource}
+            {transformedPreviewSource}
           </ReactMarkdown>
         </div>
       ) : (
