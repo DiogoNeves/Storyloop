@@ -273,8 +273,6 @@ class DemoUserService(UserService):
             channel_url="https://www.youtube.com/channel/UCDEMOCHANNEL",
             channel_thumbnail_url="https://example.com/demo/high.jpg",
             channel_updated_at=datetime.now(tz=UTC),
-            channel_profile_json=None,
-            channel_profile_updated_at=None,
             credentials_json=demo_credentials,
             credentials_updated_at=datetime.now(tz=UTC),
             credentials_error=None,

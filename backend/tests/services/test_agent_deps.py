@@ -1,6 +1,5 @@
 from app.services.agent import LoopieDeps
 from app.services.agent_tools.repositories import (
-    EmptyChannelProfileRepository,
     EntryRepository,
     JournalRepository,
     TodayRepository,
@@ -41,7 +40,6 @@ def test_loopie_deps_accepts_repository_instances():
             _UserService(),
             _OAuthService(),
         ),
-        channel_profile_repo=EmptyChannelProfileRepository(),
     )
 
     assert deps.user_id == "user-123"

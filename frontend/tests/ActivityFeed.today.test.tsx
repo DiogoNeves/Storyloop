@@ -54,15 +54,6 @@ vi.mock("@/hooks/useDebouncedAutosave", () => ({
   }),
 }));
 
-vi.mock("@/api/channel", () => ({
-  channelQueries: {
-    profile: () => ({
-      queryKey: ["channel", "profile"],
-      queryFn: () => Promise.resolve({ profile: {} }),
-    }),
-  },
-}));
-
 function renderFeed(items: ActivityItem[]) {
   const queryClient = new QueryClient({
     defaultOptions: {

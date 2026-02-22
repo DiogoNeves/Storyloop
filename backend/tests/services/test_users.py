@@ -6,6 +6,124 @@ from app.db import SqliteConnectionFactory
 from app.services.users import UserService
 
 
+def test_ensure_schema_fresh_table_excludes_channel_profile_columns(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    service = UserService(memory_connection_factory)
+    service.ensure_schema()
+
+    with memory_connection_factory() as connection:
+        columns = {
+            row["name"] for row in connection.execute("PRAGMA table_info(users)")
+        }
+
+    assert "channel_profile_json" not in columns
+    assert "channel_profile_updated_at" not in columns
+
+
+def test_ensure_schema_migrates_legacy_channel_profile_columns(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    with memory_connection_factory() as connection:
+        connection.execute(
+            """
+            CREATE TABLE users (
+                id TEXT PRIMARY KEY,
+                channel_id TEXT,
+                channel_title TEXT,
+                channel_url TEXT,
+                channel_thumbnail_url TEXT,
+                channel_updated_at TEXT,
+                channel_profile_json TEXT,
+                channel_profile_updated_at TEXT,
+                credentials_json TEXT,
+                credentials_updated_at TEXT,
+                credentials_error TEXT,
+                oauth_state TEXT,
+                oauth_state_created_at TEXT,
+                smart_update_interval_hours INTEGER,
+                show_archived INTEGER,
+                activity_feed_sort_date TEXT,
+                today_entries_enabled INTEGER,
+                today_include_previous_incomplete INTEGER,
+                today_move_completed_to_end INTEGER
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO users (
+                id,
+                channel_id,
+                channel_title,
+                channel_url,
+                channel_thumbnail_url,
+                channel_updated_at,
+                channel_profile_json,
+                channel_profile_updated_at,
+                credentials_json,
+                credentials_updated_at,
+                credentials_error,
+                oauth_state,
+                oauth_state_created_at,
+                smart_update_interval_hours,
+                show_archived,
+                activity_feed_sort_date,
+                today_entries_enabled,
+                today_include_previous_incomplete,
+                today_move_completed_to_end
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "active",
+                "UC123",
+                "Storyloop",
+                "https://www.youtube.com/channel/UC123",
+                "https://img.youtube.com/123.jpg",
+                "2026-01-01T12:00:00+00:00",
+                '{"audienceFocus":"legacy"}',
+                "2026-01-01T12:00:00+00:00",
+                '{"token":"abc"}',
+                "2026-01-01T12:00:00+00:00",
+                "credential issue",
+                "oauth-state",
+                "2026-01-01T11:00:00+00:00",
+                6,
+                1,
+                "modified",
+                0,
+                0,
+                0,
+            ),
+        )
+        connection.commit()
+
+    service = UserService(memory_connection_factory)
+    service.ensure_schema()
+
+    with memory_connection_factory() as connection:
+        columns = {
+            row["name"] for row in connection.execute("PRAGMA table_info(users)")
+        }
+
+    assert "channel_profile_json" not in columns
+    assert "channel_profile_updated_at" not in columns
+
+    record = service.get_active_user()
+    assert record is not None
+    assert record.channel_id == "UC123"
+    assert record.channel_title == "Storyloop"
+    assert record.credentials_json == '{"token":"abc"}'
+    assert record.credentials_error == "credential issue"
+    assert record.oauth_state == "oauth-state"
+    assert record.smart_update_interval_hours == 6
+    assert record.show_archived is True
+    assert record.activity_feed_sort_date == "modified"
+    assert record.today_entries_enabled is False
+    assert record.today_include_previous_incomplete is False
+    assert record.today_move_completed_to_end is False
+
+
 def test_upsert_credentials_persists_payload(
     memory_connection_factory: SqliteConnectionFactory,
 ) -> None:

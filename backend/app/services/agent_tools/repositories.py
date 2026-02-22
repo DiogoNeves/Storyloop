@@ -6,16 +6,8 @@ from typing import Any, Protocol, runtime_checkable
 from uuid import uuid4
 
 import anyio
-from pydantic import ValidationError
 
 from app.services.assets import AssetService, extract_asset_ids
-from app.services.channel_profile import (
-    ChannelProfile,
-    ChannelProfilePatch,
-    ChannelProfileSnapshot,
-    apply_channel_profile_patch,
-    calculate_channel_profile_hash,
-)
 from app.services.entries import EntryRecord, EntryService
 from app.services.agent_tools.models import (
     ChannelMetrics,
@@ -448,96 +440,6 @@ class EmptyEntryRepository:
 
     async def get_entry(self, entry_id: str) -> EntryDetails:
         raise RuntimeError("Entry service not configured")
-
-
-class ChannelProfileRepository:
-    """Access stored channel identity profile."""
-
-    def __init__(self, user_service: UserService) -> None:
-        self._user_service = user_service
-
-    async def get_profile(self) -> ChannelProfileSnapshot:
-        """Return the stored channel profile with update time."""
-
-        def _fetch() -> ChannelProfileSnapshot:
-            profile_data, updated_at = self._user_service.get_channel_profile()
-            profile = None
-            if profile_data:
-                try:
-                    profile = ChannelProfile.model_validate(profile_data)
-                except ValidationError:
-                    profile = None
-            return ChannelProfileSnapshot(
-                profile=profile,
-                updated_at=updated_at.isoformat() if updated_at else None,
-                content_hash=calculate_channel_profile_hash(profile),
-            )
-
-        return await anyio.to_thread.run_sync(_fetch)
-
-    async def update_profile(
-        self, patch: ChannelProfilePatch, content_hash: str
-    ) -> ChannelProfileSnapshot:
-        """Apply a patch and persist the updated channel profile."""
-
-        def _update() -> ChannelProfileSnapshot:
-            profile_data, _ = self._user_service.get_channel_profile()
-            current_profile = None
-            if profile_data:
-                try:
-                    current_profile = ChannelProfile.model_validate(
-                        profile_data
-                    )
-                except ValidationError:
-                    current_profile = None
-
-            current_hash = calculate_channel_profile_hash(current_profile)
-            if current_hash != content_hash:
-                raise RuntimeError(
-                    "Channel profile changed since last read; you must read again before editing."
-                )
-
-            updated_profile = apply_channel_profile_patch(
-                current_profile, patch
-            )
-            serialized = updated_profile.model_dump(by_alias=True)
-            updated_at = self._user_service.upsert_channel_profile(serialized)
-            return ChannelProfileSnapshot(
-                profile=updated_profile,
-                updated_at=updated_at.isoformat(),
-                content_hash=calculate_channel_profile_hash(updated_profile),
-            )
-
-        return await anyio.to_thread.run_sync(_update)
-
-
-@runtime_checkable
-class BaseChannelProfileRepository(Protocol):
-    """Interface for channel profile access consumed by the agent."""
-
-    async def get_profile(self) -> ChannelProfileSnapshot:
-        """Return the stored channel profile (if any)."""
-
-    async def update_profile(
-        self, patch: ChannelProfilePatch, content_hash: str
-    ) -> ChannelProfileSnapshot:
-        """Apply a patch and persist the channel profile."""
-
-
-class EmptyChannelProfileRepository:
-    """Fallback repository returning no channel profile data."""
-
-    async def get_profile(self) -> ChannelProfileSnapshot:
-        return ChannelProfileSnapshot(
-            profile=None,
-            updated_at=None,
-            content_hash=calculate_channel_profile_hash(None),
-        )
-
-    async def update_profile(
-        self, patch: ChannelProfilePatch, content_hash: str
-    ) -> ChannelProfileSnapshot:
-        raise RuntimeError("Channel profile service not configured")
 
 
 def _collect_attachments(

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from contextlib import closing
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -18,6 +17,29 @@ ALLOWED_ACTIVITY_FEED_SORT_DATES = {"created", "modified"}
 DEFAULT_TODAY_ENTRIES_ENABLED = True
 DEFAULT_TODAY_INCLUDE_PREVIOUS_INCOMPLETE = True
 DEFAULT_TODAY_MOVE_COMPLETED_TO_END = True
+_REMOVED_CHANNEL_PROFILE_COLUMNS = {
+    "channel_profile_json",
+    "channel_profile_updated_at",
+}
+_USERS_TABLE_COLUMNS = (
+    "id",
+    "channel_id",
+    "channel_title",
+    "channel_url",
+    "channel_thumbnail_url",
+    "channel_updated_at",
+    "credentials_json",
+    "credentials_updated_at",
+    "credentials_error",
+    "oauth_state",
+    "oauth_state_created_at",
+    "smart_update_interval_hours",
+    "show_archived",
+    "activity_feed_sort_date",
+    "today_entries_enabled",
+    "today_include_previous_incomplete",
+    "today_move_completed_to_end",
+)
 
 
 @dataclass(slots=True)
@@ -30,8 +52,6 @@ class UserRecord:
     channel_url: str | None
     channel_thumbnail_url: str | None
     channel_updated_at: datetime | None
-    channel_profile_json: str | None
-    channel_profile_updated_at: datetime | None
     # Serialized OAuth credentials (JSON string) containing access token, refresh token,
     # and expiry. Used to build authenticated YouTube API clients for fetching channel
     # info during OAuth callback and checking authentication status. Credentials are
@@ -64,10 +84,6 @@ def _row_to_record(row: Row) -> UserRecord:
         channel_url=row["channel_url"],
         channel_thumbnail_url=row["channel_thumbnail_url"],
         channel_updated_at=_parse_timestamp(row["channel_updated_at"]),
-        channel_profile_json=row["channel_profile_json"],
-        channel_profile_updated_at=_parse_timestamp(
-            row["channel_profile_updated_at"]
-        ),
         credentials_json=row["credentials_json"],
         credentials_updated_at=_parse_timestamp(row["credentials_updated_at"]),
         credentials_error=row["credentials_error"],
@@ -99,39 +115,70 @@ def _row_to_record(row: Row) -> UserRecord:
 class UserService(DatabaseService):
     """High-level operations for persisting YouTube user credentials."""
 
+    @staticmethod
+    def _create_users_table(connection, table_name: str = "users") -> None:
+        connection.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS {table_name} (
+                id TEXT PRIMARY KEY,
+                channel_id TEXT,
+                channel_title TEXT,
+                channel_url TEXT,
+                channel_thumbnail_url TEXT,
+                channel_updated_at TEXT,
+                credentials_json TEXT,
+                credentials_updated_at TEXT,
+                credentials_error TEXT,
+                oauth_state TEXT,
+                oauth_state_created_at TEXT,
+                smart_update_interval_hours INTEGER,
+                show_archived INTEGER,
+                activity_feed_sort_date TEXT,
+                today_entries_enabled INTEGER,
+                today_include_previous_incomplete INTEGER,
+                today_move_completed_to_end INTEGER
+            )
+            """
+        )
+
+    @staticmethod
+    def _existing_columns(connection) -> set[str]:
+        return {
+            (row["name"] if isinstance(row, Row) else row[1])
+            for row in connection.execute("PRAGMA table_info(users)")
+        }
+
+    def _drop_removed_columns_if_needed(
+        self, connection, existing_columns: set[str]
+    ) -> None:
+        if not (_REMOVED_CHANNEL_PROFILE_COLUMNS & existing_columns):
+            return
+
+        self._create_users_table(connection, table_name="users_new")
+        source_columns = [
+            column for column in _USERS_TABLE_COLUMNS if column in existing_columns
+        ]
+        if source_columns:
+            column_sql = ", ".join(source_columns)
+            connection.execute(
+                f"""
+                INSERT INTO users_new ({column_sql})
+                SELECT {column_sql}
+                FROM users
+                """
+            )
+
+        connection.execute("DROP TABLE users")
+        connection.execute("ALTER TABLE users_new RENAME TO users")
+
     def ensure_schema(self) -> None:
         """Create the ``users`` table when it is missing."""
 
         with closing(self._connection_factory()) as connection:
-            connection.execute(
-                """
-                CREATE TABLE IF NOT EXISTS users (
-                    id TEXT PRIMARY KEY,
-                    channel_id TEXT,
-                    channel_title TEXT,
-                    channel_url TEXT,
-                    channel_thumbnail_url TEXT,
-                    channel_updated_at TEXT,
-                    channel_profile_json TEXT,
-                    channel_profile_updated_at TEXT,
-                    credentials_json TEXT,
-                    credentials_updated_at TEXT,
-                    credentials_error TEXT,
-                    oauth_state TEXT,
-                    oauth_state_created_at TEXT,
-                    smart_update_interval_hours INTEGER,
-                    show_archived INTEGER,
-                    activity_feed_sort_date TEXT,
-                    today_entries_enabled INTEGER,
-                    today_include_previous_incomplete INTEGER,
-                    today_move_completed_to_end INTEGER
-                )
-                """
-            )
-            existing_columns = {
-                (row["name"] if isinstance(row, Row) else row[1])
-                for row in connection.execute("PRAGMA table_info(users)")
-            }
+            self._create_users_table(connection)
+            existing_columns = self._existing_columns(connection)
+            self._drop_removed_columns_if_needed(connection, existing_columns)
+            existing_columns = self._existing_columns(connection)
             if "credentials_error" not in existing_columns:
                 connection.execute(
                     "ALTER TABLE users ADD COLUMN credentials_error TEXT"
@@ -160,14 +207,6 @@ class UserService(DatabaseService):
             if "today_move_completed_to_end" not in existing_columns:
                 connection.execute(
                     "ALTER TABLE users ADD COLUMN today_move_completed_to_end INTEGER"
-                )
-            if "channel_profile_json" not in existing_columns:
-                connection.execute(
-                    "ALTER TABLE users ADD COLUMN channel_profile_json TEXT"
-                )
-            if "channel_profile_updated_at" not in existing_columns:
-                connection.execute(
-                    "ALTER TABLE users ADD COLUMN channel_profile_updated_at TEXT"
                 )
             connection.commit()
 
@@ -467,64 +506,6 @@ class UserService(DatabaseService):
                 (_DEFAULT_USER_ID,),
             )
             connection.commit()
-
-    def get_channel_profile(
-        self,
-    ) -> tuple[dict[str, object] | None, datetime | None]:
-        """Return the stored channel profile and last update time."""
-
-        with closing(self._connection_factory()) as connection:
-            row = connection.execute(
-                """
-                SELECT channel_profile_json, channel_profile_updated_at
-                FROM users WHERE id = ?
-                """,
-                (_DEFAULT_USER_ID,),
-            ).fetchone()
-
-        if row is None:
-            return None, None
-
-        raw_profile = row["channel_profile_json"]
-        updated_at = row["channel_profile_updated_at"]
-        parsed_updated_at = (
-            datetime.fromisoformat(updated_at) if updated_at else None
-        )
-        if not raw_profile:
-            return None, parsed_updated_at
-
-        try:
-            profile = json.loads(raw_profile)
-        except json.JSONDecodeError:
-            return None, parsed_updated_at
-
-        if not isinstance(profile, dict):
-            return None, parsed_updated_at
-
-        return profile, parsed_updated_at
-
-    def upsert_channel_profile(self, profile: dict[str, object]) -> datetime:
-        """Persist the channel profile for the active user."""
-
-        updated_at = datetime.now(tz=UTC)
-        serialized = json.dumps(profile)
-        with closing(self._connection_factory()) as connection:
-            connection.execute(
-                """
-                INSERT INTO users (
-                    id,
-                    channel_profile_json,
-                    channel_profile_updated_at
-                ) VALUES (?, ?, ?)
-                ON CONFLICT(id) DO UPDATE SET
-                    channel_profile_json=excluded.channel_profile_json,
-                    channel_profile_updated_at=excluded.channel_profile_updated_at
-                """,
-                (_DEFAULT_USER_ID, serialized, updated_at.isoformat()),
-            )
-            connection.commit()
-
-        return updated_at
 
     def save_oauth_state(self, state: str, created_at: datetime) -> None:
         """Persist the most recent OAuth state token for CSRF protection."""

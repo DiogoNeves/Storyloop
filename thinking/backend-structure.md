@@ -16,7 +16,6 @@ backend/
 │   ├── routers/           # HTTP endpoints
 │   │   ├── __init__.py
 │   │   ├── assets.py      # Asset upload + retrieval
-│   │   ├── channel.py     # Channel identity profile
 │   │   ├── conversations.py  # Conversation streaming endpoints
 │   │   ├── entries.py     # Journal/timeline entries CRUD
 │   │   ├── health.py      # Health check endpoint
@@ -27,7 +26,6 @@ backend/
 │       ├── agent.py       # PydanticAI agent builder
 │       ├── agent_tools/   # Agent tool adapters + models
 │       ├── assets.py      # Asset storage + metadata
-│       ├── channel_profile.py # Channel profile data models
 │       ├── entries.py     # Entry persistence
 │       ├── users.py       # Active user/channel state
 │       ├── youtube.py     # YouTube API integration
@@ -247,17 +245,6 @@ markdown links to `/assets/{id}` for attachments.
 - `turns` table: `id`, `conversation_id`, `role`, `text`, `attachments`, `created_at`
 
 #### Channel Settings Router (Future: `routers/settings.py`)
-
-#### Channel Router (`routers/channel.py`)
-
-**Endpoints:**
-
-- `GET /channel` - Retrieve saved channel identity profile (or null)
-- `PUT /channel` - Save/update channel identity profile
-
-**Purpose:** Persist the audience buckets + Identity–Emotion–Action framework used by Loopie.
-
-**Integration:** Frontend Channel tab writes this profile; the agent uses it to evaluate idea fit.
 
 ## Request Flow
 
