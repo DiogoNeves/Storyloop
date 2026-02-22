@@ -113,4 +113,32 @@ describe("useAudioInputDevices", () => {
       ]);
     });
   });
+
+  it("uses non-default fallback labels when sanitized labels become empty", async () => {
+    enumerateDevicesMock.mockResolvedValue([
+      {
+        deviceId: "default",
+        kind: "audioinput",
+        label: "(0d8c:0005)",
+        groupId: "group-1",
+        toJSON: () => ({}),
+      } as MediaDeviceInfo,
+      {
+        deviceId: "usb-only-code",
+        kind: "audioinput",
+        label: "(046d:0893)",
+        groupId: "group-2",
+        toJSON: () => ({}),
+      } as MediaDeviceInfo,
+    ]);
+
+    const { result } = renderHook(() => useAudioInputDevices());
+
+    await waitFor(() => {
+      expect(result.current.audioInputDevices).toEqual([
+        { deviceId: "default", label: "System default microphone" },
+        { deviceId: "usb-only-code", label: "Microphone 2" },
+      ]);
+    });
+  });
 });
