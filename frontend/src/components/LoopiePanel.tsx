@@ -92,6 +92,7 @@ interface InlineReferenceSegmentReference {
   type: "reference";
   entryId: string;
   label: string;
+  marker: string;
   token: string;
   key: string;
 }
@@ -211,6 +212,7 @@ export function LoopieConversationContent({
         type: "reference",
         entryId,
         label: resolveEntryReferenceLabel(entryId, entryReferenceTitles),
+        marker: character,
         token: `@entry:${entryId}`,
         key: `${index}-${entryId}`,
       });
@@ -686,12 +688,15 @@ export function LoopieConversationContent({
                         );
                       }
                       return (
-                        <span
-                          key={segment.key}
-                          className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs font-medium leading-4 text-primary align-[0.08em]"
-                          title={segment.token}
-                        >
-                          {segment.label}
+                        <span key={segment.key}>
+                          <span className="invisible">{`${segment.marker} `}</span>
+                          <span
+                            className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs font-medium leading-4 text-primary align-[0.08em]"
+                            title={segment.token}
+                          >
+                            {segment.label}
+                          </span>
+                          <span className="invisible">{` ${segment.marker}`}</span>
                         </span>
                       );
                     })}
