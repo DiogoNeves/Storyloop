@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -10,6 +11,15 @@ const useAudioDictationMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/hooks/useAudioDictation", () => ({
   useAudioDictation: useAudioDictationMock,
+}));
+
+vi.mock("@/api/entries", () => ({
+  entriesQueries: {
+    all: () => ({
+      queryKey: ["entries"],
+      queryFn: () => Promise.resolve([]),
+    }),
+  },
 }));
 
 const syncContextValue: SyncContextValue = {
@@ -60,18 +70,23 @@ describe("LoopieConversationContent dictation", () => {
     );
 
     const user = userEvent.setup();
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
 
     render(
-      <SyncContext.Provider value={syncContextValue}>
-        <LoopieConversationContent
-          state={state}
-          adapter={{
-            sendMessage: vi.fn(),
-            stopResponse: vi.fn(),
-            resetConversation: vi.fn(),
-          }}
-        />
-      </SyncContext.Provider>,
+      <QueryClientProvider client={queryClient}>
+        <SyncContext.Provider value={syncContextValue}>
+          <LoopieConversationContent
+            state={state}
+            adapter={{
+              sendMessage: vi.fn(),
+              stopResponse: vi.fn(),
+              resetConversation: vi.fn(),
+            }}
+          />
+        </SyncContext.Provider>
+      </QueryClientProvider>,
     );
 
     const composer = screen.getByPlaceholderText(

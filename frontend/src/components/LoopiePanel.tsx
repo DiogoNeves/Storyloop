@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   ArrowUp,
   Bot,
@@ -9,6 +10,7 @@ import {
   WifiOff,
 } from "lucide-react";
 
+import { entriesQueries } from "@/api/entries";
 import { useAgentConversationContext } from "@/context/AgentConversationContext";
 import {
   type AgentConversationAdapter,
@@ -17,6 +19,14 @@ import {
   type AgentMessageAttachment,
 } from "@/lib/types/agent";
 import { getActivityCategoryLabel } from "@/lib/activity-helpers";
+import {
+  buildEntryReferenceTitleMap,
+  extractEntryReferenceTokens,
+  resolveEntryReferenceLabel,
+} from "@/lib/entry-references";
+import { filterActivityItems } from "@/lib/activity-search";
+import { findMentionCandidate } from "@/lib/mention-search";
+import { entryToActivityItem, type ActivityItem } from "@/lib/types/entries";
 import { cn } from "@/lib/utils";
 import { useAssetUpload } from "@/hooks/useAssetUpload";
 import { useAudioDictation } from "@/hooks/useAudioDictation";
@@ -63,6 +73,31 @@ interface LoopiePanelProps {
   showConversationLink?: boolean;
 }
 
+interface ComposerMentionState {
+  query: string;
+  startIndex: number;
+  endIndex: number;
+}
+
+function findComposerMentionState(
+  value: string,
+  cursorPosition: number | null,
+): ComposerMentionState | null {
+  if (cursorPosition === null) {
+    return null;
+  }
+  const textBeforeCursor = value.slice(0, cursorPosition);
+  const candidate = findMentionCandidate(textBeforeCursor);
+  if (!candidate) {
+    return null;
+  }
+  return {
+    query: candidate.query,
+    startIndex: candidate.startIndex,
+    endIndex: cursorPosition,
+  };
+}
+
 export function LoopieConversationContent({
   state,
   adapter,
@@ -77,9 +112,80 @@ export function LoopieConversationContent({
   const [inputValue, setInputValue] = useState("");
   const [attachments, setAttachments] = useState<AgentMessageAttachment[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [mentionState, setMentionState] = useState<ComposerMentionState | null>(
+    null,
+  );
+  const [mentionActiveIndex, setMentionActiveIndex] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const { isOnline } = useSync();
+  const entriesListQuery = useMemo(() => entriesQueries.all(), []);
+  const entriesQuery = useQuery(entriesListQuery);
+  const journalItems = useMemo<ActivityItem[]>(
+    () =>
+      (entriesQuery.data ?? [])
+        .filter((entry) => entry.category === "journal" && !entry.archived)
+        .map((entry) => entryToActivityItem(entry)),
+    [entriesQuery.data],
+  );
+  const entryReferenceTitles = useMemo(
+    () =>
+      buildEntryReferenceTitleMap(
+        journalItems.map((item) => ({ id: item.id, title: item.title })),
+      ),
+    [journalItems],
+  );
+  const inputEntryReferenceTokens = useMemo(
+    () => extractEntryReferenceTokens(inputValue),
+    [inputValue],
+  );
+  const hasInlineReferences = inputEntryReferenceTokens.length > 0;
+  const inlineReferenceSegments = useMemo(() => {
+    if (!hasInlineReferences) {
+      return [];
+    }
+    let previousEnd = 0;
+    const segments: Array<
+      | { type: "text"; value: string }
+      | { type: "reference"; entryId: string; token: string; key: string }
+    > = [];
+
+    inputEntryReferenceTokens.forEach((reference, index) => {
+      if (reference.start > previousEnd) {
+        segments.push({
+          type: "text",
+          value: inputValue.slice(previousEnd, reference.start),
+        });
+      }
+      segments.push({
+        type: "reference",
+        entryId: reference.entryId,
+        token: reference.token,
+        key: `${reference.start}-${reference.end}-${index}`,
+      });
+      previousEnd = reference.end;
+    });
+
+    if (previousEnd < inputValue.length) {
+      segments.push({
+        type: "text",
+        value: inputValue.slice(previousEnd),
+      });
+    }
+
+    return segments;
+  }, [hasInlineReferences, inputEntryReferenceTokens, inputValue]);
+  const mentionSuggestions = useMemo(() => {
+    if (!mentionState) {
+      return [];
+    }
+    const normalizedQuery = mentionState.query.trim();
+    if (normalizedQuery.length === 0) {
+      return journalItems.slice(0, 3);
+    }
+    return filterActivityItems(journalItems, normalizedQuery).slice(0, 3);
+  }, [journalItems, mentionState]);
   const {
     status: dictationStatus,
     inputLevel: dictationInputLevel,
@@ -92,7 +198,11 @@ export function LoopieConversationContent({
   } = useAudioDictation({
     mode: "loopie",
     onTranscription: (text) => {
-      setInputValue((previous) => appendTranscribedText(previous, text));
+      setInputValue((previous) => {
+        const nextValue = appendTranscribedText(previous, text);
+        updateMentionState(nextValue, nextValue.length);
+        return nextValue;
+      });
     },
   });
 
@@ -110,6 +220,48 @@ export function LoopieConversationContent({
     container.scrollTop = container.scrollHeight;
   }, [state.messages, state.composer.status]);
 
+  const updateMentionState = useCallback(
+    (nextValue: string, cursorPosition: number | null) => {
+      const nextMentionState = findComposerMentionState(nextValue, cursorPosition);
+      setMentionState(nextMentionState);
+      if (!nextMentionState) {
+        setMentionActiveIndex(0);
+        return;
+      }
+      if (mentionState?.query !== nextMentionState.query) {
+        setMentionActiveIndex(0);
+      }
+    },
+    [mentionState?.query],
+  );
+
+  const insertMention = useCallback((selection: ActivityItem) => {
+    setInputValue((currentValue) => {
+      const activeTextarea = textareaRef.current;
+      const cursorPosition = activeTextarea?.selectionStart ?? currentValue.length;
+      const activeMention = findComposerMentionState(currentValue, cursorPosition);
+      if (!activeMention) {
+        return currentValue;
+      }
+
+      const token = `@entry:${selection.id}`;
+      const insertion = `${token} `;
+      const nextValue = `${currentValue.slice(0, activeMention.startIndex)}${insertion}${currentValue.slice(activeMention.endIndex)}`;
+      const nextCursorPosition = activeMention.startIndex + insertion.length;
+      requestAnimationFrame(() => {
+        const textarea = textareaRef.current;
+        if (!textarea) {
+          return;
+        }
+        textarea.focus();
+        textarea.setSelectionRange(nextCursorPosition, nextCursorPosition);
+      });
+      setMentionState(null);
+      setMentionActiveIndex(0);
+      return nextValue;
+    });
+  }, []);
+
   const handleSubmit = useCallback(() => {
     if (state.composer.status !== "idle") {
       return;
@@ -121,7 +273,24 @@ export function LoopieConversationContent({
     void adapter.sendMessage(trimmed, attachments);
     setInputValue("");
     setAttachments([]);
-  }, [adapter, attachments, inputValue, state.composer.status]);
+    setMentionState(null);
+    setMentionActiveIndex(0);
+  }, [
+    adapter,
+    attachments,
+    inputValue,
+    state.composer.status,
+  ]);
+
+  useEffect(() => {
+    if (!mentionState || mentionSuggestions.length === 0) {
+      setMentionActiveIndex(0);
+      return;
+    }
+    setMentionActiveIndex((current) =>
+      Math.min(current, mentionSuggestions.length - 1),
+    );
+  }, [mentionState, mentionSuggestions.length]);
 
   const { uploadFiles, isUploading } = useAssetUpload({
     onUploaded: (asset) => {
@@ -218,7 +387,11 @@ export function LoopieConversationContent({
             </p>
           ) : null}
           {state.messages.map((message) => (
-            <ChatMessage key={message.id} message={message} />
+            <ChatMessage
+              key={message.id}
+              message={message}
+              entryReferenceTitles={entryReferenceTitles}
+            />
           ))}
           {state.composer.status === "responding" ? (
             <div className="flex items-center gap-2 pl-1 text-xs text-muted-foreground">
@@ -335,90 +508,213 @@ export function LoopieConversationContent({
           {isTranscribingDictation ? (
             <p className="text-xs text-muted-foreground">Transcribing dictation…</p>
           ) : null}
-          <div className="relative flex select-none items-end rounded-2xl border border-border/50 bg-muted/30 shadow-sm focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20">
-            <Textarea
-              id="agent-composer"
-              placeholder={composerPlaceholder}
-              value={inputValue}
-              onChange={(event) => setInputValue(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey) {
-                  event.preventDefault();
-                  handleSubmit();
-                }
-              }}
-              onPaste={(event) => {
-                if (!event.clipboardData?.files?.length) {
-                  return;
-                }
-                event.preventDefault();
-                handleFilesSelected(event.clipboardData.files);
-              }}
-              onDrop={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                if (event.dataTransfer.files.length > 0) {
-                  handleFilesSelected(event.dataTransfer.files);
-                }
-              }}
-              onDragOver={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-              }}
-              disabled={isTextareaDisabled}
-              className="min-h-[104px] resize-none rounded-2xl border-0 bg-transparent px-4 py-3 pr-24 text-sm shadow-none focus-visible:outline-none focus-visible:ring-0"
-            />
-            <div className="absolute bottom-3 right-3 flex select-none items-center gap-2">
-              <span className="hidden text-[10px] text-muted-foreground/70 sm:inline">
-                {state.composer.status === "responding"
-                  ? "Loopie is thinking"
-                  : "Shift + Enter"}
-              </span>
-              {dictationStatus === "idle" ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="icon"
-                  onClick={() => {
-                    if (isDictationDisabled) {
+          <div className="relative select-none rounded-2xl border border-border/50 bg-muted/30 shadow-sm focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20">
+            <div className="relative flex items-end">
+              {hasInlineReferences ? (
+                <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl px-4 py-3 pr-24 text-sm">
+                  <div className="whitespace-pre-wrap break-words leading-5 text-foreground">
+                    {inlineReferenceSegments.map((segment, index) => {
+                      if (segment.type === "text") {
+                        return (
+                          <span key={`text-${index}`}>{segment.value}</span>
+                        );
+                      }
+                      return (
+                        <span
+                          key={segment.key}
+                          className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary align-middle"
+                          title={segment.token}
+                        >
+                          {resolveEntryReferenceLabel(
+                            segment.entryId,
+                            entryReferenceTitles,
+                          )}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+              <Textarea
+                ref={textareaRef}
+                id="agent-composer"
+                placeholder={composerPlaceholder}
+                value={inputValue}
+                onChange={(event) => {
+                  const nextValue = event.target.value;
+                  setInputValue(nextValue);
+                  updateMentionState(nextValue, event.target.selectionStart);
+                }}
+                onSelect={(event) => {
+                  updateMentionState(
+                    event.currentTarget.value,
+                    event.currentTarget.selectionStart,
+                  );
+                }}
+                onKeyDown={(event) => {
+                  if (mentionState) {
+                    if (event.key === "ArrowDown") {
+                      if (mentionSuggestions.length > 0) {
+                        event.preventDefault();
+                        setMentionActiveIndex(
+                          (current) => (current + 1) % mentionSuggestions.length,
+                        );
+                        return;
+                      }
+                    }
+
+                    if (event.key === "ArrowUp") {
+                      if (mentionSuggestions.length > 0) {
+                        event.preventDefault();
+                        setMentionActiveIndex(
+                          (current) =>
+                            (current - 1 + mentionSuggestions.length) %
+                            mentionSuggestions.length,
+                        );
+                        return;
+                      }
+                    }
+
+                    if (
+                      event.key === "Enter" &&
+                      !event.shiftKey &&
+                      mentionSuggestions.length > 0
+                    ) {
+                      event.preventDefault();
+                      const selectedSuggestion =
+                        mentionSuggestions[mentionActiveIndex] ??
+                        mentionSuggestions[0];
+                      if (selectedSuggestion) {
+                        insertMention(selectedSuggestion);
+                      }
                       return;
                     }
-                    clearDictationError();
-                    void toggleDictation();
-                  }}
-                  disabled={isDictationDisabled}
-                  className="relative h-9 w-9 overflow-hidden rounded-full p-0 shadow-lg transition"
-                  aria-label="Dictate message"
-                  title={
-                    !isDictationSupported
-                      ? "Dictation is not supported in this browser"
-                      : undefined
+
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      setMentionState(null);
+                      setMentionActiveIndex(0);
+                      return;
+                    }
                   }
-                >
-                  <Mic className="h-4 w-4" />
-                </Button>
-              ) : null}
-              {showStopButton ? (
-                <Button
-                  type="button"
-                  onClick={adapter.stopResponse}
-                  className="h-9 w-9 rounded-full bg-destructive/90 p-0 text-destructive-foreground shadow-lg transition hover:bg-destructive"
-                  aria-label="Stop response"
-                >
-                  <Square className="h-4 w-4" />
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  onClick={handleSubmit}
-                  disabled={isSendDisabled}
-                  className="h-9 w-9 rounded-full bg-gradient-to-r from-primary via-primary/80 to-primary p-0 text-primary-foreground shadow-lg transition hover:from-primary/90 hover:to-primary/80 disabled:opacity-60"
-                  aria-label="Send to Loopie"
-                >
-                  <ArrowUp className="h-4 w-4" />
-                </Button>
-              )}
+
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    handleSubmit();
+                  }
+                }}
+                onPaste={(event) => {
+                  if (!event.clipboardData?.files?.length) {
+                    return;
+                  }
+                  event.preventDefault();
+                  handleFilesSelected(event.clipboardData.files);
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (event.dataTransfer.files.length > 0) {
+                    handleFilesSelected(event.dataTransfer.files);
+                  }
+                }}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                }}
+                disabled={isTextareaDisabled}
+                className={cn(
+                  "min-h-[104px] resize-none rounded-2xl border-0 bg-transparent px-4 py-3 pr-24 text-sm shadow-none focus-visible:outline-none focus-visible:ring-0",
+                  hasInlineReferences && "text-transparent caret-foreground",
+                )}
+              />
+              <div className="absolute bottom-3 right-3 flex select-none items-center gap-2">
+                <span className="hidden text-[10px] text-muted-foreground/70 sm:inline">
+                  {state.composer.status === "responding"
+                    ? "Loopie is thinking"
+                    : "Shift + Enter"}
+                </span>
+                {dictationStatus === "idle" ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="icon"
+                    onClick={() => {
+                      if (isDictationDisabled) {
+                        return;
+                      }
+                      clearDictationError();
+                      void toggleDictation();
+                    }}
+                    disabled={isDictationDisabled}
+                    className="relative h-9 w-9 overflow-hidden rounded-full p-0 shadow-lg transition"
+                    aria-label="Dictate message"
+                    title={
+                      !isDictationSupported
+                        ? "Dictation is not supported in this browser"
+                        : undefined
+                    }
+                  >
+                    <Mic className="h-4 w-4" />
+                  </Button>
+                ) : null}
+                {showStopButton ? (
+                  <Button
+                    type="button"
+                    onClick={adapter.stopResponse}
+                    className="h-9 w-9 rounded-full bg-destructive/90 p-0 text-destructive-foreground shadow-lg transition hover:bg-destructive"
+                    aria-label="Stop response"
+                  >
+                    <Square className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={isSendDisabled}
+                    className="h-9 w-9 rounded-full bg-gradient-to-r from-primary via-primary/80 to-primary p-0 text-primary-foreground shadow-lg transition hover:from-primary/90 hover:to-primary/80 disabled:opacity-60"
+                    aria-label="Send to Loopie"
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
+            {mentionState ? (
+              <div className="absolute inset-x-0 bottom-full z-20 mb-2 px-1">
+                <div className="rounded-lg border border-border bg-popover p-2 shadow-lg">
+                  {mentionSuggestions.length > 0 ? (
+                    <div className="flex flex-col gap-1" role="listbox">
+                      {mentionSuggestions.map((item, index) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className={cn(
+                            "flex w-full items-center rounded-md px-2 py-1 text-left text-sm",
+                            index === mentionActiveIndex
+                              ? "bg-primary/10 text-foreground"
+                              : "text-foreground/90 hover:bg-muted/60",
+                          )}
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                          }}
+                          onClick={() => {
+                            insertMention(item);
+                          }}
+                        >
+                          {item.title}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="px-2 py-1 text-xs text-muted-foreground">
+                      {mentionState.query.trim().length === 0
+                        ? "No recent journal entries"
+                        : "No matches"}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : null}
           </div>
           <p className="text-[10px] text-muted-foreground/70">{helperText}</p>
         </div>

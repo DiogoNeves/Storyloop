@@ -12,6 +12,10 @@ import { Link } from "react-router-dom";
 
 import { AssetLinkCard } from "@/components/chat/AssetLinkCard";
 import { getAssetId, isAssetPath, resolveAssetUrl } from "@/lib/assets";
+import {
+  ENTRY_REFERENCE_LINK_PREFIX,
+  replaceEntryReferenceTokensWithMarkdownLinks,
+} from "@/lib/entry-references";
 import { cn } from "@/lib/utils";
 import { getToneColors, resolveTone, type ChatTone } from "./toneStyles";
 
@@ -19,6 +23,7 @@ interface MarkdownMessageProps {
   content: string;
   className?: string;
   tone?: ChatTone;
+  entryReferenceTitles?: Record<string, string>;
 }
 
 const normalizeClassName = (value: unknown) =>
@@ -126,6 +131,23 @@ const createMarkdownComponents = (tone: ChatTone) => {
         textColor,
         normalizeClassName(className),
       );
+
+      if (href?.startsWith(ENTRY_REFERENCE_LINK_PREFIX)) {
+        const entryId = href.slice(ENTRY_REFERENCE_LINK_PREFIX.length);
+        if (!entryId) {
+          return <>{children}</>;
+        }
+        return (
+          <Link
+            to={`/journals/${entryId}`}
+            className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
+            style={{ textDecoration: "none" }}
+            {...props}
+          >
+            {children}
+          </Link>
+        );
+      }
 
       if (href && isAssetPath(href)) {
         const assetId = getAssetId(href);
@@ -306,9 +328,19 @@ export function MarkdownMessage({
   content,
   className,
   tone = "assistant",
+  entryReferenceTitles,
 }: MarkdownMessageProps) {
   const resolvedTone = resolveTone(tone);
   const { text: textColor } = getToneColors(resolvedTone);
+  const transformedContent = useMemo(() => {
+    if (!entryReferenceTitles) {
+      return content;
+    }
+    return replaceEntryReferenceTokensWithMarkdownLinks(
+      content,
+      entryReferenceTitles,
+    );
+  }, [content, entryReferenceTitles]);
   const markdownComponents = useMemo(
     () => createMarkdownComponents(resolvedTone),
     [resolvedTone],
@@ -327,7 +359,7 @@ export function MarkdownMessage({
         components={markdownComponents}
         skipHtml
       >
-        {content}
+        {transformedContent}
       </ReactMarkdown>
     </div>
   );

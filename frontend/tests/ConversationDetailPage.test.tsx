@@ -40,6 +40,28 @@ vi.mock("@/context/AgentConversationContext", () => ({
   useAgentConversationContext: () => mockUseAgentConversationContext(),
 }));
 
+vi.mock("@/api/entries", () => ({
+  entriesQueries: {
+    all: () => ({
+      queryKey: ["entries"],
+      queryFn: () =>
+        Promise.resolve([
+          {
+            id: "entry-mention",
+            title: "Launch retrospective",
+            summary: "Journal summary",
+            date: "2026-02-20T00:00:00.000Z",
+            updatedAt: "2026-02-20T00:00:00.000Z",
+            category: "journal",
+            pinned: false,
+            archived: false,
+            tags: [],
+          },
+        ]),
+    }),
+  },
+}));
+
 import { SettingsContext } from "@/context/SettingsContext";
 
 function renderPage(ui: ReactElement, initialPath: string) {
@@ -218,5 +240,34 @@ describe("ConversationDetailPage", () => {
         screen.getByTestId("activity-feed"),
       ).toBeInTheDocument(),
     );
+  });
+
+  it("renders stored @entry tokens as title chips", async () => {
+    mockUseAgentConversationContext.mockReturnValue({
+      state: {
+        conversationId: "abc",
+        messages: [
+          {
+            id: "turn-1",
+            role: "user",
+            content: "Please use @entry:entry-mention for this",
+            createdAt: "2024-01-01T00:00:00Z",
+          },
+        ],
+        composer: { status: "idle", error: null },
+      },
+      adapter: {
+        sendMessage: vi.fn(),
+        resetConversation: vi.fn(),
+      },
+      setActiveConversation: mockSetActiveConversation,
+      isDemo: false,
+      isInitializing: false,
+    });
+
+    renderPage(<ConversationDetailPage />, "/conversations/abc");
+
+    expect(await screen.findByText("Launch retrospective")).toBeInTheDocument();
+    expect(screen.queryByText("@entry:entry-mention")).toBeNull();
   });
 });

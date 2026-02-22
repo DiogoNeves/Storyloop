@@ -1,0 +1,210 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
+
+import { LoopieConversationContent } from "@/components/LoopiePanel";
+import { SyncContext, type SyncContextValue } from "@/context/SyncContext";
+import type { AgentConversationState } from "@/lib/types/agent";
+
+const useAudioDictationMock = vi.hoisted(() => vi.fn());
+
+vi.mock("@/hooks/useAudioDictation", () => ({
+  useAudioDictation: useAudioDictationMock,
+}));
+
+vi.mock("@/api/entries", () => ({
+  entriesQueries: {
+    all: () => ({
+      queryKey: ["entries"],
+      queryFn: () =>
+        Promise.resolve([
+          {
+            id: "journal-1",
+            title: "Sprint recap",
+            summary: "We tested five hooks",
+            date: "2026-02-20T10:00:00.000Z",
+            updatedAt: "2026-02-20T10:00:00.000Z",
+            category: "journal",
+            pinned: false,
+            archived: false,
+            tags: [],
+          },
+          {
+            id: "journal-2",
+            title: "Video about Simile",
+            summary: "Reference content",
+            date: "2026-02-19T10:00:00.000Z",
+            updatedAt: "2026-02-19T10:00:00.000Z",
+            category: "journal",
+            pinned: false,
+            archived: false,
+            tags: [],
+          },
+          {
+            id: "journal-3",
+            title: "Launch notes",
+            summary: "Reference content",
+            date: "2026-02-18T10:00:00.000Z",
+            updatedAt: "2026-02-18T10:00:00.000Z",
+            category: "journal",
+            pinned: false,
+            archived: false,
+            tags: [],
+          },
+          {
+            id: "journal-4",
+            title: "Older note",
+            summary: "Reference content",
+            date: "2026-02-17T10:00:00.000Z",
+            updatedAt: "2026-02-17T10:00:00.000Z",
+            category: "journal",
+            pinned: false,
+            archived: false,
+            tags: [],
+          },
+          {
+            id: "today-1",
+            title: "Today",
+            summary: "- [x] not included in mentions",
+            date: "2026-02-20T12:00:00.000Z",
+            updatedAt: "2026-02-20T12:00:00.000Z",
+            category: "today",
+            pinned: false,
+            archived: false,
+            tags: [],
+          },
+        ]),
+    }),
+  },
+}));
+
+const syncContextValue: SyncContextValue = {
+  isOnline: true,
+  isOfflineSyncAvailable: true,
+  pendingCount: 0,
+  pendingEntries: [],
+  pendingEntryUpdates: [],
+  isSyncing: false,
+  syncNow: vi.fn(() => Promise.resolve()),
+  queueEntry: vi.fn(() => Promise.resolve()),
+  queueEntryUpdate: vi.fn(() => Promise.resolve()),
+  removePendingEntryUpdate: vi.fn(() => Promise.resolve()),
+  markServerUnreachable: vi.fn(),
+  clearSyncError: vi.fn(),
+};
+
+const state: AgentConversationState = {
+  conversationId: "conversation-1",
+  messages: [],
+  composer: {
+    status: "idle",
+    error: null,
+  },
+};
+
+function renderComposer(sendMessage = vi.fn()) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+
+  render(
+    <QueryClientProvider client={queryClient}>
+      <SyncContext.Provider value={syncContextValue}>
+        <LoopieConversationContent
+          state={state}
+          adapter={{
+            sendMessage,
+            stopResponse: vi.fn(),
+            resetConversation: vi.fn(),
+          }}
+        />
+      </SyncContext.Provider>
+    </QueryClientProvider>,
+  );
+
+  return { sendMessage };
+}
+
+describe("LoopieConversationContent mentions", () => {
+  it("shows journal suggestions and keeps selected references as chips", async () => {
+    useAudioDictationMock.mockReturnValue({
+      status: "idle",
+      inputLevel: 0,
+      elapsedSeconds: 0,
+      isSupported: true,
+      errorMessage: null,
+      stopDictation: vi.fn(),
+      toggleDictation: vi.fn(() => Promise.resolve()),
+      clearError: vi.fn(),
+    });
+
+    const user = userEvent.setup();
+    renderComposer();
+
+    const composer = screen.getByPlaceholderText(
+      /Ask about your content, growth, or next video idea/i,
+    );
+    await user.type(composer, "@sprint");
+
+    await screen.findByRole("button", { name: "Sprint recap" });
+    await user.click(screen.getByRole("button", { name: "Sprint recap" }));
+
+    expect(composer).toHaveValue("@entry:journal-1 ");
+    expect(await screen.findByText("Sprint recap")).toBeInTheDocument();
+  });
+
+  it("uses Enter to select mention before sending", async () => {
+    useAudioDictationMock.mockReturnValue({
+      status: "idle",
+      inputLevel: 0,
+      elapsedSeconds: 0,
+      isSupported: true,
+      errorMessage: null,
+      stopDictation: vi.fn(),
+      toggleDictation: vi.fn(() => Promise.resolve()),
+      clearError: vi.fn(),
+    });
+
+    const user = userEvent.setup();
+    const { sendMessage } = renderComposer();
+
+    const composer = screen.getByPlaceholderText(
+      /Ask about your content, growth, or next video idea/i,
+    );
+    await user.type(composer, "@spr");
+    await user.keyboard("{Enter}");
+
+    expect(sendMessage).not.toHaveBeenCalled();
+    expect(composer).toHaveValue("@entry:journal-1 ");
+
+    await user.keyboard("{Enter}");
+    expect(sendMessage).toHaveBeenCalledWith("@entry:journal-1", []);
+  });
+
+  it("shows the latest 3 entries when typing only @", async () => {
+    useAudioDictationMock.mockReturnValue({
+      status: "idle",
+      inputLevel: 0,
+      elapsedSeconds: 0,
+      isSupported: true,
+      errorMessage: null,
+      stopDictation: vi.fn(),
+      toggleDictation: vi.fn(() => Promise.resolve()),
+      clearError: vi.fn(),
+    });
+
+    const user = userEvent.setup();
+    renderComposer();
+
+    const composer = screen.getByPlaceholderText(
+      /Ask about your content, growth, or next video idea/i,
+    );
+    await user.type(composer, "@");
+
+    expect(await screen.findByRole("button", { name: "Sprint recap" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Video about Simile" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Launch notes" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Older note" })).toBeNull();
+  });
+});
