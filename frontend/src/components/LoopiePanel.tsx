@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { useAgentConversationContext } from "@/context/AgentConversationContext";
 import { useAssetUpload } from "@/hooks/useAssetUpload";
 import { useAudioDictation } from "@/hooks/useAudioDictation";
+import { useAudioInputDevices } from "@/hooks/useAudioInputDevices";
 import { useLoopieComposerState } from "@/hooks/useLoopieComposerState";
 import { useLoopieReferenceComposer } from "@/hooks/useLoopieReferenceComposer";
 import { useSync } from "@/hooks/useSync";
@@ -151,6 +152,14 @@ export function LoopieConversationContent({
   }, [journalItems, mentionState]);
 
   const {
+    audioInputDevices,
+    selectedAudioInputDeviceId,
+    selectAudioInputDevice,
+    refreshAudioInputDevices,
+    isSupported: isAudioInputSelectionSupported,
+  } = useAudioInputDevices();
+
+  const {
     status: dictationStatus,
     inputLevel: dictationInputLevel,
     elapsedSeconds: dictationElapsedSeconds,
@@ -161,6 +170,7 @@ export function LoopieConversationContent({
     clearError: clearDictationError,
   } = useAudioDictation({
     mode: "loopie",
+    audioInputDeviceId: selectedAudioInputDeviceId,
     onTranscription: (text) => {
       setInputValue((previous) => {
         const nextValue = appendTranscribedText(previous, text);
@@ -169,6 +179,13 @@ export function LoopieConversationContent({
       });
     },
   });
+
+  useEffect(() => {
+    if (dictationStatus === "idle") {
+      return;
+    }
+    void refreshAudioInputDevices();
+  }, [dictationStatus, refreshAudioInputDevices]);
 
   const { uploadFiles, isUploading } = useAssetUpload({
     onUploaded: (asset) => {
@@ -473,6 +490,9 @@ export function LoopieConversationContent({
         dictationInputLevel={dictationInputLevel}
         dictationElapsedSeconds={dictationElapsedSeconds}
         isDictationSupported={isDictationSupported}
+        audioInputDevices={audioInputDevices}
+        selectedAudioInputDeviceId={selectedAudioInputDeviceId}
+        isAudioInputSelectionSupported={isAudioInputSelectionSupported}
         isUploading={isUploading}
         isTextareaDisabled={uiState.isTextareaDisabled}
         isDictating={uiState.isDictating}
@@ -504,6 +524,7 @@ export function LoopieConversationContent({
         stopDictation={stopDictation}
         clearDictationError={clearDictationError}
         toggleDictation={toggleDictation}
+        onSelectAudioInputDevice={selectAudioInputDevice}
       />
     </div>
   );
