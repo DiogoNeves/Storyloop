@@ -130,12 +130,45 @@ describe("ActivityFeedItem summary preview", () => {
   });
 });
 
+describe("ActivityFeedItem smart unread indicator", () => {
+  it("shows a red dot for smart entries updated since last open", () => {
+    renderActivityFeedItem({
+      category: "journal",
+      promptBody: "Summarize wins",
+      updatedAt: "2026-02-20T10:00:00.000Z",
+      lastOpenedAt: "2026-02-20T09:00:00.000Z",
+    });
+
+    const dot = screen.getByLabelText("Updated since last open");
+    expect(dot).toBeInTheDocument();
+    const badge = screen.getByText("journal").closest("span");
+    expect(badge).not.toBeNull();
+    if (badge) {
+      expect(within(badge).queryByLabelText("Updated since last open")).toBeNull();
+    }
+  });
+
+  it("hides the red dot when smart entry was opened after latest update", () => {
+    renderActivityFeedItem({
+      category: "journal",
+      promptBody: "Summarize wins",
+      updatedAt: "2026-02-20T10:00:00.000Z",
+      lastOpenedAt: "2026-02-20T11:00:00.000Z",
+    });
+
+    expect(
+      screen.queryByLabelText("Updated since last open"),
+    ).not.toBeInTheDocument();
+  });
+});
+
 function renderActivityFeedItem(overrides: Partial<ActivityItem>) {
   const item: ActivityItem = {
     id: "journal-1",
     title: "Weekly reflection",
     summary: "Summary",
     date: "2025-01-01T00:00:00.000Z",
+    updatedAt: "2025-01-01T00:00:00.000Z",
     category: "journal",
     pinned: false,
     archived: false,

@@ -28,6 +28,7 @@ class EntryRecord:
     prompt_body: str | None = None
     prompt_format: str | None = None
     last_smart_update_at: datetime | None = None
+    last_opened_at: datetime | None = None
     link_url: str | None = None
     thumbnail_url: str | None = None
     video_id: str | None = None
@@ -46,6 +47,7 @@ ENTRY_COLUMNS = (
     "occurred_at",
     "updated_at",
     "last_smart_update_at",
+    "last_opened_at",
     "category",
     "link_url",
     "thumbnail_url",
@@ -70,6 +72,11 @@ def _row_to_record(row: Row) -> EntryRecord:
     archived_at = (
         datetime.fromisoformat(row["archived_at"]) if row["archived_at"] else None
     )
+    last_opened_at = (
+        datetime.fromisoformat(row["last_opened_at"])
+        if row["last_opened_at"]
+        else None
+    )
     return EntryRecord(
         id=row["id"],
         title=row["title"],
@@ -80,6 +87,7 @@ def _row_to_record(row: Row) -> EntryRecord:
         prompt_body=row["prompt_body"],
         prompt_format=row["prompt_format"],
         last_smart_update_at=last_smart_update_at,
+        last_opened_at=last_opened_at,
         link_url=row["link_url"],
         thumbnail_url=row["thumbnail_url"],
         video_id=row["video_id"],
@@ -105,6 +113,7 @@ def _record_to_values(record: EntryRecord) -> tuple:
         record.last_smart_update_at.isoformat()
         if record.last_smart_update_at
         else None,
+        record.last_opened_at.isoformat() if record.last_opened_at else None,
         record.category,
         record.link_url,
         record.thumbnail_url,
@@ -132,6 +141,7 @@ class EntryService(DatabaseService):
                     occurred_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
                     last_smart_update_at TEXT,
+                    last_opened_at TEXT,
                     category TEXT NOT NULL,
                     link_url TEXT,
                     thumbnail_url TEXT,
@@ -165,6 +175,10 @@ class EntryService(DatabaseService):
             if "last_smart_update_at" not in columns:
                 connection.execute(
                     "ALTER TABLE entries ADD COLUMN last_smart_update_at TEXT"
+                )
+            if "last_opened_at" not in columns:
+                connection.execute(
+                    "ALTER TABLE entries ADD COLUMN last_opened_at TEXT"
                 )
             if "video_id" not in columns:
                 connection.execute(
@@ -392,6 +406,21 @@ class EntryService(DatabaseService):
                 WHERE id = ?
                 """,
                 (updated_at.isoformat(), entry_id),
+            )
+            connection.commit()
+
+        return cursor.rowcount == 1
+
+    def update_last_opened_at(self, entry_id: str, opened_at: datetime) -> bool:
+        """Persist the last opened timestamp for an entry."""
+        with closing(self._connection_factory()) as connection:
+            cursor = connection.execute(
+                """
+                UPDATE entries
+                SET last_opened_at = ?
+                WHERE id = ?
+                """,
+                (opened_at.isoformat(), entry_id),
             )
             connection.commit()
 

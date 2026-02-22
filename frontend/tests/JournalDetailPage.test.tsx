@@ -21,6 +21,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { getTodayEntryDisplayTitle } from "@/lib/today-entry";
 
 const apiGetMock = vi.hoisted(() => vi.fn());
+const apiPostMock = vi.hoisted(() => vi.fn());
 const apiPutMock = vi.hoisted(() => vi.fn());
 const useAudioDictationMock = vi.hoisted(() => vi.fn());
 const journalEditorFocusMock = vi.hoisted(() => vi.fn());
@@ -63,6 +64,7 @@ vi.mock("@/components/JournalEntryEditor", async () => {
 vi.mock("@/api/client", () => ({
   apiClient: {
     get: apiGetMock,
+    post: apiPostMock,
     put: apiPutMock,
   },
   API_BASE_URL: "http://localhost:8000",
@@ -144,6 +146,7 @@ describe("JournalDetailPage", () => {
     journalEditorFocusMock.mockReset();
     journalEditorFocusAtEndMock.mockReset();
     apiGetMock.mockReset();
+    apiPostMock.mockReset();
     apiPutMock.mockReset();
     apiGetMock.mockImplementation((url: string) => {
       if (url.startsWith("/entries/")) {
@@ -170,6 +173,17 @@ describe("JournalDetailPage", () => {
         return Promise.resolve({ data: sampleEntry });
       },
     );
+    apiPostMock.mockImplementation((url: string) => {
+      if (url.endsWith("/opened")) {
+        return Promise.resolve({
+          data: {
+            ...sampleEntry,
+            lastOpenedAt: "2026-02-16T23:00:00Z",
+          },
+        });
+      }
+      return Promise.resolve({ data: sampleEntry });
+    });
     useAudioDictationMock.mockReset();
     useAudioDictationMock.mockReturnValue({
       status: "idle",
@@ -302,6 +316,17 @@ describe("JournalDetailPage", () => {
       }
       return Promise.resolve({ data: smartEntry });
     });
+    apiPostMock.mockImplementation((url: string) => {
+      if (url === `/entries/${smartEntry.id}/opened`) {
+        return Promise.resolve({
+          data: {
+            ...smartEntry,
+            lastOpenedAt: "2026-02-16T23:10:00Z",
+          },
+        });
+      }
+      return Promise.resolve({ data: smartEntry });
+    });
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(new Response("failed", { status: 500 }));
@@ -334,6 +359,51 @@ describe("JournalDetailPage", () => {
     } finally {
       fetchMock.mockRestore();
     }
+  });
+
+  it("marks smart entries as opened when detail page loads", async () => {
+    const smartEntry: Entry = {
+      ...sampleEntry,
+      promptBody: "Keep this concise.",
+      promptFormat: "Bulleted list",
+      lastSmartUpdateAt: "2026-02-16T22:51:00Z",
+    };
+
+    apiGetMock.mockImplementation((url: string) => {
+      if (url.startsWith("/entries/")) {
+        return Promise.resolve({ data: smartEntry });
+      }
+      if (url.startsWith("/entries")) {
+        return Promise.resolve({ data: [smartEntry] });
+      }
+      if (url.startsWith("/conversations")) {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.resolve({ data: smartEntry });
+    });
+    apiPostMock.mockImplementation((url: string) => {
+      if (url === `/entries/${smartEntry.id}/opened`) {
+        return Promise.resolve({
+          data: {
+            ...smartEntry,
+            lastOpenedAt: "2026-02-16T23:10:00Z",
+          },
+        });
+      }
+      return Promise.resolve({ data: smartEntry });
+    });
+
+    renderPage(<JournalDetailPage />);
+
+    expect(
+      await screen.findByRole("button", { name: /Regenerate smart entry/i }),
+    ).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(apiPostMock).toHaveBeenCalledWith(
+        `/entries/${smartEntry.id}/opened`,
+      );
+    });
   });
 
   it("renders the Today checklist editor and hides pin/archive controls", async () => {

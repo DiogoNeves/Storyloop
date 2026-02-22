@@ -25,6 +25,7 @@ export interface ActivityFeedItemViewModel {
   formattedCreatedDate: string | null;
   titleText: string;
   isSmartJournal: boolean;
+  showSmartUpdatedSinceLastOpen: boolean;
   summaryText: string;
   isSmartSummaryPlaceholder: boolean;
   showThumbnail: boolean;
@@ -69,6 +70,7 @@ export function buildActivityFeedItemViewModel({
       ? getTodayEntryDisplayTitle(item.id, item.createdAt ?? item.date)
       : item.title.trim();
   const isSmartJournal = item.category === "journal" && Boolean(item.promptBody);
+  const showSmartUpdatedSinceLastOpen = computeSmartUpdatedSinceLastOpen(item);
   const summary = item.summary.trim();
   const isSmartSummaryPlaceholder = isSmartJournal && summary.length === 0;
   const summaryText = isSmartSummaryPlaceholder
@@ -100,6 +102,7 @@ export function buildActivityFeedItemViewModel({
     formattedCreatedDate,
     titleText,
     isSmartJournal,
+    showSmartUpdatedSinceLastOpen,
     summaryText,
     isSmartSummaryPlaceholder,
     showThumbnail,
@@ -111,4 +114,28 @@ export function buildActivityFeedItemViewModel({
     archiveDisabledAriaLabel,
     tagLabels,
   };
+}
+
+function computeSmartUpdatedSinceLastOpen(item: ActivityItem): boolean {
+  const isSmartJournal = item.category === "journal" && Boolean(item.promptBody);
+  if (!isSmartJournal) {
+    return false;
+  }
+
+  const updatedAtSource = item.updatedAt ?? item.date;
+  const updatedAtTime = new Date(updatedAtSource).getTime();
+  if (Number.isNaN(updatedAtTime)) {
+    return false;
+  }
+
+  if (!item.lastOpenedAt) {
+    return true;
+  }
+
+  const lastOpenedTime = new Date(item.lastOpenedAt).getTime();
+  if (Number.isNaN(lastOpenedTime)) {
+    return true;
+  }
+
+  return updatedAtTime > lastOpenedTime;
 }

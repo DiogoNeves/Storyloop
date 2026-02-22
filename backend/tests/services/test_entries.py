@@ -169,6 +169,58 @@ def test_round_trips_archived_at(memory_connection_factory: SqliteConnectionFact
     assert fetched.archived_at == archived_at
 
 
+def test_round_trips_last_opened_at(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    service = EntryService(memory_connection_factory)
+    service.ensure_schema()
+
+    now = datetime.now(tz=UTC)
+    opened_at = now + timedelta(minutes=3)
+    record = EntryRecord(
+        id="entry-last-opened",
+        title="Opened entry",
+        summary="Stored with open timestamp.",
+        occurred_at=now,
+        updated_at=now,
+        category="journal",
+        prompt_body="Smart prompt text.",
+        last_opened_at=opened_at,
+    )
+    service.save_new_entries([record])
+
+    fetched = service.get_entry("entry-last-opened")
+    assert fetched is not None
+    assert fetched.last_opened_at == opened_at
+
+
+def test_update_last_opened_at_does_not_change_updated_at(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    service = EntryService(memory_connection_factory)
+    service.ensure_schema()
+
+    now = datetime.now(tz=UTC)
+    record = EntryRecord(
+        id="entry-open-update",
+        title="Opened entry",
+        summary="Smart summary",
+        occurred_at=now,
+        updated_at=now,
+        category="journal",
+        prompt_body="Smart prompt text.",
+    )
+    service.save_new_entries([record])
+
+    opened_at = now + timedelta(minutes=5)
+    assert service.update_last_opened_at("entry-open-update", opened_at) is True
+
+    fetched = service.get_entry("entry-open-update")
+    assert fetched is not None
+    assert fetched.last_opened_at == opened_at
+    assert fetched.updated_at == now
+
+
 def test_delete_entry_removes_record(memory_connection_factory: SqliteConnectionFactory) -> None:
     service = EntryService(memory_connection_factory)
     service.ensure_schema()
