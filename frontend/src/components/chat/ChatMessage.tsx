@@ -10,9 +10,13 @@ import { getToneLayout, resolveTone } from "./toneStyles";
 
 interface ChatMessageProps {
   message: AgentMessage;
+  entryReferenceTitles?: Record<string, string>;
 }
 
-function ChatMessageComponent({ message }: ChatMessageProps) {
+function ChatMessageComponent({
+  message,
+  entryReferenceTitles,
+}: ChatMessageProps) {
   if (message.role === "tool") {
     return (
       <div className="space-y-2 pl-1">
@@ -43,6 +47,7 @@ function ChatMessageComponent({ message }: ChatMessageProps) {
           content={message.content}
           className="leading-relaxed"
           tone={tone}
+          entryReferenceTitles={entryReferenceTitles}
         />
         <div className="pointer-events-none absolute bottom-0 right-0 z-10 translate-y-full opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
           <div className="[&_button]:h-6 [&_button]:w-6 [&_button_svg]:h-3 [&_button_svg]:w-3">
