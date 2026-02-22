@@ -5,7 +5,10 @@ import { describe, expect, it, vi } from "vitest";
 
 import { LoopieConversationContent } from "@/components/LoopiePanel";
 import { SyncContext, type SyncContextValue } from "@/context/SyncContext";
-import type { AgentConversationState } from "@/lib/types/agent";
+import type {
+  AgentConversationState,
+  AgentMessageAttachment,
+} from "@/lib/types/agent";
 
 const useAudioDictationMock = vi.hoisted(() => vi.fn());
 
@@ -103,7 +106,11 @@ const state: AgentConversationState = {
   },
 };
 
-function renderComposer(sendMessage = vi.fn()) {
+function renderComposer(
+  sendMessage = vi.fn<
+    (input: string, attachments?: AgentMessageAttachment[]) => Promise<void>
+  >(() => Promise.resolve()),
+) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -290,6 +297,37 @@ describe("LoopieConversationContent mentions", () => {
 
     expect(sendMessage).toHaveBeenCalledWith(`Hello ${privateUseCharacter}`, []);
   });
+
+  it("strips mapped orphan markers before sending", async () => {
+    useAudioDictationMock.mockReturnValue({
+      status: "idle",
+      inputLevel: 0,
+      elapsedSeconds: 0,
+      isSupported: true,
+      errorMessage: null,
+      stopDictation: vi.fn(),
+      toggleDictation: vi.fn(() => Promise.resolve()),
+      clearError: vi.fn(),
+    });
+
+    const user = userEvent.setup();
+    const { sendMessage } = renderComposer();
+    const composer = screen.getByPlaceholderText(
+      /Ask about your content, growth, or next video idea/i,
+    );
+
+    await user.type(composer, "@spr");
+    await user.keyboard("{Enter}");
+    await user.keyboard("{Backspace}{Backspace}test");
+    await user.keyboard("{Enter}");
+
+    const sentText = sendMessage.mock.calls[0]?.[0];
+    expect(typeof sentText).toBe("string");
+    if (typeof sentText === "string") {
+      expect(sentText).toContain("Sprint recap");
+      expect(hasPrivateUseCharacter(sentText)).toBe(false);
+    }
+  });
 });
 
 function readTextareaValue(element: HTMLElement): string {
@@ -297,4 +335,8 @@ function readTextareaValue(element: HTMLElement): string {
     throw new Error("Expected textarea element");
   }
   return element.value;
+}
+
+function hasPrivateUseCharacter(value: string): boolean {
+  return /[\uE000-\uF8FF]/.test(value);
 }

@@ -393,6 +393,10 @@ export function LoopieConversationContent({
           index = closingIndex + 1;
           continue;
         }
+        if (entryId) {
+          index += 1;
+          continue;
+        }
         decoded += character;
         index += 1;
         continue;
