@@ -151,6 +151,10 @@ export function LoopieConversationContent({
     null,
   );
   const [mentionActiveIndex, setMentionActiveIndex] = useState(0);
+  const [composerScrollOffset, setComposerScrollOffset] = useState({
+    top: 0,
+    left: 0,
+  });
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -268,6 +272,13 @@ export function LoopieConversationContent({
 
     container.scrollTop = container.scrollHeight;
   }, [state.messages, state.composer.status]);
+
+  useEffect(() => {
+    if (hasInlineReferences) {
+      return;
+    }
+    setComposerScrollOffset({ top: 0, left: 0 });
+  }, [hasInlineReferences]);
 
   const updateMentionState = useCallback(
     (nextValue: string, cursorPosition: number | null) => {
@@ -661,7 +672,13 @@ export function LoopieConversationContent({
             <div className="relative flex items-end">
               {hasInlineReferences ? (
                 <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl px-4 py-3 pr-24 text-sm">
-                  <div className="whitespace-pre-wrap break-words leading-5 text-foreground">
+                  <div
+                    data-testid="loopie-composer-overlay-content"
+                    className="whitespace-pre-wrap break-words leading-5 text-foreground"
+                    style={{
+                      transform: `translate(${-composerScrollOffset.left}px, ${-composerScrollOffset.top}px)`,
+                    }}
+                  >
                     {inlineReferenceSegments.map((segment, index) => {
                       if (segment.type === "text") {
                         return (
@@ -718,6 +735,12 @@ export function LoopieConversationContent({
                     event.currentTarget.value,
                     event.currentTarget.selectionStart,
                   );
+                }}
+                onScroll={(event) => {
+                  setComposerScrollOffset({
+                    top: event.currentTarget.scrollTop,
+                    left: event.currentTarget.scrollLeft,
+                  });
                 }}
                 onKeyDown={(event) => {
                   if (mentionState) {
