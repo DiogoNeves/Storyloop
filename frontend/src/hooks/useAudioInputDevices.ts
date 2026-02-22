@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 const DEFAULT_AUDIO_INPUT_DEVICE_ID = "default";
+const DEFAULT_AUDIO_INPUT_DEVICE_LABEL = "System default microphone";
 const AUDIO_INPUT_DEVICE_STORAGE_KEY = "storyloop.audioInputDeviceId";
 
 export interface AudioInputDeviceOption {
@@ -36,7 +37,16 @@ export function useAudioInputDevices(): UseAudioInputDevicesResult {
       return;
     }
 
-    const devices = await navigator.mediaDevices.enumerateDevices();
+    let devices: MediaDeviceInfo[];
+    try {
+      devices = await navigator.mediaDevices.enumerateDevices();
+    } catch {
+      setAudioInputDevices([createDefaultAudioInputDeviceOption()]);
+      setSelectedAudioInputDeviceId(DEFAULT_AUDIO_INPUT_DEVICE_ID);
+      persistAudioInputDeviceId(DEFAULT_AUDIO_INPUT_DEVICE_ID);
+      return;
+    }
+
     const discovered = devices
       .filter((device) => device.kind === "audioinput")
       .map((device, index) => ({
@@ -47,8 +57,8 @@ export function useAudioInputDevices(): UseAudioInputDevicesResult {
         label:
           device.label && device.label.trim().length > 0
             ? device.label
-            : index === 0
-              ? "System default microphone"
+              : index === 0
+              ? DEFAULT_AUDIO_INPUT_DEVICE_LABEL
               : `Microphone ${index + 1}`,
       }));
 
@@ -60,7 +70,7 @@ export function useAudioInputDevices(): UseAudioInputDevicesResult {
       : [
           {
             deviceId: DEFAULT_AUDIO_INPUT_DEVICE_ID,
-            label: "System default microphone",
+            label: DEFAULT_AUDIO_INPUT_DEVICE_LABEL,
           },
           ...discovered,
         ];
@@ -146,9 +156,13 @@ function loadInitialAudioInputDeviceId(): string {
     return DEFAULT_AUDIO_INPUT_DEVICE_ID;
   }
 
-  const saved = window.localStorage.getItem(AUDIO_INPUT_DEVICE_STORAGE_KEY);
-  if (saved && saved.trim().length > 0) {
-    return saved;
+  try {
+    const saved = window.localStorage.getItem(AUDIO_INPUT_DEVICE_STORAGE_KEY);
+    if (saved && saved.trim().length > 0) {
+      return saved;
+    }
+  } catch {
+    return DEFAULT_AUDIO_INPUT_DEVICE_ID;
   }
 
   return DEFAULT_AUDIO_INPUT_DEVICE_ID;
@@ -158,5 +172,16 @@ function persistAudioInputDeviceId(deviceId: string): void {
   if (typeof window === "undefined") {
     return;
   }
-  window.localStorage.setItem(AUDIO_INPUT_DEVICE_STORAGE_KEY, deviceId);
+  try {
+    window.localStorage.setItem(AUDIO_INPUT_DEVICE_STORAGE_KEY, deviceId);
+  } catch {
+    // Ignore storage errors (e.g. restricted browser privacy modes).
+  }
+}
+
+function createDefaultAudioInputDeviceOption(): AudioInputDeviceOption {
+  return {
+    deviceId: DEFAULT_AUDIO_INPUT_DEVICE_ID,
+    label: DEFAULT_AUDIO_INPUT_DEVICE_LABEL,
+  };
 }
