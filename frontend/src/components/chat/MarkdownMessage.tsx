@@ -36,6 +36,10 @@ type MarkdownCodeProps = HTMLAttributes<HTMLElement> & {
 
 const createMarkdownComponents = (tone: ChatTone) => {
   const { heading, text: textColor } = getToneColors(tone);
+  const entryReferenceChipClassName =
+    tone === "user"
+      ? "inline-flex items-center rounded-full border border-primary/20 bg-red-50 px-2 py-0.5 text-xs font-medium leading-4 text-primary no-underline transition-colors hover:bg-red-100"
+      : "inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs font-medium leading-4 text-primary no-underline transition-colors hover:bg-primary/15";
 
   // Base markdown component mapping. Extend this map with custom components
   // (e.g., callouts or rich link previews) to evolve the chat rendering
@@ -140,7 +144,7 @@ const createMarkdownComponents = (tone: ChatTone) => {
         return (
           <Link
             to={`/journals/${entryId}`}
-            className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs font-medium leading-4 text-primary no-underline transition-colors hover:bg-primary/15"
+            className={entryReferenceChipClassName}
             style={{ textDecoration: "none" }}
             {...props}
           >
