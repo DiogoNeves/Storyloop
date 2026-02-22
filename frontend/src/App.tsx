@@ -94,6 +94,11 @@ const LoopiePage = lazy(() =>
     default: module.LoopiePage,
   })),
 );
+const NotFoundPage = lazy(() =>
+  import("@/pages/NotFoundPage").then((module) => ({
+    default: module.NotFoundPage,
+  })),
+);
 const VideoDetailPage = lazy(() =>
   import("@/pages/VideoDetailPage").then((module) => ({
     default: module.VideoDetailPage,
@@ -691,6 +696,7 @@ export function App() {
                       path="/auth/callback"
                       element={<YoutubeAuthCallback />}
                     />
+                    <Route path="*" element={<NotFoundPage />} />
                   </Routes>
                 </Suspense>
               </AgentConversationProvider>
