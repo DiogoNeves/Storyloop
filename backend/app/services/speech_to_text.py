@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import logging
 from typing import Literal, Protocol, TypedDict, cast
 
 from openai import APIConnectionError
@@ -19,7 +18,6 @@ from app.config import Settings
 SpeechDictationMode = Literal["loopie", "journal_note"]
 AudioPayload = bytes | bytearray
 _TRANSCRIPTION_MODEL = "gpt-4o-mini-transcribe"
-logger = logging.getLogger(__name__)
 
 _LOOPIE_TRANSCRIPTION_PROMPT = """Transcribe the audio directly.
 
@@ -149,74 +147,17 @@ class SpeechToTextService:
                 response_format="json",
             )
         except APITimeoutError as exc:
-            logger.warning(
-                "speech_to_text.provider_timeout",
-                extra={
-                    "audio_filename": filename,
-                    "audio_content_type": normalized_type,
-                    "dictation_mode": mode,
-                },
-                exc_info=exc,
-            )
             raise SpeechToTextProviderError(_TRANSCRIPTION_TIMEOUT_MESSAGE) from exc
         except APIConnectionError as exc:
-            logger.warning(
-                "speech_to_text.provider_connection_error",
-                extra={
-                    "audio_filename": filename,
-                    "audio_content_type": normalized_type,
-                    "dictation_mode": mode,
-                },
-                exc_info=exc,
-            )
             raise SpeechToTextProviderError(_TRANSCRIPTION_CONNECTION_MESSAGE) from exc
         except RateLimitError as exc:
-            logger.warning(
-                "speech_to_text.provider_rate_limited",
-                extra={
-                    "audio_filename": filename,
-                    "audio_content_type": normalized_type,
-                    "dictation_mode": mode,
-                    "status_code": getattr(exc, "status_code", None),
-                },
-                exc_info=exc,
-            )
             raise SpeechToTextProviderError(_TRANSCRIPTION_RATE_LIMIT_MESSAGE) from exc
         except BadRequestError as exc:
             provider_message = _extract_provider_error_message(exc)
-            logger.warning(
-                "speech_to_text.provider_bad_request",
-                extra={
-                    "audio_filename": filename,
-                    "audio_content_type": normalized_type,
-                    "dictation_mode": mode,
-                    "status_code": getattr(exc, "status_code", None),
-                    "provider_message": provider_message,
-                },
-                exc_info=exc,
-            )
             raise SpeechToTextProviderError(provider_message) from exc
         except APIStatusError as exc:
-            logger.warning(
-                "speech_to_text.provider_status_error",
-                extra={
-                    "audio_filename": filename,
-                    "audio_content_type": normalized_type,
-                    "dictation_mode": mode,
-                    "status_code": getattr(exc, "status_code", None),
-                },
-                exc_info=exc,
-            )
             raise SpeechToTextProviderError(_TRANSCRIPTION_PROVIDER_ERROR_MESSAGE) from exc
         except OpenAIError as exc:
-            logger.exception(
-                "speech_to_text.provider_error",
-                extra={
-                    "audio_filename": filename,
-                    "audio_content_type": normalized_type,
-                    "dictation_mode": mode,
-                },
-            )
             raise SpeechToTextProviderError("Could not transcribe audio.") from exc
 
         transcript = _extract_response_text(response)
