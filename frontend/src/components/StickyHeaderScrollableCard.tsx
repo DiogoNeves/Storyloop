@@ -72,7 +72,7 @@ export function StickyHeaderScrollableCard({
             className={cn(
               "flex-shrink-0 overflow-hidden border-border/80 bg-background/95 px-0 backdrop-blur transition-[max-height,opacity,padding,border-width] duration-200 lg:hidden",
               showMobileCollapsedHeader
-                ? "max-h-16 border-b py-2 opacity-100"
+                ? "max-h-12 border-b py-1 opacity-100"
                 : "pointer-events-none max-h-0 border-b-0 py-0 opacity-0",
             )}
             aria-hidden={!showMobileCollapsedHeader}
