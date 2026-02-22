@@ -21,24 +21,30 @@ _REMOVED_CHANNEL_PROFILE_COLUMNS = {
     "channel_profile_json",
     "channel_profile_updated_at",
 }
-_USERS_TABLE_COLUMNS = (
-    "id",
-    "channel_id",
-    "channel_title",
-    "channel_url",
-    "channel_thumbnail_url",
-    "channel_updated_at",
-    "credentials_json",
-    "credentials_updated_at",
-    "credentials_error",
-    "oauth_state",
-    "oauth_state_created_at",
-    "smart_update_interval_hours",
-    "show_archived",
-    "activity_feed_sort_date",
-    "today_entries_enabled",
-    "today_include_previous_incomplete",
-    "today_move_completed_to_end",
+_USERS_TABLE_SCHEMA: tuple[tuple[str, str], ...] = (
+    ("id", "TEXT PRIMARY KEY"),
+    ("channel_id", "TEXT"),
+    ("channel_title", "TEXT"),
+    ("channel_url", "TEXT"),
+    ("channel_thumbnail_url", "TEXT"),
+    ("channel_updated_at", "TEXT"),
+    ("credentials_json", "TEXT"),
+    ("credentials_updated_at", "TEXT"),
+    ("credentials_error", "TEXT"),
+    ("oauth_state", "TEXT"),
+    ("oauth_state_created_at", "TEXT"),
+    ("smart_update_interval_hours", "INTEGER"),
+    ("show_archived", "INTEGER"),
+    ("activity_feed_sort_date", "TEXT"),
+    ("today_entries_enabled", "INTEGER"),
+    ("today_include_previous_incomplete", "INTEGER"),
+    ("today_move_completed_to_end", "INTEGER"),
+)
+_USERS_TABLE_COLUMNS = tuple(column for column, _ in _USERS_TABLE_SCHEMA)
+_USERS_TABLE_MUTABLE_COLUMNS = tuple(
+    (column, column_type)
+    for column, column_type in _USERS_TABLE_SCHEMA
+    if column != "id"
 )
 
 
@@ -117,26 +123,16 @@ class UserService(DatabaseService):
 
     @staticmethod
     def _create_users_table(connection, table_name: str = "users") -> None:
+        if table_name not in {"users", "users_new"}:
+            raise ValueError(f"Unsupported users table name: {table_name}")
+        column_sql = ",\n                ".join(
+            f"{column} {column_type}"
+            for column, column_type in _USERS_TABLE_SCHEMA
+        )
         connection.execute(
             f"""
             CREATE TABLE IF NOT EXISTS {table_name} (
-                id TEXT PRIMARY KEY,
-                channel_id TEXT,
-                channel_title TEXT,
-                channel_url TEXT,
-                channel_thumbnail_url TEXT,
-                channel_updated_at TEXT,
-                credentials_json TEXT,
-                credentials_updated_at TEXT,
-                credentials_error TEXT,
-                oauth_state TEXT,
-                oauth_state_created_at TEXT,
-                smart_update_interval_hours INTEGER,
-                show_archived INTEGER,
-                activity_feed_sort_date TEXT,
-                today_entries_enabled INTEGER,
-                today_include_previous_incomplete INTEGER,
-                today_move_completed_to_end INTEGER
+                {column_sql}
             )
             """
         )
@@ -179,34 +175,11 @@ class UserService(DatabaseService):
             existing_columns = self._existing_columns(connection)
             self._drop_removed_columns_if_needed(connection, existing_columns)
             existing_columns = self._existing_columns(connection)
-            if "credentials_error" not in existing_columns:
+            for column, column_type in _USERS_TABLE_MUTABLE_COLUMNS:
+                if column in existing_columns:
+                    continue
                 connection.execute(
-                    "ALTER TABLE users ADD COLUMN credentials_error TEXT"
-                )
-            if "smart_update_interval_hours" not in existing_columns:
-                connection.execute(
-                    "ALTER TABLE users ADD COLUMN smart_update_interval_hours INTEGER"
-                )
-            if "show_archived" not in existing_columns:
-                connection.execute(
-                    "ALTER TABLE users ADD COLUMN show_archived INTEGER"
-                )
-            if "activity_feed_sort_date" not in existing_columns:
-                connection.execute(
-                    "ALTER TABLE users ADD COLUMN activity_feed_sort_date TEXT"
-                )
-            if "today_entries_enabled" not in existing_columns:
-                connection.execute(
-                    "ALTER TABLE users ADD COLUMN today_entries_enabled INTEGER"
-                )
-            if "today_include_previous_incomplete" not in existing_columns:
-                connection.execute(
-                    "ALTER TABLE users ADD COLUMN "
-                    "today_include_previous_incomplete INTEGER"
-                )
-            if "today_move_completed_to_end" not in existing_columns:
-                connection.execute(
-                    "ALTER TABLE users ADD COLUMN today_move_completed_to_end INTEGER"
+                    f"ALTER TABLE users ADD COLUMN {column} {column_type}"
                 )
             connection.commit()
 
