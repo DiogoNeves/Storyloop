@@ -20,6 +20,7 @@ import {
  * - `GET /entries/{id}` — fetches a single entry by ID.
  * - `POST /entries` — accepts an array of entries to persist and returns the subset
  *   that were newly stored.
+ * - `POST /entries/{id}/opened` — records that a smart journal entry was opened.
  * - `PUT /entries/{id}` — updates an existing entry.
  * - `DELETE /entries/{id}` — deletes an entry.
  */
@@ -101,6 +102,11 @@ export async function updateEntry({
   ...input
 }: UpdateEntryInput): Promise<Entry> {
   const { data } = await apiClient.put<unknown>(`/entries/${id}`, input);
+  return parseEntry(data);
+}
+
+export async function markSmartEntryOpened(entryId: string): Promise<Entry> {
+  const { data } = await apiClient.post<unknown>(`/entries/${entryId}/opened`);
   return parseEntry(data);
 }
 
