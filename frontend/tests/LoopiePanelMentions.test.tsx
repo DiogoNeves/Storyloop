@@ -265,6 +265,31 @@ describe("LoopieConversationContent mentions", () => {
     await user.keyboard("{Enter}");
     expect(sendMessage).toHaveBeenCalledWith("@entry:journal-1o", []);
   });
+
+  it("preserves unmapped private-use unicode when sending", async () => {
+    useAudioDictationMock.mockReturnValue({
+      status: "idle",
+      inputLevel: 0,
+      elapsedSeconds: 0,
+      isSupported: true,
+      errorMessage: null,
+      stopDictation: vi.fn(),
+      toggleDictation: vi.fn(() => Promise.resolve()),
+      clearError: vi.fn(),
+    });
+
+    const user = userEvent.setup();
+    const { sendMessage } = renderComposer();
+    const composer = screen.getByPlaceholderText(
+      /Ask about your content, growth, or next video idea/i,
+    );
+
+    const privateUseCharacter = "\uf8ff";
+    await user.type(composer, `Hello ${privateUseCharacter}`);
+    await user.keyboard("{Enter}");
+
+    expect(sendMessage).toHaveBeenCalledWith(`Hello ${privateUseCharacter}`, []);
+  });
 });
 
 function readTextareaValue(element: HTMLElement): string {
