@@ -12,3 +12,8 @@ def test_loopie_prompt_includes_today_rollover_guidance() -> None:
         "If a past open task does not appear in later Today entries, treat "
         "it as potentially forgotten." in prompt
     )
+    assert "Users can reference journal entries with canonical tokens like" in prompt
+    assert (
+        "prefer `read_journal_entry` with that referenced ID before summarizing"
+        in prompt
+    )
