@@ -26,7 +26,11 @@ import {
 } from "@/lib/entry-references";
 import { filterActivityItems } from "@/lib/activity-search";
 import { findMentionCandidate } from "@/lib/mention-search";
-import { entryToActivityItem, type ActivityItem } from "@/lib/types/entries";
+import {
+  compareActivityItemsByPinnedDate,
+  entryToActivityItem,
+  type ActivityItem,
+} from "@/lib/types/entries";
 import { cn } from "@/lib/utils";
 import { useAssetUpload } from "@/hooks/useAssetUpload";
 import { useAudioDictation } from "@/hooks/useAudioDictation";
@@ -79,6 +83,26 @@ interface ComposerMentionState {
   endIndex: number;
 }
 
+interface InlineReferenceSegmentText {
+  type: "text";
+  value: string;
+}
+
+interface InlineReferenceSegmentReference {
+  type: "reference";
+  entryId: string;
+  label: string;
+  token: string;
+  key: string;
+}
+
+type InlineReferenceSegment =
+  | InlineReferenceSegmentText
+  | InlineReferenceSegmentReference;
+
+const REFERENCE_MARKER_START = 0xe000;
+const REFERENCE_MARKER_END = 0xf8ff;
+
 function findComposerMentionState(
   value: string,
   cursorPosition: number | null,
@@ -96,6 +120,17 @@ function findComposerMentionState(
     startIndex: candidate.startIndex,
     endIndex: cursorPosition,
   };
+}
+
+function isReferenceMarker(value: string): boolean {
+  if (!value) {
+    return false;
+  }
+  const codePoint = value.codePointAt(0);
+  if (typeof codePoint !== "number") {
+    return false;
+  }
+  return codePoint >= REFERENCE_MARKER_START && codePoint <= REFERENCE_MARKER_END;
 }
 
 export function LoopieConversationContent({
@@ -119,6 +154,8 @@ export function LoopieConversationContent({
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const referenceMarkerToEntryIdRef = useRef<Map<string, string>>(new Map());
+  const nextReferenceMarkerCodeRef = useRef(REFERENCE_MARKER_START);
   const { isOnline } = useSync();
   const entriesListQuery = useMemo(() => entriesQueries.all(), []);
   const entriesQuery = useQuery(entriesListQuery);
@@ -126,7 +163,8 @@ export function LoopieConversationContent({
     () =>
       (entriesQuery.data ?? [])
         .filter((entry) => entry.category === "journal" && !entry.archived)
-        .map((entry) => entryToActivityItem(entry)),
+        .map((entry) => entryToActivityItem(entry))
+        .sort(compareActivityItemsByPinnedDate),
     [entriesQuery.data],
   );
   const entryReferenceTitles = useMemo(
@@ -136,46 +174,57 @@ export function LoopieConversationContent({
       ),
     [journalItems],
   );
-  const inputEntryReferenceTokens = useMemo(
-    () => extractEntryReferenceTokens(inputValue),
-    [inputValue],
-  );
-  const hasInlineReferences = inputEntryReferenceTokens.length > 0;
-  const inlineReferenceSegments = useMemo(() => {
-    if (!hasInlineReferences) {
-      return [];
-    }
-    let previousEnd = 0;
-    const segments: Array<
-      | { type: "text"; value: string }
-      | { type: "reference"; entryId: string; token: string; key: string }
-    > = [];
+  const inlineReferenceSegments = useMemo<InlineReferenceSegment[]>(() => {
+    const segments: InlineReferenceSegment[] = [];
+    let textBuffer = "";
+    let index = 0;
 
-    inputEntryReferenceTokens.forEach((reference, index) => {
-      if (reference.start > previousEnd) {
+    while (index < inputValue.length) {
+      const character = inputValue[index] ?? "";
+      if (!isReferenceMarker(character)) {
+        textBuffer += character;
+        index += 1;
+        continue;
+      }
+
+      const entryId = referenceMarkerToEntryIdRef.current.get(character);
+      const closingIndex = inputValue.indexOf(character, index + 1);
+      if (!entryId || closingIndex < 0) {
+        textBuffer += character;
+        index += 1;
+        continue;
+      }
+
+      if (textBuffer.length > 0) {
         segments.push({
           type: "text",
-          value: inputValue.slice(previousEnd, reference.start),
+          value: textBuffer,
         });
+        textBuffer = "";
       }
+
       segments.push({
         type: "reference",
-        entryId: reference.entryId,
-        token: reference.token,
-        key: `${reference.start}-${reference.end}-${index}`,
+        entryId,
+        label: resolveEntryReferenceLabel(entryId, entryReferenceTitles),
+        token: `@entry:${entryId}`,
+        key: `${index}-${entryId}`,
       });
-      previousEnd = reference.end;
-    });
+      index = closingIndex + 1;
+    }
 
-    if (previousEnd < inputValue.length) {
+    if (textBuffer.length > 0) {
       segments.push({
         type: "text",
-        value: inputValue.slice(previousEnd),
+        value: textBuffer,
       });
     }
 
     return segments;
-  }, [hasInlineReferences, inputEntryReferenceTokens, inputValue]);
+  }, [entryReferenceTitles, inputValue]);
+  const hasInlineReferences = inlineReferenceSegments.some(
+    (segment) => segment.type === "reference",
+  );
   const mentionSuggestions = useMemo(() => {
     if (!mentionState) {
       return [];
@@ -235,52 +284,152 @@ export function LoopieConversationContent({
     [mentionState?.query],
   );
 
-  const insertMention = useCallback((selection: ActivityItem) => {
-    setInputValue((currentValue) => {
-      const activeTextarea = textareaRef.current;
-      const cursorPosition = activeTextarea?.selectionStart ?? currentValue.length;
-      const activeMention = findComposerMentionState(currentValue, cursorPosition);
-      if (!activeMention) {
-        return currentValue;
+  const createReferenceMarker = useCallback((entryId: string): string => {
+    const usedMarkers = referenceMarkerToEntryIdRef.current;
+    let attempts = 0;
+    while (attempts <= REFERENCE_MARKER_END - REFERENCE_MARKER_START) {
+      const code = nextReferenceMarkerCodeRef.current;
+      const marker = String.fromCharCode(code);
+      nextReferenceMarkerCodeRef.current =
+        code >= REFERENCE_MARKER_END ? REFERENCE_MARKER_START : code + 1;
+      attempts += 1;
+      if (usedMarkers.has(marker)) {
+        continue;
       }
+      usedMarkers.set(marker, entryId);
+      return marker;
+    }
 
-      const token = `@entry:${selection.id}`;
-      const insertion = `${token} `;
-      const nextValue = `${currentValue.slice(0, activeMention.startIndex)}${insertion}${currentValue.slice(activeMention.endIndex)}`;
-      const nextCursorPosition = activeMention.startIndex + insertion.length;
-      requestAnimationFrame(() => {
-        const textarea = textareaRef.current;
-        if (!textarea) {
-          return;
-        }
-        textarea.focus();
-        textarea.setSelectionRange(nextCursorPosition, nextCursorPosition);
-      });
-      setMentionState(null);
-      setMentionActiveIndex(0);
-      return nextValue;
+    // Fallback should be effectively unreachable for real-world composer usage.
+    const fallbackMarker = String.fromCharCode(REFERENCE_MARKER_START);
+    usedMarkers.set(fallbackMarker, entryId);
+    return fallbackMarker;
+  }, []);
+
+  const pruneReferenceMarkers = useCallback((value: string) => {
+    const activeMarkers = new Set<string>();
+    for (const character of value) {
+      if (isReferenceMarker(character)) {
+        activeMarkers.add(character);
+      }
+    }
+    const markerMap = referenceMarkerToEntryIdRef.current;
+    [...markerMap.keys()].forEach((marker) => {
+      if (!activeMarkers.has(marker)) {
+        markerMap.delete(marker);
+      }
     });
   }, []);
+
+  const normalizeCanonicalTokensToMarkers = useCallback(
+    (value: string, cursorPosition: number | null) => {
+      const references = extractEntryReferenceTokens(value);
+      if (references.length === 0) {
+        pruneReferenceMarkers(value);
+        return { value, cursorPosition };
+      }
+
+      let nextValue = "";
+      let previousEnd = 0;
+      let nextCursor = cursorPosition;
+
+      references.forEach((reference) => {
+        nextValue += value.slice(previousEnd, reference.start);
+        const marker = createReferenceMarker(reference.entryId);
+        const label = resolveEntryReferenceLabel(
+          reference.entryId,
+          entryReferenceTitles,
+        );
+        const replacement = `${marker} ${label} ${marker}`;
+        nextValue += replacement;
+
+        if (nextCursor !== null) {
+          if (nextCursor > reference.end) {
+            nextCursor += replacement.length - (reference.end - reference.start);
+          } else if (nextCursor > reference.start) {
+            nextCursor = nextValue.length;
+          }
+        }
+
+        previousEnd = reference.end;
+      });
+
+      nextValue += value.slice(previousEnd);
+      pruneReferenceMarkers(nextValue);
+      return { value: nextValue, cursorPosition: nextCursor };
+    },
+    [createReferenceMarker, entryReferenceTitles, pruneReferenceMarkers],
+  );
+
+  const decodeMarkersToCanonicalTokens = useCallback((value: string): string => {
+    let decoded = "";
+    for (let index = 0; index < value.length; ) {
+      const character = value[index] ?? "";
+      if (isReferenceMarker(character)) {
+        const entryId = referenceMarkerToEntryIdRef.current.get(character);
+        const closingIndex = value.indexOf(character, index + 1);
+        if (entryId && closingIndex >= 0) {
+          decoded += `@entry:${entryId}`;
+          index = closingIndex + 1;
+          continue;
+        }
+        index += 1;
+        continue;
+      }
+      decoded += character;
+      index += 1;
+    }
+    return decoded;
+  }, []);
+
+  const insertMention = useCallback(
+    (selection: ActivityItem) => {
+      setInputValue((currentValue) => {
+        const activeTextarea = textareaRef.current;
+        const cursorPosition =
+          activeTextarea?.selectionStart ?? currentValue.length;
+        const activeMention = findComposerMentionState(currentValue, cursorPosition);
+        if (!activeMention) {
+          return currentValue;
+        }
+
+        const marker = createReferenceMarker(selection.id);
+        const label = resolveEntryReferenceLabel(selection.id, entryReferenceTitles);
+        const insertion = `${marker} ${label} ${marker} `;
+        const nextValue = `${currentValue.slice(0, activeMention.startIndex)}${insertion}${currentValue.slice(activeMention.endIndex)}`;
+        const nextCursorPosition = activeMention.startIndex + insertion.length;
+        requestAnimationFrame(() => {
+          const textarea = textareaRef.current;
+          if (!textarea) {
+            return;
+          }
+          textarea.focus();
+          textarea.setSelectionRange(nextCursorPosition, nextCursorPosition);
+        });
+        setMentionState(null);
+        setMentionActiveIndex(0);
+        return nextValue;
+      });
+    },
+    [createReferenceMarker, entryReferenceTitles],
+  );
 
   const handleSubmit = useCallback(() => {
     if (state.composer.status !== "idle") {
       return;
     }
-    const trimmed = inputValue.trim();
-    if (!trimmed && attachments.length === 0) {
+    const canonicalInput = decodeMarkersToCanonicalTokens(inputValue).trim();
+    if (!canonicalInput && attachments.length === 0) {
       return;
     }
-    void adapter.sendMessage(trimmed, attachments);
+    void adapter.sendMessage(canonicalInput, attachments);
     setInputValue("");
+    referenceMarkerToEntryIdRef.current.clear();
+    nextReferenceMarkerCodeRef.current = REFERENCE_MARKER_START;
     setAttachments([]);
     setMentionState(null);
     setMentionActiveIndex(0);
-  }, [
-    adapter,
-    attachments,
-    inputValue,
-    state.composer.status,
-  ]);
+  }, [adapter, attachments, decodeMarkersToCanonicalTokens, inputValue, state.composer.status]);
 
   useEffect(() => {
     if (!mentionState || mentionSuggestions.length === 0) {
@@ -522,13 +671,10 @@ export function LoopieConversationContent({
                       return (
                         <span
                           key={segment.key}
-                          className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary align-middle"
+                          className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs font-medium leading-4 text-primary align-[0.08em]"
                           title={segment.token}
                         >
-                          {resolveEntryReferenceLabel(
-                            segment.entryId,
-                            entryReferenceTitles,
-                          )}
+                          {segment.label}
                         </span>
                       );
                     })}
@@ -542,8 +688,30 @@ export function LoopieConversationContent({
                 value={inputValue}
                 onChange={(event) => {
                   const nextValue = event.target.value;
-                  setInputValue(nextValue);
-                  updateMentionState(nextValue, event.target.selectionStart);
+                  const normalized = normalizeCanonicalTokensToMarkers(
+                    nextValue,
+                    event.target.selectionStart,
+                  );
+                  setInputValue(normalized.value);
+                  updateMentionState(
+                    normalized.value,
+                    normalized.cursorPosition,
+                  );
+                  if (
+                    normalized.cursorPosition !== null &&
+                    normalized.cursorPosition !== event.target.selectionStart
+                  ) {
+                    requestAnimationFrame(() => {
+                      const textarea = textareaRef.current;
+                      if (!textarea) {
+                        return;
+                      }
+                      textarea.setSelectionRange(
+                        normalized.cursorPosition!,
+                        normalized.cursorPosition!,
+                      );
+                    });
+                  }
                 }}
                 onSelect={(event) => {
                   updateMentionState(

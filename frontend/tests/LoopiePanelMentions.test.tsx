@@ -150,7 +150,9 @@ describe("LoopieConversationContent mentions", () => {
     await screen.findByRole("button", { name: "Sprint recap" });
     await user.click(screen.getByRole("button", { name: "Sprint recap" }));
 
-    expect(composer).toHaveValue("@entry:journal-1 ");
+    expect(String((composer as HTMLTextAreaElement).value)).not.toContain(
+      "@entry:journal-1",
+    );
     expect(await screen.findByText("Sprint recap")).toBeInTheDocument();
   });
 
@@ -176,7 +178,9 @@ describe("LoopieConversationContent mentions", () => {
     await user.keyboard("{Enter}");
 
     expect(sendMessage).not.toHaveBeenCalled();
-    expect(composer).toHaveValue("@entry:journal-1 ");
+    expect(String((composer as HTMLTextAreaElement).value)).not.toContain(
+      "@entry:journal-1",
+    );
 
     await user.keyboard("{Enter}");
     expect(sendMessage).toHaveBeenCalledWith("@entry:journal-1", []);
