@@ -1,6 +1,7 @@
 import { apiClient } from "@/api/client";
 
 export type DictationMode = "loopie" | "journal_note";
+const TRANSCRIPTION_REQUEST_TIMEOUT_MS = 70_000;
 
 export interface SpeechTranscriptionResponse {
   text: string;
@@ -20,6 +21,7 @@ export async function transcribeAudio(
     formData,
     {
       headers: { "Content-Type": undefined },
+      timeout: TRANSCRIPTION_REQUEST_TIMEOUT_MS,
     },
   );
 
