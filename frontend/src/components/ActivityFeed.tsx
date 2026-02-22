@@ -335,6 +335,7 @@ export function ActivityFeed({
       onConversationDelete,
       startEdit,
       pendingEntryIds,
+      entryReferenceTitles,
       togglePin,
       isPinning,
       toggleArchive,
