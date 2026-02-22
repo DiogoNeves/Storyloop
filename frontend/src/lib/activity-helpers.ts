@@ -1,11 +1,4 @@
-import type { AgentFocusCategory } from "@/lib/types/agent";
 import type { ActivityItem } from "@/lib/types/entries";
-
-export function getActivityCategoryLabel(
-  category: ActivityItem["category"] | AgentFocusCategory,
-): string {
-  return category;
-}
 
 export function isActivityEditable(item: ActivityItem): boolean {
   return (
