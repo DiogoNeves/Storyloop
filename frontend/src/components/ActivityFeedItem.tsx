@@ -100,6 +100,13 @@ export function ActivityFeedItem({
                 <>
                   <Bot className="h-4 w-4" aria-hidden="true" />
                   <span>journal</span>
+                  {view.showSmartUpdatedSinceLastOpen ? (
+                    <span
+                      className="h-2 w-2 rounded-full bg-red-500"
+                      aria-label="Updated since last open"
+                      title="Updated since last open"
+                    />
+                  ) : null}
                 </>
               ) : (
                 view.categoryLabel

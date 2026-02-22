@@ -18,6 +18,7 @@ export interface Entry {
   updatedAt: string;
   archivedAt?: string | null;
   lastSmartUpdateAt?: string | null;
+  lastOpenedAt?: string | null;
   promptBody?: string | null;
   promptFormat?: string | null;
   category: "content" | "journal" | "today";
@@ -38,6 +39,7 @@ const entrySchema = z.object({
   updatedAt: z.string(),
   archivedAt: z.string().nullable().optional(),
   lastSmartUpdateAt: z.string().nullable().optional(),
+  lastOpenedAt: z.string().nullable().optional(),
   promptBody: z.string().nullable().optional(),
   promptFormat: z.string().nullable().optional(),
   category: z.enum(["content", "journal", "today"]),
@@ -72,6 +74,7 @@ export interface ActivityItem {
   createdAt?: string;
   updatedAt?: string;
   lastSmartUpdateAt?: string | null;
+  lastOpenedAt?: string | null;
   promptBody?: string;
   promptFormat?: string;
   tags?: string[];
@@ -101,6 +104,7 @@ export function entryToActivityItem(entry: Entry): ActivityItem {
     createdAt: entry.date,
     updatedAt,
     lastSmartUpdateAt: entry.lastSmartUpdateAt ?? null,
+    lastOpenedAt: entry.lastOpenedAt ?? null,
     promptBody: entry.promptBody ?? undefined,
     promptFormat: entry.promptFormat ?? undefined,
     tags: entry.tags ?? [],

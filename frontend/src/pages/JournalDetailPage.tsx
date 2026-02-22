@@ -10,7 +10,12 @@ import { Archive, Bot, Mic, Pin, RefreshCw, SaveOff, Trash2 } from "lucide-react
 import { Link, useLocation, useParams, useNavigate } from "react-router-dom";
 import useLocalStorageState from "use-local-storage-state";
 
-import { entriesMutations, entriesQueries, type Entry } from "@/api/entries";
+import {
+  entriesMutations,
+  entriesQueries,
+  markSmartEntryOpened,
+  type Entry,
+} from "@/api/entries";
 import { settingsQueries } from "@/api/settings";
 import { useJournalEntryDraft } from "@/hooks/useJournalEntryDraft";
 import { useActivityItems } from "@/hooks/useActivityItems";
@@ -241,6 +246,23 @@ export function JournalDetailPage() {
       },
     }),
   );
+  const openedEntryIdsRef = useRef<Set<string>>(new Set());
+  const markOpenedMutation = useMutation({
+    mutationFn: markSmartEntryOpened,
+    onSuccess: (openedEntry) => {
+      const listQuery = entriesQueries.all();
+      queryClient.setQueryData<Entry[] | undefined>(
+        listQuery.queryKey,
+        (current) =>
+          current?.map((entry) =>
+            entry.id === openedEntry.id ? openedEntry : entry,
+          ),
+      );
+
+      const byIdQuery = entriesQueries.byId(openedEntry.id);
+      queryClient.setQueryData<Entry>(byIdQuery.queryKey, openedEntry);
+    },
+  });
 
   useEffect(() => {
     setActiveTab("content");
@@ -268,6 +290,30 @@ export function JournalDetailPage() {
     }
     void startSmartUpdate();
   }, [currentEntry, isSmartEntry, isOnline, isSmartUpdating, startSmartUpdate]);
+
+  useEffect(() => {
+    if (!currentEntry || isNewEntryRoute || isTodayEntry || !isSmartEntry) {
+      return;
+    }
+    if (!isOnline) {
+      return;
+    }
+    if (openedEntryIdsRef.current.has(currentEntry.id)) {
+      return;
+    }
+
+    openedEntryIdsRef.current.add(currentEntry.id);
+    void markOpenedMutation.mutateAsync(currentEntry.id).catch(() => {
+      return undefined;
+    });
+  }, [
+    currentEntry,
+    isNewEntryRoute,
+    isOnline,
+    isSmartEntry,
+    isTodayEntry,
+    markOpenedMutation,
+  ]);
 
   const shouldAutoFocusEditor = Boolean(
     (location.state as { focusEditor?: boolean } | null)?.focusEditor,
