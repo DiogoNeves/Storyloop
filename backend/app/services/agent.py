@@ -15,16 +15,13 @@ from promptdown import StructuredPrompt
 
 from app.config import Settings
 from app.services.agent_tools import (
-    BaseChannelProfileRepository,
     BaseEntryRepository,
     BaseJournalRepository,
     BaseTodayRepository,
     BaseYouTubeRepository,
     ChannelMetrics,
-    ChannelProfileRepository,
     EmptyEntryRepository,
     EmptyJournalRepository,
-    EmptyChannelProfileRepository,
     EmptyTodayRepository,
     EmptyYouTubeRepository,
     EntryRepository,
@@ -38,14 +35,6 @@ from app.services.agent_tools import (
     VideoDetails,
     VideoMetrics,
     YouTubeRepository,
-)
-from app.services.channel_profile import (
-    ChannelProfilePatch,
-    ChannelProfileSnapshot,
-)
-from app.services.channel_profile_advice import (
-    ChannelProfileAdvice,
-    get_channel_profile_advice as load_channel_profile_advice,
 )
 
 
@@ -81,7 +70,6 @@ class LoopieDeps(BaseModel):
     journal_repo: BaseJournalRepository
     today_repo: BaseTodayRepository
     youtube_repo: BaseYouTubeRepository
-    channel_profile_repo: BaseChannelProfileRepository
     tool_call_notifier: Callable[[str], Awaitable[None]] | None = None
 
 
@@ -133,19 +121,12 @@ async def build_loopie_deps(
             youtube_service, user_service, oauth_service, analytics_service
         )
 
-    channel_profile_repo: BaseChannelProfileRepository
-    if user_service is None:
-        channel_profile_repo = EmptyChannelProfileRepository()
-    else:
-        channel_profile_repo = ChannelProfileRepository(user_service)
-
     return LoopieDeps(
         user_id=user_id,
         entry_repo=entry_repo,
         journal_repo=journal_repo,
         today_repo=today_repo,
         youtube_repo=youtube_repo,
-        channel_profile_repo=channel_profile_repo,
         tool_call_notifier=tool_call_notifier,
     )
 
@@ -451,58 +432,6 @@ def build_agent(
             await ctx.deps.tool_call_notifier("📈 metrics for a specific video")
 
         return await ctx.deps.youtube_repo.get_video_metrics(video_id)
-
-    @assistant_agent.tool
-    async def get_channel_profile(
-        ctx: RunContext[LoopieDeps],
-    ) -> ChannelProfileSnapshot:
-        """Load the stored channel profile for identity/emotion/action context.
-
-        Use this before calling ``update_channel_profile``. This tool returns a
-        short ``content_hash``—pass that hash into ``update_channel_profile`` to
-        guarantee you are editing the latest state.
-        """
-
-        if ctx.deps.tool_call_notifier:
-            await ctx.deps.tool_call_notifier("🧭 channel identity profile")
-
-        return await ctx.deps.channel_profile_repo.get_profile()
-
-    @assistant_agent.tool
-    async def get_channel_profile_advice(
-        ctx: RunContext[LoopieDeps],
-    ) -> ChannelProfileAdvice:
-        """Return guidance for channel profile improvements.
-
-        Use this when the user is discussing channel profile improvements or
-        editing and consult it to advise them before applying edits.
-        """
-
-        if ctx.deps.tool_call_notifier:
-            await ctx.deps.tool_call_notifier("🧭 channel profile guidance")
-
-        return load_channel_profile_advice()
-
-    @assistant_agent.tool
-    async def update_channel_profile(
-        ctx: RunContext[LoopieDeps],
-        patch: ChannelProfilePatch,
-        content_hash: str,
-    ) -> ChannelProfileSnapshot:
-        """Apply a patch to the stored channel profile after reading it.
-
-        ``content_hash`` must come from the most recent ``get_channel_profile``.
-        If the hash mismatches, you must read the profile again before editing.
-
-        Only send the fields that changed in ``patch`` (partial update).
-        """
-
-        if ctx.deps.tool_call_notifier:
-            await ctx.deps.tool_call_notifier("🧭 updating channel profile")
-
-        return await ctx.deps.channel_profile_repo.update_profile(
-            patch, content_hash
-        )
 
     @assistant_agent.tool
     async def get_channel_metrics(

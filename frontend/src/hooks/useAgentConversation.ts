@@ -9,7 +9,6 @@ import {
   type Conversation,
   type ConversationTurn,
 } from "@/api/conversations";
-import { channelQueries } from "@/api/channel";
 import { entriesQueries } from "@/api/entries";
 import { isNotFoundError } from "@/api/client";
 import type {
@@ -586,12 +585,6 @@ export function useAgentConversation({
             },
             onToolCall: (message) => {
               appendToolCall(message);
-              if (message === "🧭 updating channel profile") {
-                const profileQuery = channelQueries.profile();
-                void queryClient.invalidateQueries({
-                  queryKey: profileQuery.queryKey,
-                });
-              }
             },
           },
         });
