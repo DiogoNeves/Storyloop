@@ -112,6 +112,9 @@ describe("App", () => {
     expect(
       screen.getByRole("button", { name: /\+ entry/i }),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /^Channel$/i }),
+    ).not.toBeInTheDocument();
 
     await waitFor(() =>
       expect(

@@ -7,7 +7,6 @@ frontend/
 ├── src/
 │   ├── api/              # API client and query helpers
 │   │   ├── assets.ts     # Asset uploads + metadata
-│   │   ├── channel.ts    # Channel identity profile
 │   │   ├── client.ts     # Axios instance
 │   │   ├── conversations.ts # Loopie conversations + turns
 │   │   ├── entries.ts    # Activity/journal entries
@@ -40,7 +39,6 @@ frontend/
 │   │   ├── types/        # Shared TS types
 │   │   └── utils.ts      # cn() helper
 │   ├── pages/            # Routed pages
-│   │   ├── ChannelPage.tsx
 │   │   ├── ConversationDetailPage.tsx
 │   │   ├── JournalDetailPage.tsx
 │   │   ├── LoopiePage.tsx
@@ -85,7 +83,6 @@ frontend/
 - Journal entry creation and editing (detail view editor, title autosave, pinned)
 - Image/PDF attachments inserted into markdown summaries via uploads
 - Loopie chat panel with attachment support
-- Channel identity page with guided audience + value audit flow
 - Conversation and detail routes for deeper inspection
 
 ### ActivityFeed Component
@@ -408,19 +405,6 @@ import.meta.env.VITE_API_BASE_URL;
 - `@/components` → `src/components`
 - `@/api` → `src/api`
 - `@/lib` → `src/lib`
-
-## Channel Identity Profile
-
-**Channel Tab:**
-
-- Guided, scrollable flow based on Audience Audit + Value Proposition worksheets
-- Stores audience buckets plus Identity–Emotion–Action details
-- Designed for desktop and mobile, minimal markdown usage
-
-**Journal Banner:**
-
-- If the channel profile is empty, the activity feed surfaces a banner linking to `/channel`
-- Once saved, Loopie uses the profile to evaluate idea fit
 
 ## Future Enhancements
 

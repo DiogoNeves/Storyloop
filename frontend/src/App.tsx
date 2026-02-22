@@ -74,11 +74,6 @@ import { SyncStatusBanner } from "@/components/SyncStatusBanner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-const ChannelPage = lazy(() =>
-  import("@/pages/ChannelPage").then((module) => ({
-    default: module.ChannelPage,
-  })),
-);
 const ConversationDetailPage = lazy(() =>
   import("@/pages/ConversationDetailPage").then((module) => ({
     default: module.ConversationDetailPage,
@@ -671,7 +666,6 @@ export function App() {
                     <Route path="/" element={<AppLayout />}>
                       <Route index element={<JournalPage />} />
                       <Route path="journal" element={<JournalPage />} />
-                      <Route path="channel" element={<ChannelPage />} />
                       <Route path="loopie" element={<LoopiePage />} />
                     </Route>
                     <Route path="/journals/new" element={<JournalDetailPage />} />
