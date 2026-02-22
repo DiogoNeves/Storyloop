@@ -8,6 +8,7 @@ export type AudioDictationStatus = "idle" | "recording" | "transcribing";
 interface UseAudioDictationOptions {
   mode: DictationMode;
   onTranscription: (text: string, fallbackUsed: boolean) => void;
+  audioInputDeviceId?: string | null;
 }
 
 interface UseAudioDictationResult {
@@ -36,6 +37,7 @@ const INPUT_LEVEL_UPDATE_INTERVAL_MS = 33;
 export function useAudioDictation({
   mode,
   onTranscription,
+  audioInputDeviceId,
 }: UseAudioDictationOptions): UseAudioDictationResult {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -249,7 +251,7 @@ export function useAudioDictation({
     setErrorMessage(null);
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await requestAudioStream(audioInputDeviceId);
       streamRef.current = stream;
       startedAtRef.current = performance.now();
       lastElapsedSecondsRef.current = 0;
@@ -286,7 +288,11 @@ export function useAudioDictation({
         void finalizeRecording(recorder.mimeType || preferredType || "audio/webm");
       };
 
-      recorder.start();
+      try {
+        recorder.start(250);
+      } catch {
+        recorder.start();
+      }
       setStatus("recording");
     } catch (error) {
       releaseStream();
@@ -302,6 +308,7 @@ export function useAudioDictation({
     releaseStream,
     startInputLevelTracking,
     status,
+    audioInputDeviceId,
   ]);
 
   const stopDictation = useCallback(() => {
@@ -391,6 +398,9 @@ function getFileExtension(contentType: string): string {
 
 function getDictationErrorMessage(error: unknown): string {
   if (isAxiosError(error)) {
+    if (error.code === "ECONNABORTED") {
+      return "Transcription timed out. Please try again.";
+    }
     const payload = error.response?.data;
     const detail =
       payload && typeof payload === "object" && "detail" in payload
@@ -406,9 +416,54 @@ function getDictationErrorMessage(error: unknown): string {
     return "Microphone access was denied. Allow microphone permissions and try again.";
   }
 
+  if (
+    error instanceof DOMException &&
+    (error.name === "NotFoundError" || error.name === "OverconstrainedError")
+  ) {
+    return "Selected microphone is unavailable. Choose another microphone and try again.";
+  }
+
   if (error instanceof Error && error.message.trim().length > 0) {
     return error.message;
   }
 
   return "Dictation failed. Please try again.";
+}
+
+function buildAudioConstraints(
+  audioInputDeviceId: string | null | undefined,
+): boolean | MediaTrackConstraints {
+  const normalizedDeviceId = audioInputDeviceId?.trim();
+  if (!normalizedDeviceId || normalizedDeviceId === "default") {
+    return true;
+  }
+
+  return {
+    deviceId: { exact: normalizedDeviceId },
+  };
+}
+
+async function requestAudioStream(
+  audioInputDeviceId: string | null | undefined,
+): Promise<MediaStream> {
+  const firstAttemptConstraints = buildAudioConstraints(audioInputDeviceId);
+  try {
+    return await navigator.mediaDevices.getUserMedia({
+      audio: firstAttemptConstraints,
+    });
+  } catch (error) {
+    if (!isRecoverableAudioDeviceError(error)) {
+      throw error;
+    }
+    return navigator.mediaDevices.getUserMedia({ audio: true });
+  }
+}
+
+function isRecoverableAudioDeviceError(error: unknown): boolean {
+  return (
+    error instanceof DOMException &&
+    (error.name === "NotFoundError" ||
+      error.name === "OverconstrainedError" ||
+      error.name === "NotReadableError")
+  );
 }
