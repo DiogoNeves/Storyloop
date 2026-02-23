@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { findMentionCandidate } from "@/lib/mention-search";
+import { findMentionCandidate, findMentionStateAtCursor } from "@/lib/mention-search";
 
 describe("findMentionCandidate", () => {
   it("returns null when no @ appears", () => {
@@ -35,5 +35,19 @@ describe("findMentionCandidate", () => {
 
   it("ignores @ characters in the middle of words", () => {
     expect(findMentionCandidate("email@test.com")).toBeNull();
+  });
+});
+
+describe("findMentionStateAtCursor", () => {
+  it("returns null when cursor is unavailable", () => {
+    expect(findMentionStateAtCursor("hello @note", null)).toBeNull();
+  });
+
+  it("returns mention boundaries for the active cursor position", () => {
+    expect(findMentionStateAtCursor("hello @note", 11)).toEqual({
+      query: "note",
+      startIndex: 6,
+      endIndex: 11,
+    });
   });
 });

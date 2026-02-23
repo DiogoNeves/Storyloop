@@ -160,4 +160,48 @@ describe("ActivityFeed Today section", () => {
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
+
+  it("shows Today mention suggestions from journal entries", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const items: ActivityItem[] = [
+      {
+        id: `today-${today}`,
+        title: "Today",
+        summary: "- [ ]",
+        date: `${today}T12:00:00.000Z`,
+        category: "today",
+        pinned: false,
+        archived: false,
+      },
+      {
+        id: "journal-1",
+        title: "Weekly notes",
+        summary: "Captured learnings.",
+        date: `${today}T09:00:00.000Z`,
+        category: "journal",
+        pinned: false,
+        archived: false,
+      },
+      {
+        id: "video-1",
+        title: "How to ship videos",
+        summary: "Not mentionable in Today tasks.",
+        date: `${today}T08:00:00.000Z`,
+        category: "content",
+        pinned: false,
+        archived: false,
+      },
+    ];
+
+    renderFeed(items);
+
+    const todayInput = screen.getByPlaceholderText("Type a task…");
+    await userEvent.click(todayInput);
+    await userEvent.type(todayInput, "@");
+
+    expect(await screen.findByRole("button", { name: "Weekly notes" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "How to ship videos" }),
+    ).toBeNull();
+  });
 });
