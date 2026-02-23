@@ -45,9 +45,17 @@ Built for new creators who want guidance without giving up control, Storyloop tu
    python scripts/dev.py
    ```
 
-   The script runs the FastAPI app on `http://127.0.0.1:8000` and the Vite dev server on `http://127.0.0.1:5173`.
+   Development defaults: FastAPI runs on `http://127.0.0.1:8001` and Vite dev runs on `http://127.0.0.1:5173`.
+   Production-like local mode (`python scripts/dev.py --prod` / `make prod`) runs backend on `http://127.0.0.1:8000` and frontend preview on `http://127.0.0.1:4173`.
 
 6. Visit `http://127.0.0.1:5173` to confirm the UI renders and reports backend health status.
+
+## Recent product updates
+
+- Accent preference is now persisted in backend settings and applied via `data-accent` theme tokens on the frontend.
+- Today checklist supports `@` mention suggestions for journal entries and stores durable reference tokens.
+- Mobile journal view uses a floating create action menu with animated transitions for `+ entry` and `+ smart entry`.
+- Dictation now supports input-device selection, cleaner microphone labels, and clearer transcription failure messages.
 
 ## AI Agent Setup
 
@@ -87,8 +95,8 @@ See [thinking/backend-structure.md](thinking/backend-structure.md#conversations-
 Storyloop now supports authenticating against the YouTube Data API via OAuth. Configure the following environment variables (see
 `.env.example` for placeholders):
 
-- `YOUTUBE_CLIENT_ID` – the Google Cloud OAuth client for a "Web application".
-- `YOUTUBE_CLIENT_SECRET` – the matching secret for the client above.
+- `YOUTUBE_OAUTH_CLIENT_ID` – the Google Cloud OAuth client for a "Web application".
+- `YOUTUBE_OAUTH_CLIENT_SECRET` – the matching secret for the client above.
 - `YOUTUBE_REDIRECT_URI` – must match the redirect registered with Google (default:
   `http://localhost:5173/auth/callback`).
 
@@ -179,6 +187,9 @@ The PLAN outlines the roadmap toward ingesting YouTube data and integrating a jo
 - ✅ AI agent with SSE streaming conversations
 - ✅ Conversation persistence in SQLite
 - ✅ YouTube OAuth integration
+- ✅ Persistent settings API (including accent color + Today behavior toggles)
+- ✅ Today checklist mention chips linked to journal entries
+- ✅ Mobile-first floating create actions for quick drafting
 
 **Future Enhancements:**
 
