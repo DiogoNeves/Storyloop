@@ -1,10 +1,10 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useState,
   type ChangeEvent,
   type KeyboardEvent,
+  type ReactNode,
 } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -13,17 +13,20 @@ import {
   NotebookPen,
   SlidersHorizontal,
   UserRound,
+  type LucideIcon,
 } from "lucide-react";
 
 import {
   type AccentPreference,
+  type ActivityFeedSortDate,
   DEFAULT_SMART_UPDATE_SCHEDULE_HOURS,
+  resolveSettingsResponse,
   settingsQueries,
   updateSettings,
-  type ActivityFeedSortDate,
+  type UpdateSettingsInput,
 } from "@/api/settings";
 import { youtubeApi, youtubeQueries } from "@/api/youtube";
-import { useSettings } from "@/context/useSettings";
+import { ActivityFeedInfo } from "@/components/ActivityFeedInfo";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -32,9 +35,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -43,8 +45,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { StatusMessage } from "@/components/ui/status-message";
+import { Switch } from "@/components/ui/switch";
+import { useSettings } from "@/context/useSettings";
 import { cn } from "@/lib/utils";
-import { ActivityFeedInfo } from "@/components/ActivityFeedInfo";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -52,11 +55,26 @@ interface SettingsDialogProps {
 }
 
 type SettingsTab = "account" | "general" | "journal" | "today" | "help";
+
+interface SettingsTabItem {
+  key: SettingsTab;
+  label: string;
+  icon: LucideIcon;
+}
+
 interface AccentOption {
   value: AccentPreference;
   label: string;
   swatch: string;
 }
+
+const SETTINGS_TABS: SettingsTabItem[] = [
+  { key: "account", label: "Account", icon: UserRound },
+  { key: "general", label: "General", icon: SlidersHorizontal },
+  { key: "journal", label: "Journal", icon: NotebookPen },
+  { key: "today", label: "Today", icon: ListTodo },
+  { key: "help", label: "Help", icon: CircleHelp },
+];
 
 const ACCENT_OPTIONS: AccentOption[] = [
   { value: "crimson", label: "Crimson", swatch: "hsl(0 84.2% 60.2%)" },
@@ -65,6 +83,476 @@ const ACCENT_OPTIONS: AccentOption[] = [
   { value: "azure", label: "Azure", swatch: "hsl(215 84.2% 60.2%)" },
   { value: "violet", label: "Violet", swatch: "hsl(270 84.2% 60.2%)" },
 ];
+
+interface SettingsSidebarProps {
+  activeTab: SettingsTab;
+  onTabChange: (tab: SettingsTab) => void;
+}
+
+function SettingsSidebar({ activeTab, onTabChange }: SettingsSidebarProps) {
+  return (
+    <div className="flex min-h-0 flex-col border-b border-r bg-muted/50 md:border-b-0">
+      <DialogHeader className="px-6 py-4">
+        <DialogTitle className="text-lg font-semibold">Settings</DialogTitle>
+        <DialogDescription className="text-sm text-muted-foreground">
+          Manage account, general, journal, and help preferences.
+        </DialogDescription>
+      </DialogHeader>
+      <div className="flex flex-col gap-1 px-2 py-3">
+        {SETTINGS_TABS.map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onTabChange(key)}
+            className={cn(
+              "flex items-center gap-3 rounded-md px-4 py-2 text-left text-sm font-medium transition",
+              "hover:bg-muted",
+              activeTab === key
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground",
+            )}
+          >
+            <Icon className="h-4 w-4" />
+            <span>{label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+interface SettingsTabHeaderProps {
+  title: string;
+  description: string;
+}
+
+function SettingsTabHeader({ title, description }: SettingsTabHeaderProps) {
+  return (
+    <div className="space-y-2">
+      <h3 className="text-base font-semibold">{title}</h3>
+      <p className="text-sm text-muted-foreground">{description}</p>
+    </div>
+  );
+}
+
+interface SettingsRowProps {
+  title: ReactNode;
+  description: string;
+  controls: ReactNode;
+  layout?: "inline" | "stack" | "start";
+  className?: string;
+}
+
+function SettingsRow({
+  title,
+  description,
+  controls,
+  layout = "inline",
+  className,
+}: SettingsRowProps) {
+  return (
+    <div
+      className={cn(
+        "rounded-lg border bg-muted/50 p-4",
+        layout === "inline" && "flex items-center justify-between",
+        layout === "stack" &&
+          "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between",
+        layout === "start" && "flex items-start justify-between",
+        className,
+      )}
+    >
+      <div className="space-y-1">
+        <p className="text-sm font-medium">{title}</p>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+      {controls}
+    </div>
+  );
+}
+
+interface AccountTabContentProps {
+  channelTitle: string;
+  isLinked: boolean;
+  isUnlinking: boolean;
+  onUnlink: () => void;
+}
+
+function AccountTabContent({
+  channelTitle,
+  isLinked,
+  isUnlinking,
+  onUnlink,
+}: AccountTabContentProps) {
+  return (
+    <div className="space-y-4">
+      <SettingsTabHeader
+        title="YouTube account"
+        description="Control how Storyloop connects to your YouTube channel."
+      />
+      <SettingsRow
+        layout="start"
+        className="bg-transparent"
+        title={isLinked ? channelTitle : "No channel linked"}
+        description={
+          isLinked
+            ? "You can disconnect your Google account from Storyloop."
+            : "Connect a YouTube channel to personalize your feed."
+        }
+        controls={
+          <Button
+            type="button"
+            variant={isLinked ? "destructive" : "secondary"}
+            onClick={onUnlink}
+            disabled={isUnlinking || !isLinked}
+          >
+            {isUnlinking ? "Unlinking…" : isLinked ? "Unlink account" : "Not linked"}
+          </Button>
+        }
+      />
+    </div>
+  );
+}
+
+interface JournalTabContentProps {
+  publicOnly: boolean;
+  setPublicOnly: (value: boolean) => void;
+  activityFeedSortDate: ActivityFeedSortDate;
+  showArchived: boolean;
+  scheduleInput: string;
+  scheduleError: string | null;
+  isServerSettingsDisabled: boolean;
+  onUpdateSetting: (patch: UpdateSettingsInput) => void;
+  onScheduleChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onScheduleBlur: () => void;
+  onScheduleKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
+}
+
+function JournalTabContent({
+  publicOnly,
+  setPublicOnly,
+  activityFeedSortDate,
+  showArchived,
+  scheduleInput,
+  scheduleError,
+  isServerSettingsDisabled,
+  onUpdateSetting,
+  onScheduleChange,
+  onScheduleBlur,
+  onScheduleKeyDown,
+}: JournalTabContentProps) {
+  return (
+    <div className="space-y-6">
+      <SettingsTabHeader
+        title="Journal preferences"
+        description="Configure how entries and content appear in your journal."
+      />
+
+      <div className="space-y-3">
+        <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          View
+        </h4>
+
+        <SettingsRow
+          title="Show public uploads only"
+          description="Hide unlisted or private YouTube videos when browsing your feed."
+          controls={
+            <div className="flex items-center gap-2">
+              <Label htmlFor="settings-public-only" className="sr-only">
+                Public only
+              </Label>
+              <Switch
+                id="settings-public-only"
+                checked={publicOnly}
+                onCheckedChange={setPublicOnly}
+              />
+            </div>
+          }
+        />
+
+        <SettingsRow
+          layout="stack"
+          title="Activity feed date sort"
+          description="Choose whether journal entries sort by creation date or last modified date."
+          controls={
+            <div className="flex items-center gap-2">
+              <Label htmlFor="settings-activity-feed-sort-date" className="sr-only">
+                Activity feed date sort
+              </Label>
+              <Select
+                value={activityFeedSortDate}
+                onValueChange={(value) => {
+                  onUpdateSetting({
+                    activityFeedSortDate: value as ActivityFeedSortDate,
+                  });
+                }}
+                disabled={isServerSettingsDisabled}
+              >
+                <SelectTrigger id="settings-activity-feed-sort-date" className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="created">Created date</SelectItem>
+                  <SelectItem value="modified">Modified date</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          }
+        />
+
+        <SettingsRow
+          title="Show archived journals"
+          description="Include archived journal entries in your activity feed."
+          controls={
+            <div className="flex items-center gap-2">
+              <Label htmlFor="settings-show-archived" className="sr-only">
+                Show archived journals
+              </Label>
+              <Switch
+                id="settings-show-archived"
+                checked={showArchived}
+                disabled={isServerSettingsDisabled}
+                onCheckedChange={(checked) => {
+                  onUpdateSetting({ showArchived: checked });
+                }}
+              />
+            </div>
+          }
+        />
+      </div>
+
+      <div className="space-y-3">
+        <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Smart updates
+        </h4>
+
+        <SettingsRow
+          layout="stack"
+          title="Update schedule"
+          description="Choose how often Loopie refreshes smart journals (checked hourly)."
+          controls={
+            <div className="flex items-center gap-2">
+              <Label htmlFor="settings-smart-update-schedule" className="sr-only">
+                Smart update schedule in hours
+              </Label>
+              <Input
+                id="settings-smart-update-schedule"
+                type="number"
+                min={1}
+                step={1}
+                className="w-24 text-right"
+                value={scheduleInput}
+                onChange={onScheduleChange}
+                onBlur={onScheduleBlur}
+                onKeyDown={onScheduleKeyDown}
+                disabled={isServerSettingsDisabled}
+                inputMode="numeric"
+              />
+              <span className="text-xs text-muted-foreground">hours</span>
+            </div>
+          }
+        />
+        <StatusMessage type="error" message={scheduleError} />
+      </div>
+    </div>
+  );
+}
+
+interface GeneralTabContentProps {
+  themePreference: "light" | "dark" | "system";
+  setThemePreference: (value: "light" | "dark" | "system") => void;
+  accentPreference: AccentPreference;
+  setAccentPreference: (value: AccentPreference) => void;
+  accentUpdateError: string | null;
+  isAccentDisabled: boolean;
+}
+
+function GeneralTabContent({
+  themePreference,
+  setThemePreference,
+  accentPreference,
+  setAccentPreference,
+  accentUpdateError,
+  isAccentDisabled,
+}: GeneralTabContentProps) {
+  return (
+    <div className="space-y-4">
+      <SettingsTabHeader
+        title="General settings"
+        description="Configure app-wide display and interface preferences."
+      />
+
+      <SettingsRow
+        title="Theme"
+        description="Choose your preferred color scheme for the interface."
+        controls={
+          <div className="flex items-center gap-2">
+            <Label htmlFor="settings-theme" className="sr-only">
+              Theme preference
+            </Label>
+            <Select
+              value={themePreference}
+              onValueChange={(value) =>
+                setThemePreference(value as "light" | "dark" | "system")
+              }
+            >
+              <SelectTrigger id="settings-theme" className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="light">Light</SelectItem>
+                <SelectItem value="dark">Dark</SelectItem>
+                <SelectItem value="system">System</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        }
+      />
+
+      <div className="space-y-2">
+        <SettingsRow
+          title="Accent color"
+          description="Pick the interface accent used for highlights and actions."
+          controls={
+            <div className="flex items-center gap-2">
+              <Label htmlFor="settings-accent-color" className="sr-only">
+                Accent color
+              </Label>
+              <Select
+                disabled={isAccentDisabled}
+                value={accentPreference}
+                onValueChange={(value) => setAccentPreference(value as AccentPreference)}
+              >
+                <SelectTrigger id="settings-accent-color" className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ACCENT_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      <span className="inline-flex items-center gap-2">
+                        <span
+                          className="h-2.5 w-2.5 rounded-full"
+                          style={{ backgroundColor: option.swatch }}
+                          aria-hidden="true"
+                        />
+                        {option.label}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          }
+        />
+        <StatusMessage type="error" message={accentUpdateError} />
+      </div>
+    </div>
+  );
+}
+
+interface TodayTabContentProps {
+  todayEntriesEnabled: boolean;
+  todayIncludePreviousIncomplete: boolean;
+  todayMoveCompletedToEnd: boolean;
+  isServerSettingsDisabled: boolean;
+  onUpdateSetting: (patch: UpdateSettingsInput) => void;
+}
+
+function TodayTabContent({
+  todayEntriesEnabled,
+  todayIncludePreviousIncomplete,
+  todayMoveCompletedToEnd,
+  isServerSettingsDisabled,
+  onUpdateSetting,
+}: TodayTabContentProps) {
+  return (
+    <div className="space-y-6">
+      <SettingsTabHeader
+        title="Today checklist"
+        description="Configure daily Today entries and checklist rollover behavior."
+      />
+
+      <div className="space-y-3">
+        <SettingsRow
+          title="Enable Today entries"
+          description="Create one Today checklist entry each UTC day."
+          controls={
+            <div className="flex items-center gap-2">
+              <Label htmlFor="settings-today-enabled" className="sr-only">
+                Enable Today entries
+              </Label>
+              <Switch
+                id="settings-today-enabled"
+                checked={todayEntriesEnabled}
+                disabled={isServerSettingsDisabled}
+                onCheckedChange={(checked) => {
+                  onUpdateSetting({ todayEntriesEnabled: checked });
+                }}
+              />
+            </div>
+          }
+        />
+
+        <SettingsRow
+          title="Include previous incomplete tasks"
+          description="Start each new Today entry with unfinished tasks from yesterday."
+          controls={
+            <div className="flex items-center gap-2">
+              <Label htmlFor="settings-today-include-previous" className="sr-only">
+                Include previous incomplete tasks
+              </Label>
+              <Switch
+                id="settings-today-include-previous"
+                checked={todayIncludePreviousIncomplete}
+                disabled={isServerSettingsDisabled || !todayEntriesEnabled}
+                onCheckedChange={(checked) => {
+                  onUpdateSetting({
+                    todayIncludePreviousIncomplete: checked,
+                  });
+                }}
+              />
+            </div>
+          }
+        />
+
+        <SettingsRow
+          title="Move completed tasks to end"
+          description="Reorder checked tasks to the bottom as you complete them."
+          controls={
+            <div className="flex items-center gap-2">
+              <Label htmlFor="settings-today-move-completed-to-end" className="sr-only">
+                Move completed tasks to end
+              </Label>
+              <Switch
+                id="settings-today-move-completed-to-end"
+                checked={todayMoveCompletedToEnd}
+                disabled={isServerSettingsDisabled || !todayEntriesEnabled}
+                onCheckedChange={(checked) => {
+                  onUpdateSetting({
+                    todayMoveCompletedToEnd: checked,
+                  });
+                }}
+              />
+            </div>
+          }
+        />
+      </div>
+    </div>
+  );
+}
+
+function HelpTabContent() {
+  return (
+    <div className="space-y-4">
+      <SettingsTabHeader
+        title="Help"
+        description="Guidance for understanding and using your activity feed."
+      />
+      <div className="rounded-lg border bg-muted/30 p-4">
+        <ActivityFeedInfo />
+      </div>
+    </div>
+  );
+}
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const queryClient = useQueryClient();
@@ -79,25 +567,23 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     isAccentUpdating,
     accentUpdateError,
   } = useSettings();
+
+  const settingsQuery = useQuery(settingsQueries.all());
+  const linkStatusQuery = useQuery(youtubeQueries.authStatus());
+
+  const resolvedSettings = resolveSettingsResponse(settingsQuery.data);
+  const scheduleHours = resolvedSettings.smartUpdateScheduleHours;
+  const showArchived = resolvedSettings.showArchived;
+  const activityFeedSortDate = resolvedSettings.activityFeedSortDate;
+  const todayEntriesEnabled = resolvedSettings.todayEntriesEnabled;
+  const todayIncludePreviousIncomplete =
+    resolvedSettings.todayIncludePreviousIncomplete;
+  const todayMoveCompletedToEnd = resolvedSettings.todayMoveCompletedToEnd;
+
   const [scheduleInput, setScheduleInput] = useState(
     String(DEFAULT_SMART_UPDATE_SCHEDULE_HOURS),
   );
   const [scheduleError, setScheduleError] = useState<string | null>(null);
-
-  const linkStatusQuery = useQuery(youtubeQueries.authStatus());
-  const settingsQuery = useQuery(settingsQueries.all());
-
-  const scheduleHours =
-    settingsQuery.data?.smartUpdateScheduleHours ??
-    DEFAULT_SMART_UPDATE_SCHEDULE_HOURS;
-  const showArchived = settingsQuery.data?.showArchived ?? false;
-  const activityFeedSortDate =
-    settingsQuery.data?.activityFeedSortDate ?? "created";
-  const todayEntriesEnabled = settingsQuery.data?.todayEntriesEnabled ?? true;
-  const todayIncludePreviousIncomplete =
-    settingsQuery.data?.todayIncludePreviousIncomplete ?? true;
-  const todayMoveCompletedToEnd =
-    settingsQuery.data?.todayMoveCompletedToEnd ?? true;
 
   useEffect(() => {
     setScheduleInput(String(scheduleHours));
@@ -106,12 +592,14 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const unlinkMutation = useMutation({
     mutationFn: youtubeApi.unlinkAccount,
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: youtubeQueries.authStatus().queryKey });
+      void queryClient.invalidateQueries({
+        queryKey: youtubeQueries.authStatus().queryKey,
+      });
       void queryClient.invalidateQueries({ queryKey: ["youtube"] });
     },
   });
 
-  const scheduleMutation = useMutation({
+  const settingsMutation = useMutation({
     mutationFn: updateSettings,
     onSuccess: (data) => {
       queryClient.setQueryData(settingsQueries.all().queryKey, data);
@@ -122,8 +610,15 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     },
   });
 
+  const updateSetting = useCallback(
+    (patch: UpdateSettingsInput) => {
+      settingsMutation.mutate(patch);
+    },
+    [settingsMutation],
+  );
+
   const commitSchedule = useCallback(() => {
-    if (scheduleMutation.isPending || isAccentUpdating) {
+    if (settingsMutation.isPending || isAccentUpdating) {
       return;
     }
 
@@ -141,8 +636,14 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       return;
     }
 
-    scheduleMutation.mutate({ smartUpdateScheduleHours: nextHours });
-  }, [isAccentUpdating, scheduleHours, scheduleInput, scheduleMutation]);
+    updateSetting({ smartUpdateScheduleHours: nextHours });
+  }, [
+    isAccentUpdating,
+    scheduleHours,
+    scheduleInput,
+    settingsMutation.isPending,
+    updateSetting,
+  ]);
 
   const handleScheduleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -166,429 +667,66 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     [commitSchedule],
   );
 
-  const tabs = useMemo(
-    () => [
-      { key: "account", label: "Account", icon: UserRound },
-      { key: "general", label: "General", icon: SlidersHorizontal },
-      { key: "journal", label: "Journal", icon: NotebookPen },
-      { key: "today", label: "Today", icon: ListTodo },
-      { key: "help", label: "Help", icon: CircleHelp },
-    ] satisfies { key: SettingsTab; label: string; icon: typeof UserRound }[],
-    [],
-  );
+  const isServerSettingsDisabled =
+    settingsQuery.isLoading || settingsMutation.isPending || isAccentUpdating;
 
-  const channel = linkStatusQuery.data?.channel;
+  const channelTitle = linkStatusQuery.data?.channel?.title ?? "Linked YouTube channel";
   const isLinked = Boolean(linkStatusQuery.data?.linked);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="h-[85dvh] max-h-[85dvh] w-[calc(100vw-1rem)] max-w-4xl gap-0 overflow-hidden p-0 md:h-auto md:max-h-[85vh] md:min-h-[520px]">
         <div className="grid h-full min-h-0 grid-cols-1 grid-rows-[auto_1fr] gap-0 md:grid-cols-[220px_1fr] md:grid-rows-1">
-          <div className="flex min-h-0 flex-col border-b border-r bg-muted/50 md:border-b-0">
-            <DialogHeader className="px-6 py-4">
-              <DialogTitle className="text-lg font-semibold">Settings</DialogTitle>
-              <DialogDescription className="text-sm text-muted-foreground">
-                Manage account, general, journal, and help preferences.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex flex-col gap-1 px-2 py-3">
-              {tabs.map(({ key, label, icon: Icon }) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setActiveTab(key)}
-                  className={cn(
-                    "flex items-center gap-3 rounded-md px-4 py-2 text-left text-sm font-medium transition",
-                    "hover:bg-muted",
-                    activeTab === key
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground",
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span>{label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+          <SettingsSidebar activeTab={activeTab} onTabChange={setActiveTab} />
 
           <div className="min-h-0 space-y-6 overflow-y-auto overscroll-contain p-6 [-webkit-overflow-scrolling:touch]">
             {activeTab === "account" ? (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <h3 className="text-base font-semibold">YouTube account</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Control how Storyloop connects to your YouTube channel.
-                  </p>
-                </div>
-
-                <div className="flex items-start justify-between rounded-lg border p-4">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">
-                      {isLinked
-                        ? channel?.title ?? "Linked YouTube channel"
-                        : "No channel linked"}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {isLinked
-                        ? "You can disconnect your Google account from Storyloop."
-                        : "Connect a YouTube channel to personalize your feed."}
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant={isLinked ? "destructive" : "secondary"}
-                    onClick={() => unlinkMutation.mutate()}
-                    disabled={unlinkMutation.isPending || !isLinked}
-                  >
-                    {unlinkMutation.isPending
-                      ? "Unlinking…"
-                      : isLinked
-                        ? "Unlink account"
-                        : "Not linked"}
-                  </Button>
-                </div>
-              </div>
+              <AccountTabContent
+                channelTitle={channelTitle}
+                isLinked={isLinked}
+                isUnlinking={unlinkMutation.isPending}
+                onUnlink={() => unlinkMutation.mutate()}
+              />
             ) : null}
 
             {activeTab === "journal" ? (
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <h3 className="text-base font-semibold">Journal preferences</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Configure how entries and content appear in your journal.
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                    View
-                  </h4>
-                  <div className="flex items-center justify-between rounded-lg border bg-muted/50 p-4">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">Show public uploads only</p>
-                      <p className="text-sm text-muted-foreground">
-                        Hide unlisted or private YouTube videos when browsing your feed.
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="settings-public-only" className="sr-only">
-                        Public only
-                      </Label>
-                      <Switch
-                        id="settings-public-only"
-                        checked={publicOnly}
-                        onCheckedChange={setPublicOnly}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-3 rounded-lg border bg-muted/50 p-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">Activity feed date sort</p>
-                      <p className="text-sm text-muted-foreground">
-                        Choose whether journal entries sort by creation date or last modified date.
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="settings-activity-feed-sort-date" className="sr-only">
-                        Activity feed date sort
-                      </Label>
-                      <Select
-                        value={activityFeedSortDate}
-                        onValueChange={(value) => {
-                          scheduleMutation.mutate({
-                            activityFeedSortDate: value as ActivityFeedSortDate,
-                          });
-                        }}
-                        disabled={
-                          settingsQuery.isLoading ||
-                          scheduleMutation.isPending ||
-                          isAccentUpdating
-                        }
-                      >
-                        <SelectTrigger id="settings-activity-feed-sort-date" className="w-40">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="created">Created date</SelectItem>
-                          <SelectItem value="modified">Modified date</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg border bg-muted/50 p-4">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">Show archived journals</p>
-                      <p className="text-sm text-muted-foreground">
-                        Include archived journal entries in your activity feed.
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="settings-show-archived" className="sr-only">
-                        Show archived journals
-                      </Label>
-                      <Switch
-                        id="settings-show-archived"
-                        checked={showArchived}
-                        disabled={
-                          settingsQuery.isLoading ||
-                          scheduleMutation.isPending ||
-                          isAccentUpdating
-                        }
-                        onCheckedChange={(checked) => {
-                          scheduleMutation.mutate({ showArchived: checked });
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                    Smart updates
-                  </h4>
-                  <div className="flex flex-col gap-3 rounded-lg border bg-muted/50 p-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">Update schedule</p>
-                      <p className="text-sm text-muted-foreground">
-                        Choose how often Loopie refreshes smart journals (checked hourly).
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="settings-smart-update-schedule" className="sr-only">
-                        Smart update schedule in hours
-                      </Label>
-                      <Input
-                        id="settings-smart-update-schedule"
-                        type="number"
-                        min={1}
-                        step={1}
-                        className="w-24 text-right"
-                        value={scheduleInput}
-                        onChange={handleScheduleChange}
-                        onBlur={handleScheduleBlur}
-                        onKeyDown={handleScheduleKeyDown}
-                        disabled={
-                          scheduleMutation.isPending ||
-                          settingsQuery.isLoading ||
-                          isAccentUpdating
-                        }
-                        inputMode="numeric"
-                      />
-                      <span className="text-xs text-muted-foreground">hours</span>
-                    </div>
-                  </div>
-                  <StatusMessage type="error" message={scheduleError} />
-                </div>
-              </div>
+              <JournalTabContent
+                publicOnly={publicOnly}
+                setPublicOnly={setPublicOnly}
+                activityFeedSortDate={activityFeedSortDate}
+                showArchived={showArchived}
+                scheduleInput={scheduleInput}
+                scheduleError={scheduleError}
+                isServerSettingsDisabled={isServerSettingsDisabled}
+                onUpdateSetting={updateSetting}
+                onScheduleChange={handleScheduleChange}
+                onScheduleBlur={handleScheduleBlur}
+                onScheduleKeyDown={handleScheduleKeyDown}
+              />
             ) : null}
 
             {activeTab === "general" ? (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <h3 className="text-base font-semibold">General settings</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Configure app-wide display and interface preferences.
-                  </p>
-                </div>
-
-                <div className="flex items-center justify-between rounded-lg border bg-muted/50 p-4">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">Theme</p>
-                    <p className="text-sm text-muted-foreground">
-                      Choose your preferred color scheme for the interface.
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="settings-theme" className="sr-only">
-                      Theme preference
-                    </Label>
-                    <Select
-                      value={themePreference}
-                      onValueChange={(value) =>
-                        setThemePreference(value as "light" | "dark" | "system")
-                      }
-                    >
-                      <SelectTrigger id="settings-theme" className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="light">Light</SelectItem>
-                        <SelectItem value="dark">Dark</SelectItem>
-                        <SelectItem value="system">System</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between rounded-lg border bg-muted/50 p-4">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">Accent color</p>
-                      <p className="text-sm text-muted-foreground">
-                        Pick the interface accent used for highlights and actions.
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="settings-accent-color" className="sr-only">
-                        Accent color
-                      </Label>
-                      <Select
-                        disabled={
-                          isAccentUpdating ||
-                          scheduleMutation.isPending ||
-                          settingsQuery.isLoading
-                        }
-                        value={accentPreference}
-                        onValueChange={(value) =>
-                          setAccentPreference(value as AccentPreference)
-                        }
-                      >
-                        <SelectTrigger id="settings-accent-color" className="w-40">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ACCENT_OPTIONS.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              <span className="inline-flex items-center gap-2">
-                                <span
-                                  className="h-2.5 w-2.5 rounded-full"
-                                  style={{ backgroundColor: option.swatch }}
-                                  aria-hidden="true"
-                                />
-                                {option.label}
-                              </span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <StatusMessage type="error" message={accentUpdateError} />
-                </div>
-              </div>
+              <GeneralTabContent
+                themePreference={themePreference}
+                setThemePreference={setThemePreference}
+                accentPreference={accentPreference}
+                setAccentPreference={setAccentPreference}
+                accentUpdateError={accentUpdateError}
+                isAccentDisabled={isServerSettingsDisabled}
+              />
             ) : null}
 
             {activeTab === "today" ? (
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <h3 className="text-base font-semibold">Today checklist</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Configure daily Today entries and checklist rollover behavior.
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between rounded-lg border bg-muted/50 p-4">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">Enable Today entries</p>
-                      <p className="text-sm text-muted-foreground">
-                        Create one Today checklist entry each UTC day.
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="settings-today-enabled" className="sr-only">
-                        Enable Today entries
-                      </Label>
-                      <Switch
-                        id="settings-today-enabled"
-                        checked={todayEntriesEnabled}
-                        disabled={
-                          settingsQuery.isLoading ||
-                          scheduleMutation.isPending ||
-                          isAccentUpdating
-                        }
-                        onCheckedChange={(checked) => {
-                          scheduleMutation.mutate({ todayEntriesEnabled: checked });
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between rounded-lg border bg-muted/50 p-4">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">
-                        Include previous incomplete tasks
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Start each new Today entry with unfinished tasks from yesterday.
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Label
-                        htmlFor="settings-today-include-previous"
-                        className="sr-only"
-                      >
-                        Include previous incomplete tasks
-                      </Label>
-                      <Switch
-                        id="settings-today-include-previous"
-                        checked={todayIncludePreviousIncomplete}
-                        disabled={
-                          settingsQuery.isLoading ||
-                          scheduleMutation.isPending ||
-                          isAccentUpdating ||
-                          !todayEntriesEnabled
-                        }
-                        onCheckedChange={(checked) => {
-                          scheduleMutation.mutate({
-                            todayIncludePreviousIncomplete: checked,
-                          });
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between rounded-lg border bg-muted/50 p-4">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">
-                        Move completed tasks to end
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Reorder checked tasks to the bottom as you complete them.
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Label
-                        htmlFor="settings-today-move-completed-to-end"
-                        className="sr-only"
-                      >
-                        Move completed tasks to end
-                      </Label>
-                      <Switch
-                        id="settings-today-move-completed-to-end"
-                        checked={todayMoveCompletedToEnd}
-                        disabled={
-                          settingsQuery.isLoading ||
-                          scheduleMutation.isPending ||
-                          isAccentUpdating ||
-                          !todayEntriesEnabled
-                        }
-                        onCheckedChange={(checked) => {
-                          scheduleMutation.mutate({
-                            todayMoveCompletedToEnd: checked,
-                          });
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <TodayTabContent
+                todayEntriesEnabled={todayEntriesEnabled}
+                todayIncludePreviousIncomplete={todayIncludePreviousIncomplete}
+                todayMoveCompletedToEnd={todayMoveCompletedToEnd}
+                isServerSettingsDisabled={isServerSettingsDisabled}
+                onUpdateSetting={updateSetting}
+              />
             ) : null}
 
-            {activeTab === "help" ? (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <h3 className="text-base font-semibold">Help</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Guidance for understanding and using your activity feed.
-                  </p>
-                </div>
-                <div className="rounded-lg border bg-muted/30 p-4">
-                  <ActivityFeedInfo />
-                </div>
-              </div>
-            ) : null}
+            {activeTab === "help" ? <HelpTabContent /> : null}
           </div>
         </div>
       </DialogContent>

@@ -126,4 +126,50 @@ describe("SettingsProvider accent preference", () => {
     expect(screen.getByTestId("accent")).toHaveTextContent("crimson");
     expect(document.documentElement.dataset.accent).toBe("crimson");
   });
+
+  it("shows pending accent without cached settings and rolls back on failure", async () => {
+    let resolveInitialSettings:
+      | ((value: { data: SettingsResponse }) => void)
+      | undefined;
+    apiGetMock.mockImplementationOnce(
+      () =>
+        new Promise<{ data: SettingsResponse }>((resolve) => {
+          resolveInitialSettings = resolve;
+        }),
+    );
+    apiPutMock.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject: (error: Error) => void) => {
+          setTimeout(() => reject(new Error("failed to save")), 40);
+        }),
+    );
+
+    renderProvider();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("accent")).toHaveTextContent("crimson"),
+    );
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /Switch accent/i }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("accent")).toHaveTextContent("azure"),
+    );
+    await waitFor(() =>
+      expect(apiPutMock).toHaveBeenCalledWith("/settings", {
+        accentColor: "azure",
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("error")).toHaveTextContent(
+        "We couldn't update the accent color. Try again.",
+      ),
+    );
+
+    expect(screen.getByTestId("accent")).toHaveTextContent("crimson");
+    expect(document.documentElement.dataset.accent).toBe("crimson");
+
+    resolveInitialSettings?.({ data: baseSettings });
+  });
 });
