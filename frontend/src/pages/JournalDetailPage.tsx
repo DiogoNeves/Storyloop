@@ -1060,6 +1060,7 @@ export function JournalDetailPage() {
             onChange={setSummaryDraft}
             isEditable={!isSmartUpdating}
             moveCompletedTasksToEnd={todayMoveCompletedToEnd}
+            mentionableItems={activityItems}
           />
         ) : shouldRenderEditor ? (
           <div ref={editorContainerRef}>
