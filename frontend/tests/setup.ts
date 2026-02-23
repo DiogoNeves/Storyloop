@@ -29,6 +29,22 @@ if (!globalThis.ResizeObserver) {
   (globalThis as any).ResizeObserver = ResizeObserver;
 }
 
+if (typeof Element !== "undefined") {
+  if (!Element.prototype.hasPointerCapture) {
+    Element.prototype.hasPointerCapture = () => false;
+  }
+  if (!Element.prototype.setPointerCapture) {
+    Element.prototype.setPointerCapture = () => undefined;
+  }
+  if (!Element.prototype.releasePointerCapture) {
+    Element.prototype.releasePointerCapture = () => undefined;
+  }
+}
+
+if (typeof HTMLElement !== "undefined" && !HTMLElement.prototype.scrollIntoView) {
+  HTMLElement.prototype.scrollIntoView = () => undefined;
+}
+
 // Mock window.matchMedia for theme preference detection
 Object.defineProperty(window, "matchMedia", {
   writable: true,
