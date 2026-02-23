@@ -52,11 +52,11 @@ interface SettingsDialogProps {
 }
 
 type SettingsTab = "account" | "general" | "journal" | "today" | "help";
-type AccentOption = {
+interface AccentOption {
   value: AccentPreference;
   label: string;
   swatch: string;
-};
+}
 
 const ACCENT_OPTIONS: AccentOption[] = [
   { value: "crimson", label: "Crimson", swatch: "hsl(0 84.2% 60.2%)" },
@@ -123,7 +123,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   });
 
   const commitSchedule = useCallback(() => {
-    if (scheduleMutation.isPending) {
+    if (scheduleMutation.isPending || isAccentUpdating) {
       return;
     }
 
@@ -142,7 +142,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     }
 
     scheduleMutation.mutate({ smartUpdateScheduleHours: nextHours });
-  }, [scheduleHours, scheduleInput, scheduleMutation]);
+  }, [isAccentUpdating, scheduleHours, scheduleInput, scheduleMutation]);
 
   const handleScheduleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -300,7 +300,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                             activityFeedSortDate: value as ActivityFeedSortDate,
                           });
                         }}
-                        disabled={settingsQuery.isLoading || scheduleMutation.isPending}
+                        disabled={
+                          settingsQuery.isLoading ||
+                          scheduleMutation.isPending ||
+                          isAccentUpdating
+                        }
                       >
                         <SelectTrigger id="settings-activity-feed-sort-date" className="w-40">
                           <SelectValue />
@@ -326,7 +330,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                       <Switch
                         id="settings-show-archived"
                         checked={showArchived}
-                        disabled={settingsQuery.isLoading || scheduleMutation.isPending}
+                        disabled={
+                          settingsQuery.isLoading ||
+                          scheduleMutation.isPending ||
+                          isAccentUpdating
+                        }
                         onCheckedChange={(checked) => {
                           scheduleMutation.mutate({ showArchived: checked });
                         }}
@@ -360,7 +368,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                         onChange={handleScheduleChange}
                         onBlur={handleScheduleBlur}
                         onKeyDown={handleScheduleKeyDown}
-                        disabled={scheduleMutation.isPending || settingsQuery.isLoading}
+                        disabled={
+                          scheduleMutation.isPending ||
+                          settingsQuery.isLoading ||
+                          isAccentUpdating
+                        }
                         inputMode="numeric"
                       />
                       <span className="text-xs text-muted-foreground">hours</span>
@@ -422,7 +434,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                         Accent color
                       </Label>
                       <Select
-                        disabled={isAccentUpdating}
+                        disabled={
+                          isAccentUpdating ||
+                          scheduleMutation.isPending ||
+                          settingsQuery.isLoading
+                        }
                         value={accentPreference}
                         onValueChange={(value) =>
                           setAccentPreference(value as AccentPreference)
@@ -477,7 +493,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                       <Switch
                         id="settings-today-enabled"
                         checked={todayEntriesEnabled}
-                        disabled={settingsQuery.isLoading || scheduleMutation.isPending}
+                        disabled={
+                          settingsQuery.isLoading ||
+                          scheduleMutation.isPending ||
+                          isAccentUpdating
+                        }
                         onCheckedChange={(checked) => {
                           scheduleMutation.mutate({ todayEntriesEnabled: checked });
                         }}
@@ -507,6 +527,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                         disabled={
                           settingsQuery.isLoading ||
                           scheduleMutation.isPending ||
+                          isAccentUpdating ||
                           !todayEntriesEnabled
                         }
                         onCheckedChange={(checked) => {
@@ -540,6 +561,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                         disabled={
                           settingsQuery.isLoading ||
                           scheduleMutation.isPending ||
+                          isAccentUpdating ||
                           !todayEntriesEnabled
                         }
                         onCheckedChange={(checked) => {
