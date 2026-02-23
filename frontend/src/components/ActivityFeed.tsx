@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { SaveOff } from "lucide-react";
+import { Plus, SaveOff, X } from "lucide-react";
 import useLocalStorageState from "use-local-storage-state";
 
 import type { ActivityItem } from "@/lib/types/entries";
@@ -342,6 +342,20 @@ export function ActivityFeed({
       isArchiving,
     ],
   );
+  const [isMobileCreateOpen, setIsMobileCreateOpen] = useState(false);
+  const canStartDraft = !draft;
+
+  const startDraft = (mode: EntryDraftMode) => {
+    onStartDraft?.(mode);
+    setIsMobileCreateOpen(false);
+  };
+
+  useEffect(() => {
+    if (canStartDraft) {
+      return;
+    }
+    setIsMobileCreateOpen(false);
+  }, [canStartDraft]);
 
   return (
     <Card
@@ -363,11 +377,11 @@ export function ActivityFeed({
             </Button>
           ) : null}
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="hidden flex-wrap items-center justify-end gap-2 sm:flex">
           <Button
             type="button"
             variant="outline"
-            onClick={() => onStartDraft?.("smart")}
+            onClick={() => startDraft("smart")}
             disabled={Boolean(draft)}
             className="self-start sm:self-auto"
           >
@@ -375,7 +389,7 @@ export function ActivityFeed({
           </Button>
           <Button
             type="button"
-            onClick={() => onStartDraft?.("standard")}
+            onClick={() => startDraft("standard")}
             disabled={Boolean(draft)}
             className="self-start sm:self-auto"
           >
@@ -475,6 +489,44 @@ export function ActivityFeed({
         ) : null}
         {renderedFeedItems}
       </CardContent>
+      <div className="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-2 sm:hidden">
+        {isMobileCreateOpen ? (
+          <div className="flex flex-col items-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => startDraft("smart")}
+              disabled={!canStartDraft}
+              className="h-10 rounded-md px-4"
+            >
+              + smart entry
+            </Button>
+            <Button
+              type="button"
+              onClick={() => startDraft("standard")}
+              disabled={!canStartDraft}
+              className="h-10 rounded-md px-4"
+            >
+              + entry
+            </Button>
+          </div>
+        ) : null}
+        <Button
+          type="button"
+          size="icon"
+          aria-expanded={isMobileCreateOpen}
+          aria-label={isMobileCreateOpen ? "Close create menu" : "Open create menu"}
+          onClick={() => setIsMobileCreateOpen((current) => !current)}
+          disabled={!canStartDraft}
+          className="h-14 w-14 rounded-2xl shadow-lg"
+        >
+          {isMobileCreateOpen ? (
+            <X className="h-6 w-6" />
+          ) : (
+            <Plus className="h-6 w-6" />
+          )}
+        </Button>
+      </div>
     </Card>
   );
 }
