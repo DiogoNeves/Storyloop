@@ -653,7 +653,7 @@ function TodayChecklistRowEditor({
                 key={`${index}-${tag}`}
                 className={cn(
                   "inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground",
-                  tag === "archived" && "bg-red-100 text-red-700",
+                  tag === "archived" && "bg-primary/15 text-primary",
                 )}
               >
                 {formatTagLabel(tag)}
@@ -722,7 +722,8 @@ function TodayChecklistRowEditor({
           onBlur={onFieldBlur}
           className={cn(
             "mt-1 inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground dark:text-foreground/80 dark:hover:text-foreground",
-            isPendingDelete && "text-red-600 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/40",
+            isPendingDelete &&
+              "text-destructive hover:bg-destructive/10 dark:text-destructive dark:hover:bg-destructive/20",
           )}
           aria-label={
             isPendingDelete

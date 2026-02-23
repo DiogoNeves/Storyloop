@@ -1,6 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import useLocalStorageState from "use-local-storage-state";
 
+import {
+  DEFAULT_ACCENT_PREFERENCE,
+  DEFAULT_SMART_UPDATE_SCHEDULE_HOURS,
+  settingsQueries,
+  updateSettings,
+  type AccentPreference,
+  type SettingsResponse,
+} from "@/api/settings";
 import {
   SettingsContext,
   type SettingsContextValue,
@@ -27,6 +40,9 @@ function resolveTheme(
 }
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
+  const queryClient = useQueryClient();
+  const settingsQueryKey = settingsQueries.all().queryKey;
+  const settingsQuery = useQuery(settingsQueries.all());
   const [publicOnly, setPublicOnly] = useLocalStorageState<boolean>(
     "publicOnlyFilter",
     {
@@ -42,6 +58,51 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [systemTheme, setSystemTheme] = useState<"light" | "dark">(() =>
     getSystemTheme(),
   );
+  const [accentUpdateError, setAccentUpdateError] = useState<string | null>(null);
+  const [pendingAccentPreference, setPendingAccentPreference] =
+    useState<AccentPreference | null>(null);
+
+  const accentMutation = useMutation({
+    mutationFn: async (nextAccent: AccentPreference) => {
+      return updateSettings({ accentColor: nextAccent });
+    },
+    onMutate: async (nextAccent) => {
+      setAccentUpdateError(null);
+      setPendingAccentPreference(nextAccent);
+      await queryClient.cancelQueries({ queryKey: settingsQueryKey });
+      const previousSettings =
+        queryClient.getQueryData<SettingsResponse>(settingsQueryKey);
+      queryClient.setQueryData<SettingsResponse>(
+        settingsQueryKey,
+        previousSettings
+          ? { ...previousSettings, accentColor: nextAccent }
+          : {
+              smartUpdateScheduleHours: DEFAULT_SMART_UPDATE_SCHEDULE_HOURS,
+              showArchived: false,
+              activityFeedSortDate: "created",
+              todayEntriesEnabled: true,
+              todayIncludePreviousIncomplete: true,
+              todayMoveCompletedToEnd: true,
+              accentColor: nextAccent,
+            },
+      );
+      return { previousSettings };
+    },
+    onError: (_error, _nextAccent, context) => {
+      if (context?.previousSettings) {
+        queryClient.setQueryData(settingsQueryKey, context.previousSettings);
+      } else {
+        void queryClient.invalidateQueries({ queryKey: settingsQueryKey });
+      }
+      setPendingAccentPreference(null);
+      setAccentUpdateError("We couldn't update the accent color. Try again.");
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(settingsQueryKey, data);
+      setPendingAccentPreference(null);
+      setAccentUpdateError(null);
+    },
+  });
 
   // Watch for system theme changes
   useEffect(() => {
@@ -69,6 +130,23 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const resolvedTheme = useMemo<"light" | "dark">(() => {
     return resolveTheme(themePreference ?? "system", systemTheme);
   }, [themePreference, systemTheme]);
+  const accentPreference = useMemo<AccentPreference>(() => {
+    return (
+      pendingAccentPreference ??
+      settingsQuery.data?.accentColor ??
+      DEFAULT_ACCENT_PREFERENCE
+    );
+  }, [pendingAccentPreference, settingsQuery.data?.accentColor]);
+
+  const setAccentPreference = useCallback(
+    (value: AccentPreference) => {
+      if (accentMutation.isPending || value === accentPreference) {
+        return;
+      }
+      accentMutation.mutate(value);
+    },
+    [accentMutation, accentPreference],
+  );
 
   // Apply theme to document
   useEffect(() => {
@@ -77,6 +155,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     }
 
     const root = document.documentElement;
+    root.dataset.accent = accentPreference;
     if (resolvedTheme === "dark") {
       root.classList.add("dark");
       root.style.colorScheme = "dark";
@@ -84,7 +163,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       root.classList.remove("dark");
       root.style.colorScheme = "light";
     }
-  }, [resolvedTheme]);
+  }, [accentPreference, resolvedTheme]);
 
   const value = useMemo<SettingsContextValue>(
     () => ({
@@ -93,8 +172,22 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       themePreference: themePreference ?? "system",
       setThemePreference,
       resolvedTheme,
+      accentPreference,
+      setAccentPreference,
+      isAccentUpdating: accentMutation.isPending,
+      accentUpdateError,
     }),
-    [publicOnly, setPublicOnly, themePreference, setThemePreference, resolvedTheme],
+    [
+      accentMutation.isPending,
+      accentPreference,
+      accentUpdateError,
+      publicOnly,
+      resolvedTheme,
+      setAccentPreference,
+      setPublicOnly,
+      setThemePreference,
+      themePreference,
+    ],
   );
 
   return (

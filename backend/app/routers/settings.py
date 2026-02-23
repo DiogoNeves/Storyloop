@@ -15,7 +15,7 @@ from app.dependencies import (
 )
 from app.services.smart_entries import SmartEntryUpdateManager
 from app.services.today_entries import TodayEntryManager
-from app.services.users import UserService
+from app.services.users import AccentPreference, UserService
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -48,6 +48,10 @@ class SettingsResponse(BaseModel):
     today_move_completed_to_end: bool = Field(
         validation_alias="todayMoveCompletedToEnd",
         serialization_alias="todayMoveCompletedToEnd",
+    )
+    accent_color: AccentPreference = Field(
+        validation_alias="accentColor",
+        serialization_alias="accentColor",
     )
 
 
@@ -87,6 +91,11 @@ class SettingsUpdate(BaseModel):
         validation_alias="todayMoveCompletedToEnd",
         serialization_alias="todayMoveCompletedToEnd",
     )
+    accent_color: AccentPreference | None = Field(
+        default=None,
+        validation_alias="accentColor",
+        serialization_alias="accentColor",
+    )
 
     @model_validator(mode="after")
     def _validate_non_empty(self) -> "SettingsUpdate":
@@ -97,6 +106,7 @@ class SettingsUpdate(BaseModel):
             and self.today_entries_enabled is None
             and self.today_include_previous_incomplete is None
             and self.today_move_completed_to_end is None
+            and self.accent_color is None
         ):
             raise ValueError("At least one setting must be provided.")
         return self
@@ -116,6 +126,7 @@ def get_settings(
             user_service.get_today_include_previous_incomplete()
         ),
         today_move_completed_to_end=user_service.get_today_move_completed_to_end(),
+        accent_color=user_service.get_accent_color(),
     )
 
 
@@ -137,6 +148,7 @@ async def update_settings(
     current_today_move_completed_to_end = (
         user_service.get_today_move_completed_to_end()
     )
+    current_accent_color = user_service.get_accent_color()
 
     next_hours = (
         payload.smart_update_schedule_hours
@@ -168,6 +180,11 @@ async def update_settings(
         if payload.today_move_completed_to_end is not None
         else current_today_move_completed_to_end
     )
+    next_accent_color = (
+        payload.accent_color
+        if payload.accent_color is not None
+        else current_accent_color
+    )
 
     user_service.set_smart_update_interval_hours(next_hours)
     user_service.set_show_archived(next_show_archived)
@@ -175,6 +192,7 @@ async def update_settings(
     user_service.set_today_entries_enabled(next_today_enabled)
     user_service.set_today_include_previous_incomplete(next_today_include_previous)
     user_service.set_today_move_completed_to_end(next_today_move_completed_to_end)
+    user_service.set_accent_color(next_accent_color)
 
     if current_hours != next_hours:
         await smart_entry_manager.run_due_updates()
@@ -188,4 +206,5 @@ async def update_settings(
         today_entries_enabled=next_today_enabled,
         today_include_previous_incomplete=next_today_include_previous,
         today_move_completed_to_end=next_today_move_completed_to_end,
+        accent_color=next_accent_color,
     )
