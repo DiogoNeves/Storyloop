@@ -62,6 +62,86 @@
     --radius: 0.75rem;
   }
 
+  :root[data-accent="crimson"] {
+    --primary: 0 84.2% 60.2%;
+    --primary-foreground: 0 100% 97.1%;
+    --accent: 0 84.2% 60.2%;
+    --accent-foreground: 0 100% 97.1%;
+    --ring: 0 84.2% 60.2%;
+  }
+
+  :root[data-accent="rose"] {
+    --primary: 345 84.2% 60.2%;
+    --primary-foreground: 345 100% 97.1%;
+    --accent: 345 84.2% 60.2%;
+    --accent-foreground: 345 100% 97.1%;
+    --ring: 345 84.2% 60.2%;
+  }
+
+  :root[data-accent="emerald"] {
+    --primary: 145 84.2% 60.2%;
+    --primary-foreground: 145 100% 97.1%;
+    --accent: 145 84.2% 60.2%;
+    --accent-foreground: 145 100% 97.1%;
+    --ring: 145 84.2% 60.2%;
+  }
+
+  :root[data-accent="azure"] {
+    --primary: 215 84.2% 60.2%;
+    --primary-foreground: 215 100% 97.1%;
+    --accent: 215 84.2% 60.2%;
+    --accent-foreground: 215 100% 97.1%;
+    --ring: 215 84.2% 60.2%;
+  }
+
+  :root[data-accent="violet"] {
+    --primary: 270 84.2% 60.2%;
+    --primary-foreground: 270 100% 97.1%;
+    --accent: 270 84.2% 60.2%;
+    --accent-foreground: 270 100% 97.1%;
+    --ring: 270 84.2% 60.2%;
+  }
+
+  .dark[data-accent="crimson"] {
+    --primary: 0 72.2% 50.6%;
+    --primary-foreground: 0 0% 98%;
+    --accent: 0 72.2% 50.6%;
+    --accent-foreground: 0 0% 98%;
+    --ring: 0 72.2% 50.6%;
+  }
+
+  .dark[data-accent="rose"] {
+    --primary: 345 72.2% 50.6%;
+    --primary-foreground: 0 0% 98%;
+    --accent: 345 72.2% 50.6%;
+    --accent-foreground: 0 0% 98%;
+    --ring: 345 72.2% 50.6%;
+  }
+
+  .dark[data-accent="emerald"] {
+    --primary: 145 72.2% 50.6%;
+    --primary-foreground: 0 0% 98%;
+    --accent: 145 72.2% 50.6%;
+    --accent-foreground: 0 0% 98%;
+    --ring: 145 72.2% 50.6%;
+  }
+
+  .dark[data-accent="azure"] {
+    --primary: 215 72.2% 50.6%;
+    --primary-foreground: 0 0% 98%;
+    --accent: 215 72.2% 50.6%;
+    --accent-foreground: 0 0% 98%;
+    --ring: 215 72.2% 50.6%;
+  }
+
+  .dark[data-accent="violet"] {
+    --primary: 270 72.2% 50.6%;
+    --primary-foreground: 0 0% 98%;
+    --accent: 270 72.2% 50.6%;
+    --accent-foreground: 0 0% 98%;
+    --ring: 270 72.2% 50.6%;
+  }
+
   * {
     @apply border-border;
   }
@@ -198,6 +278,6 @@
   }
 
   .journal-editor .journal-hashtag-archived {
-    @apply bg-red-100 text-red-700;
+    @apply bg-primary/15 text-primary;
   }
 }

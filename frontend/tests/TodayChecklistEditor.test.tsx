@@ -189,7 +189,11 @@ describe("TodayChecklistEditor", () => {
     const archivedTag = screen.getByText("#archived");
 
     expect(focusTag).toHaveClass("rounded-full");
-    expect(archivedTag).toHaveClass("rounded-full", "bg-red-100", "text-red-700");
+    expect(archivedTag).toHaveClass(
+      "rounded-full",
+      "bg-primary/15",
+      "text-primary",
+    );
   });
 
   it("shows delete controls while focused and hides confirmation when focus leaves", async () => {

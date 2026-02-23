@@ -126,7 +126,7 @@ export function ActivityFeedItem({
             </Badge>
             {view.showSmartUpdatedSinceLastOpen ? (
               <span
-                className="h-2.5 w-2.5 shrink-0 rounded-full bg-red-500"
+                className="h-2.5 w-2.5 shrink-0 rounded-full bg-primary"
                 aria-label="Updated since last open"
                 title="Updated since last open"
               />

@@ -6,7 +6,7 @@ from httpx import ASGITransport, AsyncClient
 from app.config import Settings
 from app.main import create_app
 from app.services.today_entries import build_today_entry_id, utc_day_key
-from app.services.users import DEFAULT_SMART_UPDATE_INTERVAL_HOURS
+from app.services.users import DEFAULT_ACCENT_COLOR, DEFAULT_SMART_UPDATE_INTERVAL_HOURS
 
 
 @pytest.mark.asyncio
@@ -34,6 +34,7 @@ async def test_get_settings_returns_default_schedule() -> None:
     assert payload["todayEntriesEnabled"] is True
     assert payload["todayIncludePreviousIncomplete"] is True
     assert payload["todayMoveCompletedToEnd"] is True
+    assert payload["accentColor"] == DEFAULT_ACCENT_COLOR
 
 
 @pytest.mark.asyncio
@@ -69,6 +70,10 @@ async def test_update_settings_persists_schedule() -> None:
                 },
             )
             followup_today = await client.get("/settings/")
+            accent_toggle = await client.put(
+                "/settings/", json={"accentColor": "violet"}
+            )
+            followup_accent = await client.get("/settings/")
 
     assert update_response.status_code == 200
     assert update_response.json()["smartUpdateScheduleHours"] == 6
@@ -92,6 +97,10 @@ async def test_update_settings_persists_schedule() -> None:
     assert followup_today.json()["todayEntriesEnabled"] is False
     assert followup_today.json()["todayIncludePreviousIncomplete"] is False
     assert followup_today.json()["todayMoveCompletedToEnd"] is False
+    assert accent_toggle.status_code == 200
+    assert accent_toggle.json()["accentColor"] == "violet"
+    assert followup_accent.status_code == 200
+    assert followup_accent.json()["accentColor"] == "violet"
 
 
 @pytest.mark.asyncio
