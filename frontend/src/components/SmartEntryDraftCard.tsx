@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Bot } from "lucide-react";
 
 import { type ActivityDraft } from "./ActivityFeed";
@@ -38,10 +38,46 @@ export function SmartEntryDraftCard({
   const titleRef = useRef<HTMLInputElement | null>(null);
   const promptBodyRef = useRef<HTMLTextAreaElement | null>(null);
   const hasFocusedRef = useRef(false);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const mobileScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const trimmedTitle = draft.title.trim();
   const trimmedPromptBody = (draft.promptBody ?? "").trim();
   const isSubmitDisabled = trimmedTitle.length === 0 || trimmedPromptBody.length === 0;
+
+  const shouldAutoScrollOnFocus = useCallback((): boolean => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    return window.matchMedia("(max-width: 768px)").matches;
+  }, []);
+
+  const scrollCardIntoView = useCallback(() => {
+    cardRef.current?.scrollIntoView?.({
+      behavior: "smooth",
+      block: "start",
+      inline: "nearest",
+    });
+  }, []);
+
+  const scheduleCardScrollIntoView = useCallback(() => {
+    if (!shouldAutoScrollOnFocus()) {
+      return;
+    }
+    requestAnimationFrame(() => {
+      scrollCardIntoView();
+    });
+
+    if (mobileScrollTimeoutRef.current) {
+      clearTimeout(mobileScrollTimeoutRef.current);
+    }
+    mobileScrollTimeoutRef.current = setTimeout(() => {
+      scrollCardIntoView();
+      mobileScrollTimeoutRef.current = null;
+    }, 140);
+  }, [scrollCardIntoView, shouldAutoScrollOnFocus]);
 
   useEffect(() => {
     if (hasFocusedRef.current) {
@@ -49,11 +85,24 @@ export function SmartEntryDraftCard({
     }
     const target = trimmedTitle.length > 0 ? promptBodyRef.current : titleRef.current;
     target?.focus({ preventScroll: true });
+    scheduleCardScrollIntoView();
     hasFocusedRef.current = true;
-  }, [trimmedTitle]);
+  }, [scheduleCardScrollIntoView, trimmedTitle]);
+
+  useEffect(
+    () => () => {
+      if (mobileScrollTimeoutRef.current) {
+        clearTimeout(mobileScrollTimeoutRef.current);
+      }
+    },
+    [],
+  );
 
   return (
-    <Card className="border-dashed border-primary/40 bg-primary/5">
+    <Card
+      ref={cardRef}
+      className="scroll-mt-2 border-dashed border-primary/40 bg-primary/5 sm:scroll-mt-4"
+    >
       <CardContent className="space-y-4 p-4">
         <div className="flex items-center gap-2">
           <Badge
@@ -75,6 +124,7 @@ export function SmartEntryDraftCard({
               placeholder="Weekly insight recap"
               value={draft.title}
               ref={titleRef}
+              onFocus={scheduleCardScrollIntoView}
               onChange={(event) =>
                 onChange({ ...draft, title: event.target.value })
               }
@@ -87,6 +137,7 @@ export function SmartEntryDraftCard({
               placeholder="Highlight this week’s wins, blockers, and next experiments..."
               value={draft.promptBody ?? ""}
               ref={promptBodyRef}
+              onFocus={scheduleCardScrollIntoView}
               onChange={(event) =>
                 onChange({ ...draft, promptBody: event.target.value })
               }
@@ -99,6 +150,7 @@ export function SmartEntryDraftCard({
               id={promptFormatId}
               placeholder="Bullet list with headings, then a short summary paragraph."
               value={draft.promptFormat ?? ""}
+              onFocus={scheduleCardScrollIntoView}
               onChange={(event) =>
                 onChange({ ...draft, promptFormat: event.target.value })
               }

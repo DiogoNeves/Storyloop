@@ -54,7 +54,10 @@ vi.mock("@/hooks/useDebouncedAutosave", () => ({
   }),
 }));
 
-function renderFeed(items: ActivityItem[]) {
+function renderFeed(
+  items: ActivityItem[],
+  overrides: Partial<Parameters<typeof ActivityFeed>[0]> = {},
+) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -71,6 +74,7 @@ function renderFeed(items: ActivityItem[]) {
             todayEntriesEnabled={true}
             searchQuery=""
             tagFilters={[]}
+            {...overrides}
           />
         </MemoryRouter>
       </TooltipProvider>
@@ -120,5 +124,40 @@ describe("ActivityFeed Today section", () => {
 
     expect(screen.getByRole("button", { name: "Show Today" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Today" })).toBeInTheDocument();
+  });
+
+  it("renders the smart-entry editor above the Today checklist", () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const items: ActivityItem[] = [
+      {
+        id: `today-${today}`,
+        title: "Today",
+        summary: "- [ ] Plan intro\n- [ ]",
+        date: `${today}T12:00:00.000Z`,
+        category: "today",
+        pinned: false,
+        archived: false,
+      },
+    ];
+
+    renderFeed(items, {
+      draft: {
+        title: "",
+        summary: "",
+        date: `${today}T08:00`,
+        promptBody: "",
+        promptFormat: "",
+        mode: "smart",
+      },
+      onDraftChange: vi.fn(),
+    });
+
+    const promptBodyField = screen.getByLabelText(/What to include/i);
+    const todayTaskField = screen.getByPlaceholderText("Type a task…");
+
+    expect(
+      promptBodyField.compareDocumentPosition(todayTaskField) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });
