@@ -75,6 +75,10 @@ function renderPage(ui: ReactElement, initialPath: string) {
     themePreference: "system" as const,
     setThemePreference: vi.fn(),
     resolvedTheme: "light" as const,
+    accentPreference: "crimson" as const,
+    setAccentPreference: vi.fn(),
+    isAccentUpdating: false,
+    accentUpdateError: null,
   };
 
   render(

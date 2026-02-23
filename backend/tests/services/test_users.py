@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 from app.db import SqliteConnectionFactory
-from app.services.users import UserService
+from app.services.users import DEFAULT_ACCENT_COLOR, UserService
 
 
 def test_ensure_schema_fresh_table_excludes_channel_profile_columns(
@@ -19,6 +19,7 @@ def test_ensure_schema_fresh_table_excludes_channel_profile_columns(
 
     assert "channel_profile_json" not in columns
     assert "channel_profile_updated_at" not in columns
+    assert "accent_color" in columns
 
 
 def test_ensure_schema_migrates_legacy_channel_profile_columns(
@@ -122,6 +123,7 @@ def test_ensure_schema_migrates_legacy_channel_profile_columns(
     assert record.today_entries_enabled is False
     assert record.today_include_previous_incomplete is False
     assert record.today_move_completed_to_end is False
+    assert record.accent_color is None
 
 
 def test_upsert_credentials_persists_payload(
@@ -308,3 +310,43 @@ def test_today_move_completed_to_end_round_trip(
 
     service.set_today_move_completed_to_end(True)
     assert service.get_today_move_completed_to_end() is True
+
+
+def test_accent_color_round_trip(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    service = UserService(memory_connection_factory)
+    service.ensure_schema()
+
+    assert service.get_accent_color() == DEFAULT_ACCENT_COLOR
+
+    service.set_accent_color("azure")
+    assert service.get_accent_color() == "azure"
+
+    record = service.get_active_user()
+    assert record is not None
+    assert record.accent_color == "azure"
+
+    service.set_accent_color("violet")
+    assert service.get_accent_color() == "violet"
+
+
+def test_invalid_persisted_accent_color_falls_back_to_default(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    service = UserService(memory_connection_factory)
+    service.ensure_schema()
+
+    with memory_connection_factory() as connection:
+        connection.execute(
+            """
+            INSERT INTO users (id, accent_color)
+            VALUES (?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                accent_color=excluded.accent_color
+            """,
+            ("active", "invalid-accent"),
+        )
+        connection.commit()
+
+    assert service.get_accent_color() == DEFAULT_ACCENT_COLOR
