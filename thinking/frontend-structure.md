@@ -11,6 +11,8 @@ frontend/
 │   │   ├── conversations.ts # Loopie conversations + turns
 │   │   ├── entries.ts    # Activity/journal entries
 │   │   ├── health.ts     # Health check queries
+│   │   ├── settings.ts   # User settings queries/mutations
+│   │   ├── speech.ts     # Dictation/transcription endpoints
 │   │   └── youtube.ts    # YouTube data endpoints
 │   ├── assets/           # Local static images
 │   ├── components/       # React components
@@ -31,6 +33,8 @@ frontend/
 │   ├── hooks/            # Feature hooks
 │   │   ├── useAgentConversation.ts
 │   │   ├── useAssetUpload.ts
+│   │   ├── useAudioDictation.ts
+│   │   ├── useAudioInputDevices.ts
 │   │   ├── useEntryEditing.ts
 │   │   ├── useSync.ts
 │   │   └── useYouTubeFeed.ts
@@ -52,6 +56,14 @@ frontend/
 ├── vite.config.ts        # Vite configuration
 └── tailwind.config.js    # Tailwind setup
 ```
+
+## Recent Architecture Updates (2026-02-23)
+
+- Settings defaults are centralized in `frontend/src/api/settings.ts` (`DEFAULT_SETTINGS_RESPONSE` + `resolveSettingsResponse`) and reused by consumers.
+- `SettingsProvider` applies accent preferences via the root `data-accent` attribute and optimistic React Query updates.
+- `TodayChecklistEditor` supports inline mention discovery and stores durable journal references as `@entry:<entry_id>` tokens.
+- `ActivityFeed` includes a mobile-only floating create action menu (`+ entry` / `+ smart entry`) with animated expand/collapse.
+- Dictation now includes explicit audio-input-device selection and sanitized microphone labels via `useAudioInputDevices`.
 
 ## Core Application
 
@@ -110,7 +122,28 @@ frontend/
 - Category badges and inline edit/delete/pin actions
 - Draft entry UI with attachment uploads
 - `+ entry` navigates to `/journals/new` for the new detail-based editor; smart entries are still created inline.
+- Mobile view (`< sm`) uses an expandable floating create menu that mirrors desktop create actions.
 - Search filtering and YouTube link status
+
+### TodayChecklistEditor Component
+
+**Purpose:** Edit Today tasks with markdown checklist syntax and linked journal references.
+
+**Features:**
+
+- Parses/serializes checklist markdown while preserving checked order options.
+- Supports `@` mention suggestions from journal entries and keyboard navigation.
+- Stores mentions as `@entry:<entry_id>` tokens and renders chips from entry metadata.
+
+### SettingsProvider Component
+
+**Purpose:** Manage persisted user settings plus local theme preference resolution.
+
+**Features:**
+
+- Reads backend settings through `settingsQueries.all()`.
+- Applies optimistic accent updates and rollback handling through React Query mutation lifecycle.
+- Resolves initial values through shared fallback helpers (`resolveSettingsResponse`) to avoid duplicate defaults.
 
 ### ActivityDraftCard Component
 
@@ -171,7 +204,10 @@ frontend/
 
 **Axios Configuration:**
 
-- Base URL: `http://localhost:8000` (configurable via `VITE_API_BASE_URL`)
+- Base URL resolution:
+  - Local Vite dev (`:5173`) uses `/api` proxy.
+  - Local Vite preview (`:4173`) targets `http://localhost:8000`.
+  - Remote uses `VITE_API_BASE_URL` when provided, else same-origin `/api`.
 - Timeout: 10 seconds
 - JSON content type
 - Environment variable support
@@ -240,7 +276,7 @@ Handles:
 **Default Palette:**
 
 - Primary: Blue tones
-- Accent: Subtle grays
+- Accent: runtime-selectable preset (`crimson`, `rose`, `emerald`, `azure`, `violet`) via `data-accent`
 - Destructive: Red tones
 - Secondary: Muted contrast
 

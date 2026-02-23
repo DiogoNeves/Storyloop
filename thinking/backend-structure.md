@@ -19,6 +19,8 @@ backend/
 │   │   ├── conversations.py  # Conversation streaming endpoints
 │   │   ├── entries.py     # Journal/timeline entries CRUD
 │   │   ├── health.py      # Health check endpoint
+│   │   ├── settings.py    # User settings API
+│   │   ├── speech.py      # Dictation transcription API
 │   │   ├── youtube.py     # YouTube data endpoints
 │   │   └── youtube_auth.py  # YouTube OAuth endpoints
 │   └── services/          # Business logic
@@ -27,6 +29,8 @@ backend/
 │       ├── agent_tools/   # Agent tool adapters + models
 │       ├── assets.py      # Asset storage + metadata
 │       ├── entries.py     # Entry persistence
+│       ├── speech_to_text.py # Speech-to-text integration
+│       ├── today_entries.py # Today checklist orchestration
 │       ├── users.py       # Active user/channel state
 │       ├── youtube.py     # YouTube API integration
 │       ├── youtube_analytics.py # YouTube analytics helpers
@@ -64,6 +68,9 @@ Key functions:
 - `app.state.youtube_service` - YouTube API service
 - `app.state.youtube_analytics_service` - YouTube Analytics API service
 - `app.state.assistant_agent` - PydanticAI agent instance
+- `app.state.speech_to_text_service` - Optional dictation transcription service
+- `app.state.today_entry_manager` - Today checklist lifecycle manager
+- `app.state.smart_entry_manager` - Background smart-entry updater
 
 ### 2. Configuration (`config.py`)
 
@@ -76,6 +83,8 @@ Centralized settings management using Pydantic:
 - `logfire_api_key` - Optional observability token
 - `openai_api_key` - Optional AI agent key (agent disabled if not set, similar to YouTube OAuth)
 - `youtube_api_key` - Optional YouTube API key
+- `youtube_demo_mode` / `youtube_demo_scenario` - Fixture-driven demo mode controls
+- `smart_entries_scheduler_enabled` - Background smart-entry scheduler toggle
 - `cors_origins` - Allowed frontend origins
 
 **Features:**
@@ -244,7 +253,31 @@ markdown links to `/assets/{id}` for attachments.
 - `conversations` table: `id`, `title`, `created_at`
 - `turns` table: `id`, `conversation_id`, `role`, `text`, `attachments`, `created_at`
 
-#### Channel Settings Router (Future: `routers/settings.py`)
+#### Settings Router (`routers/settings.py`)
+
+**Endpoints:**
+
+- `GET /settings` - Fetch active-user settings snapshot
+- `PUT /settings` - Partially update settings and return merged state
+
+**Settings currently include:**
+
+- Smart update schedule (`smartUpdateScheduleHours`)
+- Feed visibility/sorting (`showArchived`, `activityFeedSortDate`)
+- Today behavior (`todayEntriesEnabled`, `todayIncludePreviousIncomplete`, `todayMoveCompletedToEnd`)
+- Accent theme preference (`accentColor`)
+
+#### Speech Router (`routers/speech.py`)
+
+**Endpoint:**
+
+- `POST /speech/transcriptions` - Transcribe uploaded audio (`multipart/form-data`)
+
+**Behavior:**
+
+- Validates supported audio MIME/extension combinations
+- Enforces 25 MB upload limit
+- Maps provider/response failures to explicit HTTP errors for frontend recovery
 
 ## Request Flow
 
@@ -275,7 +308,7 @@ Required in `.env`:
 
 ```bash
 ENV=development
-DATABASE_URL=sqlite:///backend/.data/storyloop.db
+DATABASE_URL=sqlite:///backend/data/dev-storyloop.db
 CORS_ORIGINS=http://127.0.0.1:5173,http://localhost:5173
 ```
 
@@ -285,6 +318,8 @@ Optional:
 LOGFIRE_API_KEY=your_logfire_token
 OPENAI_API_KEY=your_openai_key  # Optional: enables agent functionality
 YOUTUBE_API_KEY=your_youtube_key
+YOUTUBE_DEMO_MODE=true           # Optional: use fixture-backed demo data
+SMART_ENTRIES_SCHEDULER_ENABLED=true
 ```
 
 ## Development Commands

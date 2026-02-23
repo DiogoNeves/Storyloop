@@ -1,7 +1,7 @@
 # AGENTS.md
 
 Guidance for coding agents working in this repository.
-Last verified against repo config: 2026-02-21.
+Last verified against repo config: 2026-02-23.
 
 ## Scope and Priority
 
@@ -123,6 +123,23 @@ cd frontend && pnpm run test -- --run tests/TodayChecklistEditor.test.tsx
 - Add new shadcn components via CLI, not by manual copy:
   - `cd frontend && pnpm dlx shadcn@latest add <component>`
 - Use `lucide-react` for icons.
+
+## Recent Product Patterns (PRs #219-#225)
+
+- Settings defaults:
+  - Keep backend settings as source of truth.
+  - Reuse `resolveSettingsResponse()` / `DEFAULT_SETTINGS_RESPONSE` from `frontend/src/api/settings.ts` rather than duplicating fallback constants in components.
+- Accent theme:
+  - Route accent updates through `SettingsProvider` optimistic mutation flow.
+  - Apply theme via root `data-accent` and CSS token variants in `frontend/src/index.css`; avoid hard-coded accent classes in feature components.
+- Today checklist mentions:
+  - Preserve durable reference tokens in markdown using `@entry:<entry_id>`.
+  - Use mention helpers (`findMentionStateAtCursor`, entry reference helpers) instead of ad-hoc parsing logic.
+- Audio input labels:
+  - Keep device labels human-friendly by stripping trailing hardware codes like `(vendor:product)` while preserving non-hardware parentheses.
+  - Always fall back to a safe default label when sanitization yields empty text.
+- Mobile create UX:
+  - Keep mobile FAB behavior scoped below `sm` while preserving desktop header actions at `sm` and above.
 
 ## Formatting and Linting
 
