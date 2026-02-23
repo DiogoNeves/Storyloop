@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import {
+  type AccentPreference,
   DEFAULT_SMART_UPDATE_SCHEDULE_HOURS,
   settingsQueries,
   updateSettings,
@@ -51,12 +52,33 @@ interface SettingsDialogProps {
 }
 
 type SettingsTab = "account" | "general" | "journal" | "today" | "help";
+type AccentOption = {
+  value: AccentPreference;
+  label: string;
+  swatch: string;
+};
+
+const ACCENT_OPTIONS: AccentOption[] = [
+  { value: "crimson", label: "Crimson", swatch: "hsl(0 84.2% 60.2%)" },
+  { value: "rose", label: "Rose", swatch: "hsl(345 84.2% 60.2%)" },
+  { value: "emerald", label: "Emerald", swatch: "hsl(145 84.2% 60.2%)" },
+  { value: "azure", label: "Azure", swatch: "hsl(215 84.2% 60.2%)" },
+  { value: "violet", label: "Violet", swatch: "hsl(270 84.2% 60.2%)" },
+];
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<SettingsTab>("account");
-  const { publicOnly, setPublicOnly, themePreference, setThemePreference } =
-    useSettings();
+  const {
+    publicOnly,
+    setPublicOnly,
+    themePreference,
+    setThemePreference,
+    accentPreference,
+    setAccentPreference,
+    isAccentUpdating,
+    accentUpdateError,
+  } = useSettings();
   const [scheduleInput, setScheduleInput] = useState(
     String(DEFAULT_SMART_UPDATE_SCHEDULE_HOURS),
   );
@@ -385,6 +407,48 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between rounded-lg border bg-muted/50 p-4">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">Accent color</p>
+                      <p className="text-sm text-muted-foreground">
+                        Pick the interface accent used for highlights and actions.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="settings-accent-color" className="sr-only">
+                        Accent color
+                      </Label>
+                      <Select
+                        disabled={isAccentUpdating}
+                        value={accentPreference}
+                        onValueChange={(value) =>
+                          setAccentPreference(value as AccentPreference)
+                        }
+                      >
+                        <SelectTrigger id="settings-accent-color" className="w-40">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ACCENT_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              <span className="inline-flex items-center gap-2">
+                                <span
+                                  className="h-2.5 w-2.5 rounded-full"
+                                  style={{ backgroundColor: option.swatch }}
+                                  aria-hidden="true"
+                                />
+                                {option.label}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <StatusMessage type="error" message={accentUpdateError} />
                 </div>
               </div>
             ) : null}

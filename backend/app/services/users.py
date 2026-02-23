@@ -6,14 +6,23 @@ from contextlib import closing
 from dataclasses import dataclass
 from datetime import datetime
 from sqlite3 import Row
-from typing import Literal
+from typing import Literal, cast
 
 from app.services.base import DatabaseService
 
 _DEFAULT_USER_ID = "active"
+AccentPreference = Literal["crimson", "rose", "emerald", "azure", "violet"]
 DEFAULT_SMART_UPDATE_INTERVAL_HOURS = 24
 DEFAULT_ACTIVITY_FEED_SORT_DATE: Literal["created", "modified"] = "created"
 ALLOWED_ACTIVITY_FEED_SORT_DATES = {"created", "modified"}
+DEFAULT_ACCENT_COLOR: AccentPreference = "crimson"
+ALLOWED_ACCENT_COLORS = {
+    "crimson",
+    "rose",
+    "emerald",
+    "azure",
+    "violet",
+}
 DEFAULT_TODAY_ENTRIES_ENABLED = True
 DEFAULT_TODAY_INCLUDE_PREVIOUS_INCOMPLETE = True
 DEFAULT_TODAY_MOVE_COMPLETED_TO_END = True
@@ -39,6 +48,7 @@ _USERS_TABLE_SCHEMA: tuple[tuple[str, str], ...] = (
     ("today_entries_enabled", "INTEGER"),
     ("today_include_previous_incomplete", "INTEGER"),
     ("today_move_completed_to_end", "INTEGER"),
+    ("accent_color", "TEXT"),
 )
 _USERS_TABLE_COLUMNS = tuple(column for column, _ in _USERS_TABLE_SCHEMA)
 _USERS_TABLE_MUTABLE_COLUMNS = tuple(
@@ -73,6 +83,7 @@ class UserRecord:
     today_entries_enabled: bool | None = None
     today_include_previous_incomplete: bool | None = None
     today_move_completed_to_end: bool | None = None
+    accent_color: AccentPreference | None = None
 
 
 def _row_to_record(row: Row) -> UserRecord:
@@ -82,6 +93,11 @@ def _row_to_record(row: Row) -> UserRecord:
         if value is None:
             return None
         return datetime.fromisoformat(value)
+
+    def _parse_accent_color(value: str | None) -> AccentPreference | None:
+        if value in ALLOWED_ACCENT_COLORS:
+            return cast(AccentPreference, value)
+        return None
 
     return UserRecord(
         id=row["id"],
@@ -115,6 +131,7 @@ def _row_to_record(row: Row) -> UserRecord:
         today_move_completed_to_end=bool(row["today_move_completed_to_end"])
         if row["today_move_completed_to_end"] is not None
         else None,
+        accent_color=_parse_accent_color(row["accent_color"]),
     )
 
 
@@ -377,6 +394,38 @@ class UserService(DatabaseService):
                     today_move_completed_to_end=excluded.today_move_completed_to_end
                 """,
                 (_DEFAULT_USER_ID, int(enabled)),
+            )
+            connection.commit()
+
+    def get_accent_color(self) -> AccentPreference:
+        """Return the configured accent color for theming."""
+        with closing(self._connection_factory()) as connection:
+            row = connection.execute(
+                "SELECT accent_color FROM users WHERE id = ?",
+                (_DEFAULT_USER_ID,),
+            ).fetchone()
+        if row is None:
+            return DEFAULT_ACCENT_COLOR
+
+        value = row["accent_color"]
+        if value not in ALLOWED_ACCENT_COLORS:
+            return DEFAULT_ACCENT_COLOR
+        return cast(AccentPreference, value)
+
+    def set_accent_color(self, accent_color: AccentPreference) -> None:
+        """Persist the configured accent color."""
+        if accent_color not in ALLOWED_ACCENT_COLORS:
+            raise ValueError(f"Unsupported accent color: {accent_color}")
+
+        with closing(self._connection_factory()) as connection:
+            connection.execute(
+                """
+                INSERT INTO users (id, accent_color)
+                VALUES (?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    accent_color=excluded.accent_color
+                """,
+                (_DEFAULT_USER_ID, accent_color),
             )
             connection.commit()
 
