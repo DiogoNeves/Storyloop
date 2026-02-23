@@ -2,8 +2,6 @@ import { createQueryKeys } from "@lukemorales/query-key-factory";
 
 import { apiClient } from "@/api/client";
 
-export const DEFAULT_SMART_UPDATE_SCHEDULE_HOURS = 24;
-
 export type ActivityFeedSortDate = "created" | "modified";
 export type AccentPreference =
   | "crimson"
@@ -11,7 +9,6 @@ export type AccentPreference =
   | "emerald"
   | "azure"
   | "violet";
-export const DEFAULT_ACCENT_PREFERENCE: AccentPreference = "crimson";
 
 export interface SettingsResponse {
   smartUpdateScheduleHours: number;
@@ -21,6 +18,29 @@ export interface SettingsResponse {
   todayIncludePreviousIncomplete: boolean;
   todayMoveCompletedToEnd: boolean;
   accentColor: AccentPreference;
+}
+
+// Backend settings are the source of truth. This frontend fallback is only for
+// transient pre-fetch rendering.
+export const DEFAULT_SETTINGS_RESPONSE: SettingsResponse = {
+  smartUpdateScheduleHours: 24,
+  showArchived: false,
+  activityFeedSortDate: "created",
+  todayEntriesEnabled: true,
+  todayIncludePreviousIncomplete: true,
+  todayMoveCompletedToEnd: true,
+  accentColor: "crimson",
+};
+
+export const DEFAULT_SMART_UPDATE_SCHEDULE_HOURS =
+  DEFAULT_SETTINGS_RESPONSE.smartUpdateScheduleHours;
+export const DEFAULT_ACCENT_PREFERENCE: AccentPreference =
+  DEFAULT_SETTINGS_RESPONSE.accentColor;
+
+export function resolveSettingsResponse(
+  settings?: SettingsResponse,
+): SettingsResponse {
+  return settings ?? DEFAULT_SETTINGS_RESPONSE;
 }
 
 export interface UpdateSettingsInput {
