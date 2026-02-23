@@ -6,12 +6,26 @@ import {
   useState,
   type ChangeEvent,
   type KeyboardEvent,
+  type SyntheticEvent,
 } from "react";
+import { Link } from "react-router-dom";
 import { Check, Plus, X } from "lucide-react";
 
 import { AutoResizeTextarea } from "@/components/ui/auto-resize-textarea";
 import { Button } from "@/components/ui/button";
+import { filterActivityItems } from "@/lib/activity-search";
 import { extractTagsFromText, formatTagLabel } from "@/lib/activity-tags";
+import {
+  buildEntryReferenceTitleMap,
+  extractEntryReferenceIds,
+  extractEntryReferenceTokens,
+  resolveEntryReferenceLabel,
+} from "@/lib/entry-references";
+import { findMentionStateAtCursor } from "@/lib/mention-search";
+import {
+  compareActivityItemsByPinnedDate,
+  type ActivityItem,
+} from "@/lib/types/entries";
 import {
   parseTodayChecklistMarkdown,
   type TodayChecklistRow,
@@ -23,11 +37,22 @@ interface TodayChecklistEditorProps {
   onChange: (nextValue: string) => void;
   isEditable?: boolean;
   moveCompletedTasksToEnd?: boolean;
+  mentionableItems?: ActivityItem[];
   className?: string;
 }
 
-interface TodayChecklistEditorRow extends TodayChecklistRow {
+interface TodayChecklistEditorRow {
   id: number;
+  text: string;
+  checked: boolean;
+  entryReferenceIds: string[];
+}
+
+interface TodayChecklistMentionState {
+  rowId: number;
+  query: string;
+  startIndex: number;
+  endIndex: number;
 }
 
 export function TodayChecklistEditor({
@@ -35,6 +60,7 @@ export function TodayChecklistEditor({
   onChange,
   isEditable = true,
   moveCompletedTasksToEnd = true,
+  mentionableItems = [],
   className,
 }: TodayChecklistEditorProps) {
   const rowsFromValue = useMemo(() => {
@@ -51,20 +77,76 @@ export function TodayChecklistEditor({
   const [isInteracting, setIsInteracting] = useState(false);
   const [activeRowId, setActiveRowId] = useState<number | null>(null);
   const [pendingDeleteRowId, setPendingDeleteRowId] = useState<number | null>(null);
+  const [mentionState, setMentionState] = useState<TodayChecklistMentionState | null>(
+    null,
+  );
+  const [mentionActiveIndex, setMentionActiveIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const inputRefs = useRef<(HTMLTextAreaElement | null)[]>([]);
   const pendingFocusIndexRef = useRef<number | null>(null);
+  const pendingSelectionRef = useRef<{
+    index: number;
+    cursorPosition: number;
+  } | null>(null);
   const pendingSerializedRef = useRef<string | null>(null);
   const onChangeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mentionableJournalItems = useMemo(
+    () =>
+      mentionableItems
+        .filter((item) => item.category === "journal" && !item.archived)
+        .slice()
+        .sort(compareActivityItemsByPinnedDate),
+    [mentionableItems],
+  );
+  const entryReferenceTitles = useMemo(
+    () =>
+      buildEntryReferenceTitleMap(
+        mentionableJournalItems.map((item) => ({ id: item.id, title: item.title })),
+      ),
+    [mentionableJournalItems],
+  );
+  const mentionSuggestions = useMemo(() => {
+    if (!mentionState) {
+      return [];
+    }
+
+    const query = mentionState.query.trim();
+    if (query.length === 0) {
+      return mentionableJournalItems.slice(0, 3);
+    }
+
+    return filterActivityItems(mentionableJournalItems, query).slice(0, 3);
+  }, [mentionState, mentionableJournalItems]);
+
+  const clearMentionState = useCallback(() => {
+    setMentionState(null);
+    setMentionActiveIndex(0);
+  }, []);
 
   useEffect(() => {
     const pendingFocusIndex = pendingFocusIndexRef.current;
-    if (pendingFocusIndex === null) {
+    if (pendingFocusIndex !== null) {
+      pendingFocusIndexRef.current = null;
+      requestAnimationFrame(() => {
+        inputRefs.current[pendingFocusIndex]?.focus();
+      });
+    }
+
+    const pendingSelection = pendingSelectionRef.current;
+    if (!pendingSelection) {
       return;
     }
-    pendingFocusIndexRef.current = null;
+    pendingSelectionRef.current = null;
     requestAnimationFrame(() => {
-      inputRefs.current[pendingFocusIndex]?.focus();
+      const input = inputRefs.current[pendingSelection.index];
+      if (!input) {
+        return;
+      }
+      input.focus();
+      input.setSelectionRange(
+        pendingSelection.cursorPosition,
+        pendingSelection.cursorPosition,
+      );
     });
   }, [rows]);
 
@@ -78,6 +160,26 @@ export function TodayChecklistEditor({
       setRows(attachRowIds(rowsFromValue, nextRowIdRef));
     }
   }, [isInteracting, rows, rowsFromValue]);
+
+  useEffect(() => {
+    if (!mentionState) {
+      return;
+    }
+    if (rows.some((row) => row.id === mentionState.rowId)) {
+      return;
+    }
+    clearMentionState();
+  }, [clearMentionState, mentionState, rows]);
+
+  useEffect(() => {
+    if (!mentionState || mentionSuggestions.length === 0) {
+      setMentionActiveIndex(0);
+      return;
+    }
+    setMentionActiveIndex((current) =>
+      Math.min(current, mentionSuggestions.length - 1),
+    );
+  }, [mentionState, mentionSuggestions.length]);
 
   const flushPendingChange = useCallback(() => {
     const pendingSerialized = pendingSerializedRef.current;
@@ -119,8 +221,40 @@ export function TodayChecklistEditor({
     [scheduleChange],
   );
 
+  const updateMentionStateForRow = useCallback(
+    (rowId: number, text: string, cursorPosition: number | null) => {
+      if (!isEditable) {
+        clearMentionState();
+        return;
+      }
+
+      const candidate = findMentionStateAtCursor(text, cursorPosition);
+      if (!candidate) {
+        clearMentionState();
+        return;
+      }
+
+      const isSameQuery =
+        mentionState?.rowId === rowId && mentionState.query === candidate.query;
+      setMentionState({
+        rowId,
+        query: candidate.query,
+        startIndex: candidate.startIndex,
+        endIndex: candidate.endIndex,
+      });
+      if (!isSameQuery) {
+        setMentionActiveIndex(0);
+      }
+    },
+    [clearMentionState, isEditable, mentionState],
+  );
+
   const handleTextChange = useCallback(
     (index: number, event: ChangeEvent<HTMLTextAreaElement>) => {
+      const row = rows[index];
+      if (!row) {
+        return;
+      }
       const nextRows = rows.map((row, rowIndex) =>
         rowIndex === index
           ? {
@@ -130,8 +264,60 @@ export function TodayChecklistEditor({
           : row,
       );
       commitRows(nextRows);
+      updateMentionStateForRow(
+        row.id,
+        event.target.value,
+        event.target.selectionStart,
+      );
     },
-    [commitRows, rows],
+    [commitRows, rows, updateMentionStateForRow],
+  );
+
+  const handleTextSelect = useCallback(
+    (index: number, event: SyntheticEvent<HTMLTextAreaElement>) => {
+      const row = rows[index];
+      if (!row) {
+        return;
+      }
+      updateMentionStateForRow(
+        row.id,
+        row.text,
+        event.currentTarget.selectionStart,
+      );
+    },
+    [rows, updateMentionStateForRow],
+  );
+
+  const insertMention = useCallback(
+    (index: number, item: ActivityItem) => {
+      const row = rows[index];
+      if (!row || !mentionState || mentionState.rowId !== row.id) {
+        return;
+      }
+
+      const nextText = `${row.text.slice(0, mentionState.startIndex)}${row.text.slice(mentionState.endIndex)}`;
+      const nextReferenceIds = row.entryReferenceIds.includes(item.id)
+        ? row.entryReferenceIds
+        : [...row.entryReferenceIds, item.id];
+      const nextCursorPosition = mentionState.startIndex;
+      const nextRows = rows.map((currentRow, rowIndex) =>
+        rowIndex === index
+          ? {
+              ...currentRow,
+              text: nextText,
+              entryReferenceIds: nextReferenceIds,
+            }
+          : currentRow,
+      );
+
+      pendingSelectionRef.current = {
+        index,
+        cursorPosition: nextCursorPosition,
+      };
+      commitRows(nextRows, true);
+      clearMentionState();
+    },
+    [clearMentionState, commitRows, mentionState, rows],
   );
 
   const handleCheckedChange = useCallback(
@@ -172,6 +358,47 @@ export function TodayChecklistEditor({
 
   const handleKeyDown = useCallback(
     (index: number, event: KeyboardEvent<HTMLTextAreaElement>) => {
+      const row = rows[index];
+      if (!row) {
+        return;
+      }
+
+      const hasActiveMention =
+        mentionState?.rowId === row.id && mentionSuggestions.length > 0;
+
+      if (hasActiveMention && event.key === "ArrowDown") {
+        event.preventDefault();
+        setMentionActiveIndex(
+          (current) => (current + 1) % mentionSuggestions.length,
+        );
+        return;
+      }
+
+      if (hasActiveMention && event.key === "ArrowUp") {
+        event.preventDefault();
+        setMentionActiveIndex(
+          (current) =>
+            (current - 1 + mentionSuggestions.length) % mentionSuggestions.length,
+        );
+        return;
+      }
+
+      if (hasActiveMention && event.key === "Enter") {
+        event.preventDefault();
+        const selection =
+          mentionSuggestions[mentionActiveIndex] ?? mentionSuggestions[0];
+        if (selection) {
+          insertMention(index, selection);
+        }
+        return;
+      }
+
+      if (mentionState?.rowId === row.id && event.key === "Escape") {
+        event.preventDefault();
+        clearMentionState();
+        return;
+      }
+
       if (event.key === "Enter") {
         event.preventDefault();
         insertRowAfter(index);
@@ -180,7 +407,7 @@ export function TodayChecklistEditor({
 
       if (
         event.key === "Backspace" &&
-        rows[index]?.text.trim().length === 0 &&
+        row.text.trim().length === 0 &&
         rows.length > 1
       ) {
         event.preventDefault();
@@ -192,7 +419,16 @@ export function TodayChecklistEditor({
         });
       }
     },
-    [commitRows, insertRowAfter, rows],
+    [
+      clearMentionState,
+      commitRows,
+      insertMention,
+      insertRowAfter,
+      mentionActiveIndex,
+      mentionState,
+      mentionSuggestions,
+      rows,
+    ],
   );
 
   const handleFieldFocus = useCallback(() => {
@@ -234,9 +470,10 @@ export function TodayChecklistEditor({
       if (!containerRef.current.contains(activeElement)) {
         flushPendingChange();
         setIsInteracting(false);
+        clearMentionState();
       }
     });
-  }, [flushPendingChange]);
+  }, [clearMentionState, flushPendingChange]);
 
   useEffect(
     () => () => {
@@ -260,6 +497,7 @@ export function TodayChecklistEditor({
           isEditable={isEditable}
           onCheckedChange={handleCheckedChange}
           onTextChange={handleTextChange}
+          onTextSelect={handleTextSelect}
           onKeyDown={handleKeyDown}
           onFieldFocus={handleFieldFocus}
           onFieldBlur={handleFieldBlur}
@@ -268,6 +506,15 @@ export function TodayChecklistEditor({
           onRowFocus={handleRowFocus}
           onRowBlur={handleRowBlur}
           onDeleteClick={handleDeleteClick}
+          mentionQuery={mentionState?.rowId === row.id ? mentionState.query : null}
+          mentionSuggestions={
+            mentionState?.rowId === row.id ? mentionSuggestions : []
+          }
+          mentionActiveIndex={mentionActiveIndex}
+          onMentionSelect={(item) => {
+            insertMention(index, item);
+          }}
+          entryReferenceTitles={entryReferenceTitles}
           setInputRef={(element) => {
             inputRefs.current[index] = element;
           }}
@@ -300,6 +547,7 @@ interface TodayChecklistRowEditorProps {
   isEditable: boolean;
   onCheckedChange: (index: number, checked: boolean) => void;
   onTextChange: (index: number, event: ChangeEvent<HTMLTextAreaElement>) => void;
+  onTextSelect: (index: number, event: SyntheticEvent<HTMLTextAreaElement>) => void;
   onKeyDown: (index: number, event: KeyboardEvent<HTMLTextAreaElement>) => void;
   onFieldFocus: () => void;
   onFieldBlur: () => void;
@@ -308,6 +556,11 @@ interface TodayChecklistRowEditorProps {
   onRowFocus: (rowId: number) => void;
   onRowBlur: (rowId: number) => void;
   onDeleteClick: (rowId: number) => void;
+  mentionQuery: string | null;
+  mentionSuggestions: ActivityItem[];
+  mentionActiveIndex: number;
+  onMentionSelect: (item: ActivityItem) => void;
+  entryReferenceTitles: Record<string, string>;
   setInputRef: (element: HTMLTextAreaElement | null) => void;
 }
 
@@ -319,6 +572,7 @@ function TodayChecklistRowEditor({
   isEditable,
   onCheckedChange,
   onTextChange,
+  onTextSelect,
   onKeyDown,
   onFieldFocus,
   onFieldBlur,
@@ -327,9 +581,15 @@ function TodayChecklistRowEditor({
   onRowFocus,
   onRowBlur,
   onDeleteClick,
+  mentionQuery,
+  mentionSuggestions,
+  mentionActiveIndex,
+  onMentionSelect,
+  entryReferenceTitles,
   setInputRef,
 }: TodayChecklistRowEditorProps) {
   const tags = extractTagsFromText(row.text);
+  const entryReferenceIds = row.entryReferenceIds;
   const rowRef = useRef<HTMLDivElement | null>(null);
 
   const handleRowBlurCapture = useCallback(() => {
@@ -373,6 +633,9 @@ function TodayChecklistRowEditor({
           onChange={(event) => {
             onTextChange(index, event);
           }}
+          onSelect={(event) => {
+            onTextSelect(index, event);
+          }}
           onKeyDown={(event) => {
             onKeyDown(index, event);
           }}
@@ -383,7 +646,7 @@ function TodayChecklistRowEditor({
           minRows={1}
           className="min-h-0 resize-none overflow-hidden border-0 bg-transparent px-1 py-0 text-sm leading-6 shadow-none focus-visible:ring-0"
         />
-        {tags.length > 0 ? (
+        {tags.length > 0 || entryReferenceIds.length > 0 ? (
           <div className="flex flex-wrap gap-1 px-1 pb-0.5">
             {tags.map((tag) => (
               <span
@@ -396,6 +659,53 @@ function TodayChecklistRowEditor({
                 {formatTagLabel(tag)}
               </span>
             ))}
+            {entryReferenceIds.map((entryId) => (
+              <Link
+                key={`${index}-entry-reference-${entryId}`}
+                to={`/journals/${entryId}`}
+                className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
+                title={`@entry:${entryId}`}
+              >
+                {resolveEntryReferenceLabel(entryId, entryReferenceTitles)}
+              </Link>
+            ))}
+          </div>
+        ) : null}
+        {isEditable && mentionQuery !== null ? (
+          <div
+            className="rounded-md border border-border bg-popover p-1 shadow-sm"
+            role="listbox"
+          >
+            {mentionSuggestions.length > 0 ? (
+              <div className="flex flex-col gap-1">
+                {mentionSuggestions.map((item, suggestionIndex) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={cn(
+                      "flex w-full items-center rounded-md px-2 py-1 text-left text-sm",
+                      suggestionIndex === mentionActiveIndex
+                        ? "bg-primary/10 text-foreground"
+                        : "text-foreground/90 hover:bg-muted/60",
+                    )}
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                    }}
+                    onClick={() => {
+                      onMentionSelect(item);
+                    }}
+                  >
+                    {item.title}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="px-2 py-1 text-xs text-muted-foreground">
+                {mentionQuery.trim().length === 0
+                  ? "No recent journal entries"
+                  : "No matches"}
+              </p>
+            )}
           </div>
         ) : null}
       </div>
@@ -434,22 +744,29 @@ function TodayChecklistRowEditor({
 function createEditorRow(idRef: { current: number }): TodayChecklistEditorRow {
   const rowId = idRef.current;
   idRef.current += 1;
-  return { id: rowId, text: "", checked: false };
+  return { id: rowId, text: "", checked: false, entryReferenceIds: [] };
 }
 
 function attachRowIds(
   rows: TodayChecklistRow[],
   idRef: { current: number },
 ): TodayChecklistEditorRow[] {
-  return rows.map((row) => ({
-    id: idRef.current++,
-    text: row.text,
-    checked: row.checked,
-  }));
+  return rows.map((row) => {
+    const normalized = splitTaskTextAndReferences(row.text);
+    return {
+      id: idRef.current++,
+      text: normalized.text,
+      checked: row.checked,
+      entryReferenceIds: normalized.entryReferenceIds,
+    };
+  });
 }
 
 function stripEditorRows(rows: TodayChecklistEditorRow[]): TodayChecklistRow[] {
-  return rows.map(({ text, checked }) => ({ text, checked }));
+  return rows.map(({ text, checked, entryReferenceIds }) => ({
+    text: composeTaskStorageText(text, entryReferenceIds),
+    checked,
+  }));
 }
 
 function normalizeEditorRowsForCommit(
@@ -462,10 +779,20 @@ function normalizeEditorRowsForCommit(
 
   return rows.map((row) => {
     const normalizedText = normalizeTaskRowText(row.text);
+    const typedReferenceIds = extractEntryReferenceIds(normalizedText);
+    const strippedText = stripEntryReferenceTokensFromText(normalizedText);
+    const mergedReferenceIds = dedupeReferenceIds([
+      ...row.entryReferenceIds,
+      ...typedReferenceIds,
+    ]);
+    const hasContent =
+      strippedText.trim().length > 0 || mergedReferenceIds.length > 0;
+
     return {
       id: row.id,
-      text: normalizedText,
-      checked: row.checked && normalizedText.trim().length > 0,
+      text: strippedText,
+      checked: row.checked && hasContent,
+      entryReferenceIds: mergedReferenceIds,
     };
   });
 }
@@ -484,7 +811,9 @@ function normalizeTodayRowsForCommit(rows: TodayChecklistRow[]): TodayChecklistR
   });
 }
 
-function moveRowToEndBeforeTrailingEmptyRows<TRow extends TodayChecklistRow>(
+function moveRowToEndBeforeTrailingEmptyRows<
+  TRow extends { text: string; entryReferenceIds?: string[] },
+>(
   rows: TRow[],
   index: number,
 ): TRow[] {
@@ -493,7 +822,9 @@ function moveRowToEndBeforeTrailingEmptyRows<TRow extends TodayChecklistRow>(
   }
 
   const rowToMove = rows[index];
-  if (rowToMove.text.trim().length === 0) {
+  const hasText = rowToMove.text.trim().length > 0;
+  const hasReferences = (rowToMove.entryReferenceIds ?? []).length > 0;
+  if (!hasText && !hasReferences) {
     return rows;
   }
 
@@ -508,10 +839,16 @@ function moveRowToEndBeforeTrailingEmptyRows<TRow extends TodayChecklistRow>(
   ];
 }
 
-function findIndexBeforeTrailingEmptyRows<TRow extends TodayChecklistRow>(rows: TRow[]): number {
+function findIndexBeforeTrailingEmptyRows<
+  TRow extends { text: string; entryReferenceIds?: string[] },
+>(rows: TRow[]): number {
   let insertIndex = rows.length;
 
-  while (insertIndex > 0 && rows[insertIndex - 1].text.trim().length === 0) {
+  while (
+    insertIndex > 0 &&
+    rows[insertIndex - 1].text.trim().length === 0 &&
+    (rows[insertIndex - 1].entryReferenceIds ?? []).length === 0
+  ) {
     insertIndex -= 1;
   }
 
@@ -554,4 +891,57 @@ function serializeRowsForStorage(rows: TodayChecklistRow[]): string {
 
 function normalizeTaskRowText(text: string): string {
   return text.replace(/\s*[\r\n]+\s*/g, " ");
+}
+
+function splitTaskTextAndReferences(text: string): {
+  text: string;
+  entryReferenceIds: string[];
+} {
+  const entryReferenceIds = extractEntryReferenceIds(text);
+  if (entryReferenceIds.length === 0) {
+    return { text, entryReferenceIds: [] };
+  }
+
+  return {
+    text: stripEntryReferenceTokensFromText(text),
+    entryReferenceIds,
+  };
+}
+
+function stripEntryReferenceTokensFromText(text: string): string {
+  const tokens = extractEntryReferenceTokens(text);
+  if (tokens.length === 0) {
+    return text;
+  }
+
+  let cursor = 0;
+  let stripped = "";
+
+  tokens.forEach((token) => {
+    stripped += text.slice(cursor, token.start);
+    cursor = token.end;
+  });
+
+  stripped += text.slice(cursor);
+  return stripped.replace(/\s+/g, " ").trim();
+}
+
+function composeTaskStorageText(text: string, entryReferenceIds: string[]): string {
+  const trimmedText = text.trim();
+  const tokens = dedupeReferenceIds(entryReferenceIds).map(
+    (entryId) => `@entry:${entryId}`,
+  );
+
+  if (trimmedText.length === 0) {
+    return tokens.join(" ");
+  }
+  if (tokens.length === 0) {
+    return trimmedText;
+  }
+
+  return `${trimmedText} ${tokens.join(" ")}`;
+}
+
+function dedupeReferenceIds(entryReferenceIds: string[]): string[] {
+  return [...new Set(entryReferenceIds)];
 }

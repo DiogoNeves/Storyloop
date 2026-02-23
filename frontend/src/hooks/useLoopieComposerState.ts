@@ -1,6 +1,6 @@
 import { useCallback, useReducer } from "react";
 
-import { findMentionCandidate } from "@/lib/mention-search";
+import { findMentionStateAtCursor } from "@/lib/mention-search";
 import type { AgentMessageAttachment } from "@/lib/types/agent";
 
 export interface ComposerMentionState {
@@ -59,21 +59,7 @@ function findComposerMentionState(
   value: string,
   cursorPosition: number | null,
 ): ComposerMentionState | null {
-  if (cursorPosition === null) {
-    return null;
-  }
-
-  const textBeforeCursor = value.slice(0, cursorPosition);
-  const candidate = findMentionCandidate(textBeforeCursor);
-  if (!candidate) {
-    return null;
-  }
-
-  return {
-    query: candidate.query,
-    startIndex: candidate.startIndex,
-    endIndex: cursorPosition,
-  };
+  return findMentionStateAtCursor(value, cursorPosition);
 }
 
 function loopieComposerReducer(
