@@ -42,7 +42,7 @@ import {
   type Entry,
 } from "@/api/entries";
 import { deleteConversation } from "@/api/conversations";
-import { settingsQueries } from "@/api/settings";
+import { resolveSettingsResponse, settingsQueries } from "@/api/settings";
 import {
   type ActivityItem,
 } from "@/lib/types/entries";
@@ -206,15 +206,14 @@ function JournalPage() {
 
   const { publicOnly } = useSettings();
   const settingsQuery = useQuery(settingsQueries.all());
-  const showArchived = settingsQuery.data?.showArchived ?? false;
-  const activityFeedSortDate =
-    settingsQuery.data?.activityFeedSortDate ?? "created";
+  const resolvedSettings = resolveSettingsResponse(settingsQuery.data);
+  const showArchived = resolvedSettings.showArchived;
+  const activityFeedSortDate = resolvedSettings.activityFeedSortDate;
   const isTodaySettingsLoaded = settingsQuery.status === "success";
-  const todayEntriesEnabled = settingsQuery.data?.todayEntriesEnabled ?? true;
+  const todayEntriesEnabled = resolvedSettings.todayEntriesEnabled;
   const todayIncludePreviousIncomplete =
-    settingsQuery.data?.todayIncludePreviousIncomplete ?? true;
-  const todayMoveCompletedToEnd =
-    settingsQuery.data?.todayMoveCompletedToEnd ?? true;
+    resolvedSettings.todayIncludePreviousIncomplete;
+  const todayMoveCompletedToEnd = resolvedSettings.todayMoveCompletedToEnd;
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTags, setActiveTags] = useState<string[]>([]);
 

@@ -7,8 +7,7 @@ import {
 import useLocalStorageState from "use-local-storage-state";
 
 import {
-  DEFAULT_ACCENT_PREFERENCE,
-  DEFAULT_SMART_UPDATE_SCHEDULE_HOURS,
+  resolveSettingsResponse,
   settingsQueries,
   updateSettings,
   type AccentPreference,
@@ -72,20 +71,12 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       await queryClient.cancelQueries({ queryKey: settingsQueryKey });
       const previousSettings =
         queryClient.getQueryData<SettingsResponse>(settingsQueryKey);
-      queryClient.setQueryData<SettingsResponse>(
-        settingsQueryKey,
-        previousSettings
-          ? { ...previousSettings, accentColor: nextAccent }
-          : {
-              smartUpdateScheduleHours: DEFAULT_SMART_UPDATE_SCHEDULE_HOURS,
-              showArchived: false,
-              activityFeedSortDate: "created",
-              todayEntriesEnabled: true,
-              todayIncludePreviousIncomplete: true,
-              todayMoveCompletedToEnd: true,
-              accentColor: nextAccent,
-            },
-      );
+      if (previousSettings) {
+        queryClient.setQueryData<SettingsResponse>(settingsQueryKey, {
+          ...previousSettings,
+          accentColor: nextAccent,
+        });
+      }
       return { previousSettings };
     },
     onError: (_error, _nextAccent, context) => {
@@ -131,12 +122,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     return resolveTheme(themePreference ?? "system", systemTheme);
   }, [themePreference, systemTheme]);
   const accentPreference = useMemo<AccentPreference>(() => {
-    return (
-      pendingAccentPreference ??
-      settingsQuery.data?.accentColor ??
-      DEFAULT_ACCENT_PREFERENCE
-    );
-  }, [pendingAccentPreference, settingsQuery.data?.accentColor]);
+    return pendingAccentPreference ?? resolveSettingsResponse(settingsQuery.data).accentColor;
+  }, [pendingAccentPreference, settingsQuery.data]);
 
   const setAccentPreference = useCallback(
     (value: AccentPreference) => {
