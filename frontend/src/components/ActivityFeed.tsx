@@ -344,6 +344,8 @@ export function ActivityFeed({
   );
   const [isMobileCreateOpen, setIsMobileCreateOpen] = useState(false);
   const canStartDraft = !draft;
+  const createDraftRef = useRef<HTMLDivElement | null>(null);
+  const hasScrolledToDraftRef = useRef(false);
 
   const startDraft = (mode: EntryDraftMode) => {
     onStartDraft?.(mode);
@@ -356,6 +358,24 @@ export function ActivityFeed({
     }
     setIsMobileCreateOpen(false);
   }, [canStartDraft]);
+
+  useEffect(() => {
+    if (!draft) {
+      hasScrolledToDraftRef.current = false;
+      return;
+    }
+    if (hasScrolledToDraftRef.current) {
+      return;
+    }
+    hasScrolledToDraftRef.current = true;
+    requestAnimationFrame(() => {
+      createDraftRef.current?.scrollIntoView?.({
+        behavior: "smooth",
+        block: "start",
+        inline: "nearest",
+      });
+    });
+  }, [draft]);
 
   return (
     <Card
@@ -414,6 +434,34 @@ export function ActivityFeed({
             {youtubeError}
           </p>
         ) : null}
+        {draft && onDraftChange ? (
+          <div ref={createDraftRef} className="scroll-mt-2 sm:scroll-mt-4">
+            {draft.mode === "smart" ? (
+              <SmartEntryDraftCard
+                draft={draft}
+                onChange={onDraftChange}
+                onCancel={onCancelDraft}
+                onSubmit={onSubmitDraft}
+                isSubmitting={isSubmittingDraft}
+                errorMessage={draftError}
+                submitLabel="Create smart entry"
+                idPrefix="new-smart-entry"
+              />
+            ) : (
+              <ActivityDraftCard
+                draft={draft}
+                onChange={onDraftChange}
+                onCancel={onCancelDraft}
+                onSubmit={onSubmitDraft}
+                isSubmitting={isSubmittingDraft}
+                errorMessage={draftError}
+                submitLabel="Create entry"
+                category="journal"
+                idPrefix="new-entry"
+              />
+            )}
+          </div>
+        ) : null}
         {todayEntriesEnabled && showTodaySection ? (
           <div className="space-y-2 rounded-lg border bg-card p-4">
             <div className="flex items-center gap-2">
@@ -455,32 +503,6 @@ export function ActivityFeed({
               </p>
             )}
           </div>
-        ) : null}
-        {draft && onDraftChange ? (
-          draft.mode === "smart" ? (
-            <SmartEntryDraftCard
-              draft={draft}
-              onChange={onDraftChange}
-              onCancel={onCancelDraft}
-              onSubmit={onSubmitDraft}
-              isSubmitting={isSubmittingDraft}
-              errorMessage={draftError}
-              submitLabel="Create smart entry"
-              idPrefix="new-smart-entry"
-            />
-          ) : (
-            <ActivityDraftCard
-              draft={draft}
-              onChange={onDraftChange}
-              onCancel={onCancelDraft}
-              onSubmit={onSubmitDraft}
-              isSubmitting={isSubmittingDraft}
-              errorMessage={draftError}
-              submitLabel="Create entry"
-              category="journal"
-              idPrefix="new-entry"
-            />
-          )
         ) : null}
         {filteredItems.length === 0 && searchQuery ? (
           <p className="text-sm text-muted-foreground" role="status">
