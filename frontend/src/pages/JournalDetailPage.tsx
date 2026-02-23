@@ -16,7 +16,7 @@ import {
   markSmartEntryOpened,
   type Entry,
 } from "@/api/entries";
-import { settingsQueries } from "@/api/settings";
+import { resolveSettingsResponse, settingsQueries } from "@/api/settings";
 import { useJournalEntryDraft } from "@/hooks/useJournalEntryDraft";
 import { useActivityItems } from "@/hooks/useActivityItems";
 import { useEntryEditing } from "@/hooks/useEntryEditing";
@@ -587,11 +587,10 @@ export function JournalDetailPage() {
     defaultValue: true,
   });
   const settingsQuery = useQuery(settingsQueries.all());
-  const showArchived = settingsQuery.data?.showArchived ?? false;
-  const activityFeedSortDate =
-    settingsQuery.data?.activityFeedSortDate ?? "created";
-  const todayMoveCompletedToEnd =
-    settingsQuery.data?.todayMoveCompletedToEnd ?? true;
+  const resolvedSettings = resolveSettingsResponse(settingsQuery.data);
+  const showArchived = resolvedSettings.showArchived;
+  const activityFeedSortDate = resolvedSettings.activityFeedSortDate;
+  const todayMoveCompletedToEnd = resolvedSettings.todayMoveCompletedToEnd;
 
   const { activityItems } = useActivityItems({
     contentTypeFilter,

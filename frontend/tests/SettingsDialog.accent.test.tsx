@@ -104,4 +104,21 @@ describe("SettingsDialog accent picker", () => {
       }),
     );
   });
+
+  it("keeps settings controls reachable when switching tabs", async () => {
+    renderDialog();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Journal" }));
+    expect(await screen.findByText("Show public uploads only")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Smart update schedule in hours"),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Today" }));
+    expect(await screen.findByLabelText("Enable Today entries")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Include previous incomplete tasks"),
+    ).toBeInTheDocument();
+  });
 });
