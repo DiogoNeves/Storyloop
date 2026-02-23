@@ -5,6 +5,13 @@ import { apiClient } from "@/api/client";
 export const DEFAULT_SMART_UPDATE_SCHEDULE_HOURS = 24;
 
 export type ActivityFeedSortDate = "created" | "modified";
+export type AccentPreference =
+  | "crimson"
+  | "rose"
+  | "emerald"
+  | "azure"
+  | "violet";
+export const DEFAULT_ACCENT_PREFERENCE: AccentPreference = "crimson";
 
 export interface SettingsResponse {
   smartUpdateScheduleHours: number;
@@ -13,6 +20,7 @@ export interface SettingsResponse {
   todayEntriesEnabled: boolean;
   todayIncludePreviousIncomplete: boolean;
   todayMoveCompletedToEnd: boolean;
+  accentColor: AccentPreference;
 }
 
 export interface UpdateSettingsInput {
@@ -22,6 +30,7 @@ export interface UpdateSettingsInput {
   todayEntriesEnabled?: boolean;
   todayIncludePreviousIncomplete?: boolean;
   todayMoveCompletedToEnd?: boolean;
+  accentColor?: AccentPreference;
 }
 
 export const settingsQueries = createQueryKeys("settings", {

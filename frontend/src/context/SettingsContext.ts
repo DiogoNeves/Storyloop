@@ -1,5 +1,7 @@
 import { createContext } from "react";
 
+import type { AccentPreference } from "@/api/settings";
+
 export type ThemePreference = "light" | "dark" | "system";
 
 export interface SettingsContextValue {
@@ -8,6 +10,10 @@ export interface SettingsContextValue {
   themePreference: ThemePreference;
   setThemePreference: (value: ThemePreference) => void;
   resolvedTheme: "light" | "dark";
+  accentPreference: AccentPreference;
+  setAccentPreference: (value: AccentPreference) => void;
+  isAccentUpdating: boolean;
+  accentUpdateError: string | null;
 }
 
 export const SettingsContext = createContext<SettingsContextValue | null>(null);
