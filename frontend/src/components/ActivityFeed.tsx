@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Plus, SaveOff, X } from "lucide-react";
+import { Plus, SaveOff } from "lucide-react";
 import useLocalStorageState from "use-local-storage-state";
 
 import type { ActivityItem } from "@/lib/types/entries";
@@ -471,7 +471,7 @@ export function ActivityFeed({
               {todaySaveIndicator.show ? (
                 <span
                   className={cn(
-                    "inline-flex h-5 w-5 items-center justify-center rounded-md border border-current/25",
+                    "border-current/25 inline-flex h-5 w-5 items-center justify-center rounded-md border",
                     todaySaveIndicator.tone,
                   )}
                   title={todaySaveIndicator.message}
@@ -494,7 +494,9 @@ export function ActivityFeed({
                   moveCompletedTasksToEnd={todayMoveCompletedToEnd}
                 />
                 {todayAutosaveError ? (
-                  <p className="text-xs text-destructive">{todayAutosaveError}</p>
+                  <p className="text-xs text-destructive">
+                    {todayAutosaveError}
+                  </p>
                 ) : null}
               </>
             ) : (
@@ -512,41 +514,60 @@ export function ActivityFeed({
         {renderedFeedItems}
       </CardContent>
       <div className="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-2 sm:hidden">
-        {isMobileCreateOpen ? (
-          <div className="flex flex-col items-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => startDraft("smart")}
-              disabled={!canStartDraft}
-              className="h-10 rounded-md px-4"
-            >
-              + smart entry
-            </Button>
-            <Button
-              type="button"
-              onClick={() => startDraft("standard")}
-              disabled={!canStartDraft}
-              className="h-10 rounded-md px-4"
-            >
-              + entry
-            </Button>
-          </div>
-        ) : null}
+        <div
+          aria-hidden={!isMobileCreateOpen}
+          className={cn(
+            "flex flex-col items-end gap-2",
+            isMobileCreateOpen ? "pointer-events-auto" : "pointer-events-none",
+          )}
+        >
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => startDraft("smart")}
+            disabled={!canStartDraft}
+            tabIndex={isMobileCreateOpen ? 0 : -1}
+            className={cn(
+              "h-10 origin-bottom-right rounded-md px-4 transition-all duration-150 ease-in-out motion-reduce:transition-none",
+              isMobileCreateOpen
+                ? "delay-50 translate-y-0 scale-100 opacity-100"
+                : "delay-50 translate-y-3 scale-95 opacity-0",
+            )}
+          >
+            + smart entry
+          </Button>
+          <Button
+            type="button"
+            onClick={() => startDraft("standard")}
+            disabled={!canStartDraft}
+            tabIndex={isMobileCreateOpen ? 0 : -1}
+            className={cn(
+              "h-10 origin-bottom-right rounded-md px-4 transition-all duration-150 ease-in-out motion-reduce:transition-none",
+              isMobileCreateOpen
+                ? "translate-y-0 scale-100 opacity-100 delay-0"
+                : "translate-y-3 scale-95 opacity-0 delay-75",
+            )}
+          >
+            + entry
+          </Button>
+        </div>
         <Button
           type="button"
           size="icon"
           aria-expanded={isMobileCreateOpen}
-          aria-label={isMobileCreateOpen ? "Close create menu" : "Open create menu"}
+          aria-label={
+            isMobileCreateOpen ? "Close create menu" : "Open create menu"
+          }
           onClick={() => setIsMobileCreateOpen((current) => !current)}
           disabled={!canStartDraft}
-          className="h-14 w-14 rounded-2xl shadow-lg"
+          className="h-16 w-16 rounded-2xl shadow-lg"
         >
-          {isMobileCreateOpen ? (
-            <X className="h-6 w-6" />
-          ) : (
-            <Plus className="h-6 w-6" />
-          )}
+          <Plus
+            className={cn(
+              "h-6 w-6 transition-transform duration-300 ease-out motion-reduce:transition-none",
+              isMobileCreateOpen && "rotate-45",
+            )}
+          />
         </Button>
       </div>
     </Card>
