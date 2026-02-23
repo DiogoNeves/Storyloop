@@ -3,6 +3,10 @@ export interface MentionCandidate {
   startIndex: number;
 }
 
+export interface MentionStateAtCursor extends MentionCandidate {
+  endIndex: number;
+}
+
 export function findMentionCandidate(text: string): MentionCandidate | null {
   if (!text.includes("@")) {
     return null;
@@ -23,4 +27,25 @@ export function findMentionCandidate(text: string): MentionCandidate | null {
   }
 
   return { query, startIndex: atIndex };
+}
+
+export function findMentionStateAtCursor(
+  value: string,
+  cursorPosition: number | null,
+): MentionStateAtCursor | null {
+  if (cursorPosition === null) {
+    return null;
+  }
+
+  const textBeforeCursor = value.slice(0, cursorPosition);
+  const candidate = findMentionCandidate(textBeforeCursor);
+  if (!candidate) {
+    return null;
+  }
+
+  return {
+    query: candidate.query,
+    startIndex: candidate.startIndex,
+    endIndex: cursorPosition,
+  };
 }

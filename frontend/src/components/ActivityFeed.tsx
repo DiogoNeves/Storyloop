@@ -492,6 +492,7 @@ export function ActivityFeed({
                   value={todaySummaryDraft}
                   onChange={setTodaySummaryDraft}
                   moveCompletedTasksToEnd={todayMoveCompletedToEnd}
+                  mentionableItems={items}
                 />
                 {todayAutosaveError ? (
                   <p className="text-xs text-destructive">{todayAutosaveError}</p>
