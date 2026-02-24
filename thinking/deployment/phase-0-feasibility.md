@@ -55,3 +55,24 @@ If any critical capability fails or has unacceptable constraints, stop and re-ev
 Proceed only if all critical capabilities are either:
 - confirmed working, or
 - clearly adaptable with known effort and no fundamental blocker
+
+## Repository scaffold
+
+Phase-0 spike scaffold now lives in:
+
+- `cloudflare/wrangler.jsonc`
+- `cloudflare/src/entry.py`
+- `cloudflare/migrations/0001_init.sql`
+- `cloudflare/pyproject.toml`
+
+Fast path commands:
+
+```bash
+cd cloudflare
+uv sync --group dev
+npx wrangler login
+npx wrangler d1 create storyloop-app
+npx wrangler r2 bucket create storyloop-assets
+npx wrangler d1 migrations apply storyloop-app --remote
+npx wrangler dev
+```

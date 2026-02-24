@@ -41,3 +41,7 @@ Every phase must end with:
 - Phase-specific functional verification from that phase doc
 - Data safety verification (backup/snapshot/restore test where relevant)
 - Exit criteria met before starting the next phase
+
+## Implementation helpers
+
+- Phase-0 scaffold: `cloudflare/` (worker config, source, and migrations)
