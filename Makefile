@@ -46,7 +46,7 @@ cloudflare-dev:
 	cd cloudflare && npx wrangler dev
 
 cloudflare-deploy:
-	cd frontend && pnpm build
+	cd frontend && VITE_API_BASE_URL= pnpm build
 	cd cloudflare && npx wrangler deploy
 
 cloudflare-db-migrate-local:
