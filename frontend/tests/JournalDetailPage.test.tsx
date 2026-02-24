@@ -74,6 +74,21 @@ vi.mock("@/hooks/useAudioDictation", () => ({
   useAudioDictation: useAudioDictationMock,
 }));
 
+vi.mock("@/hooks/useDebouncedAutosave", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/hooks/useDebouncedAutosave")>();
+  return {
+    ...actual,
+    useDebouncedAutosave: (options: {
+      entryId: string | null;
+      title: string;
+      summary: string;
+      enabled: boolean;
+      isBlocked?: boolean;
+      debounceMs?: number;
+    }) => actual.useDebouncedAutosave({ ...options, debounceMs: 0 }),
+  };
+});
+
 const sampleEntry: Entry = {
   id: "entry-1",
   title: "Morning walk notes",
@@ -612,7 +627,7 @@ describe("JournalDetailPage", () => {
           }),
         );
       },
-      { timeout: 4000 },
+      { timeout: 1500 },
     );
   });
 
@@ -636,7 +651,7 @@ describe("JournalDetailPage", () => {
           }),
         );
       },
-      { timeout: 4000 },
+      { timeout: 1500 },
     );
   });
 });

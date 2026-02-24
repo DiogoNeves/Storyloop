@@ -92,8 +92,9 @@ describe("SettingsDialog accent picker", () => {
     await user.click(accentTrigger);
 
     const expectedOptions = ["Crimson", "Rose", "Emerald", "Azure", "Violet"];
+    await screen.findByRole("option", { name: expectedOptions[0] });
     for (const option of expectedOptions) {
-      expect(await screen.findByRole("option", { name: option })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: option })).toBeInTheDocument();
     }
 
     await user.click(screen.getByRole("option", { name: "Violet" }));
