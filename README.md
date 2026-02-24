@@ -170,6 +170,34 @@ This embeds the full backend URL into the frontend bundle.
 - `make cloudflare-db-migrate-local` – apply D1 migrations to local wrangler state.
 - `make cloudflare-db-migrate-remote` – apply D1 migrations to remote D1.
 
+## Cloudflare runtime wiring (frontend + backend)
+
+The Cloudflare worker serves `frontend/dist` and proxies browser requests from `/api/*` to your backend origin.
+
+- Browser calls: `https://mystoryloop.com/api/...`
+- Worker proxy: strips `/api` and forwards to `BACKEND_ORIGIN`
+- Backend receives: `/health`, `/entries/...`, `/youtube/auth/...`, etc.
+
+Required Cloudflare worker secret:
+
+```bash
+cd cloudflare
+echo "https://your-backend-host.example.com" | npx wrangler secret put BACKEND_ORIGIN --name storyloop
+npx wrangler deploy
+```
+
+Notes:
+
+- `BACKEND_ORIGIN` must be a fully qualified origin with scheme (for example `https://api.example.com`).
+- Do not point `BACKEND_ORIGIN` to `https://mystoryloop.com` (it will recurse).
+- `VITE_API_BASE_URL` should stay unset for Cloudflare production so the frontend uses same-origin `/api`.
+
+YouTube OAuth callback (Google Cloud + backend env):
+
+- Frontend callback route is `/auth/callback`.
+- Set `YOUTUBE_REDIRECT_URI=https://mystoryloop.com/auth/callback` in the backend runtime.
+- In Google Cloud OAuth client, add the same URI under Authorized redirect URIs.
+
 ## Theme customization
 
 - The frontend uses shadcn UI tokens defined in `frontend/src/index.css` inside an `@layer base` block.

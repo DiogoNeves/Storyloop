@@ -24,7 +24,6 @@
   },
   "vars": {
     "APP_ENV": "dev",
-    "BACKEND_ORIGIN": "",
     "MODEL_PROBE_BASE_URL": "https://api.openai.com/v1",
     "MODEL_PROBE_MODEL": "gpt-4o-mini"
   },
