@@ -165,10 +165,6 @@ This embeds the full backend URL into the frontend bundle.
 - `make lint` – run backend + frontend linting checks.
 - `make lint-frontend` – lint the React project with ESLint flat config.
 - `make seed` – populate the local SQLite database with demo YouTube metrics.
-- `make cloudflare-dev` – run the Cloudflare worker locally.
-- `make cloudflare-deploy` – deploy the Cloudflare worker.
-- `make cloudflare-db-migrate-local` – apply D1 migrations to local wrangler state.
-- `make cloudflare-db-migrate-remote` – apply D1 migrations to remote D1.
 
 ## Theme customization
 
