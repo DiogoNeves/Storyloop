@@ -3,16 +3,24 @@
 from __future__ import annotations
 
 from typing import Literal
+import sqlite3
 
 import anyio
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.dependencies import (
+    get_db,
+    get_entry_service,
     get_smart_entry_manager,
     get_today_entry_manager,
     get_user_service,
 )
+from app.services.content_export import (
+    build_content_export_archive,
+    load_conversation_export_records,
+)
+from app.services.entries import EntryService
 from app.services.smart_entries import SmartEntryUpdateManager
 from app.services.today_entries import TodayEntryManager
 from app.services.users import AccentPreference, UserService
@@ -110,6 +118,29 @@ class SettingsUpdate(BaseModel):
         ):
             raise ValueError("At least one setting must be provided.")
         return self
+
+
+@router.get("/export")
+def export_content_archive(
+    entry_service: EntryService = Depends(get_entry_service),
+    db: sqlite3.Connection = Depends(get_db),
+) -> Response:
+    """Export user-created content as a zip archive of markdown files."""
+    entries = entry_service.list_entries(include_archived=True)
+    conversations = load_conversation_export_records(db)
+    archive = build_content_export_archive(
+        entries=entries,
+        conversations=conversations,
+    )
+    return Response(
+        content=archive,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": (
+                'attachment; filename="storyloop-export.zip"'
+            )
+        },
+    )
 
 
 @router.get("/", response_model=SettingsResponse)

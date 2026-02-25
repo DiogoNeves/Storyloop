@@ -20,6 +20,7 @@ import {
   type AccentPreference,
   type ActivityFeedSortDate,
   DEFAULT_SMART_UPDATE_SCHEDULE_HOURS,
+  exportContentArchive,
   resolveSettingsResponse,
   settingsQueries,
   updateSettings,
@@ -174,17 +175,23 @@ interface AccountTabContentProps {
   channelTitle: string;
   isLinked: boolean;
   isUnlinking: boolean;
+  isExporting: boolean;
+  exportError: string | null;
   onUnlink: () => void;
+  onExport: () => void;
 }
 
 function AccountTabContent({
   channelTitle,
   isLinked,
   isUnlinking,
+  isExporting,
+  exportError,
   onUnlink,
+  onExport,
 }: AccountTabContentProps) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <SettingsTabHeader
         title="YouTube account"
         description="Control how Storyloop connects to your YouTube channel."
@@ -209,6 +216,30 @@ function AccountTabContent({
           </Button>
         }
       />
+
+      <div className="space-y-2">
+        <SettingsTabHeader
+          title="Export content"
+          description="Download your journals, Today entries, and conversations as Obsidian-friendly markdown notes."
+        />
+        <SettingsRow
+          layout="start"
+          className="bg-transparent"
+          title="Export your data"
+          description="Create a zip archive with one markdown note per item."
+          controls={
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={onExport}
+              disabled={isExporting}
+            >
+              {isExporting ? "Exporting…" : "Export data"}
+            </Button>
+          }
+        />
+        <StatusMessage type="error" message={exportError} />
+      </div>
     </div>
   );
 }
@@ -554,6 +585,18 @@ function HelpTabContent() {
   );
 }
 
+function downloadArchiveBlob(blob: Blob, fileName: string): void {
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = objectUrl;
+  anchor.download = fileName;
+  anchor.rel = "noopener";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(objectUrl);
+}
+
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<SettingsTab>("account");
@@ -584,6 +627,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     String(DEFAULT_SMART_UPDATE_SCHEDULE_HOURS),
   );
   const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   useEffect(() => {
     setScheduleInput(String(scheduleHours));
@@ -607,6 +651,21 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     },
     onError: () => {
       setScheduleError("We couldn't update the smart update schedule. Try again.");
+    },
+  });
+
+  const exportMutation = useMutation({
+    mutationFn: exportContentArchive,
+    onMutate: () => {
+      setExportError(null);
+    },
+    onSuccess: ({ blob, fileName }) => {
+      downloadArchiveBlob(blob, fileName);
+    },
+    onError: () => {
+      setExportError(
+        "We couldn't export your content right now. Please try again.",
+      );
     },
   });
 
@@ -685,7 +744,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 channelTitle={channelTitle}
                 isLinked={isLinked}
                 isUnlinking={unlinkMutation.isPending}
+                isExporting={exportMutation.isPending}
+                exportError={exportError}
                 onUnlink={() => unlinkMutation.mutate()}
+                onExport={() => exportMutation.mutate()}
               />
             ) : null}
 
