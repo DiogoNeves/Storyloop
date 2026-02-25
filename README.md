@@ -186,11 +186,46 @@ echo "https://your-backend-host.example.com" | npx wrangler secret put BACKEND_O
 npx wrangler deploy
 ```
 
+Local Cloudflare worker dev:
+
+```bash
+cp cloudflare/.dev.vars.example cloudflare/.dev.vars
+make backend
+make cloudflare-dev
+```
+
 Notes:
 
 - `BACKEND_ORIGIN` must be a fully qualified origin with scheme (for example `https://api.example.com`).
 - Do not point `BACKEND_ORIGIN` to `https://mystoryloop.com` (it will recurse).
 - `VITE_API_BASE_URL` should stay unset for Cloudflare production so the frontend uses same-origin `/api`.
+
+R2 setup for `/api/assets*` (Cloudflare-native uploads/downloads):
+
+1. In Cloudflare dashboard, enable R2 for your account (one-time).
+2. Create the bucket:
+
+```bash
+cd cloudflare
+npx wrangler r2 bucket create storyloop-assets
+```
+
+3. Add the binding in `cloudflare/wrangler.jsonc`:
+
+```jsonc
+"r2_buckets": [
+  {
+    "binding": "ASSETS_BUCKET",
+    "bucket_name": "storyloop-assets"
+  }
+]
+```
+
+4. Deploy again:
+
+```bash
+make cloudflare-deploy
+```
 
 YouTube OAuth callback (Google Cloud + backend env):
 
