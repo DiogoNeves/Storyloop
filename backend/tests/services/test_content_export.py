@@ -19,7 +19,7 @@ def test_build_content_export_archive_renders_obsidian_markdown() -> None:
         id="journal-1",
         title="Journal/One",
         summary=(
-            "Review @entry:today-1 and [Today Ref](/entryref/today-1). #alpha"
+            "Review @entry:today-1 and [Roadmap \\[Draft\\]](/entryref/today-1). #alpha"
         ),
         occurred_at=datetime(2026, 2, 1, 10, 0, tzinfo=UTC),
         updated_at=datetime(2026, 2, 3, 9, 30, tzinfo=UTC),

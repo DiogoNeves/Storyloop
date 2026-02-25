@@ -17,7 +17,7 @@ _ENTRY_REFERENCE_TOKEN_PATTERN = re.compile(
     r"(?<![A-Za-z0-9_-])@entry:([A-Za-z0-9][A-Za-z0-9_-]*)(?![A-Za-z0-9_-])"
 )
 _ENTRY_REFERENCE_LINK_PATTERN = re.compile(
-    r"\[[^\]]*]\(/entryref/([A-Za-z0-9][A-Za-z0-9_-]*)\)"
+    r"\[(?:\\.|[^\]])*]\(/entryref/([A-Za-z0-9][A-Za-z0-9_-]*)\)"
 )
 _INVALID_FILENAME_CHARS_PATTERN = re.compile(r'[\\/:*?"<>|\x00-\x1f]')
 _WHITESPACE_PATTERN = re.compile(r"\s+")
