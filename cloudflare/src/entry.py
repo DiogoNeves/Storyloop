@@ -2,22 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
 from datetime import datetime, timezone
-from urllib.parse import quote, urlparse
+from urllib.parse import urlparse
 from uuid import uuid4
 
 from workers import Request, Response, WorkerEntrypoint, fetch
-
-_ASSET_ID_PATTERN = re.compile(r"^[a-f0-9]{64}$")
-_TEXT_ASSET_MIME_TYPES = frozenset(
-    {
-        "text/plain",
-        "text/srt",
-        "text/x-subrip",
-        "application/x-subrip",
-    }
-)
 
 
 def _read_query_rows(query_result):
@@ -57,85 +46,11 @@ def _extract_model_output(payload: dict) -> str:
     return ""
 
 
-def _is_asset_id(value: str) -> bool:
-    return bool(_ASSET_ID_PATTERN.fullmatch(value))
-
-
-def _normalize_asset_content_type(content_type: str, filename: str) -> str | None:
-    normalized = content_type.lower().split(";", 1)[0].strip()
-    if normalized.startswith("image/"):
-        return normalized
-    if normalized == "application/pdf":
-        return normalized
-    if normalized in _TEXT_ASSET_MIME_TYPES:
-        return normalized
-    if normalized in {"application/octet-stream", ""}:
-        suffix = ""
-        if "." in filename:
-            suffix = filename.rsplit(".", 1)[1].lower()
-        if suffix in {"txt", "text"}:
-            return "text/plain"
-        if suffix == "srt":
-            return "application/x-subrip"
-    return None
-
-
-def _asset_markdown(filename: str, asset_id: str, mime_type: str) -> str:
-    url = f"/assets/{asset_id}"
-    safe_label = filename or "asset"
-    if mime_type.startswith("image/"):
-        return f"![{safe_label}]({url})"
-    return f"[{safe_label}]({url})"
-
-
-def _to_bytes(payload) -> bytes | None:
-    if isinstance(payload, bytes):
-        return payload
-    if isinstance(payload, bytearray):
-        return bytes(payload)
-
-    to_bytes = getattr(payload, "to_bytes", None)
-    if callable(to_bytes):
-        try:
-            coerced = to_bytes()
-            if isinstance(coerced, bytes):
-                return coerced
-            if isinstance(coerced, bytearray):
-                return bytes(coerced)
-        except Exception:
-            pass
-
-    try:
-        coerced = bytes(payload)
-        if coerced:
-            return coerced
-    except Exception:
-        pass
-
-    try:
-        from js import Uint8Array
-
-        view = Uint8Array.new(payload)
-        py_view = view.to_py()
-        if isinstance(py_view, memoryview):
-            return py_view.tobytes()
-        if isinstance(py_view, bytearray):
-            return bytes(py_view)
-        if isinstance(py_view, bytes):
-            return py_view
-        return bytes(py_view)
-    except Exception:
-        return None
-
-
 class Default(WorkerEntrypoint):
     async def fetch(self, request: Request) -> Response:
         method = request.method.value
         parsed_url = urlparse(request.url)
         path = parsed_url.path
-
-        if path.startswith("/api/assets"):
-            return await self._handle_api_assets(request, path)
 
         if path.startswith("/api/"):
             return await self._proxy_backend(request, parsed_url)
@@ -160,8 +75,6 @@ class Default(WorkerEntrypoint):
                         "d1_roundtrip": "/diagnostics/d1-roundtrip",
                         "sse": "/diagnostics/sse",
                         "model_probe": "/diagnostics/model-probe",
-                        "asset_upload_api": "/api/assets",
-                        "asset_meta_api": "/api/assets/{id}/meta",
                     },
                 }
             )
@@ -206,7 +119,7 @@ class Default(WorkerEntrypoint):
                 {
                     "ok": False,
                     "reason": "missing_backend_origin",
-                    "message": "Set BACKEND_ORIGIN in wrangler secret/vars to proxy /api/* to backend.",
+                    "message": "Set BACKEND_ORIGIN in wrangler vars to proxy /api/* to backend.",
                 },
                 status=503,
             )
@@ -253,298 +166,6 @@ class Default(WorkerEntrypoint):
                 },
                 status=502,
             )
-
-    async def _handle_api_assets(self, request: Request, path: str) -> Response:
-        if getattr(self.env, "ASSETS_BUCKET", None) is None:
-            return await self._proxy_backend(request, urlparse(request.url))
-
-        method = request.method.value
-        if method == "POST" and path == "/api/assets":
-            return await self._api_asset_upload(request, expected_hash=None)
-
-        if not path.startswith("/api/assets/"):
-            return _json_response({"ok": False, "reason": "not_found"}, status=404)
-
-        suffix = path[len("/api/assets/") :].strip("/")
-        if not suffix:
-            return _json_response({"ok": False, "reason": "missing_asset_id"}, status=400)
-
-        if method == "GET" and suffix.endswith("/meta"):
-            asset_id = suffix[:-5].strip("/")
-            return await self._api_asset_meta(asset_id)
-
-        if method == "GET":
-            return await self._api_asset_get(suffix)
-
-        if method == "POST":
-            return await self._api_asset_upload(request, expected_hash=suffix)
-
-        return _json_response({"ok": False, "reason": "method_not_allowed"}, status=405)
-
-    async def _api_asset_upload(self, request: Request, expected_hash: str | None) -> Response:
-        if expected_hash is not None and not _is_asset_id(expected_hash):
-            return _json_response({"ok": False, "reason": "invalid_asset_id"}, status=400)
-
-        db = getattr(self.env, "DB", None)
-        bucket = getattr(self.env, "ASSETS_BUCKET", None)
-        if db is None:
-            return _json_response(
-                {"ok": False, "reason": "missing_db_binding", "message": "Bind D1 as DB."},
-                status=503,
-            )
-        if bucket is None:
-            return _json_response(
-                {
-                    "ok": False,
-                    "reason": "missing_assets_bucket",
-                    "message": "Enable R2 and bind ASSETS_BUCKET before uploading assets.",
-                },
-                status=503,
-            )
-
-        content_type_header = str(request.headers.get("content-type", "")).lower()
-        if "multipart/form-data" not in content_type_header:
-            return _json_response(
-                {
-                    "ok": False,
-                    "reason": "invalid_content_type",
-                    "message": "Use multipart/form-data with a single 'file' field.",
-                },
-                status=400,
-            )
-
-        form_data = await self._request_form_data(request)
-        if form_data is None:
-            return _json_response(
-                {"ok": False, "reason": "invalid_form_data"},
-                status=400,
-            )
-
-        uploaded = None
-        get_method = getattr(form_data, "get", None)
-        if callable(get_method):
-            uploaded = get_method("file")
-        if uploaded is None:
-            return _json_response(
-                {"ok": False, "reason": "missing_file_field"},
-                status=400,
-            )
-
-        original_filename = str(getattr(uploaded, "name", "") or "upload")
-        detected_mime = str(getattr(uploaded, "type", "") or "")
-        normalized_mime = _normalize_asset_content_type(detected_mime, original_filename)
-        if normalized_mime is None:
-            return _json_response(
-                {
-                    "ok": False,
-                    "reason": "unsupported_file_type",
-                    "message": "Only images, PDFs, and text/SRT files are supported.",
-                },
-                status=400,
-            )
-
-        data = await self._read_blob_bytes(uploaded)
-        if not data:
-            return _json_response({"ok": False, "reason": "empty_blob_payload"}, status=400)
-
-        asset_id = hashlib.sha256(data).hexdigest()
-        if expected_hash is not None and expected_hash != asset_id:
-            return _json_response(
-                {"ok": False, "reason": "hash_mismatch", "expected": expected_hash, "actual": asset_id},
-                status=400,
-            )
-
-        query_result = await db.prepare(
-            """
-            SELECT id, original_filename, mime_type, size_bytes
-            FROM assets
-            WHERE id = ?1
-            """
-        ).bind(asset_id).run()
-        rows = _read_query_rows(query_result)
-        already_exists = bool(rows)
-
-        if not already_exists:
-            created_at = datetime.now(timezone.utc).isoformat()
-            await bucket.put(f"assets/{asset_id}", data)
-            await db.prepare(
-                """
-                INSERT INTO assets (
-                    id,
-                    original_filename,
-                    mime_type,
-                    created_at,
-                    extracted_text,
-                    size_bytes
-                )
-                VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-                """
-            ).bind(
-                asset_id,
-                original_filename,
-                normalized_mime,
-                created_at,
-                None,
-                len(data),
-            ).run()
-            filename_for_response = original_filename
-            mime_for_response = normalized_mime
-            size_bytes = len(data)
-        else:
-            row = rows[0]
-            filename_for_response = str(_read_row_value(row, "original_filename") or original_filename)
-            mime_for_response = str(_read_row_value(row, "mime_type") or normalized_mime)
-            parsed_size = _read_row_value(row, "size_bytes")
-            if isinstance(parsed_size, int):
-                size_bytes = parsed_size
-            else:
-                size_bytes = len(data)
-
-        return _json_response(
-            {
-                "id": asset_id,
-                "url": f"/assets/{asset_id}",
-                "filename": filename_for_response,
-                "mimeType": mime_for_response,
-                "sizeBytes": size_bytes,
-                "width": None,
-                "height": None,
-                "markdown": _asset_markdown(filename_for_response, asset_id, mime_for_response),
-                "alreadyExists": already_exists,
-            }
-        )
-
-    async def _api_asset_get(self, asset_id: str) -> Response:
-        if not _is_asset_id(asset_id):
-            return _json_response({"ok": False, "reason": "invalid_asset_id"}, status=400)
-
-        bucket = getattr(self.env, "ASSETS_BUCKET", None)
-        if bucket is None:
-            return _json_response(
-                {"ok": False, "reason": "missing_assets_bucket"},
-                status=503,
-            )
-
-        db = getattr(self.env, "DB", None)
-        row = None
-        if db is not None:
-            query_result = await db.prepare(
-                """
-                SELECT original_filename, mime_type
-                FROM assets
-                WHERE id = ?1
-                """
-            ).bind(asset_id).run()
-            rows = _read_query_rows(query_result)
-            row = rows[0] if rows else None
-
-        obj = await bucket.get(f"assets/{asset_id}")
-        if obj is None:
-            return _json_response({"ok": False, "reason": "blob_not_found"}, status=404)
-
-        content_type = "application/octet-stream"
-        if row is not None:
-            db_type = _read_row_value(row, "mime_type")
-            if isinstance(db_type, str) and db_type:
-                content_type = db_type
-        else:
-            http_metadata = getattr(obj, "httpMetadata", None)
-            if http_metadata is not None:
-                metadata_type = getattr(http_metadata, "contentType", None)
-                if isinstance(metadata_type, str) and metadata_type:
-                    content_type = metadata_type
-
-        headers = {"content-type": content_type}
-        filename = None
-        if row is not None:
-            db_name = _read_row_value(row, "original_filename")
-            if isinstance(db_name, str) and db_name:
-                filename = db_name
-        if filename:
-            headers["content-disposition"] = f"inline; filename*=UTF-8''{quote(filename)}"
-
-        etag = getattr(obj, "httpEtag", None)
-        if isinstance(etag, str) and etag:
-            headers["etag"] = etag
-
-        body_stream = getattr(obj, "body", None)
-        if body_stream is None:
-            return Response(await obj.text(), headers=headers)
-        return Response(body_stream, headers=headers)
-
-    async def _api_asset_meta(self, asset_id: str) -> Response:
-        if not _is_asset_id(asset_id):
-            return _json_response({"ok": False, "reason": "invalid_asset_id"}, status=400)
-
-        db = getattr(self.env, "DB", None)
-        if db is None:
-            return _json_response(
-                {"ok": False, "reason": "missing_db_binding"},
-                status=503,
-            )
-
-        query_result = await db.prepare(
-            """
-            SELECT id, original_filename, mime_type, size_bytes
-            FROM assets
-            WHERE id = ?1
-            """
-        ).bind(asset_id).run()
-        rows = _read_query_rows(query_result)
-        if not rows:
-            return _json_response({"ok": False, "reason": "asset_not_found"}, status=404)
-
-        row = rows[0]
-        size_value = _read_row_value(row, "size_bytes")
-        size_bytes = int(size_value) if isinstance(size_value, int) else 0
-        return _json_response(
-            {
-                "id": _read_row_value(row, "id") or asset_id,
-                "filename": _read_row_value(row, "original_filename") or "asset",
-                "mimeType": _read_row_value(row, "mime_type") or "application/octet-stream",
-                "sizeBytes": size_bytes,
-                "width": None,
-                "height": None,
-            }
-        )
-
-    async def _request_form_data(self, request: Request):
-        form_data_method = getattr(request, "form_data", None)
-        if callable(form_data_method):
-            try:
-                return await form_data_method()
-            except Exception:
-                pass
-
-        form_data_method = getattr(request, "formData", None)
-        if callable(form_data_method):
-            try:
-                return await form_data_method()
-            except Exception:
-                return None
-        return None
-
-    async def _read_blob_bytes(self, blob) -> bytes:
-        bytes_method = getattr(blob, "bytes", None)
-        if callable(bytes_method):
-            data = _to_bytes(await bytes_method())
-            if data is not None:
-                return data
-
-        array_buffer_method = getattr(blob, "array_buffer", None)
-        if not callable(array_buffer_method):
-            array_buffer_method = getattr(blob, "arrayBuffer", None)
-        if callable(array_buffer_method):
-            data = _to_bytes(await array_buffer_method())
-            if data is not None:
-                return data
-
-        text_method = getattr(blob, "text", None)
-        if callable(text_method):
-            text_payload = await text_method()
-            return str(text_payload).encode("utf-8")
-
-        return b""
 
     async def _d1_roundtrip(self, request: Request) -> Response:
         try:
