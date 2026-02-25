@@ -1,4 +1,4 @@
-.PHONY: dev backend prod build test test-backend test-frontend lint lint-backend lint-frontend seed cloudflare-dev cloudflare-deploy cloudflare-db-migrate-local cloudflare-db-migrate-remote
+.PHONY: dev backend prod build test test-backend test-frontend lint lint-backend lint-frontend seed
 
 ensure-env:
 	@if [ ! -f .env ]; then \
@@ -41,16 +41,3 @@ lint-backend:
 
 lint-frontend:
 	cd frontend && pnpm run lint
-
-cloudflare-dev:
-	cd cloudflare && npx wrangler dev
-
-cloudflare-deploy:
-	cd frontend && pnpm build
-	cd cloudflare && npx wrangler deploy
-
-cloudflare-db-migrate-local:
-	cd cloudflare && npx wrangler d1 migrations apply storyloop-app --local
-
-cloudflare-db-migrate-remote:
-	cd cloudflare && npx wrangler d1 migrations apply storyloop-app --remote
