@@ -25,6 +25,10 @@ coverage/
 backend/.mypy_cache/
 .vscode/
 .cursor/debug*
+.agent/
+.claude/
+.codex/
+.cursor/
 .DS_Store
 npm-debug.log*
 yarn-debug.log*
