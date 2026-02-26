@@ -1,7 +1,7 @@
 # Third-Party Notices
 
 This file is auto-generated. Do not edit manually.
-Generated at: `2026-02-25T08:29:42+00:00`
+Generated at: `2026-02-26T07:36:23+00:00`
 
 Regenerate with:
 
@@ -14,96 +14,99 @@ uv run python scripts/generate_third_party_notices.py
 | Ecosystem | Package | Version | License |
 | --- | --- | --- | --- |
 | npm | @apideck/better-ajv-errors | 0.3.6 | MIT |
-| npm | @babel/code-frame | 7.27.1 | MIT |
-| npm | @babel/compat-data | 7.28.5 | MIT |
-| npm | @babel/core | 7.28.5 | MIT |
-| npm | @babel/generator | 7.28.5 | MIT |
+| npm | @babel/code-frame | 7.29.0 | MIT |
+| npm | @babel/compat-data | 7.29.0 | MIT |
+| npm | @babel/core | 7.29.0 | MIT |
+| npm | @babel/generator | 7.29.1 | MIT |
 | npm | @babel/helper-annotate-as-pure | 7.27.3 | MIT |
-| npm | @babel/helper-compilation-targets | 7.27.2 | MIT |
-| npm | @babel/helper-create-class-features-plugin | 7.28.5 | MIT |
+| npm | @babel/helper-compilation-targets | 7.28.6 | MIT |
+| npm | @babel/helper-create-class-features-plugin | 7.28.6 | MIT |
 | npm | @babel/helper-create-regexp-features-plugin | 7.28.5 | MIT |
-| npm | @babel/helper-define-polyfill-provider | 0.6.5 | MIT |
+| npm | @babel/helper-define-polyfill-provider | 0.6.6 | MIT |
 | npm | @babel/helper-globals | 7.28.0 | MIT |
 | npm | @babel/helper-member-expression-to-functions | 7.28.5 | MIT |
-| npm | @babel/helper-module-imports | 7.27.1 | MIT |
-| npm | @babel/helper-module-transforms | 7.28.3 | MIT |
+| npm | @babel/helper-module-imports | 7.28.6 | MIT |
+| npm | @babel/helper-module-transforms | 7.28.6 | MIT |
 | npm | @babel/helper-optimise-call-expression | 7.27.1 | MIT |
-| npm | @babel/helper-plugin-utils | 7.27.1 | MIT |
+| npm | @babel/helper-plugin-utils | 7.28.6 | MIT |
 | npm | @babel/helper-remap-async-to-generator | 7.27.1 | MIT |
-| npm | @babel/helper-replace-supers | 7.27.1 | MIT |
+| npm | @babel/helper-replace-supers | 7.28.6 | MIT |
 | npm | @babel/helper-skip-transparent-expression-wrappers | 7.27.1 | MIT |
 | npm | @babel/helper-string-parser | 7.27.1 | MIT |
 | npm | @babel/helper-validator-identifier | 7.28.5 | MIT |
 | npm | @babel/helper-validator-option | 7.27.1 | MIT |
-| npm | @babel/helper-wrap-function | 7.28.3 | MIT |
-| npm | @babel/helpers | 7.28.4 | MIT |
+| npm | @babel/helper-wrap-function | 7.28.6 | MIT |
+| npm | @babel/helpers | 7.28.6 | MIT |
 | npm | @babel/parser | 7.28.5 | MIT |
+| npm | @babel/parser | 7.29.0 | MIT |
 | npm | @babel/plugin-bugfix-firefox-class-in-computed-class-key | 7.28.5 | MIT |
 | npm | @babel/plugin-bugfix-safari-class-field-initializer-scope | 7.27.1 | MIT |
 | npm | @babel/plugin-bugfix-safari-id-destructuring-collision-in-function-expression | 7.27.1 | MIT |
 | npm | @babel/plugin-bugfix-v8-spread-parameters-in-optional-chaining | 7.27.1 | MIT |
-| npm | @babel/plugin-bugfix-v8-static-class-fields-redefine-readonly | 7.28.3 | MIT |
+| npm | @babel/plugin-bugfix-v8-static-class-fields-redefine-readonly | 7.28.6 | MIT |
 | npm | @babel/plugin-proposal-private-property-in-object | 7.21.0-placeholder-for-preset-env.2 | MIT |
-| npm | @babel/plugin-syntax-import-assertions | 7.27.1 | MIT |
-| npm | @babel/plugin-syntax-import-attributes | 7.27.1 | MIT |
+| npm | @babel/plugin-syntax-import-assertions | 7.28.6 | MIT |
+| npm | @babel/plugin-syntax-import-attributes | 7.28.6 | MIT |
 | npm | @babel/plugin-syntax-unicode-sets-regex | 7.18.6 | MIT |
 | npm | @babel/plugin-transform-arrow-functions | 7.27.1 | MIT |
-| npm | @babel/plugin-transform-async-generator-functions | 7.28.0 | MIT |
-| npm | @babel/plugin-transform-async-to-generator | 7.27.1 | MIT |
+| npm | @babel/plugin-transform-async-generator-functions | 7.29.0 | MIT |
+| npm | @babel/plugin-transform-async-to-generator | 7.28.6 | MIT |
 | npm | @babel/plugin-transform-block-scoped-functions | 7.27.1 | MIT |
-| npm | @babel/plugin-transform-block-scoping | 7.28.5 | MIT |
-| npm | @babel/plugin-transform-class-properties | 7.27.1 | MIT |
-| npm | @babel/plugin-transform-class-static-block | 7.28.3 | MIT |
-| npm | @babel/plugin-transform-classes | 7.28.4 | MIT |
-| npm | @babel/plugin-transform-computed-properties | 7.27.1 | MIT |
+| npm | @babel/plugin-transform-block-scoping | 7.28.6 | MIT |
+| npm | @babel/plugin-transform-class-properties | 7.28.6 | MIT |
+| npm | @babel/plugin-transform-class-static-block | 7.28.6 | MIT |
+| npm | @babel/plugin-transform-classes | 7.28.6 | MIT |
+| npm | @babel/plugin-transform-computed-properties | 7.28.6 | MIT |
 | npm | @babel/plugin-transform-destructuring | 7.28.5 | MIT |
-| npm | @babel/plugin-transform-dotall-regex | 7.27.1 | MIT |
+| npm | @babel/plugin-transform-dotall-regex | 7.28.6 | MIT |
 | npm | @babel/plugin-transform-duplicate-keys | 7.27.1 | MIT |
-| npm | @babel/plugin-transform-duplicate-named-capturing-groups-regex | 7.27.1 | MIT |
+| npm | @babel/plugin-transform-duplicate-named-capturing-groups-regex | 7.29.0 | MIT |
 | npm | @babel/plugin-transform-dynamic-import | 7.27.1 | MIT |
-| npm | @babel/plugin-transform-explicit-resource-management | 7.28.0 | MIT |
-| npm | @babel/plugin-transform-exponentiation-operator | 7.28.5 | MIT |
+| npm | @babel/plugin-transform-explicit-resource-management | 7.28.6 | MIT |
+| npm | @babel/plugin-transform-exponentiation-operator | 7.28.6 | MIT |
 | npm | @babel/plugin-transform-export-namespace-from | 7.27.1 | MIT |
 | npm | @babel/plugin-transform-for-of | 7.27.1 | MIT |
 | npm | @babel/plugin-transform-function-name | 7.27.1 | MIT |
-| npm | @babel/plugin-transform-json-strings | 7.27.1 | MIT |
+| npm | @babel/plugin-transform-json-strings | 7.28.6 | MIT |
 | npm | @babel/plugin-transform-literals | 7.27.1 | MIT |
-| npm | @babel/plugin-transform-logical-assignment-operators | 7.28.5 | MIT |
+| npm | @babel/plugin-transform-logical-assignment-operators | 7.28.6 | MIT |
 | npm | @babel/plugin-transform-member-expression-literals | 7.27.1 | MIT |
 | npm | @babel/plugin-transform-modules-amd | 7.27.1 | MIT |
-| npm | @babel/plugin-transform-modules-commonjs | 7.27.1 | MIT |
-| npm | @babel/plugin-transform-modules-systemjs | 7.28.5 | MIT |
+| npm | @babel/plugin-transform-modules-commonjs | 7.28.6 | MIT |
+| npm | @babel/plugin-transform-modules-systemjs | 7.29.0 | MIT |
 | npm | @babel/plugin-transform-modules-umd | 7.27.1 | MIT |
-| npm | @babel/plugin-transform-named-capturing-groups-regex | 7.27.1 | MIT |
+| npm | @babel/plugin-transform-named-capturing-groups-regex | 7.29.0 | MIT |
 | npm | @babel/plugin-transform-new-target | 7.27.1 | MIT |
-| npm | @babel/plugin-transform-nullish-coalescing-operator | 7.27.1 | MIT |
-| npm | @babel/plugin-transform-numeric-separator | 7.27.1 | MIT |
-| npm | @babel/plugin-transform-object-rest-spread | 7.28.4 | MIT |
+| npm | @babel/plugin-transform-nullish-coalescing-operator | 7.28.6 | MIT |
+| npm | @babel/plugin-transform-numeric-separator | 7.28.6 | MIT |
+| npm | @babel/plugin-transform-object-rest-spread | 7.28.6 | MIT |
 | npm | @babel/plugin-transform-object-super | 7.27.1 | MIT |
-| npm | @babel/plugin-transform-optional-catch-binding | 7.27.1 | MIT |
-| npm | @babel/plugin-transform-optional-chaining | 7.28.5 | MIT |
+| npm | @babel/plugin-transform-optional-catch-binding | 7.28.6 | MIT |
+| npm | @babel/plugin-transform-optional-chaining | 7.28.6 | MIT |
 | npm | @babel/plugin-transform-parameters | 7.27.7 | MIT |
-| npm | @babel/plugin-transform-private-methods | 7.27.1 | MIT |
-| npm | @babel/plugin-transform-private-property-in-object | 7.27.1 | MIT |
+| npm | @babel/plugin-transform-private-methods | 7.28.6 | MIT |
+| npm | @babel/plugin-transform-private-property-in-object | 7.28.6 | MIT |
 | npm | @babel/plugin-transform-property-literals | 7.27.1 | MIT |
-| npm | @babel/plugin-transform-regenerator | 7.28.4 | MIT |
-| npm | @babel/plugin-transform-regexp-modifiers | 7.27.1 | MIT |
+| npm | @babel/plugin-transform-regenerator | 7.29.0 | MIT |
+| npm | @babel/plugin-transform-regexp-modifiers | 7.28.6 | MIT |
 | npm | @babel/plugin-transform-reserved-words | 7.27.1 | MIT |
 | npm | @babel/plugin-transform-shorthand-properties | 7.27.1 | MIT |
-| npm | @babel/plugin-transform-spread | 7.27.1 | MIT |
+| npm | @babel/plugin-transform-spread | 7.28.6 | MIT |
 | npm | @babel/plugin-transform-sticky-regex | 7.27.1 | MIT |
 | npm | @babel/plugin-transform-template-literals | 7.27.1 | MIT |
 | npm | @babel/plugin-transform-typeof-symbol | 7.27.1 | MIT |
 | npm | @babel/plugin-transform-unicode-escapes | 7.27.1 | MIT |
-| npm | @babel/plugin-transform-unicode-property-regex | 7.27.1 | MIT |
+| npm | @babel/plugin-transform-unicode-property-regex | 7.28.6 | MIT |
 | npm | @babel/plugin-transform-unicode-regex | 7.27.1 | MIT |
-| npm | @babel/plugin-transform-unicode-sets-regex | 7.27.1 | MIT |
-| npm | @babel/preset-env | 7.28.5 | MIT |
+| npm | @babel/plugin-transform-unicode-sets-regex | 7.28.6 | MIT |
+| npm | @babel/preset-env | 7.29.0 | MIT |
 | npm | @babel/preset-modules | 0.1.6-no-external-plugins | MIT |
 | npm | @babel/runtime | 7.28.4 | MIT |
-| npm | @babel/template | 7.27.2 | MIT |
-| npm | @babel/traverse | 7.28.5 | MIT |
+| npm | @babel/runtime | 7.28.6 | MIT |
+| npm | @babel/template | 7.28.6 | MIT |
+| npm | @babel/traverse | 7.29.0 | MIT |
 | npm | @babel/types | 7.28.5 | MIT |
+| npm | @babel/types | 7.29.0 | MIT |
 | npm | @codemirror/autocomplete | 6.20.0 | MIT |
 | npm | @codemirror/commands | 6.10.1 | MIT |
 | npm | @codemirror/lang-angular | 0.1.4 | MIT |
@@ -135,14 +138,12 @@ uv run python scripts/generate_third_party_notices.py
 | npm | @codemirror/state | 6.5.3 | MIT |
 | npm | @codemirror/theme-one-dark | 6.1.3 | MIT |
 | npm | @codemirror/view | 6.39.9 | MIT |
-| npm | @esbuild/darwin-arm64 | 0.25.12 | MIT |
+| npm | @esbuild/darwin-arm64 | 0.27.3 | MIT |
 | npm | @floating-ui/core | 1.7.3 | MIT |
 | npm | @floating-ui/dom | 1.7.4 | MIT |
 | npm | @floating-ui/react-dom | 2.1.6 | MIT |
 | npm | @floating-ui/utils | 0.2.10 | MIT |
-| npm | @isaacs/balanced-match | 4.0.1 | MIT |
-| npm | @isaacs/brace-expansion | 5.0.0 | MIT |
-| npm | @isaacs/cliui | 8.0.2 | ISC |
+| npm | @isaacs/cliui | 9.0.0 | BlueOak-1.0.0 |
 | npm | @jridgewell/gen-mapping | 0.3.13 | MIT |
 | npm | @jridgewell/remapping | 2.3.5 | MIT |
 | npm | @jridgewell/resolve-uri | 3.1.2 | MIT |
@@ -230,7 +231,7 @@ uv run python scripts/generate_third_party_notices.py
 | npm | @rollup/plugin-terser | 0.4.4 | MIT |
 | npm | @rollup/pluginutils | 3.1.0 | MIT |
 | npm | @rollup/pluginutils | 5.3.0 | MIT |
-| npm | @rollup/rollup-darwin-arm64 | 4.52.5 | MIT |
+| npm | @rollup/rollup-darwin-arm64 | 4.59.0 | MIT |
 | npm | @surma/rollup-plugin-off-main-thread | 2.2.3 | Apache-2.0 |
 | npm | @tanstack/query-core | 5.90.7 | MIT |
 | npm | @tanstack/react-query | 5.90.7 | MIT |
@@ -268,10 +269,9 @@ uv run python scripts/generate_third_party_notices.py
 | npm | @vue/runtime-dom | 3.5.26 | MIT |
 | npm | @vue/server-renderer | 3.5.26 | MIT |
 | npm | @vue/shared | 3.5.26 | MIT |
-| npm | acorn | 8.15.0 | MIT |
-| npm | ajv | 8.17.1 | MIT |
+| npm | acorn | 8.16.0 | MIT |
+| npm | ajv | 8.18.0 | MIT |
 | npm | ansi-regex | 5.0.1 | MIT |
-| npm | ansi-styles | 4.3.0 | MIT |
 | npm | ansi-styles | 5.2.0 | MIT |
 | npm | aria-hidden | 1.2.6 | MIT |
 | npm | aria-query | 5.3.0 | Apache-2.0 |
@@ -282,22 +282,22 @@ uv run python scripts/generate_third_party_notices.py
 | npm | asynckit | 0.4.0 | MIT |
 | npm | at-least-node | 1.0.0 | ISC |
 | npm | available-typed-arrays | 1.0.7 | MIT |
-| npm | axios | 1.13.2 | MIT |
-| npm | babel-plugin-polyfill-corejs2 | 0.4.14 | MIT |
-| npm | babel-plugin-polyfill-corejs3 | 0.13.0 | MIT |
-| npm | babel-plugin-polyfill-regenerator | 0.6.5 | MIT |
+| npm | axios | 1.13.5 | MIT |
+| npm | babel-plugin-polyfill-corejs2 | 0.4.15 | MIT |
+| npm | babel-plugin-polyfill-corejs3 | 0.14.0 | MIT |
+| npm | babel-plugin-polyfill-regenerator | 0.6.6 | MIT |
 | npm | bail | 2.0.2 | MIT |
 | npm | balanced-match | 1.0.2 | MIT |
+| npm | balanced-match | 4.0.4 | MIT |
 | npm | baseline-browser-mapping | 2.9.14 | Apache-2.0 |
 | npm | brace-expansion | 2.0.2 | MIT |
-| npm | browserslist | 4.27.0 | MIT |
+| npm | brace-expansion | 5.0.3 | MIT |
 | npm | browserslist | 4.28.1 | MIT |
 | npm | buffer-from | 1.1.2 | MIT |
 | npm | call-bind | 1.0.8 | MIT |
 | npm | call-bind-apply-helpers | 1.0.2 | MIT |
 | npm | call-bound | 1.0.4 | MIT |
-| npm | caniuse-lite | 1.0.30001754 | CC-BY-4.0 |
-| npm | caniuse-lite | 1.0.30001762 | CC-BY-4.0 |
+| npm | caniuse-lite | 1.0.30001774 | CC-BY-4.0 |
 | npm | ccount | 2.0.1 | MIT |
 | npm | chalk | 5.6.2 | MIT |
 | npm | character-entities | 2.0.2 | MIT |
@@ -307,16 +307,14 @@ uv run python scripts/generate_third_party_notices.py
 | npm | class-variance-authority | 0.7.1 | Apache-2.0 |
 | npm | clsx | 2.1.1 | MIT |
 | npm | codemirror | 6.0.2 | MIT |
-| npm | color-convert | 2.0.1 | MIT |
-| npm | color-name | 1.1.4 | MIT |
 | npm | combined-stream | 1.0.8 | MIT |
 | npm | comma-separated-tokens | 2.0.3 | MIT |
 | npm | commander | 2.20.3 | MIT |
 | npm | commander | 8.3.0 | MIT |
 | npm | common-tags | 1.8.2 | MIT |
 | npm | convert-source-map | 2.0.0 | MIT |
-| npm | cookie | 1.0.2 | MIT |
-| npm | core-js-compat | 3.47.0 | MIT |
+| npm | cookie | 1.1.1 | MIT |
+| npm | core-js-compat | 3.48.0 | MIT |
 | npm | crelt | 1.0.6 | MIT |
 | npm | cross-spawn | 7.0.6 | MIT |
 | npm | crypto-random-string | 2.0.0 | MIT |
@@ -338,9 +336,7 @@ uv run python scripts/generate_third_party_notices.py
 | npm | dompurify | 3.3.1 | (MPL-2.0 OR Apache-2.0) |
 | npm | dunder-proto | 1.0.1 | MIT |
 | npm | ejs | 3.1.10 | Apache-2.0 |
-| npm | electron-to-chromium | 1.5.248 | ISC |
-| npm | electron-to-chromium | 1.5.267 | ISC |
-| npm | emoji-regex | 8.0.0 | MIT |
+| npm | electron-to-chromium | 1.5.302 | ISC |
 | npm | entities | 7.0.0 | BSD-2-Clause |
 | npm | es-abstract | 1.24.1 | MIT |
 | npm | es-define-property | 1.0.1 | MIT |
@@ -348,7 +344,7 @@ uv run python scripts/generate_third_party_notices.py
 | npm | es-object-atoms | 1.1.1 | MIT |
 | npm | es-set-tostringtag | 2.1.0 | MIT |
 | npm | es-to-primitive | 1.3.0 | MIT |
-| npm | esbuild | 0.25.12 | MIT |
+| npm | esbuild | 0.27.3 | MIT |
 | npm | escalade | 3.2.0 | MIT |
 | npm | escape-string-regexp | 5.0.0 | MIT |
 | npm | estree-util-is-identifier-name | 3.0.0 | MIT |
@@ -360,11 +356,11 @@ uv run python scripts/generate_third_party_notices.py
 | npm | fast-json-stable-stringify | 2.1.0 | MIT |
 | npm | fast-uri | 3.1.0 | BSD-3-Clause |
 | npm | fdir | 6.5.0 | MIT |
-| npm | filelist | 1.0.4 | Apache-2.0 |
+| npm | filelist | 1.0.6 | Apache-2.0 |
 | npm | follow-redirects | 1.15.11 | MIT |
 | npm | for-each | 0.3.5 | MIT |
 | npm | foreground-child | 3.3.1 | ISC |
-| npm | form-data | 4.0.4 | MIT |
+| npm | form-data | 4.0.5 | MIT |
 | npm | fs-extra | 9.1.0 | MIT |
 | npm | fsevents | 2.3.3 | MIT |
 | npm | function-bind | 1.1.2 | MIT |
@@ -406,7 +402,6 @@ uv run python scripts/generate_third_party_notices.py
 | npm | is-date-object | 1.1.0 | MIT |
 | npm | is-decimal | 2.0.1 | MIT |
 | npm | is-finalizationregistry | 1.1.1 | MIT |
-| npm | is-fullwidth-code-point | 3.0.0 | MIT |
 | npm | is-generator-function | 1.1.2 | MIT |
 | npm | is-hexadecimal | 2.0.1 | MIT |
 | npm | is-map | 2.0.3 | MIT |
@@ -428,7 +423,7 @@ uv run python scripts/generate_third_party_notices.py
 | npm | is-weakset | 2.0.4 | MIT |
 | npm | isarray | 2.0.5 | MIT |
 | npm | isexe | 2.0.0 | ISC |
-| npm | jackspeak | 4.1.1 | BlueOak-1.0.0 |
+| npm | jackspeak | 4.2.3 | BlueOak-1.0.0 |
 | npm | jake | 10.9.4 | Apache-2.0 |
 | npm | jiti | 1.21.7 | MIT |
 | npm | js-tokens | 4.0.0 | MIT |
@@ -440,12 +435,12 @@ uv run python scripts/generate_third_party_notices.py
 | npm | jsonpointer | 5.0.1 | MIT |
 | npm | katex | 0.16.27 | MIT |
 | npm | leven | 3.1.0 | MIT |
-| npm | lodash | 4.17.21 | MIT |
-| npm | lodash-es | 4.17.22 | MIT |
+| npm | lodash | 4.17.23 | MIT |
+| npm | lodash-es | 4.17.23 | MIT |
 | npm | lodash.debounce | 4.0.8 | MIT |
 | npm | lodash.sortby | 4.7.0 | MIT |
 | npm | longest-streak | 3.1.0 | MIT |
-| npm | lru-cache | 11.2.2 | ISC |
+| npm | lru-cache | 11.2.6 | BlueOak-1.0.0 |
 | npm | lru-cache | 5.1.1 | ISC |
 | npm | lucide-react | 0.553.0 | ISC |
 | npm | lz-string | 1.5.0 | MIT |
@@ -467,7 +462,7 @@ uv run python scripts/generate_third_party_notices.py
 | npm | mdast-util-mdx-jsx | 3.2.0 | MIT |
 | npm | mdast-util-mdxjs-esm | 2.0.1 | MIT |
 | npm | mdast-util-phrasing | 4.1.0 | MIT |
-| npm | mdast-util-to-hast | 13.2.0 | MIT |
+| npm | mdast-util-to-hast | 13.2.1 | MIT |
 | npm | mdast-util-to-markdown | 2.1.2 | MIT |
 | npm | mdast-util-to-string | 4.0.0 | MIT |
 | npm | micromark | 4.0.2 | MIT |
@@ -501,9 +496,9 @@ uv run python scripts/generate_third_party_notices.py
 | npm | micromark-util-types | 2.0.2 | MIT |
 | npm | mime-db | 1.52.0 | MIT |
 | npm | mime-types | 2.1.35 | MIT |
-| npm | minimatch | 10.1.1 | BlueOak-1.0.0 |
-| npm | minimatch | 5.1.6 | ISC |
-| npm | minipass | 7.1.2 | ISC |
+| npm | minimatch | 10.2.4 | BlueOak-1.0.0 |
+| npm | minimatch | 5.1.9 | ISC |
+| npm | minipass | 7.1.3 | BlueOak-1.0.0 |
 | npm | ms | 2.1.3 | MIT |
 | npm | nanoid | 3.3.11 | MIT |
 | npm | nanoid | 5.1.6 | MIT |
@@ -517,7 +512,7 @@ uv run python scripts/generate_third_party_notices.py
 | npm | parse-entities | 4.0.2 | MIT |
 | npm | path-key | 3.1.1 | MIT |
 | npm | path-parse | 1.0.7 | MIT |
-| npm | path-scurry | 2.0.1 | BlueOak-1.0.0 |
+| npm | path-scurry | 2.0.2 | BlueOak-1.0.0 |
 | npm | picocolors | 1.1.1 | ISC |
 | npm | picomatch | 2.3.1 | MIT |
 | npm | picomatch | 4.0.3 | MIT |
@@ -552,8 +547,8 @@ uv run python scripts/generate_third_party_notices.py
 | npm | react-markdown | 10.1.0 | MIT |
 | npm | react-remove-scroll | 2.7.1 | MIT |
 | npm | react-remove-scroll-bar | 2.3.8 | MIT |
-| npm | react-router | 7.9.6 | MIT |
-| npm | react-router-dom | 7.9.6 | MIT |
+| npm | react-router | 7.13.1 | MIT |
+| npm | react-router-dom | 7.13.1 | MIT |
 | npm | react-style-singleton | 2.2.3 | MIT |
 | npm | react-textarea-autosize | 8.5.9 | MIT |
 | npm | reflect.getprototypeof | 1.0.10 | MIT |
@@ -572,8 +567,8 @@ uv run python scripts/generate_third_party_notices.py
 | npm | remark-stringify | 11.0.0 | MIT |
 | npm | require-from-string | 2.0.2 | MIT |
 | npm | resolve | 1.22.11 | MIT |
-| npm | rollup | 2.79.2 | MIT |
-| npm | rollup | 4.52.5 | MIT |
+| npm | rollup | 2.80.0 | MIT |
+| npm | rollup | 4.59.0 | MIT |
 | npm | rope-sequence | 1.3.4 | MIT |
 | npm | safe-array-concat | 1.1.3 | MIT |
 | npm | safe-buffer | 5.2.1 | MIT |
@@ -594,7 +589,7 @@ uv run python scripts/generate_third_party_notices.py
 | npm | side-channel-map | 1.0.1 | MIT |
 | npm | side-channel-weakmap | 1.0.2 | MIT |
 | npm | signal-exit | 4.1.0 | ISC |
-| npm | smob | 1.5.0 | MIT |
+| npm | smob | 1.6.1 | MIT |
 | npm | source-map | 0.6.1 | BSD-3-Clause |
 | npm | source-map | 0.8.0-beta.0 | BSD-3-Clause |
 | npm | source-map-js | 1.2.1 | BSD-3-Clause |
@@ -602,14 +597,12 @@ uv run python scripts/generate_third_party_notices.py
 | npm | sourcemap-codec | 1.4.8 | MIT |
 | npm | space-separated-tokens | 2.0.2 | MIT |
 | npm | stop-iteration-iterator | 1.1.0 | MIT |
-| npm | string-width | 4.2.3 | MIT |
 | npm | string.prototype.matchall | 4.0.12 | MIT |
 | npm | string.prototype.trim | 1.2.10 | MIT |
 | npm | string.prototype.trimend | 1.0.9 | MIT |
 | npm | string.prototype.trimstart | 1.0.8 | MIT |
 | npm | stringify-entities | 4.0.4 | MIT |
 | npm | stringify-object | 3.3.0 | BSD-2-Clause |
-| npm | strip-ansi | 6.0.1 | MIT |
 | npm | strip-comments | 2.0.1 | MIT |
 | npm | style-mod | 4.1.3 | MIT |
 | npm | style-to-js | 1.1.21 | MIT |
@@ -618,7 +611,7 @@ uv run python scripts/generate_third_party_notices.py
 | npm | tailwind-merge | 3.3.1 | MIT |
 | npm | temp-dir | 2.0.0 | MIT |
 | npm | tempy | 0.6.0 | MIT |
-| npm | terser | 5.44.1 | BSD-2-Clause |
+| npm | terser | 5.46.0 | BSD-2-Clause |
 | npm | tinyglobby | 0.2.15 | MIT |
 | npm | tr46 | 1.0.1 | MIT |
 | npm | trim-lines | 3.0.1 | MIT |
@@ -646,7 +639,6 @@ uv run python scripts/generate_third_party_notices.py
 | npm | unist-util-visit-parents | 6.0.2 | MIT |
 | npm | universalify | 2.0.1 | MIT |
 | npm | upath | 1.2.0 | MIT |
-| npm | update-browserslist-db | 1.1.4 | MIT |
 | npm | update-browserslist-db | 1.2.3 | MIT |
 | npm | use-callback-ref | 1.3.3 | MIT |
 | npm | use-composed-ref | 1.4.0 | MIT |
@@ -656,7 +648,7 @@ uv run python scripts/generate_third_party_notices.py
 | npm | use-sidecar | 1.1.3 | MIT |
 | npm | vfile | 6.0.3 | MIT |
 | npm | vfile-message | 4.0.3 | MIT |
-| npm | vite | 7.2.2 | MIT |
+| npm | vite | 7.3.1 | MIT |
 | npm | vite-plugin-pwa | 1.2.0 | MIT |
 | npm | vue | 3.5.26 | MIT |
 | npm | w3c-keyname | 2.2.8 | MIT |
@@ -666,7 +658,7 @@ uv run python scripts/generate_third_party_notices.py
 | npm | which-boxed-primitive | 1.1.1 | MIT |
 | npm | which-builtin-type | 1.2.1 | MIT |
 | npm | which-collection | 1.0.2 | MIT |
-| npm | which-typed-array | 1.1.19 | MIT |
+| npm | which-typed-array | 1.1.20 | MIT |
 | npm | workbox-background-sync | 7.4.0 | MIT |
 | npm | workbox-broadcast-update | 7.4.0 | MIT |
 | npm | workbox-build | 7.4.0 | MIT |
@@ -683,7 +675,6 @@ uv run python scripts/generate_third_party_notices.py
 | npm | workbox-streams | 7.4.0 | MIT |
 | npm | workbox-sw | 7.4.0 | MIT |
 | npm | workbox-window | 7.4.0 | MIT |
-| npm | wrap-ansi | 7.0.0 | MIT |
 | npm | yallist | 3.1.1 | ISC |
 | npm | zod | 4.3.6 | MIT |
 | npm | zwitch | 2.0.4 | MIT |
@@ -692,162 +683,189 @@ uv run python scripts/generate_third_party_notices.py
 
 | Ecosystem | Package | Version | License |
 | --- | --- | --- | --- |
-| python | ag-ui-protocol | 0.1.10 | MIT License |
-| python | annotated-doc | 0.0.3 | MIT |
+| python | ag-ui-protocol | 0.1.13 | MIT |
+| python | aiofile | 3.9.0 | Apache Software License |
+| python | aiohappyeyeballs | 2.6.1 | Python Software Foundation License |
+| python | aiohttp | 3.13.3 | Apache-2.0 AND MIT |
+| python | aiosignal | 1.4.0 | Apache Software License |
+| python | annotated-doc | 0.0.4 | MIT |
 | python | annotated-types | 0.7.0 | MIT License |
-| python | anthropic | 0.72.1 | MIT License |
-| python | anyio | 4.11.0 | MIT |
+| python | anthropic | 0.84.0 | MIT License |
+| python | anyio | 4.12.1 | MIT |
 | python | APScheduler | 3.11.2 | MIT License |
 | python | argcomplete | 3.6.3 | Apache Software License |
 | python | asyncache | 0.3.1 | MIT License |
 | python | attrs | 25.4.0 | MIT |
-| python | Authlib | 1.6.5 | BSD License |
-| python | boto3 | 1.40.73 | Apache-2.0 |
-| python | botocore | 1.40.73 | Apache-2.0 |
+| python | Authlib | 1.6.8 | BSD License |
+| python | beartype | 0.22.9 | MIT License |
+| python | boto3 | 1.42.57 | Apache-2.0 |
+| python | botocore | 1.42.57 | Apache-2.0 |
 | python | cachetools | 5.5.2 | MIT License |
-| python | certifi | 2025.10.5 | Mozilla Public License 2.0 (MPL 2.0) |
+| python | caio | 0.9.25 | UNKNOWN |
+| python | certifi | 2026.2.25 | Mozilla Public License 2.0 (MPL 2.0) |
 | python | cffi | 2.0.0 | MIT |
 | python | charset-normalizer | 3.4.4 | MIT |
-| python | click | 8.3.0 | BSD-3-Clause |
+| python | click | 8.3.1 | BSD-3-Clause |
 | python | click-default-group | 1.2.4 | Public Domain |
-| python | cohere | 5.20.0 | MIT License |
-| python | colorama | 0.4.6 | BSD License |
-| python | coverage | 7.11.0 | Apache-2.0 |
-| python | cryptography | 46.0.3 | Apache-2.0 OR BSD-3-Clause |
-| python | cyclopts | 4.2.3 | Apache-2.0 |
+| python | cohere | 5.20.7 | MIT License |
+| python | cryptography | 46.0.5 | Apache-2.0 OR BSD-3-Clause |
+| python | cyclopts | 4.6.0 | Apache-2.0 |
 | python | distro | 1.9.0 | Apache Software License |
 | python | dnspython | 2.8.0 | ISC License (ISCL) |
 | python | docstring_parser | 0.17.0 | MIT License |
-| python | docutils | 0.22.3 | BSD License; GNU General Public License (GPL); Public Domain |
+| python | docutils | 0.22.4 | BSD License; GNU General Public License (GPL); Public Domain |
 | python | email-validator | 2.3.0 | The Unlicense (Unlicense) |
-| python | eval_type_backport | 0.3.0 | MIT License |
-| python | exceptiongroup | 1.3.0 | MIT License |
+| python | eval_type_backport | 0.3.1 | MIT License |
+| python | exceptiongroup | 1.3.1 | MIT License |
 | python | executing | 2.2.1 | MIT License |
-| python | fastapi | 0.120.0 | MIT License |
+| python | fastapi | 0.133.1 | MIT |
 | python | fastavro | 1.12.1 | MIT |
-| python | fastmcp | 2.12.5 | Apache-2.0 |
-| python | filelock | 3.20.0 | Unlicense |
-| python | fsspec | 2025.10.0 | BSD-3-Clause |
-| python | genai-prices | 0.0.39 | MIT |
-| python | google-api-core | 2.28.1 | Apache Software License |
-| python | google-api-python-client | 2.186.0 | Apache Software License |
-| python | google-auth | 2.41.1 | Apache Software License |
-| python | google-auth-httplib2 | 0.2.1 | Apache Software License |
-| python | google-auth-oauthlib | 1.2.3 | Apache Software License |
-| python | google-genai | 1.50.1 | Apache-2.0 |
-| python | googleapis-common-protos | 1.71.0 | Apache Software License |
-| python | griffe | 1.15.0 | ISC |
-| python | groq | 0.34.0 | Apache Software License |
+| python | fastmcp | 3.0.2 | Apache-2.0 |
+| python | filelock | 3.24.3 | MIT |
+| python | frozenlist | 1.8.0 | Apache-2.0 |
+| python | fsspec | 2026.2.0 | BSD-3-Clause |
+| python | genai-prices | 0.0.54 | MIT |
+| python | google-api-core | 2.30.0 | Apache Software License |
+| python | google-api-python-client | 2.190.0 | Apache Software License |
+| python | google-auth | 2.48.0 | Apache Software License |
+| python | google-auth-httplib2 | 0.3.0 | Apache Software License |
+| python | google-auth-oauthlib | 1.2.4 | Apache Software License |
+| python | google-genai | 1.65.0 | Apache-2.0 |
+| python | googleapis-common-protos | 1.72.0 | Apache Software License |
+| python | griffelib | 2.0.0 | ISC |
+| python | groq | 1.0.0 | Apache Software License |
+| python | grpcio | 1.78.1 | Apache-2.0 |
 | python | h11 | 0.16.0 | MIT License |
-| python | hf-xet | 1.2.0 | Apache-2.0 |
+| python | hf-xet | 1.3.1 | Apache-2.0 |
 | python | httpcore | 1.0.9 | BSD-3-Clause |
-| python | httplib2 | 0.31.0 | MIT License |
+| python | httplib2 | 0.31.2 | MIT License |
 | python | httptools | 0.7.1 | MIT |
 | python | httpx | 0.28.1 | BSD License |
-| python | httpx-sse | 0.4.0 | MIT |
-| python | huggingface_hub | 1.1.4 | Apache Software License |
+| python | httpx-sse | 0.4.3 | MIT |
+| python | huggingface_hub | 1.4.1 | Apache Software License |
 | python | idna | 3.11 | BSD-3-Clause |
-| python | importlib_metadata | 8.7.0 | Apache Software License |
-| python | iniconfig | 2.3.0 | MIT |
+| python | importlib_metadata | 8.7.1 | Apache-2.0 |
 | python | invoke | 2.2.1 | BSD License |
-| python | isodate | 0.7.2 | BSD License |
-| python | jiter | 0.12.0 | MIT License |
-| python | jmespath | 1.0.1 | MIT License |
-| python | jsonschema | 4.25.1 | MIT |
-| python | jsonschema-path | 0.3.4 | Apache Software License |
+| python | jaraco.classes | 3.4.0 | MIT License |
+| python | jaraco.context | 6.1.0 | MIT |
+| python | jaraco.functools | 4.4.0 | MIT |
+| python | jiter | 0.13.0 | MIT License |
+| python | jmespath | 1.1.0 | MIT License |
+| python | jsonref | 1.1.0 | MIT |
+| python | jsonschema | 4.26.0 | MIT |
+| python | jsonschema-path | 0.4.2 | Apache Software License |
 | python | jsonschema-specifications | 2025.9.1 | MIT |
-| python | lazy-object-proxy | 1.12.0 | BSD-2-Clause |
-| python | logfire | 4.14.2 | MIT |
-| python | logfire-api | 4.14.2 | MIT |
+| python | keyring | 25.7.0 | MIT |
+| python | logfire | 4.25.0 | MIT |
+| python | logfire-api | 4.25.0 | MIT |
 | python | markdown-it-py | 4.0.0 | MIT License |
 | python | MarkupSafe | 3.0.3 | BSD-3-Clause |
-| python | mcp | 1.16.0 | MIT License |
+| python | mcp | 1.26.0 | MIT License |
 | python | mdurl | 0.1.2 | MIT License |
-| python | mistralai | 1.9.11 | UNKNOWN |
+| python | mistralai | 1.12.4 | UNKNOWN |
 | python | more-itertools | 10.8.0 | MIT |
-| python | mypy | 1.18.2 | MIT License |
-| python | mypy_extensions | 1.1.0 | MIT |
-| python | nexus-rpc | 1.1.0 | UNKNOWN |
+| python | multidict | 6.7.1 | Apache License 2.0 |
+| python | nexus-rpc | 1.2.0 | MIT |
 | python | oauthlib | 3.3.1 | BSD-3-Clause |
-| python | openai | 2.8.0 | Apache Software License |
-| python | openapi-core | 0.19.5 | BSD License |
+| python | openai | 2.24.0 | Apache Software License |
 | python | openapi-pydantic | 0.5.1 | MIT License |
-| python | openapi-schema-validator | 0.6.3 | BSD License |
-| python | openapi-spec-validator | 0.7.2 | Apache Software License |
-| python | opentelemetry-api | 1.38.0 | Apache-2.0 |
-| python | opentelemetry-exporter-otlp-proto-common | 1.38.0 | Apache-2.0 |
-| python | opentelemetry-exporter-otlp-proto-http | 1.38.0 | Apache-2.0 |
-| python | opentelemetry-instrumentation | 0.59b0 | Apache-2.0 |
-| python | opentelemetry-instrumentation-httpx | 0.59b0 | Apache-2.0 |
-| python | opentelemetry-proto | 1.38.0 | Apache-2.0 |
-| python | opentelemetry-sdk | 1.38.0 | Apache-2.0 |
-| python | opentelemetry-semantic-conventions | 0.59b0 | Apache-2.0 |
-| python | opentelemetry-util-http | 0.59b0 | Apache-2.0 |
+| python | opentelemetry-api | 1.39.1 | Apache-2.0 |
+| python | opentelemetry-exporter-otlp-proto-common | 1.39.1 | Apache-2.0 |
+| python | opentelemetry-exporter-otlp-proto-http | 1.39.1 | Apache-2.0 |
+| python | opentelemetry-instrumentation | 0.60b1 | Apache-2.0 |
+| python | opentelemetry-instrumentation-httpx | 0.60b1 | Apache-2.0 |
+| python | opentelemetry-proto | 1.39.1 | Apache-2.0 |
+| python | opentelemetry-sdk | 1.39.1 | Apache-2.0 |
+| python | opentelemetry-semantic-conventions | 0.60b1 | Apache-2.0 |
+| python | opentelemetry-util-http | 0.60b1 | Apache-2.0 |
 | python | packaging | 25.0 | Apache Software License; BSD License |
-| python | parse | 1.20.2 | MIT License |
-| python | pathable | 0.4.4 | Apache Software License |
-| python | pathspec | 0.12.1 | Mozilla Public License 2.0 (MPL 2.0) |
-| python | pillow | 12.1.0 | MIT-CMU |
+| python | pathable | 0.5.0 | Apache Software License |
+| python | pillow | 12.1.1 | MIT-CMU |
+| python | platformdirs | 4.9.2 | MIT |
 | python | pluggy | 1.6.0 | MIT License |
 | python | prompt_toolkit | 3.0.52 | BSD License |
 | python | promptdown | 1.1.6 | MIT License |
-| python | proto-plus | 1.26.1 | Apache Software License |
-| python | protobuf | 6.33.0 | 3-Clause BSD License |
-| python | pyasn1 | 0.6.1 | BSD License |
+| python | propcache | 0.4.1 | Apache Software License |
+| python | proto-plus | 1.27.1 | Apache Software License |
+| python | protobuf | 6.33.5 | 3-Clause BSD License |
+| python | py-key-value-aio | 0.4.4 | Apache Software License |
+| python | pyasn1 | 0.6.2 | BSD-2-Clause |
 | python | pyasn1_modules | 0.4.2 | BSD License |
-| python | pycparser | 2.23 | BSD License |
-| python | pydantic | 2.12.3 | MIT |
-| python | pydantic-ai | 1.17.0 | MIT |
-| python | pydantic-ai-slim | 1.17.0 | MIT |
-| python | pydantic-evals | 1.17.0 | MIT |
-| python | pydantic-graph | 1.17.0 | MIT |
-| python | pydantic-settings | 2.12.0 | MIT |
-| python | pydantic_core | 2.41.4 | MIT |
+| python | pycparser | 3.0 | BSD-3-Clause |
+| python | pydantic | 2.12.5 | MIT |
+| python | pydantic-ai | 1.63.0 | MIT |
+| python | pydantic-ai-slim | 1.63.0 | MIT |
+| python | pydantic-evals | 1.63.0 | MIT |
+| python | pydantic-graph | 1.63.0 | MIT |
+| python | pydantic-settings | 2.13.1 | MIT |
+| python | pydantic_core | 2.41.5 | MIT |
 | python | Pygments | 2.19.2 | BSD License |
-| python | pyparsing | 3.2.5 | MIT |
-| python | pypdf | 6.5.0 | BSD-3-Clause |
+| python | PyJWT | 2.11.0 | MIT |
+| python | pyparsing | 3.3.2 | MIT |
+| python | pypdf | 6.7.3 | BSD-3-Clause |
 | python | pyperclip | 1.11.0 | BSD License |
-| python | pytest | 8.4.2 | MIT License |
-| python | pytest-asyncio | 1.2.0 | Apache-2.0 |
 | python | python-dateutil | 2.9.0.post0 | Apache Software License; BSD License |
-| python | python-dotenv | 1.1.1 | BSD License |
-| python | python-multipart | 0.0.20 | Apache-2.0 |
+| python | python-dotenv | 1.2.1 | BSD-3-Clause |
+| python | python-multipart | 0.0.22 | Apache-2.0 |
 | python | PyYAML | 6.0.3 | MIT License |
-| python | referencing | 0.36.2 | MIT |
+| python | referencing | 0.37.0 | MIT |
+| python | regex | 2026.2.19 | Apache-2.0 AND CNRI-Python |
 | python | requests | 2.32.5 | Apache Software License |
 | python | requests-oauthlib | 2.0.0 | BSD License |
-| python | rfc3339-validator | 0.1.4 | MIT License |
-| python | rich | 14.2.0 | MIT License |
+| python | rich | 14.3.3 | MIT License |
 | python | rich-rst | 1.3.2 | MIT |
-| python | rpds-py | 0.28.0 | MIT |
+| python | rpds-py | 0.30.0 | MIT |
 | python | rsa | 4.9.1 | Apache Software License |
-| python | ruff | 0.14.2 | MIT License |
-| python | s3transfer | 0.14.0 | Apache Software License |
+| python | s3transfer | 0.16.0 | Apache Software License |
 | python | shellingham | 1.5.4 | ISC License (ISCL) |
 | python | six | 1.17.0 | MIT License |
 | python | sniffio | 1.3.1 | Apache Software License; MIT License |
 | python | sqlite-fts4 | 1.0.3 | Apache License, Version 2.0 |
-| python | sqlite-utils | 3.38 | Apache Software License |
-| python | sse-starlette | 3.0.3 | BSD-3-Clause |
-| python | starlette | 0.48.0 | BSD-3-Clause |
+| python | sqlite-utils | 3.39 | Apache License, Version 2.0 |
+| python | sse-starlette | 3.2.0 | BSD-3-Clause |
+| python | starlette | 0.52.1 | BSD-3-Clause |
 | python | storyloop-backend | 0.1.0 | MIT |
 | python | tabulate | 0.9.0 | MIT License |
-| python | temporalio | 1.18.2 | UNKNOWN |
-| python | tenacity | 9.1.2 | Apache Software License |
-| python | tokenizers | 0.22.1 | Apache Software License |
-| python | tqdm | 4.67.1 | MIT License; Mozilla Public License 2.0 (MPL 2.0) |
-| python | typer-slim | 0.20.0 | MIT License |
-| python | types-protobuf | 6.32.1.20251105 | Apache-2.0 |
-| python | types-requests | 2.32.4.20250913 | Apache-2.0 |
+| python | temporalio | 1.20.0 | MIT |
+| python | tenacity | 9.1.4 | Apache Software License |
+| python | tiktoken | 0.12.0 | MIT License
+
+Copyright (c) 2022 OpenAI, Shantanu Jain
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE. |
+| python | tokenizers | 0.22.2 | Apache Software License |
+| python | tqdm | 4.67.3 | MPL-2.0 AND MIT |
+| python | typer | 0.24.1 | MIT |
+| python | typer-slim | 0.24.0 | MIT |
+| python | types-protobuf | 6.32.1.20260221 | Apache-2.0 |
+| python | types-requests | 2.32.4.20260107 | Apache-2.0 |
 | python | typing-inspection | 0.4.2 | MIT |
 | python | typing_extensions | 4.15.0 | PSF-2.0 |
 | python | tzlocal | 5.3.1 | MIT License |
 | python | uritemplate | 4.2.0 | BSD 3-Clause OR Apache-2.0 |
-| python | urllib3 | 2.5.0 | MIT |
-| python | uvicorn | 0.38.0 | BSD-3-Clause |
+| python | urllib3 | 2.6.3 | MIT |
+| python | uvicorn | 0.41.0 | BSD-3-Clause |
 | python | uvloop | 0.22.1 | Apache Software License; MIT License |
 | python | watchfiles | 1.1.1 | MIT License |
-| python | websockets | 15.0.1 | BSD License |
-| python | Werkzeug | 3.1.1 | BSD License |
+| python | websockets | 16.0 | BSD-3-Clause |
+| python | Werkzeug | 3.1.6 | BSD-3-Clause |
 | python | wrapt | 1.17.3 | BSD License |
+| python | xai-sdk | 1.7.0 | Apache-2.0 |
+| python | yarl | 1.22.0 | Apache Software License |
 | python | zipp | 3.23.0 | MIT |
