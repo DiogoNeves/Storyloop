@@ -1,9 +1,12 @@
 from datetime import UTC, datetime
+import io
+import zipfile
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.config import Settings
+from app.db_helpers.conversations import insert_conversation, insert_turn
 from app.main import create_app
 from app.services.today_entries import build_today_entry_id, utc_day_key
 from app.services.users import DEFAULT_ACCENT_COLOR, DEFAULT_SMART_UPDATE_INTERVAL_HOURS
@@ -136,3 +139,112 @@ async def test_enabling_today_entries_creates_today_entry() -> None:
     assert created_response.status_code == 200
     assert created_response.json()["id"] == today_entry_id
     assert created_response.json()["category"] == "today"
+
+
+@pytest.mark.asyncio
+async def test_export_content_archive_includes_user_created_content() -> None:
+    settings = Settings.model_validate(
+        {"DATABASE_URL": "sqlite:///:memory:", "YOUTUBE_API_KEY": "test-key"}
+    )
+    app = create_app(settings)
+    transport = ASGITransport(app=app)
+
+    journal_date = datetime(2026, 2, 1, 14, 0, tzinfo=UTC).isoformat()
+    today_date = datetime(2026, 2, 2, 9, 0, tzinfo=UTC).isoformat()
+
+    async with app.router.lifespan_context(app):
+        connection = app.state.get_db()
+        try:
+            insert_conversation(connection, "conv-export", "Conversation #ops")
+            insert_turn(
+                connection,
+                "conv-export",
+                "user",
+                "Link this @entry:journal-export #chat",
+            )
+            insert_turn(
+                connection,
+                "conv-export",
+                "assistant",
+                "Use [Journal](/entryref/journal-export) now.",
+            )
+        finally:
+            connection.close()
+
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
+            save_response = await client.post(
+                "/entries/",
+                json=[
+                    {
+                        "id": "journal-export",
+                        "title": "Journal Export",
+                        "summary": "Track @entry:today-export #alpha",
+                        "date": journal_date,
+                        "category": "journal",
+                        "promptBody": "Summarize this week #focus",
+                    },
+                    {
+                        "id": "today-export",
+                        "title": "Today",
+                        "summary": "- [ ] Done #today",
+                        "date": today_date,
+                        "category": "today",
+                        "linkUrl": "https://example.com/today",
+                    },
+                    {
+                        "id": "content-export",
+                        "title": "Imported content",
+                        "summary": "External feed item",
+                        "date": today_date,
+                        "category": "content",
+                    },
+                ],
+            )
+            export_response = await client.get("/settings/export")
+
+    assert save_response.status_code == 200
+    assert export_response.status_code == 200
+    assert export_response.headers["content-type"] == "application/zip"
+    disposition = export_response.headers.get("content-disposition", "")
+    assert "attachment" in disposition
+    assert "storyloop-export.zip" in disposition
+
+    archive = zipfile.ZipFile(io.BytesIO(export_response.content))
+    markdown_files = archive.namelist()
+    assert len(markdown_files) >= 3
+
+    markdown_values = [
+        archive.read(file_name).decode("utf-8")
+        for file_name in markdown_files
+    ]
+    assert not any(
+        "External feed item" in markdown for markdown in markdown_values
+    )
+
+    smart_note = next(
+        markdown
+        for markdown in markdown_values
+        if 'storyloopType: "smart_journal"' in markdown
+    )
+    assert "prompt: |" in smart_note
+    assert "@entry:" not in smart_note
+    assert "/entryref/" not in smart_note
+    assert "[[" in smart_note
+
+    today_note = next(
+        markdown
+        for markdown in markdown_values
+        if 'storyloopType: "today"' in markdown
+    )
+    assert "## Links" in today_note
+    assert "https://example.com/today" in today_note
+
+    conversation_note = next(
+        markdown
+        for markdown in markdown_values
+        if 'storyloopType: "conversation"' in markdown
+    )
+    assert "### User (" in conversation_note
+    assert "### Assistant (" in conversation_note

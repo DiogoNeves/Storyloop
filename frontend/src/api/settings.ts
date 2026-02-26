@@ -53,6 +53,14 @@ export interface UpdateSettingsInput {
   accentColor?: AccentPreference;
 }
 
+export interface ContentExportResponse {
+  fileName: string;
+  blob: Blob;
+}
+
+const UTF8_FILE_NAME_PATTERN = /filename\*=UTF-8''([^;]+)/i;
+const STANDARD_FILE_NAME_PATTERN = /filename="?([^";]+)"?/i;
+
 export const settingsQueries = createQueryKeys("settings", {
   all: () => ({
     queryKey: ["settings"],
@@ -68,4 +76,42 @@ export async function updateSettings(
 ): Promise<SettingsResponse> {
   const { data } = await apiClient.put<SettingsResponse>("/settings", input);
   return data;
+}
+
+export async function exportContentArchive(): Promise<ContentExportResponse> {
+  const response = await apiClient.get<Blob>("/settings/export", {
+    responseType: "blob",
+  });
+  const fileName = parseExportFileName(
+    response.headers?.["content-disposition"],
+  );
+  return {
+    fileName,
+    blob: response.data,
+  };
+}
+
+function parseExportFileName(header: unknown): string {
+  const fallback = "storyloop-export.zip";
+  if (typeof header !== "string") {
+    return fallback;
+  }
+
+  const utf8Match = UTF8_FILE_NAME_PATTERN.exec(header);
+  if (utf8Match?.[1]) {
+    try {
+      const candidate = decodeURIComponent(utf8Match[1]).trim();
+      return candidate || fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
+  const standardMatch = STANDARD_FILE_NAME_PATTERN.exec(header);
+  if (standardMatch?.[1]) {
+    const candidate = standardMatch[1].trim();
+    return candidate || fallback;
+  }
+
+  return fallback;
 }

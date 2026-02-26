@@ -67,6 +67,15 @@ describe("SettingsDialog accent picker", () => {
           },
         });
       }
+      if (url === "/settings/export") {
+        return Promise.resolve({
+          data: new Blob(["zip-bytes"], { type: "application/zip" }),
+          headers: {
+            "content-disposition":
+              'attachment; filename="storyloop-export-2026-02-25.zip"',
+          },
+        });
+      }
       return Promise.resolve({ data: {} });
     });
 
@@ -121,5 +130,56 @@ describe("SettingsDialog accent picker", () => {
     expect(
       screen.getByLabelText("Include previous incomplete tasks"),
     ).toBeInTheDocument();
+  });
+
+  it("exports account content as a zip download", async () => {
+    const createObjectUrlMock = vi.fn(() => "blob:storyloop-export");
+    const revokeObjectUrlMock = vi.fn();
+    const clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => undefined);
+
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalRevokeObjectURL = URL.revokeObjectURL;
+
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: createObjectUrlMock,
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: revokeObjectUrlMock,
+    });
+
+    try {
+      renderDialog();
+      const user = userEvent.setup();
+
+      await user.click(screen.getByRole("button", { name: "Export data" }));
+
+      await waitFor(() =>
+        expect(apiGetMock).toHaveBeenCalledWith("/settings/export", {
+          responseType: "blob",
+        }),
+      );
+
+      await waitFor(() => {
+        expect(createObjectUrlMock).toHaveBeenCalledTimes(1);
+        expect(clickSpy).toHaveBeenCalledTimes(1);
+        expect(revokeObjectUrlMock).toHaveBeenCalledWith(
+          "blob:storyloop-export",
+        );
+      });
+    } finally {
+      Object.defineProperty(URL, "createObjectURL", {
+        configurable: true,
+        value: originalCreateObjectURL,
+      });
+      Object.defineProperty(URL, "revokeObjectURL", {
+        configurable: true,
+        value: originalRevokeObjectURL,
+      });
+      clickSpy.mockRestore();
+    }
   });
 });
