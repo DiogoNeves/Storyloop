@@ -1,7 +1,7 @@
 # Third-Party Notices
 
 This file is auto-generated. Do not edit manually.
-Generated at: `2026-02-26T07:36:23+00:00`
+Generated at: `2026-02-27T07:58:13+00:00`
 
 Regenerate with:
 
@@ -708,6 +708,7 @@ uv run python scripts/generate_third_party_notices.py
 | python | click | 8.3.1 | BSD-3-Clause |
 | python | click-default-group | 1.2.4 | Public Domain |
 | python | cohere | 5.20.7 | MIT License |
+| python | colorama | 0.4.6 | BSD License |
 | python | cryptography | 46.0.5 | Apache-2.0 OR BSD-3-Clause |
 | python | cyclopts | 4.6.0 | Apache-2.0 |
 | python | distro | 1.9.0 | Apache Software License |
@@ -732,6 +733,7 @@ uv run python scripts/generate_third_party_notices.py
 | python | google-auth-oauthlib | 1.2.4 | Apache Software License |
 | python | google-genai | 1.65.0 | Apache-2.0 |
 | python | googleapis-common-protos | 1.72.0 | Apache Software License |
+| python | griffe | 1.15.0 | ISC |
 | python | griffelib | 2.0.0 | ISC |
 | python | groq | 1.0.0 | Apache Software License |
 | python | grpcio | 1.78.1 | Apache-2.0 |
@@ -824,31 +826,10 @@ uv run python scripts/generate_third_party_notices.py
 | python | sqlite-utils | 3.39 | Apache License, Version 2.0 |
 | python | sse-starlette | 3.2.0 | BSD-3-Clause |
 | python | starlette | 0.52.1 | BSD-3-Clause |
-| python | storyloop-backend | 0.1.0 | MIT |
 | python | tabulate | 0.9.0 | MIT License |
 | python | temporalio | 1.20.0 | MIT |
 | python | tenacity | 9.1.4 | Apache Software License |
-| python | tiktoken | 0.12.0 | MIT License
-
-Copyright (c) 2022 OpenAI, Shantanu Jain
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE. |
+| python | tiktoken | 0.12.0 | MIT License Copyright (c) 2022 OpenAI, Shantanu Jain Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. |
 | python | tokenizers | 0.22.2 | Apache Software License |
 | python | tqdm | 4.67.3 | MPL-2.0 AND MIT |
 | python | typer | 0.24.1 | MIT |

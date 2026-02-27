@@ -84,6 +84,7 @@ def _load_backend_notices() -> list[PackageNotice]:
                 "--project",
                 "backend",
                 "--no-default-groups",
+                "--no-emit-project",
                 "--format",
                 "requirements-txt",
             ],
@@ -163,11 +164,20 @@ def _load_backend_notices() -> list[PackageNotice]:
     return sorted(notices, key=lambda item: (item.name.lower(), item.version))
 
 
+def _escape_markdown_cell(value: str) -> str:
+    normalized = " ".join(segment.strip() for segment in value.splitlines() if segment.strip())
+    return normalized.replace("|", r"\|")
+
+
 def _render_table_rows(notices: Iterable[PackageNotice]) -> str:
     lines = ["| Ecosystem | Package | Version | License |", "| --- | --- | --- | --- |"]
     for notice in notices:
         lines.append(
-            f"| {notice.ecosystem} | {notice.name} | {notice.version} | {notice.license_name} |"
+            "| "
+            f"{_escape_markdown_cell(notice.ecosystem)} | "
+            f"{_escape_markdown_cell(notice.name)} | "
+            f"{_escape_markdown_cell(notice.version)} | "
+            f"{_escape_markdown_cell(notice.license_name)} |"
         )
     return "\n".join(lines)
 
