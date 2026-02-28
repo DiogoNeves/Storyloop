@@ -74,6 +74,11 @@ interface AccentOption {
   swatch: string;
 }
 
+interface ModelOption {
+  value: string;
+  label: string;
+}
+
 const SETTINGS_TABS: SettingsTabItem[] = [
   { key: "account", label: "Account", icon: UserRound },
   { key: "general", label: "General", icon: SlidersHorizontal },
@@ -740,6 +745,35 @@ function downloadArchiveBlob(blob: Blob, fileName: string): void {
   URL.revokeObjectURL(objectUrl);
 }
 
+function computeAvailableModelOptions(
+  availableOllamaModels: string[],
+): ModelOption[] {
+  const options: ModelOption[] = [
+    { value: OPENAI_ACTIVE_MODEL, label: "OpenAI" },
+  ];
+  const seen = new Set<string>([OPENAI_ACTIVE_MODEL]);
+
+  for (const modelName of availableOllamaModels) {
+    const normalized = modelName.trim();
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    options.push({ value: normalized, label: normalized });
+  }
+
+  return options;
+}
+
+function resolveSelectedActiveModel(
+  activeModel: string,
+  options: ModelOption[],
+): string {
+  return options.some((option) => option.value === activeModel)
+    ? activeModel
+    : OPENAI_ACTIVE_MODEL;
+}
+
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<SettingsTab>("account");
@@ -976,23 +1010,14 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     openaiKeyMutation.isPending ||
     connectOllamaMutation.isPending;
 
-  const availableModelOptions = useMemo(() => {
-    const options: { value: string; label: string }[] = [
-      { value: OPENAI_ACTIVE_MODEL, label: "OpenAI" },
-    ];
-    const seen = new Set<string>([OPENAI_ACTIVE_MODEL]);
-
-    for (const modelName of availableOllamaModels) {
-      const normalized = modelName.trim();
-      if (!normalized || seen.has(normalized)) {
-        continue;
-      }
-      seen.add(normalized);
-      options.push({ value: normalized, label: normalized });
-    }
-
-    return options;
-  }, [availableOllamaModels]);
+  const availableModelOptions = useMemo(
+    () => computeAvailableModelOptions(availableOllamaModels),
+    [availableOllamaModels],
+  );
+  const selectedActiveModel = useMemo(
+    () => resolveSelectedActiveModel(activeModel, availableModelOptions),
+    [activeModel, availableModelOptions],
+  );
 
   const channelTitle = linkStatusQuery.data?.channel?.title ?? "Linked YouTube channel";
   const isLinked = Boolean(linkStatusQuery.data?.linked);
@@ -1043,7 +1068,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 openaiKeyConfigured={openaiKeyConfigured}
                 openaiApiKeyInput={openaiApiKeyInput}
                 ollamaBaseUrlInput={ollamaBaseUrlInput}
-                activeModel={activeModel}
+                activeModel={selectedActiveModel}
                 availableModelOptions={availableModelOptions}
                 modelSettingsError={modelSettingsError}
                 isModelSettingsBusy={isModelSettingsBusy}

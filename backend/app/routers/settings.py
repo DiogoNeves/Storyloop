@@ -172,6 +172,24 @@ class OllamaConnectResponse(BaseModel):
     models: list[str]
 
 
+def _build_settings_response(user_service: UserService) -> SettingsResponse:
+    """Build a settings response from persisted user settings."""
+    return SettingsResponse(
+        smart_update_schedule_hours=user_service.get_smart_update_interval_hours(),
+        show_archived=user_service.get_show_archived(),
+        activity_feed_sort_date=user_service.get_activity_feed_sort_date(),
+        today_entries_enabled=user_service.get_today_entries_enabled(),
+        today_include_previous_incomplete=(
+            user_service.get_today_include_previous_incomplete()
+        ),
+        today_move_completed_to_end=user_service.get_today_move_completed_to_end(),
+        accent_color=user_service.get_accent_color(),
+        openai_key_configured=bool(user_service.get_openai_api_key()),
+        ollama_base_url=user_service.get_ollama_base_url(),
+        active_model=user_service.get_active_model(),
+    )
+
+
 @router.get("/export")
 def export_content_archive(
     entry_service: EntryService = Depends(get_entry_service),
@@ -200,20 +218,7 @@ def get_settings(
     user_service: UserService = Depends(get_user_service),
 ) -> SettingsResponse:
     """Return the current settings for the active user."""
-    return SettingsResponse(
-        smart_update_schedule_hours=user_service.get_smart_update_interval_hours(),
-        show_archived=user_service.get_show_archived(),
-        activity_feed_sort_date=user_service.get_activity_feed_sort_date(),
-        today_entries_enabled=user_service.get_today_entries_enabled(),
-        today_include_previous_incomplete=(
-            user_service.get_today_include_previous_incomplete()
-        ),
-        today_move_completed_to_end=user_service.get_today_move_completed_to_end(),
-        accent_color=user_service.get_accent_color(),
-        openai_key_configured=bool(user_service.get_openai_api_key()),
-        ollama_base_url=user_service.get_ollama_base_url(),
-        active_model=user_service.get_active_model(),
-    )
+    return _build_settings_response(user_service)
 
 
 @router.post(
@@ -365,22 +370,11 @@ async def update_settings(
         await anyio.to_thread.run_sync(today_entry_manager.ensure_today_entry)
 
     should_refresh_runtime = (
-        current_openai_api_key != user_service.get_openai_api_key()
-        or current_ollama_base_url != user_service.get_ollama_base_url()
-        or current_active_model != user_service.get_active_model()
+        current_openai_api_key != normalized_openai_api_key
+        or current_ollama_base_url != normalized_ollama_base_url
+        or current_active_model != normalized_active_model
     )
     if should_refresh_runtime:
         refresh_runtime_ai_services(request.app, user_service=user_service)
 
-    return SettingsResponse(
-        smart_update_schedule_hours=next_hours,
-        show_archived=next_show_archived,
-        activity_feed_sort_date=next_sort_date,
-        today_entries_enabled=next_today_enabled,
-        today_include_previous_incomplete=next_today_include_previous,
-        today_move_completed_to_end=next_today_move_completed_to_end,
-        accent_color=next_accent_color,
-        openai_key_configured=bool(user_service.get_openai_api_key()),
-        ollama_base_url=user_service.get_ollama_base_url(),
-        active_model=user_service.get_active_model(),
-    )
+    return _build_settings_response(user_service)
