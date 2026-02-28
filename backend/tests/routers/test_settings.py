@@ -142,6 +142,34 @@ async def test_update_settings_persists_schedule() -> None:
 
 
 @pytest.mark.asyncio
+async def test_update_settings_does_not_persist_partial_changes_on_invalid_model_config() -> None:
+    settings = Settings.model_validate(
+        {"DATABASE_URL": "sqlite:///:memory:", "YOUTUBE_API_KEY": "test-key"}
+    )
+    app = create_app(settings)
+    transport = ASGITransport(app=app)
+
+    async with app.router.lifespan_context(app):
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
+            response = await client.put(
+                "/settings/",
+                json={
+                    "showArchived": True,
+                    "ollamaBaseUrl": "ftp://127.0.0.1:11434",
+                },
+            )
+            followup = await client.get("/settings/")
+
+    assert response.status_code == 400
+    assert "http:// or https://" in response.json()["detail"]
+    assert followup.status_code == 200
+    assert followup.json()["showArchived"] is False
+    assert followup.json()["ollamaBaseUrl"] == DEFAULT_OLLAMA_BASE_URL
+
+
+@pytest.mark.asyncio
 async def test_connect_ollama_returns_models_and_persists_url(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
