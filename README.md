@@ -83,7 +83,6 @@ The `thinking/` folder is for deeper context. Start with this README for setup, 
 - [LICENSE](./LICENSE) (MIT)
 - [Code of Conduct](./CODE_OF_CONDUCT.md)
 - [Contributing Guide](./CONTRIBUTING.md)
-- [Security Policy](./SECURITY.md)
 - [Dependency and License Policy](./docs/DEPENDENCY_POLICY.md)
 - [Third-Party Notices](./THIRD_PARTY_NOTICES.md)
 - [GitHub Security Setup Checklist](./docs/GITHUB_SECURITY_SETUP.md)

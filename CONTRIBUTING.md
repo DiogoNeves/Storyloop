@@ -6,7 +6,7 @@ Thanks for contributing.
 
 - Read [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md).
 - Search existing issues before opening a new one.
-- For security issues, use [SECURITY.md](./SECURITY.md) instead of public issues.
+- For sensitive security issues, report privately to `diogo dot neves at gmail dot com` instead of opening a public issue.
 
 ## What We Accept
 
