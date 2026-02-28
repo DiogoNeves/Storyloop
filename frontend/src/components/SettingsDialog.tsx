@@ -991,15 +991,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       options.push({ value: normalized, label: normalized });
     }
 
-    if (!seen.has(activeModel)) {
-      options.push({
-        value: activeModel,
-        label: `${activeModel} (saved)`,
-      });
-    }
-
     return options;
-  }, [activeModel, availableOllamaModels]);
+  }, [availableOllamaModels]);
 
   const channelTitle = linkStatusQuery.data?.channel?.title ?? "Linked YouTube channel";
   const isLinked = Boolean(linkStatusQuery.data?.linked);
