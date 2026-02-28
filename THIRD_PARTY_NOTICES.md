@@ -1,7 +1,7 @@
 # Third-Party Notices
 
 This file is auto-generated. Do not edit manually.
-Generated at: `2026-02-27T07:58:13+00:00`
+Generated at: `2026-02-28T15:32:33+00:00`
 
 Regenerate with:
 
@@ -233,8 +233,8 @@ uv run python scripts/generate_third_party_notices.py
 | npm | @rollup/pluginutils | 5.3.0 | MIT |
 | npm | @rollup/rollup-darwin-arm64 | 4.59.0 | MIT |
 | npm | @surma/rollup-plugin-off-main-thread | 2.2.3 | Apache-2.0 |
-| npm | @tanstack/query-core | 5.90.7 | MIT |
-| npm | @tanstack/react-query | 5.90.7 | MIT |
+| npm | @tanstack/query-core | 5.90.20 | MIT |
+| npm | @tanstack/react-query | 5.90.21 | MIT |
 | npm | @testing-library/dom | 10.4.1 | MIT |
 | npm | @testing-library/user-event | 14.6.1 | MIT |
 | npm | @types/aria-query | 5.0.4 | MIT |
@@ -253,7 +253,7 @@ uv run python scripts/generate_third_party_notices.py
 | npm | @types/mdast | 4.0.4 | MIT |
 | npm | @types/ms | 2.1.0 | MIT |
 | npm | @types/node | 24.10.0 | MIT |
-| npm | @types/react | 19.2.2 | MIT |
+| npm | @types/react | 19.2.14 | MIT |
 | npm | @types/react-dom | 19.2.2 | MIT |
 | npm | @types/resolve | 1.20.2 | MIT |
 | npm | @types/trusted-types | 2.0.7 | MIT |
@@ -288,10 +288,8 @@ uv run python scripts/generate_third_party_notices.py
 | npm | babel-plugin-polyfill-regenerator | 0.6.6 | MIT |
 | npm | bail | 2.0.2 | MIT |
 | npm | balanced-match | 1.0.2 | MIT |
-| npm | balanced-match | 4.0.4 | MIT |
 | npm | baseline-browser-mapping | 2.9.14 | Apache-2.0 |
 | npm | brace-expansion | 2.0.2 | MIT |
-| npm | brace-expansion | 5.0.3 | MIT |
 | npm | browserslist | 4.28.1 | MIT |
 | npm | buffer-from | 1.1.2 | MIT |
 | npm | call-bind | 1.0.8 | MIT |
@@ -318,7 +316,6 @@ uv run python scripts/generate_third_party_notices.py
 | npm | crelt | 1.0.6 | MIT |
 | npm | cross-spawn | 7.0.6 | MIT |
 | npm | crypto-random-string | 2.0.0 | MIT |
-| npm | csstype | 3.1.3 | MIT |
 | npm | csstype | 3.2.3 | MIT |
 | npm | data-view-buffer | 1.0.2 | MIT |
 | npm | data-view-byte-length | 1.0.2 | MIT |
@@ -337,7 +334,7 @@ uv run python scripts/generate_third_party_notices.py
 | npm | dunder-proto | 1.0.1 | MIT |
 | npm | ejs | 3.1.10 | Apache-2.0 |
 | npm | electron-to-chromium | 1.5.302 | ISC |
-| npm | entities | 7.0.0 | BSD-2-Clause |
+| npm | entities | 7.0.1 | BSD-2-Clause |
 | npm | es-abstract | 1.24.1 | MIT |
 | npm | es-define-property | 1.0.1 | MIT |
 | npm | es-errors | 1.3.0 | MIT |
@@ -496,8 +493,8 @@ uv run python scripts/generate_third_party_notices.py
 | npm | micromark-util-types | 2.0.2 | MIT |
 | npm | mime-db | 1.52.0 | MIT |
 | npm | mime-types | 2.1.35 | MIT |
-| npm | minimatch | 10.2.4 | BlueOak-1.0.0 |
 | npm | minimatch | 5.1.9 | ISC |
+| npm | minimatch | 9.0.9 | ISC |
 | npm | minipass | 7.1.3 | BlueOak-1.0.0 |
 | npm | ms | 2.1.3 | MIT |
 | npm | nanoid | 3.3.11 | MIT |
@@ -540,9 +537,8 @@ uv run python scripts/generate_third_party_notices.py
 | npm | prosemirror-virtual-cursor | 0.4.2 | MIT |
 | npm | proxy-from-env | 1.1.0 | MIT |
 | npm | punycode | 2.3.1 | MIT |
-| npm | randombytes | 2.1.0 | MIT |
-| npm | react | 19.2.0 | MIT |
-| npm | react-dom | 19.2.0 | MIT |
+| npm | react | 19.2.4 | MIT |
+| npm | react-dom | 19.2.4 | MIT |
 | npm | react-is | 17.0.2 | MIT |
 | npm | react-markdown | 10.1.0 | MIT |
 | npm | react-remove-scroll | 2.7.1 | MIT |
@@ -571,12 +567,11 @@ uv run python scripts/generate_third_party_notices.py
 | npm | rollup | 4.59.0 | MIT |
 | npm | rope-sequence | 1.3.4 | MIT |
 | npm | safe-array-concat | 1.1.3 | MIT |
-| npm | safe-buffer | 5.2.1 | MIT |
 | npm | safe-push-apply | 1.0.0 | MIT |
 | npm | safe-regex-test | 1.1.0 | MIT |
 | npm | scheduler | 0.27.0 | MIT |
 | npm | semver | 6.3.1 | ISC |
-| npm | serialize-javascript | 6.0.2 | BSD-3-Clause |
+| npm | serialize-javascript | 7.0.3 | BSD-3-Clause |
 | npm | set-cookie-parser | 2.7.2 | MIT |
 | npm | set-function-length | 1.2.2 | MIT |
 | npm | set-function-name | 2.0.2 | MIT |
@@ -608,7 +603,7 @@ uv run python scripts/generate_third_party_notices.py
 | npm | style-to-js | 1.1.21 | MIT |
 | npm | style-to-object | 1.0.14 | MIT |
 | npm | supports-preserve-symlinks-flag | 1.0.0 | MIT |
-| npm | tailwind-merge | 3.3.1 | MIT |
+| npm | tailwind-merge | 3.5.0 | MIT |
 | npm | temp-dir | 2.0.0 | MIT |
 | npm | tempy | 0.6.0 | MIT |
 | npm | terser | 5.46.0 | BSD-2-Clause |
@@ -698,8 +693,8 @@ uv run python scripts/generate_third_party_notices.py
 | python | attrs | 25.4.0 | MIT |
 | python | Authlib | 1.6.8 | BSD License |
 | python | beartype | 0.22.9 | MIT License |
-| python | boto3 | 1.42.57 | Apache-2.0 |
-| python | botocore | 1.42.57 | Apache-2.0 |
+| python | boto3 | 1.42.59 | Apache-2.0 |
+| python | botocore | 1.42.59 | Apache-2.0 |
 | python | cachetools | 5.5.2 | MIT License |
 | python | caio | 0.9.25 | UNKNOWN |
 | python | certifi | 2026.2.25 | Mozilla Public License 2.0 (MPL 2.0) |
@@ -708,7 +703,6 @@ uv run python scripts/generate_third_party_notices.py
 | python | click | 8.3.1 | BSD-3-Clause |
 | python | click-default-group | 1.2.4 | Public Domain |
 | python | cohere | 5.20.7 | MIT License |
-| python | colorama | 0.4.6 | BSD License |
 | python | cryptography | 46.0.5 | Apache-2.0 OR BSD-3-Clause |
 | python | cyclopts | 4.6.0 | Apache-2.0 |
 | python | distro | 1.9.0 | Apache Software License |
@@ -719,32 +713,31 @@ uv run python scripts/generate_third_party_notices.py
 | python | eval_type_backport | 0.3.1 | MIT License |
 | python | exceptiongroup | 1.3.1 | MIT License |
 | python | executing | 2.2.1 | MIT License |
-| python | fastapi | 0.133.1 | MIT |
+| python | fastapi | 0.134.0 | MIT |
 | python | fastavro | 1.12.1 | MIT |
 | python | fastmcp | 3.0.2 | Apache-2.0 |
 | python | filelock | 3.24.3 | MIT |
 | python | frozenlist | 1.8.0 | Apache-2.0 |
 | python | fsspec | 2026.2.0 | BSD-3-Clause |
-| python | genai-prices | 0.0.54 | MIT |
+| python | genai-prices | 0.0.55 | MIT |
 | python | google-api-core | 2.30.0 | Apache Software License |
 | python | google-api-python-client | 2.190.0 | Apache Software License |
 | python | google-auth | 2.48.0 | Apache Software License |
 | python | google-auth-httplib2 | 0.3.0 | Apache Software License |
-| python | google-auth-oauthlib | 1.2.4 | Apache Software License |
+| python | google-auth-oauthlib | 1.3.0 | Apache Software License |
 | python | google-genai | 1.65.0 | Apache-2.0 |
 | python | googleapis-common-protos | 1.72.0 | Apache Software License |
-| python | griffe | 1.15.0 | ISC |
 | python | griffelib | 2.0.0 | ISC |
 | python | groq | 1.0.0 | Apache Software License |
-| python | grpcio | 1.78.1 | Apache-2.0 |
+| python | grpcio | 1.78.0 | Apache-2.0 |
 | python | h11 | 0.16.0 | MIT License |
-| python | hf-xet | 1.3.1 | Apache-2.0 |
+| python | hf-xet | 1.3.2 | Apache-2.0 |
 | python | httpcore | 1.0.9 | BSD-3-Clause |
 | python | httplib2 | 0.31.2 | MIT License |
 | python | httptools | 0.7.1 | MIT |
 | python | httpx | 0.28.1 | BSD License |
 | python | httpx-sse | 0.4.3 | MIT |
-| python | huggingface_hub | 1.4.1 | Apache Software License |
+| python | huggingface_hub | 1.5.0 | Apache Software License |
 | python | idna | 3.11 | BSD-3-Clause |
 | python | importlib_metadata | 8.7.1 | Apache-2.0 |
 | python | invoke | 2.2.1 | BSD License |
@@ -755,7 +748,7 @@ uv run python scripts/generate_third_party_notices.py
 | python | jmespath | 1.1.0 | MIT License |
 | python | jsonref | 1.1.0 | MIT |
 | python | jsonschema | 4.26.0 | MIT |
-| python | jsonschema-path | 0.4.2 | Apache Software License |
+| python | jsonschema-path | 0.4.4 | Apache Software License |
 | python | jsonschema-specifications | 2025.9.1 | MIT |
 | python | keyring | 25.7.0 | MIT |
 | python | logfire | 4.25.0 | MIT |
@@ -804,14 +797,14 @@ uv run python scripts/generate_third_party_notices.py
 | python | Pygments | 2.19.2 | BSD License |
 | python | PyJWT | 2.11.0 | MIT |
 | python | pyparsing | 3.3.2 | MIT |
-| python | pypdf | 6.7.3 | BSD-3-Clause |
+| python | pypdf | 6.7.4 | BSD-3-Clause |
 | python | pyperclip | 1.11.0 | BSD License |
 | python | python-dateutil | 2.9.0.post0 | Apache Software License; BSD License |
 | python | python-dotenv | 1.2.1 | BSD-3-Clause |
 | python | python-multipart | 0.0.22 | Apache-2.0 |
 | python | PyYAML | 6.0.3 | MIT License |
 | python | referencing | 0.37.0 | MIT |
-| python | regex | 2026.2.19 | Apache-2.0 AND CNRI-Python |
+| python | regex | 2026.2.28 | Apache-2.0 AND CNRI-Python |
 | python | requests | 2.32.5 | Apache Software License |
 | python | requests-oauthlib | 2.0.0 | BSD License |
 | python | rich | 14.3.3 | MIT License |
@@ -824,7 +817,7 @@ uv run python scripts/generate_third_party_notices.py
 | python | sniffio | 1.3.1 | Apache Software License; MIT License |
 | python | sqlite-fts4 | 1.0.3 | Apache License, Version 2.0 |
 | python | sqlite-utils | 3.39 | Apache License, Version 2.0 |
-| python | sse-starlette | 3.2.0 | BSD-3-Clause |
+| python | sse-starlette | 3.3.2 | BSD-3-Clause |
 | python | starlette | 0.52.1 | BSD-3-Clause |
 | python | tabulate | 0.9.0 | MIT License |
 | python | temporalio | 1.20.0 | MIT |
@@ -833,7 +826,6 @@ uv run python scripts/generate_third_party_notices.py
 | python | tokenizers | 0.22.2 | Apache Software License |
 | python | tqdm | 4.67.3 | MPL-2.0 AND MIT |
 | python | typer | 0.24.1 | MIT |
-| python | typer-slim | 0.24.0 | MIT |
 | python | types-protobuf | 6.32.1.20260221 | Apache-2.0 |
 | python | types-requests | 2.32.4.20260107 | Apache-2.0 |
 | python | typing-inspection | 0.4.2 | MIT |
