@@ -9,6 +9,15 @@ It combines:
 
 The goal is simple: help creators connect what they are trying, what happened, and what to do next.
 
+## Project Layout
+
+- `backend/` FastAPI app, services, persistence, tests
+- `frontend/` React app, API hooks, components, tests
+- `scripts/` developer utilities
+- `thinking/` architecture notes, design docs, and product exploration
+
+The `thinking/` folder is for deeper context. Start with this README for setup, then use `thinking/` when you want implementation rationale and planning detail.
+
 ## Quick Start
 
 ### Prerequisites
@@ -68,15 +77,6 @@ make test            # backend + frontend tests
 make test-backend    # backend tests only
 make test-frontend   # frontend tests only
 ```
-
-## Project Layout
-
-- `backend/` FastAPI app, services, persistence, tests
-- `frontend/` React app, API hooks, components, tests
-- `scripts/` developer utilities
-- `thinking/` architecture notes, design docs, and product exploration
-
-The `thinking/` folder is for deeper context. Start with this README for setup, then use `thinking/` when you want implementation rationale and planning detail.
 
 ## Open Source Governance
 
