@@ -148,9 +148,9 @@ function SettingsTabHeader({ title, description }: SettingsTabHeaderProps) {
 
 interface SettingsRowProps {
   title: ReactNode;
-  description: string;
+  description: ReactNode;
   controls: ReactNode;
-  layout?: "inline" | "stack" | "start";
+  layout?: "inline" | "stack" | "start" | "column";
   className?: string;
 }
 
@@ -169,6 +169,7 @@ function SettingsRow({
         layout === "stack" &&
           "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between",
         layout === "start" && "flex items-start justify-between",
+        layout === "column" && "flex flex-col gap-3",
         className,
       )}
     >
@@ -520,11 +521,11 @@ function GeneralTabContent({
 
       <div className="space-y-2">
         <SettingsRow
-          layout="stack"
+          layout="column"
           title="OpenAI API key"
           description="OpenAI is always required for dictation in notes and Loopie."
           controls={
-            <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center">
+            <div className="flex w-full flex-col items-stretch gap-2 sm:flex-row sm:items-center">
               <Label htmlFor="settings-openai-api-key" className="sr-only">
                 OpenAI API key
               </Label>
@@ -537,7 +538,7 @@ function GeneralTabContent({
                   openaiKeyConfigured ? "Configured (enter to replace)" : "sk-..."
                 }
                 autoComplete="off"
-                className="w-full sm:w-72"
+                className="w-full sm:flex-1"
                 disabled={isModelSettingsBusy}
               />
               <Button
@@ -559,11 +560,24 @@ function GeneralTabContent({
       </div>
 
       <SettingsRow
-        layout="stack"
+        layout="column"
         title="Ollama connection"
-        description="Connect to Ollama to list local models you can run in Loopie."
+        description={
+          <>
+            Connect to Ollama to list local models you can run in Loopie.{" "}
+            <a
+              href="https://ollama.com/download"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary underline-offset-2 hover:underline"
+            >
+              Get Ollama
+            </a>
+            .
+          </>
+        }
         controls={
-          <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center">
+          <div className="flex w-full flex-col items-stretch gap-2 sm:flex-row sm:items-center">
             <Label htmlFor="settings-ollama-base-url" className="sr-only">
               Ollama base URL
             </Label>
@@ -571,18 +585,10 @@ function GeneralTabContent({
               id="settings-ollama-base-url"
               value={ollamaBaseUrlInput}
               onChange={(event) => onOllamaBaseUrlInputChange(event.target.value)}
-              className="w-full sm:w-72"
+              className="w-full sm:flex-1"
               placeholder={DEFAULT_OLLAMA_BASE_URL}
               disabled={isModelSettingsBusy}
             />
-            <a
-              href="https://ollama.com/download"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-primary underline-offset-2 hover:underline"
-            >
-              Get Ollama
-            </a>
             <Button
               type="button"
               variant="secondary"
@@ -596,11 +602,11 @@ function GeneralTabContent({
       />
 
       <SettingsRow
-        layout="stack"
+        layout="column"
         title="Active Loopie model"
         description="Choose the model Loopie should use for chat and smart updates."
         controls={
-          <div className="flex items-center gap-2">
+          <div className="w-full">
             <Label htmlFor="settings-active-model" className="sr-only">
               Active model
             </Label>
@@ -609,7 +615,7 @@ function GeneralTabContent({
               onValueChange={onActiveModelChange}
               disabled={isModelSettingsBusy}
             >
-              <SelectTrigger id="settings-active-model" className="w-72">
+              <SelectTrigger id="settings-active-model" className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
