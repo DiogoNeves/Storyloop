@@ -53,6 +53,12 @@ def load_env_file(path: Path) -> None:
         os.environ.setdefault(key, value)
 
 
+def _is_truthy_env(value: str | None) -> bool:
+    if value is None:
+        return False
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 async def run_process(command: Sequence[str], cwd: Path) -> int:
     process = await asyncio.create_subprocess_exec(
         *command,
@@ -87,6 +93,7 @@ def _parse_port(value: str, label: str) -> int:
 
 def _port_available(host: str, port: int) -> bool:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
             sock.bind((host, port))
         except OSError:
@@ -142,13 +149,20 @@ async def main(prod: bool = False) -> int:
 
     youtube_demo_mode = os.getenv("YOUTUBE_DEMO_MODE")
     if (
-        not os.getenv("YOUTUBE_API_KEY")
-        and (youtube_demo_mode is None or youtube_demo_mode.strip() == "")
+        not prod
+        and not os.getenv("YOUTUBE_API_KEY")
+        and not _is_truthy_env(youtube_demo_mode)
     ):
         os.environ["YOUTUBE_DEMO_MODE"] = "true"
-        print(
-            "YOUTUBE_API_KEY is not set. Enabling YOUTUBE_DEMO_MODE for local execution."
-        )
+        if youtube_demo_mode is None or youtube_demo_mode.strip() == "":
+            print(
+                "YOUTUBE_API_KEY is not set. Enabling YOUTUBE_DEMO_MODE for local execution."
+            )
+        else:
+            print(
+                "YOUTUBE_API_KEY is not set and YOUTUBE_DEMO_MODE is disabled. "
+                "Overriding YOUTUBE_DEMO_MODE=true for local execution."
+            )
 
     backend_host = "127.0.0.1"
     frontend_host = "127.0.0.1"
@@ -224,11 +238,13 @@ async def main(prod: bool = False) -> int:
     frontend_task = asyncio.create_task(run_process(frontend_cmd, FRONTEND_DIR))
     stop_task = asyncio.create_task(stop_event.wait())
 
+    graceful_shutdown = False
     try:
         done, pending = await asyncio.wait(
             {backend_task, frontend_task, stop_task},
             return_when=asyncio.FIRST_COMPLETED,
         )
+        graceful_shutdown = stop_task in done
         if stop_task not in done:
             for task, label in (
                 (backend_task, "backend"),
@@ -272,19 +288,22 @@ async def main(prod: bool = False) -> int:
 
     exit_codes = [0]
     for result in results:
-        if isinstance(result, Exception):
-            if not isinstance(result, asyncio.CancelledError):
-                print(f"Process exited with error: {result}", file=sys.stderr)
-                exit_codes.append(1)
-        elif isinstance(result, int):
+        if isinstance(result, int):
+            if graceful_shutdown and result != 0:
+                continue
             exit_codes.append(result)
-        else:
-            # Handle other BaseException types (shouldn't happen, but type checker needs this)
-            print(
-                f"Process exited with unexpected error: {result}",
-                file=sys.stderr,
-            )
+            continue
+        if isinstance(result, asyncio.CancelledError):
+            continue
+        if isinstance(result, BaseException):
+            print(f"Process exited with error: {result}", file=sys.stderr)
             exit_codes.append(1)
+            continue
+        print(
+            f"Process exited with unexpected result type: {result}",
+            file=sys.stderr,
+        )
+        exit_codes.append(1)
 
     return max(exit_codes)
 
