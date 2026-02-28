@@ -26,7 +26,11 @@ from app.services.model_backends import (
     OllamaModelDiscoveryError,
     list_ollama_models,
 )
-from app.services.model_settings import normalize_ollama_base_url
+from app.services.model_settings import (
+    normalize_active_model,
+    normalize_ollama_base_url,
+    normalize_openai_api_key,
+)
 from app.services.smart_entries import SmartEntryUpdateManager
 from app.services.today_entries import TodayEntryManager
 from app.services.users import AccentPreference, UserService
@@ -321,6 +325,20 @@ async def update_settings(
     )
 
     try:
+        normalized_openai_api_key = normalize_openai_api_key(
+            next_openai_api_key
+        )
+        normalized_ollama_base_url = normalize_ollama_base_url(
+            next_ollama_base_url
+        )
+        normalized_active_model = normalize_active_model(next_active_model)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+    try:
         user_service.set_smart_update_interval_hours(next_hours)
         user_service.set_show_archived(next_show_archived)
         user_service.set_activity_feed_sort_date(next_sort_date)
@@ -332,9 +350,9 @@ async def update_settings(
             next_today_move_completed_to_end
         )
         user_service.set_accent_color(next_accent_color)
-        user_service.set_openai_api_key(next_openai_api_key)
-        user_service.set_ollama_base_url(next_ollama_base_url or "")
-        user_service.set_active_model(next_active_model or "")
+        user_service.set_openai_api_key(normalized_openai_api_key)
+        user_service.set_ollama_base_url(normalized_ollama_base_url)
+        user_service.set_active_model(normalized_active_model)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
