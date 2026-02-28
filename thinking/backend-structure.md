@@ -81,7 +81,6 @@ Centralized settings management using Pydantic:
 - `environment` - dev/production environment
 - `database_url` - SQLite database path
 - `logfire_api_key` - Optional observability token
-- `openai_api_key` - Optional AI agent key (agent disabled if not set, similar to YouTube OAuth)
 - `youtube_api_key` - Optional YouTube API key
 - `youtube_demo_mode` / `youtube_demo_scenario` - Fixture-driven demo mode controls
 - `smart_entries_scheduler_enabled` - Background smart-entry scheduler toggle
@@ -174,7 +173,7 @@ conn.close()
 - Uses OpenAI's `gpt-5.1-chat-latest` model via PydanticAI
 - System prompt configured for YouTube creator assistance
 - Agent initialized at application startup and stored in `app.state.assistant_agent`
-- Returns `None` if `OPENAI_API_KEY` environment variable is not set (optional, like YouTube OAuth)
+- Returns `None` when selected model configuration is unavailable
 - App starts successfully even without API key; agent endpoints return error if agent unavailable
 
 **Future Extensions:**
@@ -316,11 +315,13 @@ Optional:
 
 ```bash
 LOGFIRE_API_KEY=your_logfire_token
-OPENAI_API_KEY=your_openai_key  # Optional: enables agent functionality
 YOUTUBE_API_KEY=your_youtube_key
 YOUTUBE_DEMO_MODE=true           # Optional: use fixture-backed demo data
 SMART_ENTRIES_SCHEDULER_ENABLED=true
 ```
+
+Model provider settings (OpenAI key, Ollama URL, active model) are configured in
+the frontend Settings dialog.
 
 ## Development Commands
 

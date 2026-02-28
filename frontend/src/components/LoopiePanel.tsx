@@ -3,6 +3,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
   type ChangeEvent,
   type ClipboardEvent,
   type DragEvent,
@@ -14,6 +15,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Bot, RotateCcw } from "lucide-react";
 
 import { entriesQueries } from "@/api/entries";
+import { resolveSettingsResponse, settingsQueries } from "@/api/settings";
+import { DictationSetupDialog } from "@/components/DictationSetupDialog";
 import { LoopieComposer } from "@/components/loopie/LoopieComposer";
 import { LoopieConversationMessages } from "@/components/loopie/LoopieConversationMessages";
 import { computeLoopieComposerUiState } from "@/components/loopie/computeLoopieComposerUiState";
@@ -107,6 +110,12 @@ export function LoopieConversationContent({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const { isOnline } = useSync();
+  const settingsQuery = useQuery(settingsQueries.all());
+  const openaiKeyConfigured = resolveSettingsResponse(
+    settingsQuery.data,
+  ).openaiKeyConfigured;
+  const [isDictationSetupDialogOpen, setIsDictationSetupDialogOpen] =
+    useState(false);
 
   const entriesQueryConfig = useMemo(() => entriesQueries.all(), []);
   const entriesQuery = useQuery(entriesQueryConfig);
@@ -186,6 +195,26 @@ export function LoopieConversationContent({
     }
     void refreshAudioInputDevices();
   }, [dictationStatus, refreshAudioInputDevices]);
+
+  const toggleDictationWithGuard = useCallback(async () => {
+    if (dictationStatus !== "idle") {
+      await toggleDictation();
+      return;
+    }
+
+    if (!openaiKeyConfigured) {
+      setIsDictationSetupDialogOpen(true);
+      return;
+    }
+
+    clearDictationError();
+    await toggleDictation();
+  }, [
+    clearDictationError,
+    dictationStatus,
+    openaiKeyConfigured,
+    toggleDictation,
+  ]);
 
   const { uploadFiles, isUploading } = useAssetUpload({
     onUploaded: (asset) => {
@@ -457,76 +486,81 @@ export function LoopieConversationContent({
   );
 
   return (
-    <div
-      className={cn("flex min-h-0 flex-1 flex-col overflow-hidden", className)}
-    >
+    <>
       <div
-        className={cn(
-          "flex min-h-0 flex-1 flex-col gap-5 overflow-hidden",
-          uiState.padding,
-        )}
+        className={cn("flex min-h-0 flex-1 flex-col overflow-hidden", className)}
       >
-        <LoopieConversationMessages
-          messages={state.messages}
-          composerStatus={state.composer.status}
-          entryReferenceTitles={entryReferenceTitles}
-          scrollContainerRef={scrollContainerRef}
+        <div
+          className={cn(
+            "flex min-h-0 flex-1 flex-col gap-5 overflow-hidden",
+            uiState.padding,
+          )}
+        >
+          <LoopieConversationMessages
+            messages={state.messages}
+            composerStatus={state.composer.status}
+            entryReferenceTitles={entryReferenceTitles}
+            scrollContainerRef={scrollContainerRef}
+          />
+        </div>
+
+        <LoopieComposer
+          state={state}
+          focus={focus}
+          composerPlaceholder={composerPlaceholder}
+          helperText={uiState.helperText}
+          padding={uiState.padding}
+          composerSurface={uiState.composerSurface}
+          isOnline={isOnline}
+          inputValue={inputValue}
+          attachments={attachments}
+          uploadError={uploadError}
+          dictationError={dictationError}
+          dictationStatus={dictationStatus}
+          dictationInputLevel={dictationInputLevel}
+          dictationElapsedSeconds={dictationElapsedSeconds}
+          isDictationSupported={isDictationSupported}
+          audioInputDevices={audioInputDevices}
+          selectedAudioInputDeviceId={selectedAudioInputDeviceId}
+          isAudioInputSelectionSupported={isAudioInputSelectionSupported}
+          isUploading={isUploading}
+          isTextareaDisabled={uiState.isTextareaDisabled}
+          isDictating={uiState.isDictating}
+          isTranscribingDictation={uiState.isTranscribingDictation}
+          isDictationDisabled={uiState.isDictationDisabled}
+          isSendDisabled={uiState.isSendDisabled}
+          showStopButton={uiState.showStopButton}
+          acceptTypes={ACCEPT_TYPES}
+          textareaRef={textareaRef}
+          fileInputRef={fileInputRef}
+          mentionState={mentionState}
+          mentionSuggestions={mentionSuggestions}
+          mentionActiveIndex={mentionActiveIndex}
+          inlineReferenceSegments={inlineReferenceSegments}
+          hasInlineReferences={hasInlineReferences}
+          composerScrollOffset={composerScrollOffset}
+          onRemoveAttachment={removeAttachment}
+          onFilesSelected={handleFilesSelected}
+          onTextareaChange={handleTextareaChange}
+          onTextareaSelect={handleTextareaSelect}
+          onTextareaScroll={handleTextareaScroll}
+          onTextareaKeyDown={handleTextareaKeyDown}
+          onTextareaPaste={handleTextareaPaste}
+          onTextareaDrop={handleTextareaDrop}
+          onTextareaDragOver={handleTextareaDragOver}
+          onMentionSelect={insertMention}
+          onSubmit={handleSubmit}
+          onStopResponse={adapter.stopResponse}
+          stopDictation={stopDictation}
+          toggleDictation={toggleDictationWithGuard}
+          onSelectAudioInputDevice={selectAudioInputDevice}
         />
       </div>
-
-      <LoopieComposer
-        state={state}
-        focus={focus}
-        composerPlaceholder={composerPlaceholder}
-        helperText={uiState.helperText}
-        padding={uiState.padding}
-        composerSurface={uiState.composerSurface}
-        isOnline={isOnline}
-        inputValue={inputValue}
-        attachments={attachments}
-        uploadError={uploadError}
-        dictationError={dictationError}
-        dictationStatus={dictationStatus}
-        dictationInputLevel={dictationInputLevel}
-        dictationElapsedSeconds={dictationElapsedSeconds}
-        isDictationSupported={isDictationSupported}
-        audioInputDevices={audioInputDevices}
-        selectedAudioInputDeviceId={selectedAudioInputDeviceId}
-        isAudioInputSelectionSupported={isAudioInputSelectionSupported}
-        isUploading={isUploading}
-        isTextareaDisabled={uiState.isTextareaDisabled}
-        isDictating={uiState.isDictating}
-        isTranscribingDictation={uiState.isTranscribingDictation}
-        isDictationDisabled={uiState.isDictationDisabled}
-        isSendDisabled={uiState.isSendDisabled}
-        showStopButton={uiState.showStopButton}
-        acceptTypes={ACCEPT_TYPES}
-        textareaRef={textareaRef}
-        fileInputRef={fileInputRef}
-        mentionState={mentionState}
-        mentionSuggestions={mentionSuggestions}
-        mentionActiveIndex={mentionActiveIndex}
-        inlineReferenceSegments={inlineReferenceSegments}
-        hasInlineReferences={hasInlineReferences}
-        composerScrollOffset={composerScrollOffset}
-        onRemoveAttachment={removeAttachment}
-        onFilesSelected={handleFilesSelected}
-        onTextareaChange={handleTextareaChange}
-        onTextareaSelect={handleTextareaSelect}
-        onTextareaScroll={handleTextareaScroll}
-        onTextareaKeyDown={handleTextareaKeyDown}
-        onTextareaPaste={handleTextareaPaste}
-        onTextareaDrop={handleTextareaDrop}
-        onTextareaDragOver={handleTextareaDragOver}
-        onMentionSelect={insertMention}
-        onSubmit={handleSubmit}
-        onStopResponse={adapter.stopResponse}
-        stopDictation={stopDictation}
-        clearDictationError={clearDictationError}
-        toggleDictation={toggleDictation}
-        onSelectAudioInputDevice={selectAudioInputDevice}
+      <DictationSetupDialog
+        open={isDictationSetupDialogOpen}
+        onOpenChange={setIsDictationSetupDialogOpen}
       />
-    </div>
+    </>
   );
 }
 

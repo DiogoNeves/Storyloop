@@ -13,8 +13,6 @@ from openai import OpenAI
 from openai import OpenAIError
 from openai import RateLimitError
 
-from app.config import Settings
-
 SpeechDictationMode = Literal["loopie", "journal_note"]
 AudioPayload = bytes | bytearray
 _TRANSCRIPTION_MODEL = "gpt-4o-mini-transcribe"
@@ -197,18 +195,18 @@ def _extract_provider_error_message(error: BadRequestError) -> str:
 
 
 def build_speech_to_text_service(
-    active_settings: Settings,
+    openai_api_key: str | None,
 ) -> SpeechToTextService | None:
-    """Create speech service when OPENAI_API_KEY is configured."""
+    """Create speech service when an OpenAI API key is configured."""
 
-    if not active_settings.openai_api_key:
+    if not openai_api_key:
         return None
 
     return SpeechToTextService(
         cast(
             _SpeechClient,
             OpenAI(
-                api_key=active_settings.openai_api_key,
+                api_key=openai_api_key,
                 timeout=_TRANSCRIPTION_TIMEOUT_SECONDS,
                 max_retries=_TRANSCRIPTION_MAX_RETRIES,
             ),

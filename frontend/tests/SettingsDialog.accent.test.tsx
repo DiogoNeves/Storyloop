@@ -12,11 +12,13 @@ import type {
 
 const apiGetMock = vi.hoisted(() => vi.fn());
 const apiPutMock = vi.hoisted(() => vi.fn());
+const apiPostMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/api/client", () => ({
   apiClient: {
     get: apiGetMock,
     put: apiPutMock,
+    post: apiPostMock,
   },
   API_BASE_URL: "http://localhost:8000",
 }));
@@ -29,6 +31,9 @@ const baseSettings: SettingsResponse = {
   todayIncludePreviousIncomplete: true,
   todayMoveCompletedToEnd: true,
   accentColor: "crimson",
+  openaiKeyConfigured: false,
+  ollamaBaseUrl: "http://127.0.0.1:11434",
+  activeModel: "openai",
 };
 
 function renderDialog() {
@@ -52,6 +57,7 @@ describe("SettingsDialog accent picker", () => {
   beforeEach(() => {
     apiGetMock.mockReset();
     apiPutMock.mockReset();
+    apiPostMock.mockReset();
 
     apiGetMock.mockImplementation((url: string) => {
       if (url === "/settings") {
@@ -81,14 +87,47 @@ describe("SettingsDialog accent picker", () => {
 
     apiPutMock.mockImplementation(
       (_url: string, payload: UpdateSettingsInput) => {
+        const openaiConfigured =
+          payload.openaiApiKey !== undefined
+            ? Boolean(payload.openaiApiKey?.trim())
+            : baseSettings.openaiKeyConfigured;
         return Promise.resolve({
           data: {
             ...baseSettings,
-            ...payload,
+            smartUpdateScheduleHours:
+              payload.smartUpdateScheduleHours ??
+              baseSettings.smartUpdateScheduleHours,
+            showArchived: payload.showArchived ?? baseSettings.showArchived,
+            activityFeedSortDate:
+              payload.activityFeedSortDate ?? baseSettings.activityFeedSortDate,
+            todayEntriesEnabled:
+              payload.todayEntriesEnabled ?? baseSettings.todayEntriesEnabled,
+            todayIncludePreviousIncomplete:
+              payload.todayIncludePreviousIncomplete ??
+              baseSettings.todayIncludePreviousIncomplete,
+            todayMoveCompletedToEnd:
+              payload.todayMoveCompletedToEnd ??
+              baseSettings.todayMoveCompletedToEnd,
+            accentColor: payload.accentColor ?? baseSettings.accentColor,
+            ollamaBaseUrl: payload.ollamaBaseUrl ?? baseSettings.ollamaBaseUrl,
+            activeModel: payload.activeModel ?? baseSettings.activeModel,
+            openaiKeyConfigured: openaiConfigured,
           } satisfies SettingsResponse,
         });
       },
     );
+
+    apiPostMock.mockImplementation((url: string) => {
+      if (url === "/settings/ollama/connect") {
+        return Promise.resolve({
+          data: {
+            ollamaBaseUrl: "http://127.0.0.1:11434",
+            models: ["qwen3:8b", "llama3.2"],
+          },
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
   });
 
   it("renders all accent options and persists the selected accent", async () => {
@@ -181,5 +220,45 @@ describe("SettingsDialog accent picker", () => {
       });
       clickSpy.mockRestore();
     }
+  });
+
+  it("saves OpenAI API key from model settings", async () => {
+    renderDialog();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "General" }));
+    const keyInput = await screen.findByLabelText("OpenAI API key");
+    await user.type(keyInput, "sk-test");
+    await user.click(screen.getByRole("button", { name: "Save key" }));
+
+    await waitFor(() =>
+      expect(apiPutMock).toHaveBeenCalledWith("/settings", {
+        openaiApiKey: "sk-test",
+      }),
+    );
+  });
+
+  it("connects to Ollama and allows selecting an active Ollama model", async () => {
+    renderDialog();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "General" }));
+    await user.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(() =>
+      expect(apiPostMock).toHaveBeenCalledWith("/settings/ollama/connect", {
+        ollamaBaseUrl: "http://127.0.0.1:11434",
+      }),
+    );
+
+    const activeModelTrigger = await screen.findByLabelText("Active model");
+    await user.click(activeModelTrigger);
+    await user.click(await screen.findByRole("option", { name: "qwen3:8b" }));
+
+    await waitFor(() =>
+      expect(apiPutMock).toHaveBeenCalledWith("/settings", {
+        activeModel: "qwen3:8b",
+      }),
+    );
   });
 });

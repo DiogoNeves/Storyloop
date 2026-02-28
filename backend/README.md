@@ -25,11 +25,12 @@ Environment variables are loaded via `.env` and `python-dotenv`. Default values 
 
 - `DATABASE_URL` (defaults to `sqlite:///backend/data/dev-storyloop.db` when `ENV` is not set, `sqlite:///backend/data/storyloop.db` when `ENV=production`)
 - `LOGFIRE_API_KEY`
-- `OPENAI_API_KEY`
 - `YOUTUBE_API_KEY`
 - `ENV`
 
 Update `.env` in the repository root to override these settings locally.
+OpenAI/Ollama model settings (including OpenAI API key) are configured from the
+frontend Settings dialog.
 
 ## YouTube Demo Mode
 

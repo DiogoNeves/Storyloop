@@ -3,6 +3,10 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 from app.db import SqliteConnectionFactory
+from app.services.model_settings import (
+    DEFAULT_OLLAMA_BASE_URL,
+    OPENAI_ACTIVE_MODEL,
+)
 from app.services.users import DEFAULT_ACCENT_COLOR, UserService
 
 
@@ -20,6 +24,9 @@ def test_ensure_schema_fresh_table_excludes_channel_profile_columns(
     assert "channel_profile_json" not in columns
     assert "channel_profile_updated_at" not in columns
     assert "accent_color" in columns
+    assert "openai_api_key" in columns
+    assert "ollama_base_url" in columns
+    assert "active_model" in columns
 
 
 def test_ensure_schema_migrates_legacy_channel_profile_columns(
@@ -124,6 +131,9 @@ def test_ensure_schema_migrates_legacy_channel_profile_columns(
     assert record.today_include_previous_incomplete is False
     assert record.today_move_completed_to_end is False
     assert record.accent_color is None
+    assert record.openai_api_key is None
+    assert record.ollama_base_url is None
+    assert record.active_model is None
 
 
 def test_upsert_credentials_persists_payload(
@@ -350,3 +360,45 @@ def test_invalid_persisted_accent_color_falls_back_to_default(
         connection.commit()
 
     assert service.get_accent_color() == DEFAULT_ACCENT_COLOR
+
+
+def test_openai_api_key_round_trip(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    service = UserService(memory_connection_factory)
+    service.ensure_schema()
+
+    assert service.get_openai_api_key() is None
+
+    service.set_openai_api_key(" test-key ")
+    assert service.get_openai_api_key() == "test-key"
+
+    service.set_openai_api_key("")
+    assert service.get_openai_api_key() is None
+
+
+def test_ollama_base_url_round_trip(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    service = UserService(memory_connection_factory)
+    service.ensure_schema()
+
+    assert service.get_ollama_base_url() == DEFAULT_OLLAMA_BASE_URL
+
+    service.set_ollama_base_url("127.0.0.1:11434/v1")
+    assert service.get_ollama_base_url() == DEFAULT_OLLAMA_BASE_URL
+
+
+def test_active_model_round_trip(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    service = UserService(memory_connection_factory)
+    service.ensure_schema()
+
+    assert service.get_active_model() == OPENAI_ACTIVE_MODEL
+
+    service.set_active_model("qwen3:8b")
+    assert service.get_active_model() == "qwen3:8b"
+
+    service.set_active_model("")
+    assert service.get_active_model() == OPENAI_ACTIVE_MODEL

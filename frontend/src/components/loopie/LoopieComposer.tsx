@@ -85,7 +85,6 @@ interface LoopieComposerProps {
   onSubmit: () => void;
   onStopResponse: () => void;
   stopDictation: () => void;
-  clearDictationError: () => void;
   toggleDictation: () => Promise<void>;
   onSelectAudioInputDevice: (deviceId: string) => void;
 }
@@ -138,7 +137,6 @@ export function LoopieComposer({
   onSubmit,
   onStopResponse,
   stopDictation,
-  clearDictationError,
   toggleDictation,
   onSelectAudioInputDevice,
 }: LoopieComposerProps) {
@@ -338,7 +336,6 @@ export function LoopieComposer({
                     if (isDictationDisabled) {
                       return;
                     }
-                    clearDictationError();
                     void toggleDictation();
                   }}
                   disabled={isDictationDisabled}

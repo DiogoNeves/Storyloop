@@ -9,6 +9,8 @@ export type AccentPreference =
   | "emerald"
   | "azure"
   | "violet";
+export const OPENAI_ACTIVE_MODEL = "openai";
+export const DEFAULT_OLLAMA_BASE_URL = "http://127.0.0.1:11434";
 
 export interface SettingsResponse {
   smartUpdateScheduleHours: number;
@@ -18,6 +20,9 @@ export interface SettingsResponse {
   todayIncludePreviousIncomplete: boolean;
   todayMoveCompletedToEnd: boolean;
   accentColor: AccentPreference;
+  openaiKeyConfigured: boolean;
+  ollamaBaseUrl: string;
+  activeModel: string;
 }
 
 // Backend settings are the source of truth. This frontend fallback is only for
@@ -30,6 +35,9 @@ export const DEFAULT_SETTINGS_RESPONSE: SettingsResponse = {
   todayIncludePreviousIncomplete: true,
   todayMoveCompletedToEnd: true,
   accentColor: "crimson",
+  openaiKeyConfigured: false,
+  ollamaBaseUrl: DEFAULT_OLLAMA_BASE_URL,
+  activeModel: OPENAI_ACTIVE_MODEL,
 };
 
 export const DEFAULT_SMART_UPDATE_SCHEDULE_HOURS =
@@ -51,6 +59,18 @@ export interface UpdateSettingsInput {
   todayIncludePreviousIncomplete?: boolean;
   todayMoveCompletedToEnd?: boolean;
   accentColor?: AccentPreference;
+  openaiApiKey?: string | null;
+  ollamaBaseUrl?: string;
+  activeModel?: string;
+}
+
+export interface ConnectOllamaInput {
+  ollamaBaseUrl: string;
+}
+
+export interface ConnectOllamaResponse {
+  ollamaBaseUrl: string;
+  models: string[];
 }
 
 export interface ContentExportResponse {
@@ -89,6 +109,16 @@ export async function exportContentArchive(): Promise<ContentExportResponse> {
     fileName,
     blob: response.data,
   };
+}
+
+export async function connectOllama(
+  input: ConnectOllamaInput,
+): Promise<ConnectOllamaResponse> {
+  const { data } = await apiClient.post<ConnectOllamaResponse>(
+    "/settings/ollama/connect",
+    input,
+  );
+  return data;
 }
 
 function parseExportFileName(header: unknown): string {

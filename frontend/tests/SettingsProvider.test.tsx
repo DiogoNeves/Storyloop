@@ -26,6 +26,9 @@ const baseSettings: SettingsResponse = {
   todayIncludePreviousIncomplete: true,
   todayMoveCompletedToEnd: true,
   accentColor: "crimson",
+  openaiKeyConfigured: false,
+  ollamaBaseUrl: "http://127.0.0.1:11434",
+  activeModel: "openai",
 };
 
 function SettingsProbe() {

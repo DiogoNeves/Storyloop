@@ -8,6 +8,11 @@ from httpx import ASGITransport, AsyncClient
 from app.config import Settings
 from app.db_helpers.conversations import insert_conversation, insert_turn
 from app.main import create_app
+from app.services.model_backends import OllamaModelDiscoveryError
+from app.services.model_settings import (
+    DEFAULT_OLLAMA_BASE_URL,
+    OPENAI_ACTIVE_MODEL,
+)
 from app.services.today_entries import build_today_entry_id, utc_day_key
 from app.services.users import DEFAULT_ACCENT_COLOR, DEFAULT_SMART_UPDATE_INTERVAL_HOURS
 
@@ -38,6 +43,9 @@ async def test_get_settings_returns_default_schedule() -> None:
     assert payload["todayIncludePreviousIncomplete"] is True
     assert payload["todayMoveCompletedToEnd"] is True
     assert payload["accentColor"] == DEFAULT_ACCENT_COLOR
+    assert payload["openaiKeyConfigured"] is False
+    assert payload["ollamaBaseUrl"] == DEFAULT_OLLAMA_BASE_URL
+    assert payload["activeModel"] == OPENAI_ACTIVE_MODEL
 
 
 @pytest.mark.asyncio
@@ -77,6 +85,21 @@ async def test_update_settings_persists_schedule() -> None:
                 "/settings/", json={"accentColor": "violet"}
             )
             followup_accent = await client.get("/settings/")
+            openai_toggle = await client.put(
+                "/settings/",
+                json={"openaiApiKey": "test-openai-key"},
+            )
+            followup_openai = await client.get("/settings/")
+            model_toggle = await client.put(
+                "/settings/",
+                json={"activeModel": "qwen3:8b"},
+            )
+            followup_model = await client.get("/settings/")
+            clear_openai = await client.put(
+                "/settings/",
+                json={"openaiApiKey": ""},
+            )
+            followup_openai_cleared = await client.get("/settings/")
 
     assert update_response.status_code == 200
     assert update_response.json()["smartUpdateScheduleHours"] == 6
@@ -104,6 +127,82 @@ async def test_update_settings_persists_schedule() -> None:
     assert accent_toggle.json()["accentColor"] == "violet"
     assert followup_accent.status_code == 200
     assert followup_accent.json()["accentColor"] == "violet"
+    assert "openaiApiKey" not in openai_toggle.json()
+    assert openai_toggle.json()["openaiKeyConfigured"] is True
+    assert followup_openai.status_code == 200
+    assert followup_openai.json()["openaiKeyConfigured"] is True
+    assert model_toggle.status_code == 200
+    assert model_toggle.json()["activeModel"] == "qwen3:8b"
+    assert followup_model.status_code == 200
+    assert followup_model.json()["activeModel"] == "qwen3:8b"
+    assert clear_openai.status_code == 200
+    assert clear_openai.json()["openaiKeyConfigured"] is False
+    assert followup_openai_cleared.status_code == 200
+    assert followup_openai_cleared.json()["openaiKeyConfigured"] is False
+
+
+@pytest.mark.asyncio
+async def test_connect_ollama_returns_models_and_persists_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = Settings.model_validate(
+        {"DATABASE_URL": "sqlite:///:memory:", "YOUTUBE_API_KEY": "test-key"}
+    )
+    app = create_app(settings)
+    transport = ASGITransport(app=app)
+
+    monkeypatch.setattr(
+        "app.routers.settings.list_ollama_models",
+        lambda base_url: ["qwen3:8b", "llama3.2"],
+    )
+
+    async with app.router.lifespan_context(app):
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
+            response = await client.post(
+                "/settings/ollama/connect",
+                json={"ollamaBaseUrl": "127.0.0.1:11434/v1"},
+            )
+            followup = await client.get("/settings/")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["ollamaBaseUrl"] == DEFAULT_OLLAMA_BASE_URL
+    assert payload["models"] == ["qwen3:8b", "llama3.2"]
+    assert followup.status_code == 200
+    assert followup.json()["ollamaBaseUrl"] == DEFAULT_OLLAMA_BASE_URL
+
+
+@pytest.mark.asyncio
+async def test_connect_ollama_maps_discovery_failure_to_502(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = Settings.model_validate(
+        {"DATABASE_URL": "sqlite:///:memory:", "YOUTUBE_API_KEY": "test-key"}
+    )
+    app = create_app(settings)
+    transport = ASGITransport(app=app)
+
+    def _raise_discovery_error(_base_url: str) -> list[str]:
+        raise OllamaModelDiscoveryError("Could not connect to Ollama")
+
+    monkeypatch.setattr(
+        "app.routers.settings.list_ollama_models",
+        _raise_discovery_error,
+    )
+
+    async with app.router.lifespan_context(app):
+        async with AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
+            response = await client.post(
+                "/settings/ollama/connect",
+                json={"ollamaBaseUrl": "http://127.0.0.1:11434"},
+            )
+
+    assert response.status_code == 502
+    assert "Could not connect to Ollama" in response.json()["detail"]
 
 
 @pytest.mark.asyncio

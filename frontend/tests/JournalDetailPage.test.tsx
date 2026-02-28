@@ -115,6 +115,19 @@ const todayEntry: Entry = {
   pinned: false,
 };
 
+const defaultSettingsResponse = {
+  smartUpdateScheduleHours: 24,
+  showArchived: false,
+  activityFeedSortDate: "created",
+  todayEntriesEnabled: true,
+  todayIncludePreviousIncomplete: true,
+  todayMoveCompletedToEnd: true,
+  accentColor: "crimson",
+  openaiKeyConfigured: true,
+  ollamaBaseUrl: "http://127.0.0.1:11434",
+  activeModel: "openai",
+};
+
 function renderPage(ui: ReactElement, initialPath = `/journals/${sampleEntry.id}`) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -164,6 +177,18 @@ describe("JournalDetailPage", () => {
     apiPostMock.mockReset();
     apiPutMock.mockReset();
     apiGetMock.mockImplementation((url: string) => {
+      if (url === "/settings") {
+        return Promise.resolve({ data: defaultSettingsResponse });
+      }
+      if (url === "/health") {
+        return Promise.resolve({
+          data: {
+            status: "Storyloop API ready",
+            youtubeDemoMode: false,
+            agentAvailable: true,
+          },
+        });
+      }
       if (url.startsWith("/entries/")) {
         return Promise.resolve({ data: sampleEntry });
       }
@@ -320,6 +345,9 @@ describe("JournalDetailPage", () => {
     };
 
     apiGetMock.mockImplementation((url: string) => {
+      if (url === "/settings") {
+        return Promise.resolve({ data: defaultSettingsResponse });
+      }
       if (url.startsWith("/entries/")) {
         return Promise.resolve({ data: smartEntry });
       }
@@ -385,6 +413,9 @@ describe("JournalDetailPage", () => {
     };
 
     apiGetMock.mockImplementation((url: string) => {
+      if (url === "/settings") {
+        return Promise.resolve({ data: defaultSettingsResponse });
+      }
       if (url.startsWith("/entries/")) {
         return Promise.resolve({ data: smartEntry });
       }
@@ -423,6 +454,9 @@ describe("JournalDetailPage", () => {
 
   it("renders the Today checklist editor and hides pin/archive controls", async () => {
     apiGetMock.mockImplementation((url: string) => {
+      if (url === "/settings") {
+        return Promise.resolve({ data: defaultSettingsResponse });
+      }
       if (url === `/entries/${todayEntry.id}`) {
         return Promise.resolve({ data: todayEntry });
       }
@@ -460,6 +494,9 @@ describe("JournalDetailPage", () => {
     };
 
     apiGetMock.mockImplementation((url: string) => {
+      if (url === "/settings") {
+        return Promise.resolve({ data: defaultSettingsResponse });
+      }
       if (url.startsWith("/entries/")) {
         return Promise.resolve({ data: archivedEntry });
       }
@@ -485,6 +522,9 @@ describe("JournalDetailPage", () => {
     };
 
     apiGetMock.mockImplementation((url: string) => {
+      if (url === "/settings") {
+        return Promise.resolve({ data: defaultSettingsResponse });
+      }
       if (url.startsWith("/entries/")) {
         return Promise.resolve({ data: archivedEntry });
       }
@@ -532,6 +572,9 @@ describe("JournalDetailPage", () => {
     };
 
     apiGetMock.mockImplementation((url: string) => {
+      if (url === "/settings") {
+        return Promise.resolve({ data: defaultSettingsResponse });
+      }
       if (url.startsWith("/entries/")) {
         return Promise.resolve({ data: emptyEntry });
       }
@@ -557,6 +600,9 @@ describe("JournalDetailPage", () => {
     };
 
     apiGetMock.mockImplementation((url: string) => {
+      if (url === "/settings") {
+        return Promise.resolve({ data: defaultSettingsResponse });
+      }
       if (url.startsWith("/entries/")) {
         return Promise.resolve({ data: emptyPlaceholderEntry });
       }
@@ -582,6 +628,9 @@ describe("JournalDetailPage", () => {
     };
 
     apiGetMock.mockImplementation((url: string) => {
+      if (url === "/settings") {
+        return Promise.resolve({ data: defaultSettingsResponse });
+      }
       if (url.startsWith("/entries/")) {
         return Promise.resolve({ data: emptyEntry });
       }
@@ -629,6 +678,61 @@ describe("JournalDetailPage", () => {
       },
       { timeout: 1500 },
     );
+  });
+
+  it("shows setup dialog instead of starting note dictation without OpenAI key", async () => {
+    const emptyEntry: Entry = {
+      ...sampleEntry,
+      summary: "",
+    };
+
+    apiGetMock.mockImplementation((url: string) => {
+      if (url === "/settings") {
+        return Promise.resolve({
+          data: {
+            ...defaultSettingsResponse,
+            openaiKeyConfigured: false,
+          },
+        });
+      }
+      if (url.startsWith("/entries/")) {
+        return Promise.resolve({ data: emptyEntry });
+      }
+      if (url.startsWith("/entries")) {
+        return Promise.resolve({ data: [] });
+      }
+      if (url.startsWith("/conversations")) {
+        return Promise.resolve({ data: [] });
+      }
+      return Promise.resolve({ data: emptyEntry });
+    });
+
+    const toggleDictationSpy = vi.fn(() => Promise.resolve());
+    useAudioDictationMock.mockReturnValue({
+      status: "idle",
+      inputLevel: 0,
+      elapsedSeconds: 0,
+      isSupported: true,
+      errorMessage: null,
+      startDictation: vi.fn(),
+      stopDictation: vi.fn(),
+      toggleDictation: toggleDictationSpy,
+      clearError: vi.fn(),
+    });
+
+    renderPage(<JournalDetailPage />);
+    const user = userEvent.setup();
+
+    await user.click(
+      await screen.findByRole("button", { name: /Dictate your note/i }),
+    );
+
+    expect(toggleDictationSpy).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("heading", {
+        name: "OpenAI key required for dictation",
+      }),
+    ).toBeInTheDocument();
   });
 
   it("saves an empty summary when delete-all emits placeholder markdown", async () => {

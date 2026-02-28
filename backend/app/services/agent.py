@@ -10,10 +10,8 @@ import anyio
 from fastapi import FastAPI
 from pydantic import BaseModel, ConfigDict
 from pydantic_ai import Agent, RunContext
-from pydantic_ai.models.openai import OpenAIChatModel
 from promptdown import StructuredPrompt
 
-from app.config import Settings
 from app.services.agent_tools import (
     BaseEntryRepository,
     BaseJournalRepository,
@@ -36,6 +34,8 @@ from app.services.agent_tools import (
     VideoMetrics,
     YouTubeRepository,
 )
+from app.services.model_backends import build_loopie_chat_model
+from app.services.model_settings import LoopieModelConfig
 
 
 def _load_promptdown_system_message(
@@ -132,27 +132,21 @@ async def build_loopie_deps(
 
 
 def build_agent(
-    active_settings: Settings,
+    runtime_model_config: LoopieModelConfig,
     *,
     system_prompt: str | None = None,
 ) -> Agent[LoopieDeps, str] | None:
     """Build and configure a PydanticAI agent for Storyloop creators.
 
     Args:
-        active_settings: Settings instance to use for configuration
+        runtime_model_config: Model configuration to use for provider wiring
 
-    Returns None if OPENAI_API_KEY is not configured, allowing the app to
-    start without agent functionality (similar to YouTube OAuth).
+    Returns None if the selected model is unavailable (for example OpenAI
+    selected without a configured API key).
     """
-    if not active_settings.openai_api_key:
+    model = build_loopie_chat_model(runtime_model_config)
+    if model is None:
         return None
-
-    # PydanticAI reads OPENAI_API_KEY from environment variable
-    import os
-
-    # Ensure the API key is set in environment for PydanticAI to use
-    os.environ["OPENAI_API_KEY"] = active_settings.openai_api_key
-    model = OpenAIChatModel("gpt-5.1-chat-latest")
 
     resolved_prompt = system_prompt or _load_promptdown_system_message(
         "loopie.prompt.md"
@@ -453,10 +447,10 @@ def build_agent(
 
 
 def build_smart_entry_agent(
-    active_settings: Settings,
+    runtime_model_config: LoopieModelConfig,
 ) -> Agent[LoopieDeps, str] | None:
     """Build the agent configured for smart journal updates."""
     return build_agent(
-        active_settings,
+        runtime_model_config,
         system_prompt=_load_promptdown_system_message("smart_entry.prompt.md"),
     )

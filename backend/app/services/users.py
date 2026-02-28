@@ -8,6 +8,13 @@ from datetime import datetime
 from sqlite3 import Row
 from typing import Literal, cast
 
+from app.services.model_settings import (
+    DEFAULT_OLLAMA_BASE_URL,
+    OPENAI_ACTIVE_MODEL,
+    normalize_active_model,
+    normalize_ollama_base_url,
+    normalize_openai_api_key,
+)
 from app.services.base import DatabaseService
 
 _DEFAULT_USER_ID = "active"
@@ -26,6 +33,7 @@ ALLOWED_ACCENT_COLORS = {
 DEFAULT_TODAY_ENTRIES_ENABLED = True
 DEFAULT_TODAY_INCLUDE_PREVIOUS_INCOMPLETE = True
 DEFAULT_TODAY_MOVE_COMPLETED_TO_END = True
+DEFAULT_ACTIVE_MODEL = OPENAI_ACTIVE_MODEL
 _REMOVED_CHANNEL_PROFILE_COLUMNS = {
     "channel_profile_json",
     "channel_profile_updated_at",
@@ -49,6 +57,9 @@ _USERS_TABLE_SCHEMA: tuple[tuple[str, str], ...] = (
     ("today_include_previous_incomplete", "INTEGER"),
     ("today_move_completed_to_end", "INTEGER"),
     ("accent_color", "TEXT"),
+    ("openai_api_key", "TEXT"),
+    ("ollama_base_url", "TEXT"),
+    ("active_model", "TEXT"),
 )
 _USERS_TABLE_COLUMNS = tuple(column for column, _ in _USERS_TABLE_SCHEMA)
 _USERS_TABLE_MUTABLE_COLUMNS = tuple(
@@ -84,6 +95,9 @@ class UserRecord:
     today_include_previous_incomplete: bool | None = None
     today_move_completed_to_end: bool | None = None
     accent_color: AccentPreference | None = None
+    openai_api_key: str | None = None
+    ollama_base_url: str | None = None
+    active_model: str | None = None
 
 
 def _row_to_record(row: Row) -> UserRecord:
@@ -132,6 +146,15 @@ def _row_to_record(row: Row) -> UserRecord:
         if row["today_move_completed_to_end"] is not None
         else None,
         accent_color=_parse_accent_color(row["accent_color"]),
+        openai_api_key=normalize_openai_api_key(row["openai_api_key"]),
+        ollama_base_url=(
+            normalize_ollama_base_url(row["ollama_base_url"])
+            if row["ollama_base_url"]
+            else None
+        ),
+        active_model=normalize_active_model(row["active_model"])
+        if row["active_model"]
+        else None,
     )
 
 
@@ -426,6 +449,84 @@ class UserService(DatabaseService):
                     accent_color=excluded.accent_color
                 """,
                 (_DEFAULT_USER_ID, accent_color),
+            )
+            connection.commit()
+
+    def get_openai_api_key(self) -> str | None:
+        """Return the persisted OpenAI API key."""
+        with closing(self._connection_factory()) as connection:
+            row = connection.execute(
+                "SELECT openai_api_key FROM users WHERE id = ?",
+                (_DEFAULT_USER_ID,),
+            ).fetchone()
+        if row is None:
+            return None
+        return normalize_openai_api_key(row["openai_api_key"])
+
+    def set_openai_api_key(self, api_key: str | None) -> None:
+        """Persist or clear the OpenAI API key."""
+        normalized_key = normalize_openai_api_key(api_key)
+        with closing(self._connection_factory()) as connection:
+            connection.execute(
+                """
+                INSERT INTO users (id, openai_api_key)
+                VALUES (?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    openai_api_key=excluded.openai_api_key
+                """,
+                (_DEFAULT_USER_ID, normalized_key),
+            )
+            connection.commit()
+
+    def get_ollama_base_url(self) -> str:
+        """Return the configured Ollama base URL."""
+        with closing(self._connection_factory()) as connection:
+            row = connection.execute(
+                "SELECT ollama_base_url FROM users WHERE id = ?",
+                (_DEFAULT_USER_ID,),
+            ).fetchone()
+        if row is None or not row["ollama_base_url"]:
+            return DEFAULT_OLLAMA_BASE_URL
+        return normalize_ollama_base_url(row["ollama_base_url"])
+
+    def set_ollama_base_url(self, base_url: str) -> None:
+        """Persist the Ollama base URL."""
+        normalized_base_url = normalize_ollama_base_url(base_url)
+        with closing(self._connection_factory()) as connection:
+            connection.execute(
+                """
+                INSERT INTO users (id, ollama_base_url)
+                VALUES (?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    ollama_base_url=excluded.ollama_base_url
+                """,
+                (_DEFAULT_USER_ID, normalized_base_url),
+            )
+            connection.commit()
+
+    def get_active_model(self) -> str:
+        """Return the currently selected model identifier."""
+        with closing(self._connection_factory()) as connection:
+            row = connection.execute(
+                "SELECT active_model FROM users WHERE id = ?",
+                (_DEFAULT_USER_ID,),
+            ).fetchone()
+        if row is None or row["active_model"] is None:
+            return DEFAULT_ACTIVE_MODEL
+        return normalize_active_model(row["active_model"])
+
+    def set_active_model(self, model_name: str) -> None:
+        """Persist the selected model identifier."""
+        normalized_model = normalize_active_model(model_name)
+        with closing(self._connection_factory()) as connection:
+            connection.execute(
+                """
+                INSERT INTO users (id, active_model)
+                VALUES (?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    active_model=excluded.active_model
+                """,
+                (_DEFAULT_USER_ID, normalized_model),
             )
             connection.commit()
 
