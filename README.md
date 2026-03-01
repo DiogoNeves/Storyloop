@@ -80,6 +80,10 @@ make test-backend    # backend tests only
 make test-frontend   # frontend tests only
 ```
 
+## Code Quality
+
+The [`good-code-rubric.md`](./good-code-rubric.md) describes the code quality standards used in this project. It was introduced partway through development, so earlier code may not fully conform. New contributions should follow the rubric.
+
 ## Open Source Governance
 
 - [LICENSE](./LICENSE) (MIT)
