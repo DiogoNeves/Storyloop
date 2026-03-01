@@ -102,6 +102,15 @@ export function buildTodayChecklistMarkdownFromTasks(tasks: string[]): string {
   return serializeTodayChecklistRows(normalizeTodayChecklistRows(rows));
 }
 
+export function isTodayChecklistEmpty(summary: string): boolean {
+  try {
+    const rows = parseTodayChecklistMarkdown(summary);
+    return !rows.some((row) => row.text.length > 0);
+  } catch {
+    return false;
+  }
+}
+
 export function extractIncompleteTasksFromTodayMarkdown(markdown: string): string[] {
   return parseTodayChecklistMarkdown(markdown)
     .filter((row) => !row.checked && row.text.length > 0)

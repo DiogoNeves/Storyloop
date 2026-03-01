@@ -9,6 +9,10 @@ import {
   type ActivityItem,
 } from "@/lib/types/entries";
 import { extractTagsFromContent } from "@/lib/activity-tags";
+import {
+  isTodayChecklistEmpty,
+  isTodayEntryForCurrentUtcDay,
+} from "@/lib/today-entry";
 
 interface BuildActivityItemsOptions {
   entries?: Entry[] | null;
@@ -38,10 +42,18 @@ export function buildActivityItems({
     isDemo,
     now,
   );
+  const nowDate = now != null ? new Date(now) : undefined;
   const storedActivityItems = (entries ?? [])
     .map(entryToActivityItem)
     .map((item) => applySortDateToStoredItem(item, activityFeedSortDate))
     .filter((item) => {
+      if (
+        item.category === "today" &&
+        !isTodayEntryForCurrentUtcDay(item.id, nowDate) &&
+        isTodayChecklistEmpty(item.summary)
+      ) {
+        return false;
+      }
       if (item.category !== "journal") {
         return true;
       }

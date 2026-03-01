@@ -7,6 +7,7 @@ import {
   getTodayEntryDisplayTitle,
   getTodayEntryIdForDate,
   getUtcDayKey,
+  isTodayChecklistEmpty,
   normalizeTodayChecklistMarkdown,
   parseTodayChecklistMarkdown,
   serializeTodayChecklistRows,
@@ -60,6 +61,14 @@ describe("today-entry helpers", () => {
     expect(
       getTodayEntryDisplayTitle("today-2026-02-15", now.toISOString(), now),
     ).toMatch(/2026|Feb/i);
+  });
+
+  it("detects empty today checklists", () => {
+    expect(isTodayChecklistEmpty("- [ ]")).toBe(true);
+    expect(isTodayChecklistEmpty("- [ ]\n- [ ]")).toBe(true);
+    expect(isTodayChecklistEmpty("")).toBe(true);
+    expect(isTodayChecklistEmpty("- [ ] Plan intro\n- [ ]")).toBe(false);
+    expect(isTodayChecklistEmpty("- [x] Done\n- [ ]")).toBe(false);
   });
 
   it("formats past Today labels using UTC day boundaries", () => {
