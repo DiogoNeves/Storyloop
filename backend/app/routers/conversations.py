@@ -396,7 +396,10 @@ async def stream_turn(
                     "id": "1",
                     "data": json.dumps(
                         {
-                            "message": "Agent not available. Please configure OPENAI_API_KEY.",
+                            "message": (
+                                "Agent not available. Configure model settings in"
+                                " Settings."
+                            ),
                         }
                     ),
                 }

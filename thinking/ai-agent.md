@@ -92,7 +92,7 @@ The agent references this capsule explicitly (“You’re looking at ‘Advanced
 
 - ✅ `build_agent()` - Creates and configures PydanticAI agent with OpenAI's gpt-5.1-chat-latest model
 - ✅ Basic system prompt for YouTube creator assistance
-- ✅ Optional initialization (returns None if OPENAI_API_KEY not set)
+- ✅ Optional initialization (returns None when selected model is unavailable)
 - ✅ Stored in `app.state.assistant_agent` for dependency injection
 
 **Future Enhancements:**

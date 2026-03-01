@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useState,
   type ChangeEvent,
   type KeyboardEvent,
@@ -19,10 +20,14 @@ import {
 import {
   type AccentPreference,
   type ActivityFeedSortDate,
+  connectOllama,
+  DEFAULT_OLLAMA_BASE_URL,
   DEFAULT_SMART_UPDATE_SCHEDULE_HOURS,
   exportContentArchive,
+  OPENAI_ACTIVE_MODEL,
   resolveSettingsResponse,
   settingsQueries,
+  type SettingsResponse,
   updateSettings,
   type UpdateSettingsInput,
 } from "@/api/settings";
@@ -67,6 +72,11 @@ interface AccentOption {
   value: AccentPreference;
   label: string;
   swatch: string;
+}
+
+interface ModelOption {
+  value: string;
+  label: string;
 }
 
 const SETTINGS_TABS: SettingsTabItem[] = [
@@ -138,9 +148,9 @@ function SettingsTabHeader({ title, description }: SettingsTabHeaderProps) {
 
 interface SettingsRowProps {
   title: ReactNode;
-  description: string;
+  description: ReactNode;
   controls: ReactNode;
-  layout?: "inline" | "stack" | "start";
+  layout?: "inline" | "stack" | "start" | "column";
   className?: string;
 }
 
@@ -159,6 +169,7 @@ function SettingsRow({
         layout === "stack" &&
           "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between",
         layout === "start" && "flex items-start justify-between",
+        layout === "column" && "flex flex-col gap-3",
         className,
       )}
     >
@@ -395,6 +406,18 @@ interface GeneralTabContentProps {
   setAccentPreference: (value: AccentPreference) => void;
   accentUpdateError: string | null;
   isAccentDisabled: boolean;
+  openaiKeyConfigured: boolean;
+  openaiApiKeyInput: string;
+  ollamaBaseUrlInput: string;
+  activeModel: string;
+  availableModelOptions: { value: string; label: string }[];
+  modelSettingsError: string | null;
+  isModelSettingsBusy: boolean;
+  onOpenaiKeyInputChange: (value: string) => void;
+  onSaveOpenaiKey: () => void;
+  onOllamaBaseUrlInputChange: (value: string) => void;
+  onConnectOllama: () => void;
+  onActiveModelChange: (value: string) => void;
 }
 
 function GeneralTabContent({
@@ -404,6 +427,18 @@ function GeneralTabContent({
   setAccentPreference,
   accentUpdateError,
   isAccentDisabled,
+  openaiKeyConfigured,
+  openaiApiKeyInput,
+  ollamaBaseUrlInput,
+  activeModel,
+  availableModelOptions,
+  modelSettingsError,
+  isModelSettingsBusy,
+  onOpenaiKeyInputChange,
+  onSaveOpenaiKey,
+  onOllamaBaseUrlInputChange,
+  onConnectOllama,
+  onActiveModelChange,
 }: GeneralTabContentProps) {
   return (
     <div className="space-y-4">
@@ -476,6 +511,125 @@ function GeneralTabContent({
         />
         <StatusMessage type="error" message={accentUpdateError} />
       </div>
+
+      <div className="border-t border-border/70 pt-4">
+        <SettingsTabHeader
+          title="Model settings"
+          description="Configure Loopie's active model and local provider connection."
+        />
+      </div>
+
+      <div className="space-y-2">
+        <SettingsRow
+          layout="column"
+          title="OpenAI API key"
+          description="OpenAI is always required for dictation in notes and Loopie."
+          controls={
+            <div className="flex w-full flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+              <Label htmlFor="settings-openai-api-key" className="sr-only">
+                OpenAI API key
+              </Label>
+              <Input
+                id="settings-openai-api-key"
+                type="password"
+                value={openaiApiKeyInput}
+                onChange={(event) => onOpenaiKeyInputChange(event.target.value)}
+                placeholder={
+                  openaiKeyConfigured ? "Configured (enter to replace)" : "sk-..."
+                }
+                autoComplete="off"
+                className="w-full sm:flex-1"
+                disabled={isModelSettingsBusy}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={onSaveOpenaiKey}
+                disabled={isModelSettingsBusy}
+              >
+                Save key
+              </Button>
+            </div>
+          }
+        />
+        <p className="text-xs text-muted-foreground">
+          {openaiKeyConfigured
+            ? "OpenAI key configured."
+            : "No OpenAI key configured yet."}
+        </p>
+      </div>
+
+      <SettingsRow
+        layout="column"
+        title="Ollama connection"
+        description={
+          <>
+            Connect to Ollama to list local models you can run in Loopie.{" "}
+            <a
+              href="https://ollama.com/download"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary underline-offset-2 hover:underline"
+            >
+              Get Ollama
+            </a>
+            .
+          </>
+        }
+        controls={
+          <div className="flex w-full flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+            <Label htmlFor="settings-ollama-base-url" className="sr-only">
+              Ollama base URL
+            </Label>
+            <Input
+              id="settings-ollama-base-url"
+              value={ollamaBaseUrlInput}
+              onChange={(event) => onOllamaBaseUrlInputChange(event.target.value)}
+              className="w-full sm:flex-1"
+              placeholder={DEFAULT_OLLAMA_BASE_URL}
+              disabled={isModelSettingsBusy}
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={onConnectOllama}
+              disabled={isModelSettingsBusy}
+            >
+              Connect
+            </Button>
+          </div>
+        }
+      />
+
+      <SettingsRow
+        layout="column"
+        title="Active Loopie model"
+        description="Choose the model Loopie should use for chat and smart updates."
+        controls={
+          <div className="w-full">
+            <Label htmlFor="settings-active-model" className="sr-only">
+              Active model
+            </Label>
+            <Select
+              value={activeModel}
+              onValueChange={onActiveModelChange}
+              disabled={isModelSettingsBusy}
+            >
+              <SelectTrigger id="settings-active-model" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {availableModelOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        }
+      />
+      <StatusMessage type="error" message={modelSettingsError} />
     </div>
   );
 }
@@ -597,6 +751,35 @@ function downloadArchiveBlob(blob: Blob, fileName: string): void {
   URL.revokeObjectURL(objectUrl);
 }
 
+function computeAvailableModelOptions(
+  availableOllamaModels: string[],
+): ModelOption[] {
+  const options: ModelOption[] = [
+    { value: OPENAI_ACTIVE_MODEL, label: "OpenAI" },
+  ];
+  const seen = new Set<string>([OPENAI_ACTIVE_MODEL]);
+
+  for (const modelName of availableOllamaModels) {
+    const normalized = modelName.trim();
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    options.push({ value: normalized, label: normalized });
+  }
+
+  return options;
+}
+
+function resolveSelectedActiveModel(
+  activeModel: string,
+  options: ModelOption[],
+): string {
+  return options.some((option) => option.value === activeModel)
+    ? activeModel
+    : OPENAI_ACTIVE_MODEL;
+}
+
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<SettingsTab>("account");
@@ -622,16 +805,33 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const todayIncludePreviousIncomplete =
     resolvedSettings.todayIncludePreviousIncomplete;
   const todayMoveCompletedToEnd = resolvedSettings.todayMoveCompletedToEnd;
+  const openaiKeyConfigured = resolvedSettings.openaiKeyConfigured;
+  const ollamaBaseUrl = resolvedSettings.ollamaBaseUrl;
+  const activeModel = resolvedSettings.activeModel;
 
   const [scheduleInput, setScheduleInput] = useState(
     String(DEFAULT_SMART_UPDATE_SCHEDULE_HOURS),
   );
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [openaiApiKeyInput, setOpenaiApiKeyInput] = useState("");
+  const [ollamaBaseUrlInput, setOllamaBaseUrlInput] = useState(
+    DEFAULT_OLLAMA_BASE_URL,
+  );
+  const [availableOllamaModels, setAvailableOllamaModels] = useState<string[]>(
+    [],
+  );
+  const [modelSettingsError, setModelSettingsError] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     setScheduleInput(String(scheduleHours));
   }, [scheduleHours]);
+
+  useEffect(() => {
+    setOllamaBaseUrlInput(ollamaBaseUrl);
+  }, [ollamaBaseUrl]);
 
   const unlinkMutation = useMutation({
     mutationFn: youtubeApi.unlinkAccount,
@@ -648,9 +848,53 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     onSuccess: (data) => {
       queryClient.setQueryData(settingsQueries.all().queryKey, data);
       setScheduleError(null);
+      setModelSettingsError(null);
+    },
+    onError: (_error, variables) => {
+      if ("smartUpdateScheduleHours" in variables) {
+        setScheduleError(
+          "We couldn't update the smart update schedule. Try again.",
+        );
+        return;
+      }
+      setModelSettingsError("We couldn't update model settings. Try again.");
+    },
+  });
+
+  const openaiKeyMutation = useMutation({
+    mutationFn: (apiKey: string | null) => updateSettings({ openaiApiKey: apiKey }),
+    onMutate: () => {
+      setModelSettingsError(null);
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(settingsQueries.all().queryKey, data);
+      setOpenaiApiKeyInput("");
     },
     onError: () => {
-      setScheduleError("We couldn't update the smart update schedule. Try again.");
+      setModelSettingsError("We couldn't save your OpenAI API key. Try again.");
+    },
+  });
+
+  const connectOllamaMutation = useMutation({
+    mutationFn: connectOllama,
+    onMutate: () => {
+      setModelSettingsError(null);
+    },
+    onSuccess: (data) => {
+      setAvailableOllamaModels(data.models);
+      setOllamaBaseUrlInput(data.ollamaBaseUrl);
+      queryClient.setQueryData(
+        settingsQueries.all().queryKey,
+        (previous: SettingsResponse | undefined) => ({
+          ...resolveSettingsResponse(previous),
+          ollamaBaseUrl: data.ollamaBaseUrl,
+        }),
+      );
+    },
+    onError: () => {
+      setModelSettingsError(
+        "We couldn't connect to Ollama. Check the URL and try again.",
+      );
     },
   });
 
@@ -671,10 +915,44 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   const updateSetting = useCallback(
     (patch: UpdateSettingsInput) => {
+      setModelSettingsError(null);
       settingsMutation.mutate(patch);
     },
     [settingsMutation],
   );
+
+  const handleSaveOpenaiKey = useCallback(() => {
+    if (
+      openaiKeyMutation.isPending ||
+      settingsMutation.isPending ||
+      isAccentUpdating
+    ) {
+      return;
+    }
+    const normalizedKey = openaiApiKeyInput.trim();
+    openaiKeyMutation.mutate(normalizedKey.length > 0 ? normalizedKey : null);
+  }, [
+    openaiApiKeyInput,
+    isAccentUpdating,
+    openaiKeyMutation,
+    settingsMutation.isPending,
+  ]);
+
+  const handleConnectOllama = useCallback(() => {
+    if (
+      connectOllamaMutation.isPending ||
+      settingsMutation.isPending ||
+      isAccentUpdating
+    ) {
+      return;
+    }
+    connectOllamaMutation.mutate({ ollamaBaseUrl: ollamaBaseUrlInput });
+  }, [
+    connectOllamaMutation,
+    isAccentUpdating,
+    ollamaBaseUrlInput,
+    settingsMutation.isPending,
+  ]);
 
   const commitSchedule = useCallback(() => {
     if (settingsMutation.isPending || isAccentUpdating) {
@@ -727,18 +1005,36 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   );
 
   const isServerSettingsDisabled =
-    settingsQuery.isLoading || settingsMutation.isPending || isAccentUpdating;
+    settingsQuery.isLoading ||
+    settingsMutation.isPending ||
+    isAccentUpdating ||
+    openaiKeyMutation.isPending ||
+    connectOllamaMutation.isPending;
+  const isModelSettingsBusy =
+    settingsMutation.isPending ||
+    isAccentUpdating ||
+    openaiKeyMutation.isPending ||
+    connectOllamaMutation.isPending;
+
+  const availableModelOptions = useMemo(
+    () => computeAvailableModelOptions(availableOllamaModels),
+    [availableOllamaModels],
+  );
+  const selectedActiveModel = useMemo(
+    () => resolveSelectedActiveModel(activeModel, availableModelOptions),
+    [activeModel, availableModelOptions],
+  );
 
   const channelTitle = linkStatusQuery.data?.channel?.title ?? "Linked YouTube channel";
   const isLinked = Boolean(linkStatusQuery.data?.linked);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="h-[85dvh] max-h-[85dvh] w-[calc(100vw-1rem)] max-w-4xl gap-0 overflow-hidden p-0 md:h-auto md:max-h-[85vh] md:min-h-[520px]">
+      <DialogContent className="h-[85dvh] max-h-[85dvh] w-[calc(100vw-1rem)] max-w-4xl gap-0 overflow-hidden p-0 md:h-[85vh] md:max-h-[60vh]">
         <div className="grid h-full min-h-0 grid-cols-1 grid-rows-[auto_1fr] gap-0 md:grid-cols-[220px_1fr] md:grid-rows-1">
           <SettingsSidebar activeTab={activeTab} onTabChange={setActiveTab} />
 
-          <div className="min-h-0 space-y-6 overflow-y-auto overscroll-contain p-6 [-webkit-overflow-scrolling:touch]">
+          <div className="scrollbar-hide min-h-0 space-y-6 overflow-y-auto overscroll-contain p-6 [-webkit-overflow-scrolling:touch]">
             {activeTab === "account" ? (
               <AccountTabContent
                 channelTitle={channelTitle}
@@ -775,6 +1071,20 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 setAccentPreference={setAccentPreference}
                 accentUpdateError={accentUpdateError}
                 isAccentDisabled={isServerSettingsDisabled}
+                openaiKeyConfigured={openaiKeyConfigured}
+                openaiApiKeyInput={openaiApiKeyInput}
+                ollamaBaseUrlInput={ollamaBaseUrlInput}
+                activeModel={selectedActiveModel}
+                availableModelOptions={availableModelOptions}
+                modelSettingsError={modelSettingsError}
+                isModelSettingsBusy={isModelSettingsBusy}
+                onOpenaiKeyInputChange={setOpenaiApiKeyInput}
+                onSaveOpenaiKey={handleSaveOpenaiKey}
+                onOllamaBaseUrlInputChange={setOllamaBaseUrlInput}
+                onConnectOllama={handleConnectOllama}
+                onActiveModelChange={(value) => {
+                  updateSetting({ activeModel: value });
+                }}
               />
             ) : null}
 

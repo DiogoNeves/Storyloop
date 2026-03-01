@@ -8,6 +8,7 @@ import { SyncContext, type SyncContextValue } from "@/context/SyncContext";
 import type { AgentConversationState } from "@/lib/types/agent";
 
 const useAudioDictationMock = vi.hoisted(() => vi.fn());
+const settingsQueryFnMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/hooks/useAudioDictation", () => ({
   useAudioDictation: useAudioDictationMock,
@@ -20,6 +21,32 @@ vi.mock("@/api/entries", () => ({
       queryFn: () => Promise.resolve([]),
     }),
   },
+}));
+
+vi.mock("@/api/settings", () => ({
+  settingsQueries: {
+    all: () => ({
+      queryKey: ["settings"],
+      queryFn: settingsQueryFnMock,
+    }),
+  },
+  resolveSettingsResponse: (value?: unknown) =>
+    (value as
+      | {
+          openaiKeyConfigured?: boolean;
+        }
+      | undefined) ?? {
+      smartUpdateScheduleHours: 24,
+      showArchived: false,
+      activityFeedSortDate: "created",
+      todayEntriesEnabled: true,
+      todayIncludePreviousIncomplete: true,
+      todayMoveCompletedToEnd: true,
+      accentColor: "crimson",
+      openaiKeyConfigured: false,
+      ollamaBaseUrl: "http://127.0.0.1:11434",
+      activeModel: "openai",
+    },
 }));
 
 const syncContextValue: SyncContextValue = {
@@ -49,6 +76,19 @@ const state: AgentConversationState = {
 describe("LoopieConversationContent dictation", () => {
   beforeEach(() => {
     useAudioDictationMock.mockReset();
+    settingsQueryFnMock.mockReset();
+    settingsQueryFnMock.mockResolvedValue({
+      smartUpdateScheduleHours: 24,
+      showArchived: false,
+      activityFeedSortDate: "created",
+      todayEntriesEnabled: true,
+      todayIncludePreviousIncomplete: true,
+      todayMoveCompletedToEnd: true,
+      accentColor: "crimson",
+      openaiKeyConfigured: true,
+      ollamaBaseUrl: "http://127.0.0.1:11434",
+      activeModel: "openai",
+    });
   });
 
   it("appends dictated text to existing composer input", async () => {
@@ -100,5 +140,66 @@ describe("LoopieConversationContent dictation", () => {
     await user.click(dictationButton);
 
     expect(composer).toHaveValue("Already here dictated words");
+  });
+
+  it("shows setup dialog instead of starting dictation when OpenAI key is missing", async () => {
+    settingsQueryFnMock.mockResolvedValue({
+      smartUpdateScheduleHours: 24,
+      showArchived: false,
+      activityFeedSortDate: "created",
+      todayEntriesEnabled: true,
+      todayIncludePreviousIncomplete: true,
+      todayMoveCompletedToEnd: true,
+      accentColor: "crimson",
+      openaiKeyConfigured: false,
+      ollamaBaseUrl: "http://127.0.0.1:11434",
+      activeModel: "openai",
+    });
+
+    const toggleDictationSpy = vi.fn(() => Promise.resolve());
+    useAudioDictationMock.mockImplementation(() => ({
+      status: "idle",
+      inputLevel: 0,
+      elapsedSeconds: 0,
+      isSupported: true,
+      errorMessage: null,
+      startDictation: vi.fn(),
+      stopDictation: vi.fn(),
+      clearError: vi.fn(),
+      toggleDictation: toggleDictationSpy,
+    }));
+
+    const user = userEvent.setup();
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <SyncContext.Provider value={syncContextValue}>
+          <LoopieConversationContent
+            state={state}
+            adapter={{
+              sendMessage: vi.fn(),
+              stopResponse: vi.fn(),
+              resetConversation: vi.fn(),
+            }}
+          />
+        </SyncContext.Provider>
+      </QueryClientProvider>,
+    );
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Dictate message",
+      }),
+    );
+
+    expect(toggleDictationSpy).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("heading", {
+        name: "OpenAI key required for dictation",
+      }),
+    ).toBeInTheDocument();
   });
 });

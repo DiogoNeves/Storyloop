@@ -58,12 +58,14 @@ Default local URLs:
 
 See [.env.example](./.env.example) for the full list.
 
-- `OPENAI_API_KEY`: enables AI features
 - `YOUTUBE_API_KEY`: required when demo mode is off
 - `YOUTUBE_DEMO_MODE=true`: run YouTube flows from fixtures
 - `DATABASE_URL`: primary SQLite database
 - `DEMO_DATABASE_URL`: demo-mode SQLite database
 - `CORS_ORIGINS`: comma-separated frontend origins
+
+Model provider settings are configured in-app under `Settings → General → Model settings`.
+OpenAI key setup is required for dictation.
 
 ## Common Commands
 

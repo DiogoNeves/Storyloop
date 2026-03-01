@@ -150,7 +150,7 @@ Settings are managed through `backend/app/config.py` using Pydantic:
 
 - Users interact with an AI agent via SSE streaming conversations
 - Agent is powered by PydanticAI with OpenAI's gpt-5.1-chat-latest model
-- Agent is optional: requires `OPENAI_API_KEY` environment variable (app starts successfully without it)
+- Agent is optional: model provider/key are configured in `Settings → General → Model settings`
 - Conversations are persisted in SQLite with `conversations` and `turns` tables
 - Streaming responses enable real-time token-by-token generation
 - Agent endpoints return error message if agent unavailable (similar to YouTube OAuth handling)

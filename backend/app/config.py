@@ -59,7 +59,6 @@ class Settings(BaseModel):
         description="Database URL to use when demo mode is enabled. Defaults to storyloop-demo.db in .data directory.",
     )
     logfire_api_key: str | None = Field(default=None, alias="LOGFIRE_API_KEY")
-    openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     youtube_api_key: str | None = Field(default=None, alias="YOUTUBE_API_KEY")
     youtube_client_id: str | None = Field(
         default=None,

@@ -47,6 +47,7 @@ import {
 } from "@/components/ui/dialog";
 import type { ContentTypeFilter } from "@/components/ContentTypeTabs";
 import { SettingsDialog } from "@/components/SettingsDialog";
+import { DictationSetupDialog } from "@/components/DictationSetupDialog";
 import { MarkdownMessage } from "@/components/chat/MarkdownMessage";
 import { TwoColumnDetailLayout } from "@/components/TwoColumnDetailLayout";
 import { StickyHeaderScrollableCard } from "@/components/StickyHeaderScrollableCard";
@@ -71,6 +72,8 @@ export function JournalDetailPage() {
   const [promptError, setPromptError] = useState<string | null>(null);
   const [isStopDialogOpen, setIsStopDialogOpen] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [isDictationSetupDialogOpen, setIsDictationSetupDialogOpen] =
+    useState(false);
   const [noteDictationNotice, setNoteDictationNotice] = useState<string | null>(
     null,
   );
@@ -591,6 +594,7 @@ export function JournalDetailPage() {
   const showArchived = resolvedSettings.showArchived;
   const activityFeedSortDate = resolvedSettings.activityFeedSortDate;
   const todayMoveCompletedToEnd = resolvedSettings.todayMoveCompletedToEnd;
+  const openaiKeyConfigured = resolvedSettings.openaiKeyConfigured;
 
   const { activityItems } = useActivityItems({
     contentTypeFilter,
@@ -1090,6 +1094,14 @@ export function JournalDetailPage() {
               type="button"
               size="lg"
               onClick={() => {
+                if (
+                  !openaiKeyConfigured &&
+                  !isNoteDictating &&
+                  !isNoteDictationTranscribing
+                ) {
+                  setIsDictationSetupDialogOpen(true);
+                  return;
+                }
                 if (isNoteDictationDisabled && !isNoteDictating) {
                   return;
                 }
@@ -1206,6 +1218,11 @@ export function JournalDetailPage() {
         </main>
       </div>
       <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+      <DictationSetupDialog
+        open={isDictationSetupDialogOpen}
+        onOpenChange={setIsDictationSetupDialogOpen}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+      />
     </>
   );
 }

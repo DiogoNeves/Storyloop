@@ -18,6 +18,9 @@ describe("resolveSettingsResponse", () => {
       todayIncludePreviousIncomplete: false,
       todayMoveCompletedToEnd: false,
       accentColor: "azure",
+      openaiKeyConfigured: true,
+      ollamaBaseUrl: "http://127.0.0.1:11434",
+      activeModel: "qwen3:8b",
     };
 
     expect(resolveSettingsResponse(settings)).toEqual(settings);
