@@ -12,6 +12,7 @@ from app.services.today_entries import (
     build_today_entry_id,
     build_today_summary_from_tasks,
     extract_incomplete_tasks,
+    is_today_summary_empty,
     normalize_today_summary,
     parse_today_summary,
     serialize_today_rows,
@@ -182,3 +183,93 @@ def test_today_entry_manager_is_idempotent(
     assert second is not None
     assert first.id == second.id
     assert [entry.id for entry in entry_service.list_entries()] == [first.id]
+
+
+def test_is_today_summary_empty_single_unchecked_row() -> None:
+    assert is_today_summary_empty("- [ ]") is True
+
+
+def test_is_today_summary_empty_with_text() -> None:
+    assert is_today_summary_empty("- [ ] Plan intro\n- [ ]") is False
+
+
+def test_is_today_summary_empty_only_empty_rows() -> None:
+    assert is_today_summary_empty("- [ ]\n- [ ]") is True
+
+
+def test_is_today_summary_empty_blank_string() -> None:
+    assert is_today_summary_empty("") is True
+
+
+def test_is_today_summary_empty_checked_with_text() -> None:
+    assert is_today_summary_empty("- [x] Done\n- [ ]") is False
+
+
+def test_today_entry_manager_deletes_empty_previous_entry_on_rollover(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    entry_service = EntryService(memory_connection_factory)
+    entry_service.ensure_schema()
+    user_service = UserService(memory_connection_factory)
+    user_service.ensure_schema()
+    manager = TodayEntryManager(entry_service, user_service)
+    now = datetime(2026, 2, 16, 1, 0, tzinfo=UTC)
+
+    yesterday = now - timedelta(days=1)
+    yesterday_id = build_today_entry_id(utc_day_key(yesterday))
+    entry_service.save_new_entries(
+        [
+            EntryRecord(
+                id=yesterday_id,
+                title="Today",
+                summary="- [ ]",
+                prompt_body=None,
+                prompt_format=None,
+                occurred_at=yesterday,
+                updated_at=yesterday,
+                last_smart_update_at=None,
+                category="today",
+                pinned=False,
+                archived=False,
+            ),
+        ]
+    )
+
+    manager.ensure_today_entry(now)
+
+    assert entry_service.get_entry(yesterday_id) is None
+
+
+def test_today_entry_manager_keeps_non_empty_previous_entry_on_rollover(
+    memory_connection_factory: SqliteConnectionFactory,
+) -> None:
+    entry_service = EntryService(memory_connection_factory)
+    entry_service.ensure_schema()
+    user_service = UserService(memory_connection_factory)
+    user_service.ensure_schema()
+    manager = TodayEntryManager(entry_service, user_service)
+    now = datetime(2026, 2, 16, 1, 0, tzinfo=UTC)
+
+    yesterday = now - timedelta(days=1)
+    yesterday_id = build_today_entry_id(utc_day_key(yesterday))
+    entry_service.save_new_entries(
+        [
+            EntryRecord(
+                id=yesterday_id,
+                title="Today",
+                summary="- [x] Done\n- [ ]",
+                prompt_body=None,
+                prompt_format=None,
+                occurred_at=yesterday,
+                updated_at=yesterday,
+                last_smart_update_at=None,
+                category="today",
+                pinned=False,
+                archived=False,
+            ),
+        ]
+    )
+
+    manager.ensure_today_entry(now)
+
+    assert entry_service.get_entry(yesterday_id) is not None

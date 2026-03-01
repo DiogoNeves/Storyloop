@@ -93,6 +93,15 @@ def normalize_today_summary(summary: str) -> str:
     return serialize_today_rows(normalize_today_rows(rows))
 
 
+def is_today_summary_empty(summary: str) -> bool:
+    """Return True when the summary contains no tasks with text."""
+    try:
+        rows = parse_today_summary(summary)
+    except ValueError:
+        return False
+    return not any(row.text for row in rows)
+
+
 def extract_incomplete_tasks(summary: str) -> list[str]:
     """Return non-empty unchecked tasks from a Today summary."""
     rows = parse_today_summary(summary)
@@ -152,6 +161,7 @@ class TodayEntryManager:
             archived_at=None,
         )
         inserted = self._entry_service.save_new_entries([record])
+        self._delete_empty_previous_today_entry(day_key)
         if inserted:
             return inserted[0]
         return self._entry_service.get_entry(entry_id)
@@ -169,6 +179,11 @@ class TodayEntryManager:
         except ValueError:
             tasks = []
         return build_today_summary_from_tasks(tasks)
+
+    def _delete_empty_previous_today_entry(self, day_key: str) -> None:
+        previous = self._find_latest_previous_today_entry(day_key)
+        if previous is not None and is_today_summary_empty(previous.summary):
+            self._entry_service.delete_entry(previous.id)
 
     def _find_latest_previous_today_entry(self, day_key: str) -> EntryRecord | None:
         previous: list[tuple[str, EntryRecord]] = []
@@ -205,6 +220,7 @@ __all__ = [
     "build_today_summary_from_tasks",
     "extract_day_key_from_today_entry_id",
     "extract_incomplete_tasks",
+    "is_today_summary_empty",
     "normalize_today_rows",
     "normalize_today_summary",
     "parse_today_summary",
