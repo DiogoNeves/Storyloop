@@ -25,6 +25,7 @@ from app.services import (
     refresh_runtime_ai_services,
 )
 from app.services.assets import AssetService
+from app.utils.encryption import init_encryption
 from app.services.smart_entries import SmartEntryUpdateManager
 from app.services.today_entries import TodayEntryManager
 from app.services.youtube import YoutubeConfigurationError
@@ -60,6 +61,7 @@ def build_lifespan(
 
     user_service = UserService(connection_factory)
     user_service.ensure_schema()
+    user_service.migrate_encrypt_api_keys()
     entry_service = EntryService(connection_factory)
     entry_service.ensure_schema()
     asset_service = AssetService(
@@ -199,6 +201,7 @@ def create_app(active_settings: Settings | None = None) -> FastAPI:
     """Build and configure the FastAPI application instance."""
     logging.basicConfig(level=logging.INFO)
     resolved_settings = active_settings or settings
+    init_encryption(resolved_settings.encryption_key)
     configure_logfire(resolved_settings)
     # Use demo database when demo mode is enabled to avoid polluting the real database
     database_url = resolved_settings.effective_database_url

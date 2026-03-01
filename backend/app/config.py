@@ -85,6 +85,11 @@ class Settings(BaseModel):
         alias="YOUTUBE_DEMO_SCENARIO",
         description="Optional fixture scenario to load when demo mode is enabled",
     )
+    encryption_key: str | None = Field(
+        default=None,
+        alias="ENCRYPTION_KEY",
+        description="Base64-encoded Fernet key for encrypting API keys at rest.",
+    )
     smart_entries_scheduler_enabled: bool = Field(
         default=True,
         alias="SMART_ENTRIES_SCHEDULER_ENABLED",

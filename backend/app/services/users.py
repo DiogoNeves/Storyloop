@@ -16,6 +16,7 @@ from app.services.model_settings import (
     normalize_openai_api_key,
 )
 from app.services.base import DatabaseService
+from app.utils.encryption import decrypt_value_or_plaintext, encrypt_value
 
 _DEFAULT_USER_ID = "active"
 AccentPreference = Literal["crimson", "rose", "emerald", "azure", "violet"]
@@ -146,7 +147,11 @@ def _row_to_record(row: Row) -> UserRecord:
         if row["today_move_completed_to_end"] is not None
         else None,
         accent_color=_parse_accent_color(row["accent_color"]),
-        openai_api_key=normalize_openai_api_key(row["openai_api_key"]),
+        openai_api_key=normalize_openai_api_key(
+            decrypt_value_or_plaintext(row["openai_api_key"])
+            if row["openai_api_key"]
+            else None
+        ),
         ollama_base_url=(
             normalize_ollama_base_url(row["ollama_base_url"])
             if row["ollama_base_url"]
@@ -453,19 +458,21 @@ class UserService(DatabaseService):
             connection.commit()
 
     def get_openai_api_key(self) -> str | None:
-        """Return the persisted OpenAI API key."""
+        """Return the persisted OpenAI API key (decrypted)."""
         with closing(self._connection_factory()) as connection:
             row = connection.execute(
                 "SELECT openai_api_key FROM users WHERE id = ?",
                 (_DEFAULT_USER_ID,),
             ).fetchone()
-        if row is None:
+        if row is None or row["openai_api_key"] is None:
             return None
-        return normalize_openai_api_key(row["openai_api_key"])
+        decrypted = decrypt_value_or_plaintext(row["openai_api_key"])
+        return normalize_openai_api_key(decrypted)
 
     def set_openai_api_key(self, api_key: str | None) -> None:
-        """Persist or clear the OpenAI API key."""
+        """Persist or clear the OpenAI API key (encrypted at rest)."""
         normalized_key = normalize_openai_api_key(api_key)
+        stored_value = encrypt_value(normalized_key) if normalized_key else None
         with closing(self._connection_factory()) as connection:
             connection.execute(
                 """
@@ -474,8 +481,29 @@ class UserService(DatabaseService):
                 ON CONFLICT(id) DO UPDATE SET
                     openai_api_key=excluded.openai_api_key
                 """,
-                (_DEFAULT_USER_ID, normalized_key),
+                (_DEFAULT_USER_ID, stored_value),
             )
+            connection.commit()
+
+    def migrate_encrypt_api_keys(self) -> None:
+        """Re-encrypt any plaintext API keys found in the database.
+
+        Idempotent — already-encrypted values are left unchanged.
+        """
+        with closing(self._connection_factory()) as connection:
+            rows = connection.execute(
+                "SELECT id, openai_api_key FROM users WHERE openai_api_key IS NOT NULL",
+            ).fetchall()
+            for row in rows:
+                raw = row["openai_api_key"]
+                decrypted = decrypt_value_or_plaintext(raw)
+                # If decryption returned the value unchanged it was plaintext.
+                if decrypted == raw:
+                    encrypted = encrypt_value(decrypted)
+                    connection.execute(
+                        "UPDATE users SET openai_api_key = ? WHERE id = ?",
+                        (encrypted, row["id"]),
+                    )
             connection.commit()
 
     def get_ollama_base_url(self) -> str:
