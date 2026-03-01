@@ -9,6 +9,18 @@ It combines:
 
 The goal is simple: help creators connect what they are trying, what happened, and what to do next.
 
+## Features
+
+📝 **Smart journals** — AI-powered entries that update themselves on a schedule, pulling context from your channel and past notes
+
+💬 **Loopie, your creative partner** — a chat assistant that knows your journal, your videos, and can edit entries for you
+
+📺 **YouTube activity feed** — your uploads, journals, and daily tasks in one chronological view
+
+🎙️ **Voice-to-journal** — dictate entries and let the app format them into structured notes
+
+🏠 **Local model support** — run everything through Ollama for full privacy, or use OpenAI — your choice
+
 ## Project Layout
 
 - `backend/` FastAPI app, services, persistence, tests
