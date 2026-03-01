@@ -42,13 +42,14 @@ export function buildActivityItems({
     isDemo,
     now,
   );
+  const nowDate = now != null ? new Date(now) : undefined;
   const storedActivityItems = (entries ?? [])
     .map(entryToActivityItem)
     .map((item) => applySortDateToStoredItem(item, activityFeedSortDate))
     .filter((item) => {
       if (
         item.category === "today" &&
-        !isTodayEntryForCurrentUtcDay(item.id, now != null ? new Date(now) : undefined) &&
+        !isTodayEntryForCurrentUtcDay(item.id, nowDate) &&
         isTodayChecklistEmpty(item.summary)
       ) {
         return false;

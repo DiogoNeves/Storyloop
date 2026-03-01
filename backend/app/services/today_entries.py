@@ -142,7 +142,8 @@ class TodayEntryManager:
         if existing is not None:
             return existing
 
-        summary = self._build_initial_summary(day_key)
+        previous_entry = self._find_latest_previous_today_entry(day_key)
+        summary = self._build_initial_summary(previous_entry)
         record = EntryRecord(
             id=entry_id,
             title="Today",
@@ -161,16 +162,17 @@ class TodayEntryManager:
             archived_at=None,
         )
         inserted = self._entry_service.save_new_entries([record])
-        self._delete_empty_previous_today_entry(day_key)
+        self._delete_empty_previous_today_entry(previous_entry)
         if inserted:
             return inserted[0]
         return self._entry_service.get_entry(entry_id)
 
-    def _build_initial_summary(self, day_key: str) -> str:
+    def _build_initial_summary(
+        self, previous_entry: EntryRecord | None
+    ) -> str:
         if not self._user_service.get_today_include_previous_incomplete():
             return build_today_summary_from_tasks([])
 
-        previous_entry = self._find_latest_previous_today_entry(day_key)
         if previous_entry is None:
             return build_today_summary_from_tasks([])
 
@@ -180,8 +182,9 @@ class TodayEntryManager:
             tasks = []
         return build_today_summary_from_tasks(tasks)
 
-    def _delete_empty_previous_today_entry(self, day_key: str) -> None:
-        previous = self._find_latest_previous_today_entry(day_key)
+    def _delete_empty_previous_today_entry(
+        self, previous: EntryRecord | None
+    ) -> None:
         if previous is not None and is_today_summary_empty(previous.summary):
             self._entry_service.delete_entry(previous.id)
 
