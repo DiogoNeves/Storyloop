@@ -696,7 +696,7 @@ uv run python scripts/generate_third_party_notices.py
 | python | boto3 | 1.42.59 | Apache-2.0 |
 | python | botocore | 1.42.59 | Apache-2.0 |
 | python | cachetools | 5.5.2 | MIT License |
-| python | caio | 0.9.25 | UNKNOWN |
+| python | caio | 0.9.25 | Apache-2.0 |
 | python | certifi | 2026.2.25 | Mozilla Public License 2.0 (MPL 2.0) |
 | python | cffi | 2.0.0 | MIT |
 | python | charset-normalizer | 3.4.4 | MIT |
@@ -757,7 +757,7 @@ uv run python scripts/generate_third_party_notices.py
 | python | MarkupSafe | 3.0.3 | BSD-3-Clause |
 | python | mcp | 1.26.0 | MIT License |
 | python | mdurl | 0.1.2 | MIT License |
-| python | mistralai | 1.12.4 | UNKNOWN |
+| python | mistralai | 1.12.4 | Apache-2.0 |
 | python | more-itertools | 10.8.0 | MIT |
 | python | multidict | 6.7.1 | Apache License 2.0 |
 | python | nexus-rpc | 1.2.0 | MIT |
