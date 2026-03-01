@@ -1030,7 +1030,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="h-[85dvh] max-h-[85dvh] w-[calc(100vw-1rem)] max-w-4xl gap-0 overflow-hidden p-0 md:h-auto md:max-h-[85vh] md:min-h-[520px]">
+      <DialogContent className="h-[85dvh] max-h-[85dvh] w-[calc(100vw-1rem)] max-w-4xl gap-0 overflow-hidden p-0 md:h-[85vh] md:max-h-[85vh]">
         <div className="grid h-full min-h-0 grid-cols-1 grid-rows-[auto_1fr] gap-0 md:grid-cols-[220px_1fr] md:grid-rows-1">
           <SettingsSidebar activeTab={activeTab} onTabChange={setActiveTab} />
 
