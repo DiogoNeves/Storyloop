@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@lukemorales/query-key-factory": "^1.3.4",
-    "@milkdown/core": "^7.15.0",
+    "@milkdown/core": "^7.19.0",
     "@milkdown/ctx": "^7.15.0",
     "@milkdown/plugin-clipboard": "^7.15.0",
     "@milkdown/plugin-history": "^7.15.0",
