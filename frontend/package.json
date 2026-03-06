@@ -17,7 +17,7 @@
     "@milkdown/ctx": "^7.15.0",
     "@milkdown/plugin-clipboard": "^7.15.0",
     "@milkdown/plugin-history": "^7.15.0",
-    "@milkdown/plugin-listener": "^7.15.0",
+    "@milkdown/plugin-listener": "^7.19.0",
     "@milkdown/preset-commonmark": "^7.15.0",
     "@milkdown/preset-gfm": "^7.15.0",
     "@milkdown/prose": "^7.19.0",
