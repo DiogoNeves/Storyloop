@@ -55,8 +55,8 @@ importers:
         specifier: ^7.15.0
         version: 7.18.0
       '@milkdown/utils':
-        specifier: ^7.15.0
-        version: 7.18.0
+        specifier: ^7.19.0
+        version: 7.19.0
       '@radix-ui/react-dialog':
         specifier: ^1.1.15
         version: 1.1.15(@types/react-dom@19.2.2(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -1218,11 +1218,17 @@ packages:
   '@milkdown/core@7.18.0':
     resolution: {integrity: sha512-BUVR/72XwrtM3qHTTtXtmCtGfuaAexvSxosYIXw7d6ElbLiLIe3bOXjGwwgLHW3xsq23VKmYMsFqWLUFt6uGDQ==}
 
+  '@milkdown/core@7.19.0':
+    resolution: {integrity: sha512-x5vxnVCxxKSGCa1+J7I4RzEDl4KkvsXJF6xm1zCtvj0BCsbCFGiUVx2AtLcFkkvWZ5530CuOouDJ9FC27yoCoA==}
+
   '@milkdown/crepe@7.18.0':
     resolution: {integrity: sha512-GcHW6Use0MCRvFg6RQVN5EaeyMlxFxDEGbGwqApnBblxZi5PV9nlAAn0AfOhYvFHSDkQ3rQa5fuHQ0Bd0KobQQ==}
 
   '@milkdown/ctx@7.18.0':
     resolution: {integrity: sha512-F+t8U/akpY7Vw+KD+z32Itr6lrVLAGTVO79DN436BnFK/J9kiPzTRfTet6fMOj3NlwO/24lUluiPZd7qbCmn8A==}
+
+  '@milkdown/ctx@7.19.0':
+    resolution: {integrity: sha512-tdG9jm6yk6PRSvFZW5rRSqOGrKdcNdbXJwfGiEGr538pgKYhJ/yKPF3HmfupkhGyxabRP/PydQa4q/N/OOs03g==}
 
   '@milkdown/exception@7.18.0':
     resolution: {integrity: sha512-sAyi4IqdChh4+lpgucmgDZNGjYuIRvJimZeMj0SdfdeHDABan5Nco3X+5yOGaBq1z9QOJG90+vEcEvUASHBmFw==}
@@ -1284,8 +1290,14 @@ packages:
   '@milkdown/transformer@7.18.0':
     resolution: {integrity: sha512-AzTgqDktQw9nzgrpICjYNxScYwwnxmALPSyZ39Y0wNZJafi8QMVqLv4w2bhyYkxITXolPHdLAAsZXPKuMjrmNA==}
 
+  '@milkdown/transformer@7.19.0':
+    resolution: {integrity: sha512-Ui1vwbyTd1nAaieTylI8ibNbXSAxygkiFjkwOPGO5w0Eu7leH+0hVrbeGUCSzYdJfjGsN537CYu/8kvLIR+lQg==}
+
   '@milkdown/utils@7.18.0':
     resolution: {integrity: sha512-+o/1sky+QwbS0Y92HthTupMFziJKhZUgF7IBS55Ft4Wjt63kX8PHaLC9KtewNawpzyM/CjPJ9ySCIa+C/06Bsg==}
+
+  '@milkdown/utils@7.19.0':
+    resolution: {integrity: sha512-aIu8j7TypVn+4ZWgrIUjpljIulAVwNERWNZgkfYLQLOv+BbF1gIbpoB7t3w0RD2EeENrEu0P3J0Sl5LDMbyDRQ==}
 
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
@@ -5797,6 +5809,18 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@milkdown/core@7.19.0':
+    dependencies:
+      '@milkdown/ctx': 7.19.0
+      '@milkdown/exception': 7.19.0
+      '@milkdown/prose': 7.19.0
+      '@milkdown/transformer': 7.19.0
+      remark-parse: 11.0.0
+      remark-stringify: 11.0.0
+      unified: 11.0.5
+    transitivePeerDependencies:
+      - supports-color
+
   '@milkdown/crepe@7.18.0(prosemirror-model@1.25.4)(prosemirror-state@1.4.4)(prosemirror-view@1.41.6)(typescript@5.9.3)':
     dependencies:
       '@codemirror/commands': 6.10.1
@@ -5825,6 +5849,10 @@ snapshots:
   '@milkdown/ctx@7.18.0':
     dependencies:
       '@milkdown/exception': 7.18.0
+
+  '@milkdown/ctx@7.19.0':
+    dependencies:
+      '@milkdown/exception': 7.19.0
 
   '@milkdown/exception@7.18.0': {}
 
@@ -6041,6 +6069,15 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@milkdown/transformer@7.19.0':
+    dependencies:
+      '@milkdown/exception': 7.19.0
+      '@milkdown/prose': 7.19.0
+      remark: 15.0.1
+      unified: 11.0.5
+    transitivePeerDependencies:
+      - supports-color
+
   '@milkdown/utils@7.18.0':
     dependencies:
       '@milkdown/core': 7.18.0
@@ -6048,6 +6085,17 @@ snapshots:
       '@milkdown/exception': 7.18.0
       '@milkdown/prose': 7.18.0
       '@milkdown/transformer': 7.18.0
+      nanoid: 5.1.6
+    transitivePeerDependencies:
+      - supports-color
+
+  '@milkdown/utils@7.19.0':
+    dependencies:
+      '@milkdown/core': 7.19.0
+      '@milkdown/ctx': 7.19.0
+      '@milkdown/exception': 7.19.0
+      '@milkdown/prose': 7.19.0
+      '@milkdown/transformer': 7.19.0
       nanoid: 5.1.6
     transitivePeerDependencies:
       - supports-color
