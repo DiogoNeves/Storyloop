@@ -3817,8 +3817,8 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
-  serialize-javascript@7.0.3:
-    resolution: {integrity: sha512-h+cZ/XXarqDgCjo+YSyQU/ulDEESGGf8AMK9pPNmhNSl/FzPl6L8pMp1leca5z6NuG6tvV/auC8/43tmovowww==}
+  serialize-javascript@7.0.4:
+    resolution: {integrity: sha512-DuGdB+Po43Q5Jxwpzt1lhyFSYKryqoNjQSA9M92tyw0lyHIOur+XCalOUe0KTJpyqzT8+fQ5A0Jf7vCx/NKmIg==}
     engines: {node: '>=20.0.0'}
 
   set-cookie-parser@2.7.2:
@@ -6384,7 +6384,7 @@ snapshots:
 
   '@rollup/plugin-terser@0.4.4(rollup@2.80.0)':
     dependencies:
-      serialize-javascript: 7.0.3
+      serialize-javascript: 7.0.4
       smob: 1.6.1
       terser: 5.46.0
     optionalDependencies:
@@ -8895,7 +8895,7 @@ snapshots:
 
   semver@7.7.3: {}
 
-  serialize-javascript@7.0.3: {}
+  serialize-javascript@7.0.4: {}
 
   set-cookie-parser@2.7.2: {}
 
