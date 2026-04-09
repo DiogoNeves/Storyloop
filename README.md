@@ -9,6 +9,10 @@ It combines:
 
 The goal is simple: help creators connect what they are trying, what happened, and what to do next.
 
+See:  
+https://youtu.be/lg4f5IGi-zo
+https://youtu.be/3Q95Rh8sRic
+
 ## Features
 
 📝 **Smart journals** — AI-powered entries that update themselves on a schedule, pulling context from your channel and past notes
