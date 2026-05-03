@@ -291,7 +291,7 @@ export function TodayChecklistEditor({
   const insertMention = useCallback(
     (index: number, item: ActivityItem) => {
       const row = rows[index];
-      if (!row || !mentionState || mentionState.rowId !== row.id) {
+      if (!row || mentionState?.rowId !== row.id) {
         return;
       }
 
