@@ -29,7 +29,7 @@ dependencies = [
     "sqlite-utils>=3.38",
     "uvicorn[standard]>=0.38.0",
     "promptdown>=1.1.6",
-    "werkzeug>=3.1.6",
+    "werkzeug>=3.1.8",
 ]
 
 [dependency-groups]
