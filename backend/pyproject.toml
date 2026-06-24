@@ -35,7 +35,7 @@ dependencies = [
 [dependency-groups]
 ci = [
     "coverage>=7.14.0",
-    "pytest>=9.0.3",
+    "pytest>=9.1.1",
     "pytest-asyncio>=1.2.0",
     "ruff>=0.15.11",
 ]
@@ -43,7 +43,7 @@ ci = [
 dev = [
     "coverage>=7.14.0",
     "mypy>=1.18.2",
-    "pytest>=9.0.3",
+    "pytest>=9.1.1",
     "pytest-asyncio>=1.2.0",
     "ruff>=0.15.11",
 ]
