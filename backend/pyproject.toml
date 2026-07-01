@@ -27,7 +27,7 @@ dependencies = [
     "python-dotenv>=1.1.1",
     "sse-starlette>=2.2.0",
     "sqlite-utils>=3.38",
-    "uvicorn[standard]>=0.38.0",
+    "uvicorn[standard]>=0.49.0",
     "promptdown>=1.1.6",
     "werkzeug>=3.1.8",
 ]
